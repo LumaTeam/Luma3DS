@@ -5,7 +5,9 @@
 
 First you'll need the firmware file that I didnt include because reasons. Get that [HERE](https://www.dropbox.com/s/782eyz22lkmh434/firmware.bin?dl=0)
 
-Secondly, just run Make and everything should work!
+Secondly, You'll need armips added to your Path
+
+Lastly, just run Make and everything should work!
 
 **Features:**
 

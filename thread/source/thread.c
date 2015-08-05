@@ -77,7 +77,7 @@ void thread(void){
             screenShot(TOP_FRAME);
             screenShot(BOT_FRAME);
         }
-        if(isPressed(BUTTON_START)){ 
+        if(isPressed(BUTTON_START | BUTTON_X)){ 
             memdump(L"sdmc:/AXIWRAM.bin", AXIWRAM, 0x00080000);
             memdump(L"sdmc:/FCRAM.bin", FCRAM, 0x010000000); 
         }
