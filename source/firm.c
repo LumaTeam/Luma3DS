@@ -14,15 +14,14 @@ firmHeader *firmLocation = (firmHeader *)0x24000000;
 const u32 firmSize = 0xF1000;
 firmSectionHeader *section;
 
-void loadSplash(void){
-    fileRead((u8 *)0x20047000, "/rei/splash.bin", 0x46500); //ghetto because address varies i think
-    while(((~*(unsigned *)0x10146000) & 0xFFF) == (1 << 3) ? 0 : 1); //Press start to boot
-}
-
 void loadFirm(void){
     //Read FIRM from SD card and write to FCRAM
     fileRead((u8*)firmLocation, "/rei/firmware.bin", firmSize);
     section = firmLocation->section;
+}
+
+void loadSys(void){
+    //stubbed
 }
 
 void patchFirm(void){

@@ -6,7 +6,7 @@
 
 First you'll need the firmware file that I didnt include because reasons. Get that [HERE](https://www.dropbox.com/s/782eyz22lkmh434/firmware.bin?dl=0)
 
-Secondly, You'll need armips added to your Path.
+Secondly, You'll need armips added to your Path. [HERE](https://www.dropbox.com/s/ceuv2qeqp38lpah/armips.exe?dl=0) is a pre-compiled version.
 
 Lastly, just run Make and everything should work!
 
