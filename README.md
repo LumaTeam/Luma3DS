@@ -1,21 +1,20 @@
 # ReiNand
 3DS CFW for N3DS
 
-Compiling:
+**Compiling:**
 
 First you'll need the firmware file that I didnt include because reasons. Get that [HERE](https://www.dropbox.com/s/782eyz22lkmh434/firmware.bin?dl=0)
 
 Secondly, just run Make and everything should work!
 
+**Features:**
 
-Features:
+ - Ninjhax only (working mset soon)
 
--Ninjhax only (working mset soon)
+ - Sig checks disabled
 
--Sig checks disabled
+ - screenshots (set for pokemon game  offsets currently) [Select Button + X]
 
--screenshots (set for pokemon game  offsets currently) [Select Button + X]
+ - RAM dump (currently set for FCRAM) [Start Button + X]
 
--RAM dump (currently set for FCRAM) [Start Button + X]
-
--emunand (with 'Rei' version string)
+ - emunand (with 'Rei' version string)
