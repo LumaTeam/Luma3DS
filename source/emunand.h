@@ -1,0 +1,15 @@
+/*
+*   emunand.h
+*       by Reisyukaku
+*/
+
+#ifndef EMU_INC
+#define EMU_INC
+
+#include "types.h"
+
+#define NCSD_MAGIC (0x4453434E)
+
+u8 getEmunand(u32 *off, u32 *head);
+
+#endif
