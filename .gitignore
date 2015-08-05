@@ -1,2 +1,4 @@
 build.bat
 data/firmware.bin
+out
+mset
