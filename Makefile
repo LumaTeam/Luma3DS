@@ -19,6 +19,7 @@ dir_mset := mset
 dir_out := out
 dir_emu := emunand
 dir_thread := thread
+dir_ninjhax := ninjhax
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
 CFLAGS := -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main
@@ -30,27 +31,43 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 
 .PHONY: all
-all: launcher
+all: launcher emunand thread ninjhax
 
 .PHONY: launcher
-launcher: $(dir_out)/ReiNand.dat
+launcher: $(dir_out)/ReiNand.dat 
+
+.PHONY: emunand
+emunand: $(dir_out)/rei/emunand/emunand.bin
+
+.PHONY: thread
+thread: $(dir_out)/rei/thread/arm9.bin
+
+.PHONY: ninjhax
+ninjhax: $(dir_out)/3ds/
 
 .PHONY: clean
 clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
+	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	rm -rf $(dir_out) $(dir_build)
 
 .PHONY: $(dir_out)/ReiNand.dat
-$(dir_out)/ReiNand.dat: $(dir_build)/main.bin $(dir_out)/rei/ $(dir_out)/rei/thread/arm9.bin $(dir_out)/rei/emunand/emunand.bin
+$(dir_out)/ReiNand.dat: $(dir_build)/main.bin $(dir_out)/rei/
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=256
+    
+$(dir_out)/3ds/:
+	@mkdir -p "$(dir_out)/3ds/ReiNand"
+	@$(MAKE) -C $(dir_ninjhax)
+	@cp -av $(dir_ninjhax)/ninjhax.3dsx $(dir_out)/3ds/ReiNand/ReiNand.3dsx
+	@cp -av $(dir_ninjhax)/ninjhax.smdh $(dir_out)/3ds/ReiNand/ReiNand.smdh
     
 $(dir_out)/rei/: $(dir_data)/firmware.bin $(dir_data)/splash.bin
 	@mkdir -p "$(dir_out)/rei"
 	@cp -av $(dir_data)/*bin $@
     
 $(dir_out)/rei/thread/arm9.bin: $(dir_thread)
-	@$(MAKE) -C $(dir_thread)
+	@$(MAKE) $(FLAGS) -C $(dir_thread)
 	@mkdir -p "$(dir_out)/rei/thread"
 	@mv $(dir_thread)/arm9.bin $(dir_out)/rei/thread
     

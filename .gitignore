@@ -3,3 +3,9 @@ data/firmware.bin
 out
 mset
 build
+*.bin
+*.3dsx
+*.smdh
+*.o
+*.d
+*.elf
