@@ -28,10 +28,10 @@ Pre-compiled version can still be found on my [pastebin](http://pastebin.com/c5A
 
 **Credits:**
  
-Cakes team for teaching me a few things and just being helpful in general! And for ROP/mset related code.
+ Cakes team for teaching me a few things and just being helpful in general! And for ROP/mset related code.
     
-3DBREW for saving me plenty of reverse engineering time.
+ 3DBREW for saving me plenty of reverse engineering time.
     
-Patois for Brahma code.
+ Patois for Brahma code.
     
-Me (Rei) for coding everything else.
+ Me (Rei) for coding everything else.

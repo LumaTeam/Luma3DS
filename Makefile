@@ -43,7 +43,7 @@ emunand: $(dir_out)/rei/emunand/emunand.bin
 thread: $(dir_out)/rei/thread/arm9.bin
 
 .PHONY: ninjhax
-ninjhax: $(dir_out)/3ds/
+ninjhax: $(dir_out)/3ds/ReiNand
 
 .PHONY: clean
 clean:
@@ -56,11 +56,11 @@ $(dir_out)/ReiNand.dat: $(dir_build)/main.bin $(dir_out)/rei/
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=256
     
-$(dir_out)/3ds/:
+$(dir_out)/3ds/ReiNand:
 	@mkdir -p "$(dir_out)/3ds/ReiNand"
 	@$(MAKE) -C $(dir_ninjhax)
-	@cp -av $(dir_ninjhax)/ninjhax.3dsx $(dir_out)/3ds/ReiNand/ReiNand.3dsx
-	@cp -av $(dir_ninjhax)/ninjhax.smdh $(dir_out)/3ds/ReiNand/ReiNand.smdh
+	@cp -av $(dir_ninjhax)/ReiNand.3dsx $@
+	@cp -av $(dir_ninjhax)/ReiNand.smdh $@
     
 $(dir_out)/rei/: $(dir_data)/firmware.bin $(dir_data)/splash.bin
 	@mkdir -p "$(dir_out)/rei"

@@ -96,7 +96,7 @@ wait_arm11_loop:
 	BX              R1
 
 	pa_hijack_arm9_dst:  .long 0x1FFFFC00
-	pa_arm11_code:       .long 0x1FFFFFF8
+	pa_arm11_code:       .long 0x1FFFFFFC
 	pa_pxi_regs:         .long 0x10163000
 	some_pxi_cmd:        .long 0x44846
 	pa_firm_header:      .long 0x24000000
