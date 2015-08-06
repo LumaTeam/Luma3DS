@@ -56,7 +56,7 @@ u32 threadCode = KERNEL9 + (0x0801A6E0 - K9_ADDR);
 u32 threadHook1 = PROC9 + (0x080860B0 - P9_ADDR);
 u32 threadHook2 = PROC9 + (0x080860E4 - P9_ADDR);
 //Patches
-u8 th1[4] = {0x2C, 0xF0, 0x9F, 0xE5};
+u8 th1[4] = {0x2C, 0xF0, 0x9F, 0xE5}; //ldr pc, =0x080860E4
 u8 th2[4] = {0xE0, 0xA6, 0x01, 0x08};
 
 #endif
