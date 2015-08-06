@@ -39,3 +39,13 @@
 		blx r4
 		pop {r4, pc}
 .pool
+
+.thumb
+.global fsize9
+.type fsize9, %function
+    fsize9:
+        push {r4, lr}
+        ldr r4, =0x0805C175
+        blx r4
+        pop {r4, pc}
+.pool

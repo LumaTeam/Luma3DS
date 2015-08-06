@@ -2,6 +2,7 @@ build.bat
 data/firmware.bin
 out
 mset
+rnInstaller
 build
 *.bin
 *.3dsx

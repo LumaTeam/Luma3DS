@@ -11,4 +11,5 @@ static struct fb {
     u8 *bottom;
 } *fb = (struct fb *)0x23FFFE00;
 
+void clearScreen(void);
 void loadSplash(void);

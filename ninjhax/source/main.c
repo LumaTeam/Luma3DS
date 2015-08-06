@@ -21,7 +21,7 @@ s32 main (void) {
 
     FILE *fp = fopen("/reiNand.dat", "r");
     if (!fp) goto exit;
-    fseek(fp, 0x20000, SEEK_SET);
+    fseek(fp, 0x12000, SEEK_SET);
     fread(payload, payload_size, 1, fp);
     fclose(fp);
 

@@ -54,7 +54,7 @@ clean:
 .PHONY: $(dir_out)/ReiNand.dat
 $(dir_out)/ReiNand.dat: $(dir_build)/main.bin $(dir_out)/rei/
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
-	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=256
+	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
     
 $(dir_out)/3ds/ReiNand:
 	@mkdir -p "$(dir_out)/3ds/ReiNand"

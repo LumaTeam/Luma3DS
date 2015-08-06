@@ -1,3 +1,3 @@
 [submodule "mset"]
 	path = mset
-	url = git@github.com:Reisyukaku/mset.git
+	url = https://github.com/Reisyukaku/mset
