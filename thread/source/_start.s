@@ -1,5 +1,4 @@
 .arm
-.global thread
 .global _start
 _start:
 	push {r0-r12 , lr}

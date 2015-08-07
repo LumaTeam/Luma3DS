@@ -8,6 +8,7 @@
 void loadSplash(void);
 void loadFirm(void);
 void loadSys(void);
+void loadEmu(void);
 void patchFirm(void);
 void launchFirm(void);
 

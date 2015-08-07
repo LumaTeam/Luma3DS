@@ -13,6 +13,8 @@
 firmHeader *firmLocation = (firmHeader *)0x24000000;
 const u32 firmSize = 0xF1000;
 firmSectionHeader *section;
+u32 emuOffset = 0;
+u32 emuHeader = 0;
 
 void loadFirm(void){
     //Read FIRM from SD card and write to FCRAM
@@ -21,31 +23,36 @@ void loadFirm(void){
 }
 
 void loadSys(void){
-    //stubbed
+    memcpy((u8*)mpuCode, mpu, sizeof(mpu));
 }
 
-void patchFirm(void){
-    //Part1: Add emunand parsing code
-    u32 offset = 0;
-    u32 header = 0;
-    if(getEmunand(&offset, &header) == 1){
-        fileRead((u8*)emuCode, "/rei/emunand/emunand.bin", 0);
-        u32 *pos_offset = memsearch((u8*)emuCode, "NAND", 0x218, 4);
-        u32 *pos_header = memsearch((u8*)emuCode, "NCSD", 0x218, 4);
-        memcpy((void *)pos_offset, (void *)offset, 4);
-        memcpy((void *)pos_header, (void *)header, 4);
-    }
-    //Part2: Add emunand hooks
-    memcpy((u8*)emuHook1, eh1, sizeof(eh1));
+void loadEmu(void){
+    fileRead((u8*)emuCode, "/rei/emunand/emunand.bin", 0);
+    u32 *pos_offset = memsearch((u8*)emuCode, "NAND", 0x218, 4);
+    u32 *pos_header = memsearch((u8*)emuCode, "NCSD", 0x218, 4);
+    memcpy((void *)pos_offset, (void *)emuOffset, 4);
+    memcpy((void *)pos_header, (void *)emuHeader, 4);
+
+    //Add emunand hooks
+    memcpy((u8*)mpuCode, mpu, sizeof(mpu));
     memcpy((u8*)emuHook2, eh2, sizeof(eh2));
     memcpy((u8*)emuHook3, eh3, sizeof(eh3));
     memcpy((u8*)emuHook4, eh4, sizeof(eh4));
+}
+
+void patchFirm(void){
     
-    //Part3: Disable signature checks
+    //Part1: Get Emunand
+    if(getEmunand(&emuOffset, &emuHeader) == 1)
+        loadEmu();
+    else
+        loadSys();
+    
+    //Part2: Disable signature checks
     memcpy((u8*)patch1, p1, sizeof(p1));
     memcpy((u8*)patch2, p2, sizeof(p2));
     
-    //Part4: Create arm9 thread
+    //Part3: Create arm9 thread
     fileRead((u8*)threadCode, "/rei/thread/arm9.bin", 0);
     memcpy((u8*)threadHook1, th1, sizeof(th1));
     memcpy((u8*)threadHook2, th2, sizeof(th2));
