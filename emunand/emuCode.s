@@ -10,7 +10,7 @@ sdmmc_unk0 equ 0x08062890
 .create "emunand.bin", 0x0801A4C0
 .org 0x0801A4C0
 .arm
-patch000_00:
+EMU_WRITE:
 	stmfd sp!, {r0-r3}
 	mov r3, r0
 	ldr r1, =orig_sector
@@ -75,7 +75,7 @@ loc_801a578:
 	ldmfd sp!, {r1-r7,lr}
 	bx lr
 
-patch000_01:
+EMU_READ:
 	stmfd sp!, {r0-r3}
 	mov r3, r0
 	ldr r1, =orig_sector
