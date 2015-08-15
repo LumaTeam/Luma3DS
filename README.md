@@ -34,7 +34,7 @@ Pre-compiled version can still be found on my [pastebin](http://pastebin.com/c5A
     
  Patois for Brahma code.
  
- Normmatt for sdmmc.c and generally being helpful.
+ Normmatt for sdmmc.c and generally being helpful!
     
  Me (Rei) for coding everything else.
  
