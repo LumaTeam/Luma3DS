@@ -1,6 +1,7 @@
 /*
 *   emunand.c
 *       by Reisyukaku
+*   Copyright (c) 2015 All Rights Reserved
 */
 
 #include "emunand.h"

@@ -33,6 +33,8 @@ Pre-compiled version can still be found on my [pastebin](http://pastebin.com/c5A
  3DBREW for saving me plenty of reverse engineering time.
     
  Patois for Brahma code.
+ 
+ Normmatt for sdmmc.c and generally being helpful.
     
  Me (Rei) for coding everything else.
  

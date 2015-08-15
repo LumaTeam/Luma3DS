@@ -1,6 +1,7 @@
 /*
 *   firm.h
 *       by Reisyukaku
+*   Copyright (c) 2015 All Rights Reserved
 */
 #ifndef FIRM_INC
 #define FIRM_INC
