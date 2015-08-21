@@ -7,61 +7,76 @@
 #include "firm.h"
 #include "patches.h"
 #include "memory.h"
-#include "types.h"
 #include "fs.h"
 #include "emunand.h"
+#include "crypto.h"
 
 firmHeader *firmLocation = (firmHeader *)0x24000000;
 const u32 firmSize = 0xF1000;
 firmSectionHeader *section;
 u32 emuOffset = 0;
 u32 emuHeader = 0;
+u32 kversion = 0;
 
-void loadFirm(void){
-    //Read FIRM from SD card and write to FCRAM
-    fileRead((u8*)firmLocation, "/rei/firmware.bin", firmSize);
-    section = firmLocation->section;
+//Load firm into FCRAM
+void loadFirm(int mode){
+    //Sysnand mode
+    if(mode == 0 || getEmunand(&emuOffset, &emuHeader) == 0){
+        //Read FIRM from NAND and write to FCRAM
+        nandFirm0((u8*)firmLocation, firmSize);
+        section = firmLocation->section;
+        kversion = 0x04; //TODO: make this not hard coded
+        decryptArm9Bin((u8*)firmLocation + section[2].offset, kversion);
+    }
+    //Emunand mode
+    else{
+        //Read FIRM from SD card and write to FCRAM
+        fileRead((u8*)firmLocation, "/rei/firmware.bin", firmSize);
+        section = firmLocation->section;
+        kversion = 0x0F; //TODO: make this not hard coded
+        loadEmu();
+    }
 }
 
-void loadSys(void){
-    memcpy((u8*)mpuCode, mpu, sizeof(mpu));
-}
-
+//Nand redirection
 void loadEmu(void){
-    fileRead((u8*)emuCode, "/rei/emunand/emunand.bin", 0);
-    u32 *pos_offset = memsearch((u8*)emuCode, "NAND", 0x218, 4);
-    u32 *pos_header = memsearch((u8*)emuCode, "NCSD", 0x218, 4);
+    
+    //Read emunand code from SD
+    u32 code = emuCode();
+    fileRead((u8*)code, "/rei/emunand/emunand.bin", 0);
+    u32 *pos_offset = memsearch((u8*)code, "NAND", 0x218, 4);
+    u32 *pos_header = memsearch((u8*)code, "NCSD", 0x218, 4);
     memcpy((void *)pos_offset, (void *)emuOffset, 4);
     memcpy((void *)pos_header, (void *)emuHeader, 4);
 
     //Add emunand hooks
-    memcpy((u8*)mpuCode, mpu, sizeof(mpu));
-    memcpy((u8*)emuHook2, eh2, sizeof(eh2));
-    memcpy((u8*)emuHook3, eh3, sizeof(eh3));
-    memcpy((u8*)emuHook4, eh4, sizeof(eh4));
+    memcpy((u8*)emuHook(1), eh1, sizeof(eh1));
+    memcpy((u8*)emuHook(2), eh2, sizeof(eh2));
+    memcpy((u8*)emuHook(3), eh3, sizeof(eh3));
 }
 
-void patchFirm(void){
+//Patches
+void patchFirm(){
     
-    //Part1: Get Emunand
-    if(getEmunand(&emuOffset, &emuHeader) == 1)
-        loadEmu();
-    else
-        loadSys();
+    //Part1: Set MPU for payload area
+    memcpy((u8*)mpuCode(kversion), mpu, sizeof(mpu));
     
     //Part2: Disable signature checks
-    memcpy((u8*)patch1, p1, sizeof(p1));
-    memcpy((u8*)patch2, p2, sizeof(p2));
+    memcpy((u8*)sigPatch(1, kversion), p1, sizeof(p1));
+    memcpy((u8*)sigPatch(2, kversion), p2, sizeof(p2));
     
     //Part3: Create arm9 thread
-    fileRead((u8*)threadCode, "/rei/thread/arm9.bin", 0);
-    memcpy((u8*)threadHook1, th1, sizeof(th1));
-    memcpy((u8*)threadHook2, th2, sizeof(th2));
+    fileRead((u8*)threadCode(kversion), "/rei/thread/arm9.bin", 0);
+    if(kversion == 0x0F){ //TODO: 0F only untill i can figure out why the hell this doesnt work on sysnand anymore. 
+        memcpy((u8*)threadHook(1, kversion), th1, sizeof(th1));
+        memcpy((u8*)threadHook(2, kversion), th2, sizeof(th2));
+    }
 }
 
+//Firmlaunchhax
 void launchFirm(void){
+    
     //Set MPU
-
     __asm__ (
         "msr cpsr_c, #0xDF\n\t"         //Set system mode, disable interrupts
         "ldr r0, =0x10000035\n\t"       //Memory area 0x10000000-0x18000000, enabled, 128MB

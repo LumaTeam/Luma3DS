@@ -6,6 +6,7 @@
 
 #include "draw.h"
 #include "fs.h"
+#include "memory.h"
 
 void clearScreen(void){
     memset(fb->top_left, 0, 0x38400);

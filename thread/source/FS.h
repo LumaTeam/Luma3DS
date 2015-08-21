@@ -1,3 +1,9 @@
+/*
+*   FS.h
+*       by Reisyukaku
+*   Copyright (c) 2015 All Rights Reserved
+*/
+
 #ifndef FS_H
 #define FS_H
 #include <stdio.h>

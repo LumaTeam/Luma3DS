@@ -28,7 +28,7 @@ Pre-compiled version can still be found on my [pastebin](http://pastebin.com/c5A
 
 **Credits:**
  
- Cakes team for teaching me a few things and just being helpful in general! And for ROP/mset related code.
+ Cakes team for teaching me a few things and just being helpful in general! And for ROP/mset related code, and crypto libs.
     
  3DBREW for saving me plenty of reverse engineering time.
     

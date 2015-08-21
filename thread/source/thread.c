@@ -1,6 +1,7 @@
 /*
 *   thread.c
 *       by Reisyukaku
+*   Copyright (c) 2015 All Rights Reserved
 */
 
 #include <wchar.h>
