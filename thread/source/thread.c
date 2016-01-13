@@ -79,8 +79,7 @@ void thread(void){
             screenShot(BOT_FRAME);
         }
         if(isPressed(BUTTON_START | BUTTON_X)){ 
-            memdump(L"sdmc:/AXIWRAM.bin", AXIWRAM, 0x00080000);
-            memdump(L"sdmc:/FCRAM.bin", FCRAM, 0x010000000); 
+            memdump(L"sdmc:/BootRom.bin", 0xFFFF0000, 0x8000);
         }
         patches();
 	}

@@ -26,14 +26,15 @@ void loadFirm(int mode){
         nandFirm0((u8*)firmLocation, firmSize);
         section = firmLocation->section;
         kversion = 0x04; //TODO: make this not hard coded
-        decryptArm9Bin((u8*)firmLocation + section[2].offset, kversion);
+        arm9loader((u8*)firmLocation + section[2].offset, kversion);
     }
     //Emunand mode
     else{
         //Read FIRM from SD card and write to FCRAM
         fileRead((u8*)firmLocation, "/rei/firmware.bin", firmSize);
         section = firmLocation->section;
-        kversion = 0x0F; //TODO: make this not hard coded
+        kversion = 0x18; //TODO: make this not hard coded
+        arm9loader((u8*)firmLocation + section[2].offset, kversion);
         loadEmu();
     }
 }
@@ -42,7 +43,7 @@ void loadFirm(int mode){
 void loadEmu(void){
     
     //Read emunand code from SD
-    u32 code = emuCode();
+    u32 code = emuCode(kversion);
     fileRead((u8*)code, "/rei/emunand/emunand.bin", 0);
     u32 *pos_offset = memsearch((u8*)code, "NAND", 0x218, 4);
     u32 *pos_header = memsearch((u8*)code, "NCSD", 0x218, 4);
@@ -50,9 +51,8 @@ void loadEmu(void){
     memcpy((void *)pos_header, (void *)emuHeader, 4);
 
     //Add emunand hooks
-    memcpy((u8*)emuHook(1), eh1, sizeof(eh1));
-    memcpy((u8*)emuHook(2), eh2, sizeof(eh2));
-    memcpy((u8*)emuHook(3), eh3, sizeof(eh3));
+    memcpy((u8*)emuHook(1, kversion), nandRedir, sizeof(nandRedir));
+    memcpy((u8*)emuHook(2, kversion), nandRedir, sizeof(nandRedir));
 }
 
 //Patches
@@ -62,12 +62,12 @@ void patchFirm(){
     memcpy((u8*)mpuCode(kversion), mpu, sizeof(mpu));
     
     //Part2: Disable signature checks
-    memcpy((u8*)sigPatch(1, kversion), p1, sizeof(p1));
-    memcpy((u8*)sigPatch(2, kversion), p2, sizeof(p2));
+    memcpy((u8*)sigPatch(1, kversion), sigPat1, sizeof(sigPat1));
+    memcpy((u8*)sigPatch(2, kversion), sigPat2, sizeof(sigPat2));
     
     //Part3: Create arm9 thread
     fileRead((u8*)threadCode(kversion), "/rei/thread/arm9.bin", 0);
-    if(kversion == 0x0F){ //TODO: 0F only untill i can figure out why the hell this doesnt work on sysnand anymore. 
+    if(kversion == 0x18){ //TODO: 0x18 only untill i can figure out why the hell this doesnt work on sysnand anymore. 
         memcpy((u8*)threadHook(1, kversion), th1, sizeof(th1));
         memcpy((u8*)threadHook(2, kversion), th2, sizeof(th2));
     }
@@ -108,7 +108,10 @@ void launchFirm(void){
     memcpy(section[1].address, (u8*)firmLocation + section[1].offset, section[1].size);
     memcpy(section[2].address, (u8*)firmLocation + section[2].offset, section[2].size);
     *(u32 *)0x1FFFFFF8 = (u32)firmLocation->arm11Entry;
+
+    setKeys(kversion);
     
     //Final jump to arm9 binary
     ((void (*)())0x801B01C)();
+    //((void (*)())firmLocation->arm9Entry)();
 }

@@ -60,7 +60,6 @@ __asm__\
 void aes_setkey(u8 keyslot, const void* key, u32 keyType, u32 mode)
 {
 	if(keyslot <= 0x03) return; // Ignore TWL keys for now
-
 	u32* key32 = (u32*)key;
 	*REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
 	*REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
@@ -376,20 +375,26 @@ void nandFirm0(u8 *outbuf, const u32 size){
     aes(outbuf, outbuf, size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
-//Decrypt the arm9 binary on N3DS firm
-void decryptArm9Bin(void *armHdr, u32 kversion){
+//Emulates the Arm9loader process
+//9.5.0 = 0x0F
+//9.6.0 = 0x18
+void arm9loader(void *armHdr, u32 kversion){
+    //Set Nand key#2  here (decrypted from 0x12C10)
+    u8 key2[0x10] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
+    
     u8 keyX[0x10];
     u8 keyY[0x10];
     u8 CTR[0x10];
-    u32 slot = (kversion == 0x0F ? 0x16 : 0x15);
+    u32 slot = (kversion >= 0x0F ? 0x16 : 0x15);
     
+    //Setupkeys needed for arm9bin decryption
     memcpy(keyY, armHdr+0x10, 0x10);
     memcpy(CTR, armHdr+0x20, 0x10);
     u32 size = atoi(armHdr+0x30);
-    
-    aes_use_keyslot(0x11);
-    
-    if(kversion == 0x0F){
+
+    if(kversion >= 0x0F){
+        if(kversion >= 0x18) aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_use_keyslot(0x11);
         aes(keyX, armHdr+0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
@@ -399,4 +404,66 @@ void decryptArm9Bin(void *armHdr, u32 kversion){
     aes_use_keyslot(slot);
     
     aes(armHdr+0x800, armHdr+0x800, size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+}
+
+void setKeys(kversion){
+    u8 key2[0x10] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
+   //Initialze keys
+    if(kversion >= 0x18){
+
+    u8 keyX18[16] = {0x82, 0xE9, 0xC9, 0xBE, 0xBF, 0xB8, 0xBD, 0xB8, 0x75, 0xEC, 0xC0, 0xA0, 0x7D, 0x47, 0x43, 0x74};
+    u8 keyX19[16] = {0xF5, 0x36, 0x7F, 0xCE, 0x73, 0x14, 0x2E, 0x66, 0xED, 0x13, 0x91, 0x79, 0x14, 0xB7, 0xF2, 0xEF};
+    u8 keyX1A[16] = {0xEA, 0xBA, 0x98, 0x4C, 0x9C, 0xB7, 0x66, 0xD4, 0xA3, 0xA7, 0xE9, 0x74, 0xE2, 0xE7, 0x13, 0xA3};
+    u8 keyX1B[16] = {0x45, 0xAD, 0x04, 0x95, 0x39, 0x92, 0xC7, 0xC8, 0x93, 0x72, 0x4A, 0x9A, 0x7B, 0xCE, 0x61, 0x82};
+    u8 keyX1C[16] = {0xC3, 0x83, 0x0F, 0x81, 0x56, 0xE3, 0x54, 0x3B, 0x72, 0x3F, 0x0B, 0xC0, 0x46, 0x74, 0x1E, 0x8F};
+    u8 keyX1D[16] = {0xD6, 0xB3, 0x8B, 0xC7, 0x59, 0x41, 0x75, 0x96, 0xD6, 0x19, 0xD6, 0x02, 0x9D, 0x13, 0xE0, 0xD8};
+    u8 keyX1E[16] = {0xBB, 0x62, 0x3A, 0x97, 0xDD, 0xD7, 0x93, 0xD7, 0x57, 0xC4, 0x10, 0x4B, 0x8D, 0x9F, 0xB9, 0x69};
+    u8 keyX1F[16] = {0x4C, 0x28, 0xEC, 0x6E, 0xFF, 0xA3, 0xC2, 0x36, 0x46, 0x07, 0x8B, 0xBA, 0x35, 0x0C, 0x79, 0x95};
+    aes_setkey(0x18, keyX18, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x19, keyX19, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x1A, keyX19, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x1B, keyX1B, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x1C, keyX19, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x1D, keyX19, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x1E, keyX19, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x1F, keyX19, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    /*
+       //data at armHdr+0x8A804 (its not in FCRAM for whatever reason)
+        u8 encryptedData1[0x10] = {
+            0xA4, 0x8D, 0xE4, 0xF1, 0x0B, 0x36, 0x44, 0xAA, 0x90, 0x31, 0x28, 0xFF,
+            0x4D, 0xCA, 0x76, 0xDF
+        };
+        //data at armHdr+0x8A814 (its not in FCRAM for whatever reason)
+        u8 encryptedData2[0x10] = {
+            0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D,
+            0x9D, 0x2A, 0x21, 0x98
+        };
+        
+        //Set key 0x18 keyX
+        u8 keyX18[0x10];
+        aes(keyX18, encryptedData1, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(0x18, keyX18, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        
+        //Set key 0x11 normalkey
+        aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_use_keyslot(0x11);
+        
+        //Set keys 0x19..0x1F keyXs
+        u8 keyTemp[0x10];
+        u8 keys[7][0x10];
+        aes_use_keyslot(0x11);
+        int i; for(i = 0; i < 7; i++) {
+            aes(keyTemp, encryptedData2, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+            encryptedData2[0x0F]++;
+            memcpy(keys[i], keyTemp, 0x10);
+        }
+        aes_setkey(0x19, keys[0], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x1A, keys[1], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x1B, keys[2], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x1C, keys[3], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x1D, keys[4], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x1E, keys[5], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x1F, keys[6], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);*/
+    }
 }

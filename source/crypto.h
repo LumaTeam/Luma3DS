@@ -133,6 +133,7 @@ int rsa_verify(const void* data, u32 size, const void* sig, u32 mode);
 //NAND/FIRM stuff
 void getNandCTR(u8 *buf);
 void nandFirm0(u8 *outbuf, const u32 size);
-void decryptArm9Bin(void *armHdr, u32 kversion);
+void arm9loader(void *armHdr, u32 kversion);
+void setKeys(kversion);
 
 #endif /*__CRYPTO_H*/
