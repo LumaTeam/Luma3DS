@@ -1,5 +1,5 @@
 # ReiNand
-3DS CFW for N3DS
+The original open source N3DS CFW!
 
 
 **Compiling:**
