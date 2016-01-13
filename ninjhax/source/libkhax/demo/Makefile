@@ -9,11 +9,6 @@ endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
-# This should be set externally
-name ?= reiNand.dat
-filepath ?=
-dir_out ?= $(CURDIR)
-
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
@@ -31,25 +26,27 @@ dir_out ?= $(CURDIR)
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	$(name:.dat=)
-BUILD		:=	build
-SOURCES		:=	source source/libkhax
-DATA		:=	data
-INCLUDES	:=	include
-APP_TITLE	?=	$(name:.dat=)
-APP_DESCRIPTION ?=	Privileged ARM11/ARM9 Code Execution
-APP_AUTHOR	?=	patois
+TARGET		      :=	$(notdir $(CURDIR))
+BUILD		        :=	build
+SOURCES		      := . ../
+DATA		        :=	data
+INCLUDES	      :=	include
+APP_TITLE       :=  khax
+APP_DESCRIPTION :=  ARM11 KernelHax
+APP_AUTHOR      :=  Myria
+ICON            :=  logo.png
+NO_SMDH			:= 1
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
 
-CFLAGS	:=	-g -Wall -Wextra -O3 -mword-relocations \
+CFLAGS	:=	-g -Wall -O3 -mword-relocations \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DARM_ARCH -DLAUNCHER_PATH='"$(filepath)$(name)"'
+CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DARM_ARCH -DKHAX_DEBUG
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
@@ -72,7 +69,7 @@ LIBDIRS	:= $(CTRULIB)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(dir_out)/$(TARGET)
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
@@ -118,7 +115,7 @@ ifeq ($(strip $(ICON)),)
 		endif
 	endif
 else
-	export APP_ICON := $(ICON)
+	export APP_ICON := $(TOPDIR)/$(ICON)
 endif
 
 .PHONY: $(BUILD) clean all
@@ -134,7 +131,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).3dsx $(OUTPUT).smdh
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf
 
 
 #---------------------------------------------------------------------------------
@@ -150,7 +147,8 @@ ifeq ($(strip $(NO_SMDH)),)
 all	:	$(OUTPUT).3dsx $(OUTPUT).smdh
 endif
 cpu.o cpu_threaded.o: CFLAGS += -Wno-unused-variable -Wno-unused-label
-$(OUTPUT).3dsx			:	$(OFILES)
+$(OUTPUT).3dsx	:	$(OUTPUT).elf
+$(OUTPUT).elf	:	$(OFILES)
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data

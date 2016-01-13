@@ -1,45 +1,30 @@
 #include <3ds.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "brahma.h"
 #include "hid.h"
 
-s32 main (void) {
-	// Initialize services
-	srvInit();
-	aptInit();
-	hidInit(NULL);
-	gfxInitDefault();
-	fsInit();
-	sdmcInit();
-	hbInit();
-	qtmInit();
-    
-    gfxSwapBuffers();
+#ifndef LAUNCHER_PATH
+#define LAUNCHER_PATH "Cakes.dat"
+#endif
 
-    u32 payload_size = 0x10000;
-    void *payload = malloc(payload_size);
-
-    FILE *fp = fopen("/reiNand.dat", "r");
-    if (!fp) goto exit;
-    fseek(fp, 0x12000, SEEK_SET);
-    fread(payload, payload_size, 1, fp);
-    fclose(fp);
-
+int main (void) {
     if (brahma_init()) {
-        load_arm9_payload_from_mem(payload, payload_size);
+        if (load_arm9_payload_offset("/" LAUNCHER_PATH, 0x12000, 0x10000) != 1)
+            goto error;
         firm_reboot();
         brahma_exit();
     }
 
-exit:
-    if (payload) free(payload);
-
-	hbExit();
-	sdmcExit();
-	fsExit();
-	gfxExit();
-	hidExit();
-	aptExit();
-	srvExit();
+    // Return to hbmenu
     return 0;
+
+error:
+    gfxInitDefault();
+    consoleInit(GFX_BOTTOM, NULL);
+    printf("An error occurred while loading the payload.\nMake sure your launcher is located at:\n/" LAUNCHER_PATH);
+    wait_any_key();
+
+    gfxExit();
+    return 1;
 }

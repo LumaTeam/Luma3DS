@@ -1,7 +1,8 @@
 #include <3ds.h>
+#include <stdio.h>
 
 /* loop until key is pressed */
-u32 wait_key (void) {
+void wait_key (void) {
 	hidScanInput();
 	u32 old_kDown, kDown;
 	old_kDown = hidKeysDown();
@@ -17,7 +18,6 @@ u32 wait_key (void) {
 		gfxFlushBuffers();
 		gfxSwapBuffers();
 	}
-	return kDown;
 }
 
 /* convenience function */

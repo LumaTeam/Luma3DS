@@ -1,0 +1,6 @@
+*.elf
+*.3dsx
+*.smdh
+
+build
+output

@@ -1,0 +1,121 @@
+Brahma - Privilege elevation exploit for the Nintendo 3DS
+=========================================================
+
+  WTF is 'Brahma'?
+  ----------------
+  Brahma is a development tool for the Nintendo 3DS platform that enables
+  privileged code execution on the ARM9 processor of the Nintendo 3DS platform.
+  It does so by exploiting two vulnerabilities in order to elevate its
+  privileges.
+
+  The exploits utilized by Brahma are based on "commercial" exploits that
+  have been reverse engineered. Brahma has been developed with the goal of
+  understanding and documenting the nature of the exploits in mind and has
+  been put further effort into during its development process in order to
+  achieve reliable exploitation and stability.
+
+  Brahma comes with full source code that is based on libctru and requires
+  existing user mode code execution privileges (Ninjhax), and can then be
+  used to further elevate privileges to ARM9 pre-kernel / SVC mode.
+
+  Also, "Brahma, the creator" is a god in hinduism that is often portrayed
+  with four heads and arms (heh... so funny :\). 
+
+  How to build:
+  -------------
+  - Download and install devkitARM (http://devkitpro.org/wiki/Getting_Started)
+  - Open a shell and run make
+
+  How to use:
+  -----------
+  - Prebuilt binary releases are available at
+    https://github.com/patois/Brahma/releases
+  - Run brahma.3dsx (using homebrew launcher) 
+  - By default, the exploit will attempt to gain ARM11 kernel privileges before
+    finally gaining ARM9 pre-kernel privileges (by performing a "firmlaunch")
+
+    "Hotkeys" (press and hold during startup of BRAHMA):
+    ----------------------------------------------------
+
+    * LEFT  : Loads 'arm9payload.bin' from the root folder of the 3DS' SD card
+              and executes it
+
+    * RIGHT : Performs a reboot / firm launch of the 3DS system
+
+    * NONE  : Displays a menu which allows payload files to be received via
+              a WiFi network connection or loaded from the '/brahma' folder
+              located in the root folder of the SD card
+
+    In order to send payload files to the 3DS via a network connection,
+    the Python script '/tools/client.py' can be used. Alternatively, netcat
+    does the job as well.
+
+      Syntax:
+      -------
+      client.py: 'python client.py <3DS ip> <filename>'	  
+      netcat:    'nc <3DS ip> 80 < <filename>' 
+
+      Examples:
+      ---------  
+      client.py: 'python client.py 10.0.0.5 payload.bin'
+      netcat:    'nc 10.0.0.5 80 < payload.bin'
+
+  Example programs that run in privileged ARM9 mode can be downloaded from
+  https://github.com/patois/3DSProjects/tree/master/Brahma/
+
+  A memory dumper (3DSDevTools) for Brahma is available at
+  https://github.com/patois/3DSDevTools/releases
+
+  There is also a port of Decrypt9 by archshift which can be loaded using
+  bootstrap or Brahma (use 'make' to build the project, then use one of the
+  methods supported by Brahma to load the Decrypt9 payload). Decrypt9 can be
+  downloaded from https://github.com/archshift/Decrypt9/tree/bootstrap
+
+  Developers:
+  -----------
+  Brahma and its exploits which enable privileged ARM9 code execution
+  on the Nintendo 3DS may also be used as a "library" (#include "brahma.h")
+
+  - call brahma_init() - initializes Brahma
+  - call load_arm9_payload() - loads a payload binary from disk
+  - call firm_reboot() - executes a payload binary (privileged ARM9 code)
+  - (please check the source code for more features and options)
+
+  ARM9 payload must consist of valid ARM9 executable code and will be
+  mapped to physical address 0x23F00000 during run-time. Its code should begin
+  with a branch instruction at offset 0 and a 'placeholder' for a u32
+  variable at offset 4, which will be filled by Brahma with a backup of
+  the original ARM9 entry point of the FIRM header during runtime.
+
+  Brahma is written in a way that allows developers of payload binaries
+  to easily return control to the 3DS' firmware by simply returning from
+  the main() function of the payload.
+  
+  This allows reading and altering of memory contents, such as the mapped
+  Nintendo firmware (including ARM9 kernel, Process9, ARM11 kernel and several
+  processes running on the ARM11 core), for testing purposes, without requiring
+  any changes on the file system level.
+
+  Credits:
+  --------
+  - To 3dbrew.org and all its contributors for being such a great resource
+  - To whomever initially found the vulnerabilities and wrote the publicly
+    available exploit code
+  - To everybody who's been working on porting this exploit and its various
+    "bootstrap" branches to newer firmware versions and improving its stability
+    (in particular yifanlu, yuriks and shinyquagsire23)
+  - To everybody involved in creating libctru, Ninjhax and the Homebrew Menu
+
+Disclaimer:
+THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESSED OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS
+OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+OF SUCH DAMAGE.
+
+  (c) 2015, patois
