@@ -466,22 +466,4 @@ void setKeys(kversion){
         aes_setkey(0x1E, keys[5], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_setkey(0x1F, keys[6], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);*/
     }
-        //Set key 0x18 keyX
-        u8 keyX18[0x10];
-        aes(keyX18, encryptedData1, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(0x18, keyX18, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        
-        //Set key 0x11 normalkey
-        aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_use_keyslot(0x11);
-        
-        //Set keys 0x19..0x1F keyXs
-        u8 keyTemp[0x10];
-        aes_use_keyslot(0x11);
-        int i; for(i = 0; i < 7; i++) {
-            aes(keyTemp, encryptedData2, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-            aes_setkey(0x19 + i, keyTemp, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-            encryptedData2[0x0F]++;
-        }*/
-    }
 }
