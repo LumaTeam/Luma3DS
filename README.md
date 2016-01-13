@@ -15,13 +15,15 @@ Pre-compiled version can still be found on my [pastebin](http://pastebin.com/c5A
 
 **Features:**
 
-* Ninjhax 2.5 and MSET support!
+* Ninjhax and MSET support!
 
-* Sig checks disabled!
+* Sig checks disabled
 
-* Basic ARM9 thread with screenshot and RAM dump capabilities!
+* screenshots (set for pokemon game  offsets currently) [Select Button + X]
 
-* Emunand up to latest firmware! (with 'Rei' version string)
+* RAM dump (currently set for FCRAM) [Start Button + X]
+
+* emunand (with 'Rei' version string)
  
 
 **Credits:**
@@ -30,7 +32,7 @@ Pre-compiled version can still be found on my [pastebin](http://pastebin.com/c5A
     
  3DBREW for saving me plenty of reverse engineering time.
     
- Patois/Cakes for Brahma code.
+ Patois for Brahma code.
  
  Normmatt for sdmmc.c and generally being helpful!
     
