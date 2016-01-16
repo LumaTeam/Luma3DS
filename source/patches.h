@@ -21,11 +21,11 @@ u8 th2[4];
 /**************************************************
 *                   Functions
 **************************************************/
-u32 emuCode(u32 kver);
-u32 mpuCode(u32 kver);
-u32 threadCode(u32 kver);
-u32 threadHook(u8 val, u32 kver);
-u32 emuHook(u8 val, u32 kver);
-u32 sigPatch(u8 val, u32 kver);
+u32 emuCode(void);
+u32 mpuCode(void);
+u32 threadCode(void);
+u32 threadHook(u8 val);
+u32 emuHook(u8 val);
+u32 sigPatch(u8 val);
 
 #endif

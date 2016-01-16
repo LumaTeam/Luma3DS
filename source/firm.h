@@ -9,7 +9,7 @@
 #include "types.h"
 
 void loadSplash(void);
-void loadFirm(int mode);
+void loadFirm(void);
 void loadEmu(void);
 void patchFirm(void);
 void launchFirm(void);

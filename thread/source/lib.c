@@ -10,10 +10,10 @@ void *memset(void * ptr, int value, unsigned int num){
 }
 
 int strcomp(char* s1, char* s2, unsigned int size){
-	for(int i = 0; i < size; i++){
+    for(int i = 0; i < size*2; i++){
         if(s1[i] != s2[i]) return 0;
     }
-	return 1;
+    return 1;
 }
 
 void strcopy(char* dest, char* source, unsigned int size){

@@ -17,4 +17,5 @@ void clearScreen(void){
 void loadSplash(void){
     clearScreen();
     fileRead(fb->top_left, "/rei/splash.bin", 0x46500);
+    unsigned i,t; for(t=120;t>0;t--){for(i=0xFFFF;i>0;i--);}; //Ghetto sleep func
 }

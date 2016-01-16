@@ -68,7 +68,9 @@ void screenShot(int frame){
 void patches(void){
     //Change version string
     for(int i = 0; i < 0x600000; i+=4){
-		if(strcomp((void*)0x27B00000  - i, (void*)L"Ver.", 4)) strcopy((void*)0x27B00000 - i, (void*)L"\uE024Rei", 4);
+        if(strcomp((void*)0x27B00000  - i, (void*)L"Ver.", 4)){
+            if(strcomp((void*)0x27B00000  - i + 0x28, (void*)"T_ver_00", 4)) strcopy((void*)0x27B00000 - i, (void*)L"\uE024Rei", 4);
+        }
 	}
 }
 
@@ -79,7 +81,7 @@ void thread(void){
             screenShot(BOT_FRAME);
         }
         if(isPressed(BUTTON_START | BUTTON_X)){ 
-            memdump(L"sdmc:/BootRom.bin", 0xFFFF0000, 0x8000);
+            memdump(L"sdmc:/FCRAM.bin", (void*)0x27500000, 0x600000);
         }
         patches();
 	}
