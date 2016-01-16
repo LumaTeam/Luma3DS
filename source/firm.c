@@ -37,7 +37,7 @@ void loadEmu(void){
         *pos_offset = emuOffset;
         *pos_header = emuHeader;
     }
-    fileWrite(code, "help.bin", 0x200);
+    
     //Add emunand hooks
     memcpy((u8*)emuHook(1), nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuHook(2), nandRedir, sizeof(nandRedir));
