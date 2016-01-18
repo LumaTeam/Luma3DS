@@ -16,5 +16,5 @@ _start:
 	ldr r4, =0x1
 	svc 0x8
 	pop {r0-r12 , lr}
-	ldr r0, =0x80CB028
-	ldr pc, =0x08086144
+	ldr r0, =0x80E3408
+	ldr pc, =0x0808519C

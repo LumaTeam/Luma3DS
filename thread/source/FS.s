@@ -11,7 +11,7 @@
 .type fopen9, %function
 	fopen9:
 		push {r0-r6, lr}
-		ldr r4, =0x0805B181
+		ldr r4, =0x08059D0D
 		blx r4
 		pop {r0-r6, pc}
 .pool
@@ -21,7 +21,7 @@
 .type fwrite9, %function
 	fwrite9:
 		push {r4, lr}
-		ldr r4, =0x0805C4D1
+		ldr r4, =0x0805B20D
 		blx r4
 		pop {r4, pc}
 .pool
@@ -31,7 +31,7 @@
 .type fread9, %function
 	fread9:
 		push {r4, lr}
-		ldr r4, =0x0804D855
+		ldr r4, =0x0804CC15
 		blx r4
 		pop {r4, pc}
 .pool
@@ -41,7 +41,7 @@
 .type fclose9, %function
 	fclose9:
 		push {r4, lr}
-		ldr r4, =0x08053CF9
+		ldr r4, =0x08052DA1
 		blx r4
 		pop {r4, pc}
 .pool
@@ -51,7 +51,7 @@
 .type fsize9, %function
     fsize9:
         push {r4, lr}
-        ldr r4, =0x0805C2CD
+        ldr r4, =0x0805B0E9
         blx r4
         pop {r4, pc}
 .pool

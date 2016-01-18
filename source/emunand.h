@@ -11,6 +11,6 @@
 
 #define NCSD_MAGIC (0x4453434E)
 
-u8 getEmunand(u32 *off, u32 *head);
+void getEmunand(u32 *off, u32 *head);
 
 #endif

@@ -12,7 +12,6 @@
 #include "crypto.h"
 
 const firmHeader *firmLocation = (firmHeader *)0x24000000;
-const u32 firmSize = 0xF3000;
 firmSectionHeader *section;
 u32 emuOffset = 0;
 u32 emuHeader = 0;
@@ -20,7 +19,7 @@ u32 emuHeader = 0;
 //Load firm into FCRAM
 void loadFirm(void){
     //Read FIRM from SD card and write to FCRAM
-    fileRead((u8*)firmLocation, "/rei/firmware.bin", firmSize);
+    fileRead((u8*)firmLocation, "/rei/firmware.bin", 0);
     section = firmLocation->section;
     arm9loader((u8*)firmLocation + section[2].offset);
 }
@@ -33,11 +32,12 @@ void loadEmu(void){
     fileRead(code, "/rei/emunand/emunand.bin", 0);
     u32 *pos_offset = memsearch(code, "NAND", 0x218, 4);
     u32 *pos_header = memsearch(code, "NCSD", 0x218, 4);
+    getEmunand(&emuOffset, &emuHeader);
     if (pos_offset && pos_header) {
         *pos_offset = emuOffset;
         *pos_header = emuHeader;
     }
-    
+
     //Add emunand hooks
     memcpy((u8*)emuHook(1), nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuHook(2), nandRedir, sizeof(nandRedir));
@@ -48,7 +48,7 @@ void patchFirm(){
     
     //Part1: Set MPU for payload area
     memcpy((u8*)mpuCode(), mpu, sizeof(mpu));
-    
+
     //Part2: Disable signature checks
     memcpy((u8*)sigPatch(1), sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigPatch(2), sigPat2, sizeof(sigPat2));

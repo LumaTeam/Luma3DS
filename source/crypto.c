@@ -387,12 +387,12 @@ void arm9loader(void *armHdr){
     aes((void *)(armHdr+0x800), (void *)(armHdr+0x800), size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     
     //Set keys 0x19..0x1F keyXs
-    u8* decKey = (void *)((uintptr_t)armHdr+0x8A824);
+    u8* decKey = (void *)((uintptr_t)armHdr+0x89824);
     aes_use_keyslot(0x11);
     for(slot = 0x19; slot < 0x20; slot++) {
         aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes(decKey, (void *)((uintptr_t)armHdr+0x8A814), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes(decKey, (void *)((uintptr_t)armHdr+0x89814), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, (u8*)decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        *(u8 *)((void *)((uintptr_t)armHdr+0x8A814+0xF)) += 1;
+        *(u8 *)((void *)((uintptr_t)armHdr+0x89814+0xF)) += 1;
     }
 }

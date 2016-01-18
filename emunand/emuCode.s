@@ -1,9 +1,9 @@
 .nds
 
-sdmmc equ 0x080D86F0
+sdmmc equ 0x080F0AB0
 
-.create "emunand.bin", 0x0801A4C0
-.org 0x0801A4C0
+.create "emunand.bin", 0x0801A5C0
+.org 0x0801A5C0
 .arm
 nand_sd:
     ; Original code that still needs to be executed.
