@@ -11,6 +11,8 @@
 
 #define NCSD_MAGIC (0x4453434E)
 
-void getEmunand(u32 *off, u32 *head);
+void getEmunandSect(u32 *off, u32 *head);
+void getSDMMC(void *offset, u32 *off, u32 size);
+void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff);
 
 #endif

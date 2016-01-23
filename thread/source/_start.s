@@ -13,8 +13,8 @@ _start:
 	ldr r1, =thread @ thread_addr
 	mov r2, #0x0 @ arg
 	ldr r3, =0x08000c00 @ StackTop
-	ldr r4, =0x1
+	ldr r4, =0xFFFFFFFE
 	svc 0x8
 	pop {r0-r12 , lr}
-	ldr r0, =0x80E3408
+	ldr r0, =0x080E3408
 	ldr pc, =0x0808519C

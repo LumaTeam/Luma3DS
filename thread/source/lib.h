@@ -20,6 +20,7 @@ void* memset(void * ptr, int value, unsigned int num);
 int strcomp(char* s1, char*s2, unsigned int size);
 void strcopy(char* dest, char* source, unsigned int size);
 int memcmp(void* buf1, void* buf2, int size);
+int atoi(const char* nptr);
 unsigned isPressed(unsigned bitfield);
 
 #endif

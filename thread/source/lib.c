@@ -31,6 +31,24 @@ int memcmp(void* buf1, void* buf2, int size){
 	return equal;
 }
 
+int atoi(const char* nptr){
+    int result   = 0,
+        position = 1;
+    const char* p = nptr;
+    
+    while(*p) ++p;
+
+    for(--p; p >= nptr; p--){
+        if(*p < 0x30 || *p > 0x39) break;
+        else{
+            result += (position) * (*p - 0x30);
+            position *= 10;
+        }
+    }
+    result = ((nptr[0] == '-')? -result : result);
+    return result;
+}
+
 unsigned isPressed(unsigned bitfield){
 	return ((~*(unsigned *)0x10146000) & 0xFFF) == (bitfield & 0xFFF) ? 1 : 0;
 }

@@ -1,6 +1,6 @@
 .nds
 
-sdmmc equ 0x080F0AB0
+sdmmc equ 0x434D4453	;dummy
 
 .create "emunand.bin", 0x0801A5C0
 .org 0x0801A5C0

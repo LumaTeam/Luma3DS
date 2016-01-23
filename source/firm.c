@@ -13,13 +13,19 @@
 
 const firmHeader *firmLocation = (firmHeader *)0x24000000;
 firmSectionHeader *section;
-u32 emuOffset = 0;
-u32 emuHeader = 0;
+u32 emuOffset = 0,
+    emuHeader = 0,
+    emuRead = 0,
+    emuWrite = 0,
+    sdmmcOffset = 0, 
+    firmSize = 0;
 
 //Load firm into FCRAM
 void loadFirm(void){
     //Read FIRM from SD card and write to FCRAM
-    fileRead((u8*)firmLocation, "/rei/firmware.bin", 0);
+    const char firmPath[] = "/rei/firmware.bin";
+    firmSize = fileSize(firmPath);
+    fileRead((u8*)firmLocation, firmPath, firmSize);
     section = firmLocation->section;
     arm9loader((u8*)firmLocation + section[2].offset);
 }
@@ -29,31 +35,35 @@ void loadEmu(void){
     
     //Read emunand code from SD
     u32 code = emuCode();
-    fileRead(code, "/rei/emunand/emunand.bin", 0);
-    u32 *pos_offset = memsearch(code, "NAND", 0x218, 4);
-    u32 *pos_header = memsearch(code, "NCSD", 0x218, 4);
-    getEmunand(&emuOffset, &emuHeader);
-    if (pos_offset && pos_header) {
-        *pos_offset = emuOffset;
-        *pos_header = emuHeader;
-    }
-
+    const char path[] = "/rei/emunand/emunand.bin";
+    u32 size = fileSize(path);
+    fileRead(code, path, size);
+    
+    //Find and patch emunand related offsets
+    u32 *pos_sdmmc = memsearch(code, "SDMC", size, 4);
+    u32 *pos_offset = memsearch(code, "NAND", size, 4);
+    u32 *pos_header = memsearch(code, "NCSD", size, 4);
+    getSDMMC(firmLocation, &sdmmcOffset, firmSize);
+    getEmunandSect(&emuOffset, &emuHeader);
+    getEmuRW(firmLocation, firmSize, &emuRead, &emuWrite);
+    *pos_sdmmc = sdmmcOffset;
+    *pos_offset = emuOffset;
+    *pos_header = emuHeader;
+    
     //Add emunand hooks
-    memcpy((u8*)emuHook(1), nandRedir, sizeof(nandRedir));
-    memcpy((u8*)emuHook(2), nandRedir, sizeof(nandRedir));
+    memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
+    memcpy((u8*)emuWrite, nandRedir, sizeof(nandRedir));
+    memcpy((u8*)mpuCode(), mpu, sizeof(mpu));
 }
 
 //Patches
 void patchFirm(){
     
-    //Part1: Set MPU for payload area
-    memcpy((u8*)mpuCode(), mpu, sizeof(mpu));
-
-    //Part2: Disable signature checks
+    //Disable signature checks
     memcpy((u8*)sigPatch(1), sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigPatch(2), sigPat2, sizeof(sigPat2));
     
-    //Part3: Create arm9 thread
+    //Create arm9 thread
     fileRead((u8*)threadCode(), "/rei/thread/arm9.bin", 0);
     memcpy((u8*)threadHook(1), th1, sizeof(th1));
     memcpy((u8*)threadHook(2), th2, sizeof(th2));

@@ -70,3 +70,17 @@ int fileWrite(const u8 *buffer, const char *path, u32 size){
     }
     return fr;
 }
+
+int fileSize(const char* path){
+	FRESULT fr;
+    FIL fp;
+	int size = 0;
+
+    fr = f_open(&fp, path, FA_READ);
+    if (fr != FR_OK)goto error;
+    
+    size = f_size(&fp);
+	error:
+		f_close(&fp);
+	return size;
+}
