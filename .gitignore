@@ -1,9 +1,6 @@
-build.bat
-data/firmware.bin
 out
 CakeHax
 CakeBrah
-rnInstaller
 build
 *.bin
 *.3dsx
@@ -11,3 +8,4 @@ build
 *.o
 *.d
 *.elf
+*.bat

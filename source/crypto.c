@@ -353,21 +353,32 @@ int rsa_verify(const void* data, u32 size, const void* sig, u32 mode)
 	return memcmp(dataHash, decSig + (sigSize - SHA_256_HASH_SIZE), SHA_256_HASH_SIZE) == 0;
 }
 
+void xor(u8 *dest, u8 *data1, u8 *data2, u32 size){
+    int i; for(i = 0; i < size; i++) *(dest+i) = *(data1+i) ^ *(data2+i);
+}
+
 /****************************************************************
 *                   Nand/FIRM Crypto stuff
 ****************************************************************/
+const u8 memeKey[0x10] = {
+    0x52, 0x65, 0x69, 0x20, 0x69, 0x73, 0x20, 0x62, 0x65, 0x73, 0x74, 0x20, 0x67, 0x69, 0x72, 0x6C
+};
 
 //Emulates the Arm9loader process
-void arm9loader(void *armHdr){
-    //Set Nand key#2  here (decrypted from 0x12C10)
-    u8 key2[0x10] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
-    
+void arm9loader(void *armHdr){    
+    //Nand key#2 (0x12C10)
+    u8 key2[0x10] = {
+        0x10, 0x5A, 0xE8, 0x5A, 0x4A, 0x21, 0x78, 0x53, 0x0B, 0x06, 0xFA, 0x1A, 0x5E, 0x2A, 0x5C, 0xBC
+    };
+  
+    //Firm keys
     u8 keyX[0x10];
     u8 keyY[0x10];
     u8 CTR[0x10];
     u32 slot = 0x16;
     
-    //Setupkeys needed for arm9bin decryption
+    //Setup keys needed for arm9bin decryption
+    xor(key2, key2, memeKey, 0x10);
     memcpy((u8*)keyY, (void *)((uintptr_t)armHdr+0x10), 0x10);
     memcpy((u8*)CTR, (void *)((uintptr_t)armHdr+0x20), 0x10);
     u32 size = atoi((void *)((uintptr_t)armHdr+0x30));

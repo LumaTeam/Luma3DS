@@ -18,14 +18,23 @@ u32 emuOffset = 0,
     emuRead = 0,
     emuWrite = 0,
     sdmmcOffset = 0, 
-    firmSize = 0;
+    firmSize = 0,
+    mpuOffset = 0;
 
 //Load firm into FCRAM
 void loadFirm(void){
     //Read FIRM from SD card and write to FCRAM
-    const char firmPath[] = "/rei/firmware.bin";
-    firmSize = fileSize(firmPath);
+	const char firmPath[] = "/rei/firmware.bin";
+	firmSize = fileSize(firmPath);
     fileRead((u8*)firmLocation, firmPath, firmSize);
+    
+    //Decrypt firmware blob
+    u8 firmIV[0x10] = {0};
+    aes_setkey(0x16, memeKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x16);
+    aes((u8*)firmLocation, (u8*)firmLocation, firmSize / AES_BLOCK_SIZE, firmIV, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    
+    //Parse firmware
     section = firmLocation->section;
     arm9loader((u8*)firmLocation + section[2].offset);
 }
@@ -35,30 +44,32 @@ void loadEmu(void){
     
     //Read emunand code from SD
     u32 code = emuCode();
-    const char path[] = "/rei/emunand/emunand.bin";
-    u32 size = fileSize(path);
-    fileRead(code, path, size);
+	const char path[] = "/rei/emunand/emunand.bin";
+	u32 size = fileSize(path);
+    fileRead((u8*)code, path, size);
     
     //Find and patch emunand related offsets
-    u32 *pos_sdmmc = memsearch(code, "SDMC", size, 4);
+	u32 *pos_sdmmc = memsearch(code, "SDMC", size, 4);
     u32 *pos_offset = memsearch(code, "NAND", size, 4);
     u32 *pos_header = memsearch(code, "NCSD", size, 4);
-    getSDMMC(firmLocation, &sdmmcOffset, firmSize);
+	getSDMMC(firmLocation, &sdmmcOffset, firmSize);
     getEmunandSect(&emuOffset, &emuHeader);
     getEmuRW(firmLocation, firmSize, &emuRead, &emuWrite);
-    *pos_sdmmc = sdmmcOffset;
-    *pos_offset = emuOffset;
-    *pos_header = emuHeader;
-    
+    getMPU(firmLocation, &mpuOffset);
+	*pos_sdmmc = sdmmcOffset;
+	*pos_offset = emuOffset;
+	*pos_header = emuHeader;
+	
     //Add emunand hooks
     memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuWrite, nandRedir, sizeof(nandRedir));
-    memcpy((u8*)mpuCode(), mpu, sizeof(mpu));
+    
+    //Set MPU for emu code region
+    memcpy((u8*)mpuOffset, mpu, sizeof(mpu));
 }
 
 //Patches
 void patchFirm(){
-    
     //Disable signature checks
     memcpy((u8*)sigPatch(1), sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigPatch(2), sigPat2, sizeof(sigPat2));

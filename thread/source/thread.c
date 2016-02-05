@@ -39,7 +39,7 @@ void patches(void){
     //Change version string
     for(int i = 0; i < 0x600000; i+=4){
         if(strcomp((void*)0x27B00000  - i, (void*)L"Ver.", 4)){
-            if(strcomp((void*)0x27B00000  - i + 0x0A, (void*)L"%d.%d.%d-%d", 11)) strcopy((void*)0x27B00000 - i, (void*)L"\uE024Rei", 4);
+            if(strcomp((void*)0x27B00000  - i + 0x28, (void*)"T_ver_00", 4)) strcopy((void*)0x27B00000 - i, (void*)L"\uE024Rei", 4);
         }
 	}
 }
@@ -51,7 +51,7 @@ void thread(void){
             int loc = 0;
             fileReadWrite(buf, L"sdmc:/rei/RAM.txt", 0x20, READ);
             loc = atoi(buf);
-            memdump(L"sdmc:/RAMdmp.bin", (void*)loc, 0x500000);
+            memdump(L"sdmc:/RAMdmp.bin", (void*)loc, 0x10000);
         }
         patches();
 	}

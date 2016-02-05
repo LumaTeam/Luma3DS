@@ -56,11 +56,6 @@ u32 threadCode(void){
     return KERNEL9 + (0x08006070 - K9_ADDR);
 }
 
-//Area of MPU setting code
-u32 mpuCode(void){
-    return KERNEL9 + (0x0801B3D4 - K9_ADDR);
-}
-
 //Offsets to redirect to thread code
 u32 threadHook(u8 val){
     return val == 1 ? 

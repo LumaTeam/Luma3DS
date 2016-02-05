@@ -21,10 +21,10 @@ void getEmunandSect(u32 *off, u32 *head){
     }
 }
 
-void getSDMMC(void *offset, u32 *off, u32 size){
+void getSDMMC(void *pos, u32 *off, u32 size){
     //Look for struct code
     unsigned char pattern[] = {0x01, 0x21, 0x20, 0x18, 0x20, 0x30};
-    *off = memsearch(offset, pattern, size, 6);
+    *off = memsearch(pos, pattern, size, 4);
     
     //Get DCD values
     unsigned char buf[4];
@@ -43,6 +43,14 @@ void getSDMMC(void *offset, u32 *off, u32 size){
 void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
     //Look for read/write code
     unsigned char pattern[] = {0x04, 0x00, 0x0D, 0x00, 0x17, 0x00, 0x1E, 0x00, 0xC8, 0x05};
-    *writeOff = memsearch(pos, pattern, size, 10);
-    *readOff = *writeOff - 0x40; //TODO: Maybe make memsearch work properly for this.
+    
+    *readOff = memsearch(pos, pattern, size, 4);
+    *writeOff = memsearch(readOff, pattern, 0x1000, 4);
+	//fileWrite(readOff, "/readoff.bin", 4);
+    *readOff = 0x240CEC40;
+    *writeOff = 0x240CEC80;
+}
+
+void getMPU(void *pos, u32 *off){
+    *off = 0x2407D7D4; 
 }
