@@ -1,6 +1,5 @@
-# ReiNand
-*The original open source N3DS CFW!*
-
+# AuReiNand
+*A modification of the ReiNand custom firmware*
 
 **Compiling:**
 
@@ -10,29 +9,18 @@ Lastly, just run Make and everything should work!
 
 Copy everything in 'out' folder to SD root and run!
 
+**Usage / Features:**
 
-**Features:**
+See https://github.com/Reisyukaku/ReiNand and http://gbatemp.net/threads/reinand-mod-o3ds-n3ds-sysnand.411110
 
-* Ninjhax and MSET support!
+The FIRMs you need are here:
 
-* Sig checks disabled
+Latest (10.4): http://www95.zippyshare.com/v/78942FBa/file.html
 
-* RAM dump (edit RAM.txt with a base 10 number for offset) [Start Button + X]
-
-* Emunand (with 'Rei' version string)
- 
+NTR-compatible (10.2 for N3DS, 9.6 for O3DS): http://www66.zippyshare.com/v/gUbSYGfE/file.html
 
 **Credits:**
  
- Cakes team for teaching me a few things and just being helpful in general! And for ROP/mset related code, and crypto libs.
-    
- 3DBREW for saving me plenty of reverse engineering time.
-    
- Patois for Brahma code.
- 
- Normmatt for sdmmc.c and generally being helpful!
-    
- Me (Rei) for coding everything else.
- 
- The community for your support and help!
- 
+Rei as this is 99% his code (this is no more than a mod)
+
+Everyone he credited on his GitHub :P
