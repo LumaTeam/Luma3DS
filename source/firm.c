@@ -51,18 +51,18 @@ u8 loadFirm(void){
 u8 loadEmu(void){
 
     u32 emuOffset = 0,
-    emuHeader = 0,
-    emuRead = 0,
-    emuWrite = 0,
-    sdmmcOffset = 0,
-    mpuOffset = 0,
-    emuCodeOffset = 0;
+        emuHeader = 0,
+        emuRead = 0,
+        emuWrite = 0,
+        sdmmcOffset = 0,
+        mpuOffset = 0,
+        emuCodeOffset = 0;
 
     //Read emunand code from SD
-    getEmuCode(firmLocation, &emuCodeOffset, firmSize);
     const char path[] = "/rei/emunand/emunand.bin";
     u32 size = fileSize(path);
     if (!size) return 1;
+    getEmuCode(firmLocation, &emuCodeOffset, firmSize);
     fileRead((u8*)emuCodeOffset, path, size);
 
     //Find and patch emunand related offsets
@@ -94,22 +94,24 @@ u8 patchFirm(void){
     //If L is pressed, boot SysNAND with the SDCard FIRM
     if(mode && !(pressed & BUTTON_L1)) if (loadEmu()) return 1;
 
-    //Disable signature checks
     u32 sigOffset = 0,
-    sigOffset2 = 0;
+        sigOffset2 = 0;
+
+    //Disable signature checks
     getSignatures(firmLocation, firmSize, &sigOffset, &sigOffset2);
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
-    //Apply reboot patch and write patched FIRM
     if(!console && mode &&
        ((fileSize("/rei/reversereboot") > 0) == (pressed & BUTTON_A))){
         u32 rebootOffset = 0,
-        rebootOffset2 = 0;
-        getReboot(firmLocation, firmSize, &rebootOffset, &rebootOffset2);
+            rebootOffset2 = 0;
+
+        //Read reboot code from SD and write patched FIRM path in memory
         char path[] = "/rei/reboot/reboot1.bin";
         u32 size = fileSize(path);
         if (!size) return 1;
+        getReboot(firmLocation, firmSize, &rebootOffset, &rebootOffset2);
         fileRead((u8*)rebootOffset, path, size);
         memcpy((u8*)rebootOffset + size, L"sdmc:", 10);
         memcpy((u8*)rebootOffset + size + 10, L"" PATCHED_FIRM_PATH, sizeof(PATCHED_FIRM_PATH) * 2);
@@ -117,6 +119,8 @@ u8 patchFirm(void){
         size = fileSize(path);
         if (!size) return 1;
         fileRead((u8*)rebootOffset2, path, size);
+
+        //Write patched FIRM to SDCard
         if (fileWrite((u8*)firmLocation, PATCHED_FIRM_PATH, firmSize) != 0) return 1;
     }
 
