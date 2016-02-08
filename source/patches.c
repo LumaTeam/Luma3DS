@@ -46,11 +46,6 @@ u8 th2[4] = {0x70, 0x60, 0x00, 0x08};   //0x08006070
 *                   Functions
 **************************************************/
 
-//Where the emunand code is stored in firm
-u32 emuCode(void){
-    return KERNEL9 + (0x0801A5C0 - K9_ADDR);
-}
-
 //Where thread code is stored in firm
 u32 threadCode(void){
     return KERNEL9 + (0x08006070 - K9_ADDR);
