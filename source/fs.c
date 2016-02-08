@@ -31,7 +31,7 @@ int unmountSD()
 int fileReadOffset(u8 *dest, const char *path, u32 size, u32 offset){
     FRESULT fr;
     FIL fp;
-    u32 br = 0;
+    unsigned int br = 0;
 
     fr = f_open(&fp, path, FA_READ);
     if (fr != FR_OK)goto error;
@@ -61,7 +61,7 @@ int fileRead(u8 *dest, const char *path, u32 size){
 int fileWrite(const u8 *buffer, const char *path, u32 size){
     FRESULT fr;
     FIL fp;
-    u32 br = 0;
+    unsigned int br = 0;
 
     if(f_open(&fp, path, FA_WRITE | FA_OPEN_ALWAYS) == FR_OK){
         fr = f_write(&fp, buffer, size, &br);

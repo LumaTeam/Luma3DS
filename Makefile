@@ -20,7 +20,7 @@ dir_build := build
 dir_mset := CakeHax
 dir_out := out
 dir_emu := emunand
-dir_thread := thread
+dir_reboot := reboot
 dir_ninjhax := CakeBrah
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
@@ -33,16 +33,28 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 
 .PHONY: all
-all: launcher emunand thread ninjhax
+all: launcher emunand emunando3ds reboot reboot2 rebootntr reboot2ntr ninjhax
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat 
 
 .PHONY: emunand
-emunand: $(dir_out)/rei/emunand/emunand.bin
+emunand: $(dir_out)/rei-n3ds/emunand/emunand.bin
 
-.PHONY: thread
-thread: $(dir_out)/rei/thread/arm9.bin
+.PHONY: emunando3ds
+emunand: $(dir_out)/rei-o3ds/emunand/emunand.bin
+
+.PHONY: reboot
+reboot: $(dir_out)/rei-o3ds/reboot/reboot1.bin
+
+.PHONY: reboot2
+reboot: $(dir_out)/rei-o3ds/reboot/reboot2.bin
+
+.PHONY: rebootntr
+reboot: $(dir_out)/ntr-o3ds/reboot/reboot1.bin
+
+.PHONY: reboot2ntr
+reboot: $(dir_out)/ntr-o3ds/reboot/reboot2.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
@@ -54,7 +66,7 @@ clean:
 	rm -rf $(dir_out) $(dir_build)
 
 .PHONY: $(dir_out)/$(name).dat
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei/
+$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei-n3ds/ $(dir_out)/rei-o3ds/
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
     
@@ -63,20 +75,40 @@ $(dir_out)/3ds/$(name):
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
 	@mv $(dir_out)/$(name).3dsx $@
 	@mv $(dir_out)/$(name).smdh $@
+
+$(dir_out)/rei-n3ds/: $(dir_data)/firmware.bin
+	@mkdir -p "$(dir_out)/rei-n3ds"
+	@cp -av $(dir_data)/firmware.bin $@
+
+$(dir_out)/rei-o3ds/: $(dir_data)/firmwareo3ds.bin
+	@mkdir -p "$(dir_out)/rei-o3ds"
+	@cp -av $(dir_data)/firmwareo3ds.bin $(dir_out)/rei-o3ds/firmware.bin
     
-$(dir_out)/rei/: $(dir_data)/firmware.bin $(dir_data)/splash.bin $(dir_data)/RAM.txt
-	@mkdir -p "$(dir_out)/rei"
-	@cp -av $(dir_data)/* $@
-    
-$(dir_out)/rei/thread/arm9.bin: $(dir_thread)
-	@$(MAKE) $(FLAGS) -C $(dir_thread)
-	@mkdir -p "$(dir_out)/rei/thread"
-	@mv $(dir_thread)/arm9.bin $(dir_out)/rei/thread
-    
-$(dir_out)/rei/emunand/emunand.bin: $(dir_emu)/emuCode.s
+$(dir_out)/rei-n3ds/emunand/emunand.bin: $(dir_emu)/emuCode.s
 	@armips $<
-	@mkdir -p "$(dir_out)/rei/emunand"
-	@mv emunand.bin $(dir_out)/rei/emunand
+	@mkdir -p "$(dir_out)/rei-n3ds/emunand"
+	@mv emunand.bin $(dir_out)/rei-n3ds/emunand
+
+$(dir_out)/rei-o3ds/emunand/emunand.bin: $(dir_emu)/emuCodeo3ds.s
+	@armips $<
+	@mkdir -p "$(dir_out)/rei-o3ds/emunand"
+	@mv emunand.bin $(dir_out)/rei-o3ds/emunand
+
+$(dir_out)/rei-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCode.s
+	@armips $<
+	@mkdir -p "$(dir_out)/rei-o3ds/reboot"
+	@mv reboot1.bin $(dir_out)/rei-o3ds/reboot
+
+$(dir_out)/rei-o3ds/reboot/reboot2.bin: $(dir_reboot)/rebootCode.s
+	@mv reboot2.bin $(dir_out)/rei-o3ds/reboot
+
+$(dir_out)/ntr-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCodeNtr.s
+	@armips $<
+	@mkdir -p "$(dir_out)/ntr-o3ds/reboot"
+	@mv reboot1.bin $(dir_out)/ntr-o3ds/reboot
+
+$(dir_out)/ntr-o3ds/reboot/reboot2.bin: $(dir_reboot)/rebootCodeNtr.s
+	@mv reboot2.bin $(dir_out)/ntr-o3ds/reboot
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@

@@ -353,57 +353,70 @@ int rsa_verify(const void* data, u32 size, const void* sig, u32 mode)
 	return memcmp(dataHash, decSig + (sigSize - SHA_256_HASH_SIZE), SHA_256_HASH_SIZE) == 0;
 }
 
-void xor(u8 *dest, u8 *data1, u8 *data2, u32 size){
-    int i; for(i = 0; i < size; i++) *(dest+i) = *(data1+i) ^ *(data2+i);
-}
-
 /****************************************************************
 *                   Nand/FIRM Crypto stuff
 ****************************************************************/
-const u8 memeKey[0x10] = {
-    0x52, 0x65, 0x69, 0x20, 0x69, 0x73, 0x20, 0x62, 0x65, 0x73, 0x74, 0x20, 0x67, 0x69, 0x72, 0x6C
-};
+
+//Get Nand CTR key
+void getNandCTR(u8 *buf, u8 console) {
+    u8 *addr = console ? (u8*)0x080D8BBC : (u8*)0x080D797C;
+    u8 keyLen = 0x10; //CTR length
+    addr += 0x0F;
+    while (keyLen --) { *(buf++) = *(addr--); }
+}
+
+//Read firm0 from NAND and write to buffer
+void nandFirm0(u8 *outbuf, const u32 size, u8 console){
+    u8 CTR[0x10];
+    getNandCTR(CTR, console);
+    aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
+    sdmmc_nand_readsectors(0x0B130000 / 0x200, size / 0x200, outbuf);
+    aes_use_keyslot(0x06);
+    aes(outbuf, outbuf, size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+}
 
 //Emulates the Arm9loader process
-void arm9loader(void *armHdr){    
+void arm9loader(void *armHdr, u8 mode){
     //Nand key#2 (0x12C10)
     u8 key2[0x10] = {
-        0x10, 0x5A, 0xE8, 0x5A, 0x4A, 0x21, 0x78, 0x53, 0x0B, 0x06, 0xFA, 0x1A, 0x5E, 0x2A, 0x5C, 0xBC
+        0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0
     };
-  
+
     //Firm keys
     u8 keyX[0x10];
     u8 keyY[0x10];
     u8 CTR[0x10];
-    u32 slot = 0x16;
+    u32 slot = mode ? 0x16 : 0x15;
     
     //Setup keys needed for arm9bin decryption
-    xor(key2, key2, memeKey, 0x10);
     memcpy((u8*)keyY, (void *)((uintptr_t)armHdr+0x10), 0x10);
     memcpy((u8*)CTR, (void *)((uintptr_t)armHdr+0x20), 0x10);
     u32 size = atoi((void *)((uintptr_t)armHdr+0x30));
 
-    //Set 0x11 to key2 for the arm9bin and misc keys
-    aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(0x11);
-    
-    //Set 0x16 keyX, keyY and CTR
-    aes((u8*)keyX, (void *)((uintptr_t)armHdr+0x60), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-    aes_setkey(slot, (u8*)keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    if(mode){
+        //Set 0x11 to key2 for the arm9bin and misc keys
+        aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_use_keyslot(0x11);
+        aes((u8*)keyX, (void *)((uintptr_t)armHdr+0x60), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(slot, (u8*)keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    }
+
     aes_setkey(slot, (u8*)keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_setiv((u8*)CTR, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(slot);
     
     //Decrypt arm9bin
     aes((void *)(armHdr+0x800), (void *)(armHdr+0x800), size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-    
-    //Set keys 0x19..0x1F keyXs
-    u8* decKey = (void *)((uintptr_t)armHdr+0x89824);
-    aes_use_keyslot(0x11);
-    for(slot = 0x19; slot < 0x20; slot++) {
-        aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes(decKey, (void *)((uintptr_t)armHdr+0x89814), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, (u8*)decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        *(u8 *)((void *)((uintptr_t)armHdr+0x89814+0xF)) += 1;
+
+    if(mode){
+        //Set keys 0x19..0x1F keyXs
+        u8* decKey = (void *)((uintptr_t)armHdr+0x89824);
+        aes_use_keyslot(0x11);
+        for(slot = 0x19; slot < 0x20; slot++) {
+            aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+            aes(decKey, (void *)((uintptr_t)armHdr+0x89814), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+            aes_setkey(slot, (u8*)decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+            *(u8 *)((void *)((uintptr_t)armHdr+0x89814+0xF)) += 1;
+        }
     }
 }

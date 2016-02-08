@@ -10,12 +10,11 @@
 #include "firm.h"
 #include "draw.h"
 
-int main(){
+u8 main(){
     mountSD();
     loadSplash();
-    loadFirm();
-    loadEmu();
-    patchFirm();
+    if (loadFirm()) return 1;
+    if (patchFirm()) return 1;
     launchFirm();
     return 0;
 }

@@ -11,78 +11,121 @@
 #include "emunand.h"
 #include "crypto.h"
 
-const firmHeader *firmLocation = (firmHeader *)0x24000000;
+firmHeader *firmLocation = (firmHeader *)0x24000000;
 firmSectionHeader *section;
-u32 emuOffset = 0,
-    emuHeader = 0,
-    emuRead = 0,
-    emuWrite = 0,
-    sdmmcOffset = 0, 
-    firmSize = 0,
-    mpuOffset = 0;
+u32 firmSize = 0;
+u8  mode = 1,
+    console = 1;
+u16 pressed;
 
 //Load firm into FCRAM
-void loadFirm(void){
-    //Read FIRM from SD card and write to FCRAM
-	const char firmPath[] = "/rei/firmware.bin";
-	firmSize = fileSize(firmPath);
-    fileRead((u8*)firmLocation, firmPath, firmSize);
-    
-    //Decrypt firmware blob
-    u8 firmIV[0x10] = {0};
-    aes_setkey(0x16, memeKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(0x16);
-    aes((u8*)firmLocation, (u8*)firmLocation, firmSize / AES_BLOCK_SIZE, firmIV, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-    
-    //Parse firmware
+u8 loadFirm(void){
+
+    if(PDN_MPCORE_CFG == 1) console = 0;
+    pressed = HID_PAD;
     section = firmLocation->section;
-    arm9loader((u8*)firmLocation + section[2].offset);
+
+    //If L and R are pressed, boot SysNAND with the NAND FIRM
+    if((pressed & BUTTON_L1R1) == BUTTON_L1R1){
+        mode = 0;
+        //Read FIRM from NAND and write to FCRAM
+        firmSize = console ? 0xF2C00 : 0xE9000;
+        nandFirm0((u8*)firmLocation, firmSize, console);
+        if(memcmp((u8*)firmLocation, "FIRM", 4) != 0) return 1;
+    }
+    //Load FIRM from SDCard
+    else{
+        const char firmPath[] = "/rei/firmware.bin";
+        firmSize = fileSize(firmPath);
+        if (!firmSize) return 1;
+        fileRead((u8*)firmLocation, firmPath, firmSize);
+        if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 1;
+    }
+
+    if(console) arm9loader((u8*)firmLocation + section[2].offset, mode);
+
+    return 0;
 }
 
 //Nand redirection
-void loadEmu(void){
-    
+u8 loadEmu(void){
+
+    u32 emuOffset = 0,
+    emuHeader = 0,
+    emuRead = 0,
+    emuWrite = 0,
+    sdmmcOffset = 0,
+    mpuOffset = 0,
+    emuCodeOffset = 0;
+
     //Read emunand code from SD
-    u32 code = emuCode();
-	const char path[] = "/rei/emunand/emunand.bin";
-	u32 size = fileSize(path);
-    fileRead((u8*)code, path, size);
-    
+    getEmuCode(firmLocation, &emuCodeOffset, firmSize);
+    const char path[] = "/rei/emunand/emunand.bin";
+    u32 size = fileSize(path);
+    if (!size) return 1;
+    fileRead((u8*)emuCodeOffset, path, size);
+
     //Find and patch emunand related offsets
-	u32 *pos_sdmmc = memsearch(code, "SDMC", size, 4);
-    u32 *pos_offset = memsearch(code, "NAND", size, 4);
-    u32 *pos_header = memsearch(code, "NCSD", size, 4);
-	getSDMMC(firmLocation, &sdmmcOffset, firmSize);
+    u32 *pos_sdmmc = memsearch((u32*)emuCodeOffset, "SDMC", size, 4);
+    u32 *pos_offset = memsearch((u32*)emuCodeOffset, "NAND", size, 4);
+    u32 *pos_header = memsearch((u32*)emuCodeOffset, "NCSD", size, 4);
+    getSDMMC(firmLocation, &sdmmcOffset, firmSize);
     getEmunandSect(&emuOffset, &emuHeader);
     getEmuRW(firmLocation, firmSize, &emuRead, &emuWrite);
-    getMPU(firmLocation, &mpuOffset);
-	*pos_sdmmc = sdmmcOffset;
-	*pos_offset = emuOffset;
-	*pos_header = emuHeader;
-	
+    getMPU(firmLocation, &mpuOffset, firmSize);
+    *pos_sdmmc = sdmmcOffset;
+    *pos_offset = emuOffset;
+    *pos_header = emuHeader;
+
     //Add emunand hooks
+    if(!console) nandRedir[5] = 0xA4;
     memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuWrite, nandRedir, sizeof(nandRedir));
-    
+
     //Set MPU for emu code region
     memcpy((u8*)mpuOffset, mpu, sizeof(mpu));
+
+    return 0;
 }
 
 //Patches
-void patchFirm(){
+u8 patchFirm(void){
+
+    //If L is pressed, boot SysNAND with the SDCard FIRM
+    if(mode && !(pressed & BUTTON_L1)) if (loadEmu()) return 1;
+
     //Disable signature checks
-    memcpy((u8*)sigPatch(1), sigPat1, sizeof(sigPat1));
-    memcpy((u8*)sigPatch(2), sigPat2, sizeof(sigPat2));
-    
-    //Create arm9 thread
-    fileRead((u8*)threadCode(), "/rei/thread/arm9.bin", 0);
-    memcpy((u8*)threadHook(1), th1, sizeof(th1));
-    memcpy((u8*)threadHook(2), th2, sizeof(th2));
+    u32 sigOffset = 0,
+    sigOffset2 = 0;
+    getSignatures(firmLocation, firmSize, &sigOffset, &sigOffset2);
+    memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
+    memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
+
+    //Apply reboot patch and write patched FIRM
+    if(!console && mode &&
+       ((fileSize("/rei/reversereboot") > 0) == (pressed & BUTTON_A))){
+        u32 rebootOffset = 0,
+        rebootOffset2 = 0;
+        getReboot(firmLocation, firmSize, &rebootOffset, &rebootOffset2);
+        char path[] = "/rei/reboot/reboot1.bin";
+        u32 size = fileSize(path);
+        if (!size) return 1;
+        fileRead((u8*)rebootOffset, path, size);
+        memcpy((u8*)rebootOffset + size, L"sdmc:", 10);
+        memcpy((u8*)rebootOffset + size + 10, L"" PATCHED_FIRM_PATH, sizeof(PATCHED_FIRM_PATH) * 2);
+        path[18] = '2';
+        size = fileSize(path);
+        if (!size) return 1;
+        fileRead((u8*)rebootOffset2, path, size);
+        if (fileWrite((u8*)firmLocation, PATCHED_FIRM_PATH, firmSize) != 0) return 1;
+    }
+
+    return 0;
 }
 
 //Firmlaunchhax
 void launchFirm(void){
-    
+
     //Set MPU
     __asm__ (
         "msr cpsr_c, #0xDF\n\t"         //Set system mode, disable interrupts
@@ -117,5 +160,5 @@ void launchFirm(void){
     *(u32 *)0x1FFFFFF8 = (u32)firmLocation->arm11Entry;
     
     //Final jump to arm9 binary
-    ((void (*)())0x801B01C)();
+    console ? ((void (*)())0x801B01C)() : ((void (*)())firmLocation->arm9Entry)();
 }

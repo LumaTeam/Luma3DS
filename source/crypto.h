@@ -129,10 +129,10 @@ void sha(void* res, const void* src, u32 size, u32 mode);
 void rsa_setkey(u32 keyslot, const void* mod, const void* exp, u32 mode);
 void rsa_use_keyslot(u32 keyslot);
 int rsa_verify(const void* data, u32 size, const void* sig, u32 mode);
-void xor(u8 *dest, u8 *data1, u8 *data2, u32 size);
 
 //NAND/FIRM stuff
-extern const u8 memeKey[0x10];
-void arm9loader(void *armHdr);
+void getNandCTR(u8 *buf, u8 console);
+void nandFirm0(u8 *outbuf, const u32 size, u8 console);
+void arm9loader(void *armHdr, u8 mode);
 
 #endif /*__CRYPTO_H*/
