@@ -34,18 +34,18 @@ u8 sigPat2[4] = {0x00, 0x20, 0x70, 0x47};
 
 void getSignatures(void *pos, u32 size, u32 *off, u32 *off2){
     //Look for signature checks
-    unsigned char pattern[] = {0xC0, 0x1C, 0x76, 0xE7, 0x20};
+    unsigned char pattern[] = {0xC0, 0x1C, 0x76, 0xE7};
     unsigned char pattern2[] = {0x70, 0xB5, 0x22, 0x4D, 0x0C};
 
-    *off = (u32)memsearch(pos, pattern, size, 5);
+    *off = (u32)memsearch(pos, pattern, size, 4);
     *off2 = (u32)memsearch(pos, pattern2, size, 5);
 }
 
 void getReboot(void *pos, u32 size, u32 *off, u32 *off2){
     //Look for FIRM reboot code
-    unsigned char pattern[] = {0x8D, 0xE5, 0x00, 0xC0, 0x91, 0xE5};
+    unsigned char pattern[] = {0x8D, 0xE5, 0x00, 0xC0, 0x91};
     unsigned char pattern2[] = {0xF0, 0x4F, 0x2D, 0xE9, 0x3C};
 
-    *off = (u32)memsearch(pos, pattern, size, 6) + 2;
+    *off = (u32)memsearch(pos, pattern, size, 5) + 2;
     *off2 = (u32)memsearch(pos, pattern2, size, 5);
 }

@@ -29,7 +29,7 @@ u8 loadFirm(void){
     if((pressed & BUTTON_L1R1) == BUTTON_L1R1){
         mode = 0;
         //Read FIRM from NAND and write to FCRAM
-        firmSize = console ? 0xF2C00 : 0xE9000;
+        firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
         if(memcmp((u8*)firmLocation, "FIRM", 4) != 0) return 1;
     }
