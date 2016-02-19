@@ -59,7 +59,7 @@ int fileRead(u8 *dest, const char *path, u32 size){
 }
 
 int fileWrite(const u8 *buffer, const char *path, u32 size){
-    FRESULT fr;
+    FRESULT fr = 1;
     FIL fp;
     unsigned int br = 0;
 

@@ -10,10 +10,13 @@
 #include "firm.h"
 #include "draw.h"
 
+u8 a9lh = 0;
+
 u8 main(){
     mountSD();
-    loadSplash();
-    if (loadFirm()) return 1;
+    if (!*((u32*)0x10141204)) a9lh = 1;
+    else loadSplash();
+    if (loadFirm(a9lh)) return 1;
     if (patchFirm()) return 1;
     launchFirm();
     return 0;

@@ -15,7 +15,7 @@
 #define BUTTON_A           1
 #define PATCHED_FIRM_PATH  "/rei/patched_firmware.bin"
 
-u8 loadFirm(void);
+u8 loadFirm(u8 a9lh);
 u8 loadEmu(void);
 u8 patchFirm(void);
 void launchFirm(void);

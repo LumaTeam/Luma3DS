@@ -24,7 +24,7 @@ dir_reboot := reboot
 dir_ninjhax := CakeBrah
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) --no-print-directory
 
 objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -33,28 +33,28 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 
 .PHONY: all
-all: launcher emunand emunando3ds reboot reboot2 rebootntr reboot2ntr ninjhax
+all: launcher a9lh emunand emunando3ds reboot reboot2 rebootntr ninjhax
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat 
+
+.PHONY: a9lh
+a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: emunand
 emunand: $(dir_out)/rei-n3ds/emunand/emunand.bin
 
 .PHONY: emunando3ds
-emunand: $(dir_out)/rei-o3ds/emunand/emunand.bin
+emunando3ds: $(dir_out)/rei-o3ds/emunand/emunand.bin
 
 .PHONY: reboot
 reboot: $(dir_out)/rei-o3ds/reboot/reboot1.bin
 
 .PHONY: reboot2
-reboot: $(dir_out)/rei-o3ds/reboot/reboot2.bin
+reboot2: $(dir_out)/rei-o3ds/reboot/reboot2.bin
 
 .PHONY: rebootntr
-reboot: $(dir_out)/ntr-o3ds/reboot/reboot1.bin
-
-.PHONY: reboot2ntr
-reboot: $(dir_out)/ntr-o3ds/reboot/reboot2.bin
+rebootntr: $(dir_out)/ntr-o3ds/reboot/reboot1.bin $(dir_out)/ntr-o3ds/reboot/reboot2.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
@@ -65,11 +65,13 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	rm -rf $(dir_out) $(dir_build)
 
-.PHONY: $(dir_out)/$(name).dat
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei-n3ds/ $(dir_out)/rei-o3ds/
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
-    
+
+$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)/rei-n3ds/ $(dir_out)/rei-o3ds/
+	@cp $(dir_build)/main.bin $(dir_out)/arm9loaderhax.bin
+
 $(dir_out)/3ds/$(name):
 	@mkdir -p "$(dir_out)/3ds/$(name)"
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
@@ -99,15 +101,15 @@ $(dir_out)/rei-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCode.s
 	@mkdir -p "$(dir_out)/rei-o3ds/reboot"
 	@mv reboot1.bin $(dir_out)/rei-o3ds/reboot
 
-$(dir_out)/rei-o3ds/reboot/reboot2.bin: $(dir_reboot)/rebootCode.s
-	@mv reboot2.bin $(dir_out)/rei-o3ds/reboot
+$(dir_out)/rei-o3ds/reboot/reboot2.bin: reboot2.bin
+	@cp -av reboot2.bin $(dir_out)/rei-o3ds/reboot
 
 $(dir_out)/ntr-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCodeNtr.s
 	@armips $<
 	@mkdir -p "$(dir_out)/ntr-o3ds/reboot"
 	@mv reboot1.bin $(dir_out)/ntr-o3ds/reboot
 
-$(dir_out)/ntr-o3ds/reboot/reboot2.bin: $(dir_reboot)/rebootCodeNtr.s
+$(dir_out)/ntr-o3ds/reboot/reboot2.bin: reboot2.bin
 	@mv reboot2.bin $(dir_out)/ntr-o3ds/reboot
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
@@ -124,7 +126,7 @@ $(dir_build)/%.o: $(dir_source)/%.c
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-    
+
 $(dir_build)/fatfs/%.o: $(dir_source)/fatfs/%.c
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) -mthumb -mthumb-interwork -Wno-unused-function $(OUTPUT_OPTION) $<

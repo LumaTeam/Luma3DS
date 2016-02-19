@@ -19,15 +19,17 @@ u8  mode = 1,
 u16 pressed;
 
 //Load firm into FCRAM
-u8 loadFirm(void){
+u8 loadFirm(u8 a9lh){
 
     if(PDN_MPCORE_CFG == 1) console = 0;
+    if(!a9lh && fileSize("/rei/installeda9lh")) a9lh = 1;
     pressed = HID_PAD;
     section = firmLocation->section;
 
+    if((pressed & BUTTON_L1R1) == BUTTON_L1R1) mode = 0;
+
     //If L and R are pressed, boot SysNAND with the NAND FIRM
-    if((pressed & BUTTON_L1R1) == BUTTON_L1R1){
-        mode = 0;
+    if(!a9lh && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
@@ -35,12 +37,20 @@ u8 loadFirm(void){
     }
     //Load FIRM from SDCard
     else{
-        const char firmPath[] = "/rei/firmware.bin";
-        firmSize = fileSize(firmPath);
-        if (!firmSize) return 1;
-        fileRead((u8*)firmLocation, firmPath, firmSize);
-        if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 1;
+        if (a9lh && !mode){
+            char firmPath[] = "/rei/firmware90.bin";
+            firmSize = fileSize(firmPath);
+            if (!firmSize) return 1;
+            fileRead((u8*)firmLocation, firmPath, firmSize);
+        }
+        else {
+            char firmPath[] = "/rei/firmware.bin";
+            firmSize = fileSize(firmPath);
+            if (!firmSize) return 1;
+            fileRead((u8*)firmLocation, firmPath, firmSize);
+        }
     }
+    if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 1;
 
     if(console) arm9loader((u8*)firmLocation + section[2].offset, mode);
 
