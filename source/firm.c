@@ -22,14 +22,13 @@ u16 pressed;
 u8 loadFirm(u8 a9lh){
 
     if(PDN_MPCORE_CFG == 1) console = 0;
-    if(!a9lh && fileSize("/rei/installeda9lh")) a9lh = 1;
     pressed = HID_PAD;
     section = firmLocation->section;
 
     if((pressed & BUTTON_L1R1) == BUTTON_L1R1) mode = 0;
 
     //If L and R are pressed, boot SysNAND with the NAND FIRM
-    if(!a9lh && !mode){
+    if(!a9lh && !fileSize("/rei/installeda9lh") && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
@@ -37,7 +36,7 @@ u8 loadFirm(u8 a9lh){
     }
     //Load FIRM from SDCard
     else{
-        if (a9lh && !mode){
+        if (!mode){
             char firmPath[] = "/rei/firmware90.bin";
             firmSize = fileSize(firmPath);
             if (!firmSize) return 1;
@@ -112,7 +111,7 @@ u8 patchFirm(void){
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
-    if(!console && mode &&
+    if(!console && !a9lh && mode &&
        ((fileSize("/rei/reversereboot") > 0) == (pressed & BUTTON_A))){
         u32 rebootOffset = 0,
             rebootOffset2 = 0;
