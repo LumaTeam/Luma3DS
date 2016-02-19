@@ -25,16 +25,17 @@ u8 loadFirm(u8 a9lh){
     pressed = HID_PAD;
     section = firmLocation->section;
 
+    //If L and R are pressed, boot SysNAND with the 9.0 FIRM
     if((pressed & BUTTON_L1R1) == BUTTON_L1R1) mode = 0;
 
-    //If L and R are pressed, boot SysNAND with the NAND FIRM
+    //If not using an A9LH setup, do so by decrypting FIRM0
     if(!a9lh && !fileSize("/rei/installeda9lh") && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
         if(memcmp((u8*)firmLocation, "FIRM", 4) != 0) return 1;
     }
-    //Load FIRM from SDCard
+    //Load FIRM from SD
     else{
         if (!mode){
             char firmPath[] = "/rei/firmware90.bin";
@@ -100,7 +101,7 @@ u8 loadEmu(void){
 //Patches
 u8 patchFirm(void){
 
-    //If L is pressed, boot SysNAND with the SDCard FIRM
+    //If L is pressed, boot SysNAND with the SD FIRM
     if(mode && !(pressed & BUTTON_L1)) if (loadEmu()) return 1;
 
     u32 sigOffset = 0,
@@ -111,6 +112,7 @@ u8 patchFirm(void){
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
+    //Apply FIRM reboot patch. Not needed with A9LH and N3DS.
     if(!console && !a9lh && mode &&
        ((fileSize("/rei/reversereboot") > 0) == (pressed & BUTTON_A))){
         u32 rebootOffset = 0,
@@ -129,7 +131,7 @@ u8 patchFirm(void){
         if (!size) return 1;
         fileRead((u8*)rebootOffset2, path, size);
 
-        //Write patched FIRM to SDCard
+        //Write patched FIRM to SD
         if (fileWrite((u8*)firmLocation, PATCHED_FIRM_PATH, firmSize) != 0) return 1;
     }
 

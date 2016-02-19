@@ -14,6 +14,7 @@ u8 a9lh = 0;
 
 u8 main(){
     mountSD();
+    //Detect A9LH mode checking PDN_GPU_CNT2 register.
     if (!*((u32*)0x10141204)) a9lh = 1;
     else loadSplash();
     if (loadFirm(a9lh)) return 1;
