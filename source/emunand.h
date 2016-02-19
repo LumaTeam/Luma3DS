@@ -15,6 +15,5 @@ void getEmunandSect(u32 *off, u32 *head);
 void getSDMMC(void *pos, u32 *off, u32 size);
 void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff);
 void getMPU(void *pos, u32 *off, u32 size);
-void getEmuCode(void *pos, u32 *off, u32 size);
 
 #endif

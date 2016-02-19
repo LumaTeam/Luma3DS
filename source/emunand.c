@@ -54,11 +54,3 @@ void getMPU(void *pos, u32 *off, u32 size){
 
     *off = (u32)memsearch(pos, pattern, size, 5);
 }
-
-void getEmuCode(void *pos, u32 *off, u32 size){
-    void *proc9 = memsearch(pos, "Process9", size, 8);
-    unsigned char pattern[] = {0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF};
-
-    //Looking for the last spot before Process9
-    *off = (u32)memsearch(pos, pattern, size - (size - (u32)(proc9 - pos)), 6) + 0xF;
-}

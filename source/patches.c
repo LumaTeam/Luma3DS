@@ -27,6 +27,7 @@ u8 nandRedir[0x08] = {0x00, 0x4C, 0xA0, 0x47, 0xC0, 0xA5, 0x01, 0x08};    //Bran
 */
 u8 sigPat1[2] = {0x00, 0x20};
 u8 sigPat2[4] = {0x00, 0x20, 0x70, 0x47};
+u8 FIRMblock[4] = {0x00, 0x20, 0xC0, 0x46};
 
 /**************************************************
 *                   Functions
@@ -48,4 +49,12 @@ void getReboot(void *pos, u32 size, u32 *off, u32 *off2){
 
     *off = (u32)memsearch(pos, pattern, size, 5) + 2;
     *off2 = (u32)memsearch(pos, pattern2, size, 5);
+}
+
+void getFIRMWrite(void *pos, u32 size, u32 *off){
+    //Look for FIRM writing code
+    void *firmwrite = memsearch(pos, "exe:/", size, 5);
+    unsigned char pattern[] = {0x00, 0x28, 0x01, 0xDA};
+
+    *off = (u32)memsearch(firmwrite - 0x100, pattern, 0x100, 4);
 }

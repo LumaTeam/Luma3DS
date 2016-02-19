@@ -15,11 +15,13 @@ u8 mpu[0x2C];
 u8 nandRedir[0x08];
 u8 sigPat1[2];
 u8 sigPat2[4];
+u8 FIRMblock[4];
 
 /**************************************************
 *                   Functions
 **************************************************/
 void getSignatures(void *pos, u32 size, u32 *off, u32 *off2);
 void getReboot(void *pos, u32 size, u32 *off, u32 *off2);
+void getFIRMWrite(void *pos, u32 size, u32 *off);
 
 #endif

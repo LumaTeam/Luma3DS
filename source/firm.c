@@ -15,21 +15,34 @@ firmHeader *firmLocation = (firmHeader *)0x24000000;
 firmSectionHeader *section;
 u32 firmSize = 0;
 u8  mode = 1,
-    console = 1;
+    console = 1,
+    a9lhSetup = 0,
+    updatedSys = 0;
 u16 pressed;
 
 //Load firm into FCRAM
-u8 loadFirm(u8 a9lh){
+u8 loadFirm(u8 a9lhBoot){
 
+    //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
+    //Get pressed buttons
     pressed = HID_PAD;
+    //Determine if A9LH is installed
+    if(a9lhBoot || fileSize("/rei/installeda9lh")){
+        a9lhSetup = 1;
+        //Check flag for > 9.2 SysNAND
+        if(fileSize("/rei/updatedsysnand")) updatedSys = 1;
+    }
+
     section = firmLocation->section;
 
-    //If L and R are pressed, boot SysNAND with the 9.0 FIRM
-    if((pressed & BUTTON_L1R1) == BUTTON_L1R1) mode = 0;
+    /* If L and R are pressed on a 9.0/2 SysNAND, or L on an updated
+       SysNAND, boot 9.0 FIRM */
+    if((!updatedSys & ((pressed & BUTTON_L1R1) == BUTTON_L1R1)) |
+       (updatedSys & (pressed == BUTTON_L1))) mode = 0;
 
     //If not using an A9LH setup, do so by decrypting FIRM0
-    if(!a9lh && !fileSize("/rei/installeda9lh") && !mode){
+    if(!a9lhSetup && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
@@ -37,18 +50,12 @@ u8 loadFirm(u8 a9lh){
     }
     //Load FIRM from SD
     else{
-        if (!mode){
-            char firmPath[] = "/rei/firmware90.bin";
-            firmSize = fileSize(firmPath);
-            if (!firmSize) return 1;
-            fileRead((u8*)firmLocation, firmPath, firmSize);
-        }
-        else {
-            char firmPath[] = "/rei/firmware.bin";
-            firmSize = fileSize(firmPath);
-            if (!firmSize) return 1;
-            fileRead((u8*)firmLocation, firmPath, firmSize);
-        }
+        char firmPath[] = "/rei/firmware.bin";
+        char firmPath2[] = "/rei/firmware90.bin";
+        char *pathPtr = mode ? firmPath : firmPath2;
+        firmSize = fileSize(pathPtr);
+        if (!firmSize) return 1;
+        fileRead((u8*)firmLocation, pathPtr, firmSize);
     }
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 1;
 
@@ -69,11 +76,16 @@ u8 loadEmu(void){
         emuCodeOffset = 0;
 
     //Read emunand code from SD
-    const char path[] = "/rei/emunand/emunand.bin";
-    u32 size = fileSize(path);
+    char path[] = "/rei/emunand/emunand.bin";
+    char path2[] = "/rei/emunand/emunand90.bin";
+    char *pathPtr = ((!mode) & console) ? path2 : path;
+    u32 size = fileSize(pathPtr);
     if (!size) return 1;
-    getEmuCode(firmLocation, &emuCodeOffset, firmSize);
-    fileRead((u8*)emuCodeOffset, path, size);
+    if(!console | !mode) nandRedir[5] = 0xA4;
+    u8 *emuCodeTmp = &nandRedir[4];
+    emuCodeOffset = *(u32*)emuCodeTmp - (u32)section[2].address +
+                    section[2].offset + (u32)firmLocation;
+    fileRead((u8*)emuCodeOffset, pathPtr, size);
 
     //Find and patch emunand related offsets
     u32 *pos_sdmmc = memsearch((u32*)emuCodeOffset, "SDMC", size, 4);
@@ -88,7 +100,6 @@ u8 loadEmu(void){
     *pos_header = emuHeader;
 
     //Add emunand hooks
-    if(!console) nandRedir[5] = 0xA4;
     memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuWrite, nandRedir, sizeof(nandRedir));
 
@@ -101,8 +112,18 @@ u8 loadEmu(void){
 //Patches
 u8 patchFirm(void){
 
-    //If L is pressed, boot SysNAND with the SD FIRM
-    if(mode && !(pressed & BUTTON_L1)) if (loadEmu()) return 1;
+    /* If L is pressed on a 9.0/9.2 SysNAND, or L+R on a > 9.2 SysNAND,
+       or the 9.0 FIRM is loaded on a > 9.2 SysNAND, boot emuNAND */
+    if((updatedSys & (!mode | (pressed == BUTTON_L1R1))) |
+       ((!updatedSys) & mode & !(pressed & BUTTON_L1))){
+        if (loadEmu()) return 1;
+    }
+    else if (a9lhSetup){
+        //Patch FIRM partitions writes on SysNAND to protect A9LH
+        u32 writeOffset = 0;
+        getFIRMWrite(firmLocation, firmSize, &writeOffset);
+        memcpy((u8*)writeOffset, FIRMblock, sizeof(FIRMblock));
+    }
 
     u32 sigOffset = 0,
         sigOffset2 = 0;
@@ -112,8 +133,8 @@ u8 patchFirm(void){
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
-    //Apply FIRM reboot patch. Not needed with A9LH and N3DS.
-    if(!console && !a9lh && mode &&
+    //Apply FIRM reboot patch. Not needed with A9LH and N3DS
+    if(!console && !a9lhSetup && mode &&
        ((fileSize("/rei/reversereboot") > 0) == (pressed & BUTTON_A))){
         u32 rebootOffset = 0,
             rebootOffset2 = 0;
