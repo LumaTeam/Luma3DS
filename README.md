@@ -15,9 +15,7 @@ See https://github.com/Reisyukaku/ReiNand and http://gbatemp.net/threads/reinand
 
 The FIRMs you need are here:
 
-Latest (10.4): http://www95.zippyshare.com/v/78942FBa/file.html
-
-NTR-compatible (10.2 for N3DS, 9.6 for O3DS): http://www66.zippyshare.com/v/gUbSYGfE/file.html
+http://www12.zippyshare.com/v/JNkWUhDd/file.html
 
 **Credits:**
  
