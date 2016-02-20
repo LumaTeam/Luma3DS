@@ -36,10 +36,9 @@ u8 loadFirm(u8 a9lhBoot){
 
     section = firmLocation->section;
 
-    /* If L and R are pressed on a 9.0/2 SysNAND, or L on an updated
-       SysNAND, boot 9.0 FIRM */
-    if((!updatedSys && (pressed & BUTTON_L1R1) == BUTTON_L1R1) ||
-       (updatedSys && (pressed & BUTTON_L1R1) == BUTTON_L1)) mode = 0;
+    /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
+       is not pressed, boot 9.0 FIRM */
+    if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;
 
     //If not using an A9LH setup, do so by decrypting FIRM0
     if(!a9lhSetup && !mode){
@@ -116,10 +115,10 @@ u8 loadEmu(void){
 //Patches
 u8 patchFirm(void){
 
-    /* If L is pressed on a 9.0/9.2 SysNAND, or L+R on a > 9.2 SysNAND,
-       or the 9.0 FIRM is loaded on a > 9.2 SysNAND, boot emuNAND */
-    if((updatedSys && (!mode || ((pressed & BUTTON_L1R1) == BUTTON_L1R1 &&
-       pressed != SAFEMODE))) || (!updatedSys && mode && !(pressed & BUTTON_L1))){
+    /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
+       or R is pressed on a > 9.2 SysNAND, boot emuNAND */
+    if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
+       (!updatedSys && mode && !(pressed & (BUTTON_L1 | BUTTON_R1)))){
         if (loadEmu()) return 1;
     }
     else if(a9lhSetup){
