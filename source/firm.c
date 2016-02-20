@@ -38,8 +38,8 @@ u8 loadFirm(u8 a9lhBoot){
 
     /* If L and R are pressed on a 9.0/2 SysNAND, or L on an updated
        SysNAND, boot 9.0 FIRM */
-    if((!updatedSys & ((pressed & BUTTON_L1R1) == BUTTON_L1R1)) |
-       (updatedSys & (pressed & BUTTON_L1))) mode = 0;
+    if((!updatedSys && (pressed & BUTTON_L1R1) == BUTTON_L1R1) ||
+       (updatedSys && (pressed & BUTTON_L1))) mode = 0;
 
     //If not using an A9LH setup, do so by decrypting FIRM0
     if(!a9lhSetup && !mode){
@@ -79,7 +79,7 @@ u8 loadEmu(void){
     char path[] = "/rei/emunand/emunand.bin";
     u32 size = fileSize(path);
     if (!size) return 1;
-    if(!console | !mode) nandRedir[5] = 0xA4;
+    if(!console || !mode) nandRedir[5] = 0xA4;
     //Find offset for emuNAND code from the offset in nandRedir
     u8 *emuCodeTmp = &nandRedir[4];
     emuCodeOffset = *(u32*)emuCodeTmp - (u32)section[2].address +
@@ -98,7 +98,7 @@ u8 loadEmu(void){
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
     //Patch emuNAND code in memory for O3DS and 9.0 N3DS
-    if(!console | !mode){
+    if(!console || !mode){
         u32 *pos_instr = memsearch((u32*)emuCodeOffset, "\xA6\x01\x08\x30", size, 4);
         memcpy((u8*)pos_instr, emuInstr, sizeof(emuInstr));
     }
@@ -118,11 +118,11 @@ u8 patchFirm(void){
 
     /* If L is pressed on a 9.0/9.2 SysNAND, or L+R on a > 9.2 SysNAND,
        or the 9.0 FIRM is loaded on a > 9.2 SysNAND, boot emuNAND */
-    if((updatedSys & ((!mode) | (((pressed & BUTTON_L1R1) == BUTTON_L1R1) &
-       (pressed != SAFEMODE)))) | ((!updatedSys) & mode & !(pressed & BUTTON_L1))){
+    if((updatedSys && (!mode || ((pressed & BUTTON_L1R1) == BUTTON_L1R1 &&
+       pressed != SAFEMODE))) || (!updatedSys && mode && !(pressed & BUTTON_L1))){
         if (loadEmu()) return 1;
     }
-    else if (a9lhSetup){
+    else if(a9lhSetup){
         //Patch FIRM partitions writes on SysNAND to protect A9LH
         u32 writeOffset = 0;
         getFIRMWrite(firmLocation, firmSize, &writeOffset);
@@ -138,8 +138,8 @@ u8 patchFirm(void){
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
     //Apply FIRM reboot patch. Not needed on N3DS
-    if((!console) & mode & (pressed != SAFEMODE) &
-       !(fileExists("/rei/reversereboot") ^ (pressed & BUTTON_A))){
+    if(!console && mode && pressed != SAFEMODE &&
+       fileExists("/rei/reversereboot") == (pressed & BUTTON_A)){
         u32 rebootOffset = 0,
             rebootOffset2 = 0;
 
