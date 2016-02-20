@@ -39,7 +39,7 @@ u8 loadFirm(u8 a9lhBoot){
     /* If L and R are pressed on a 9.0/2 SysNAND, or L on an updated
        SysNAND, boot 9.0 FIRM */
     if((!updatedSys && (pressed & BUTTON_L1R1) == BUTTON_L1R1) ||
-       (updatedSys && (pressed & BUTTON_L1))) mode = 0;
+       (updatedSys && (pressed & BUTTON_L1R1) == BUTTON_L1)) mode = 0;
 
     //If not using an A9LH setup, do so by decrypting FIRM0
     if(!a9lhSetup && !mode){
