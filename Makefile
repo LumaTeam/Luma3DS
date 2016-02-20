@@ -42,13 +42,13 @@ launcher: $(dir_out)/$(name).dat
 a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: emunand
-emunand: $(dir_out)/rei-n3ds/emunand/emunand.bin $(dir_out)/rei-n3ds/emunand/emunand90.bin
+emunand: $(dir_out)/rei-n3ds/emunand/emunand.bin
 
 .PHONY: emunando3ds
 emunando3ds: $(dir_out)/rei-o3ds/emunand/emunand.bin
 
 .PHONY: reboot
-reboot: $(dir_out)/rei-o3ds/reboot/reboot1.bin $(dir_out)/rei-o3ds/reboot/reboot2.bin
+reboot: $(dir_out)/rei-o3ds/reboot/reboot1.bin $(dir_out)/rei-o3ds/reboot/reboot2.bin $(dir_out)/rei-o3ds/reboot/reboot190.bin
 
 .PHONY: rebootntr
 rebootntr: $(dir_out)/ntr-o3ds/reboot/reboot1.bin $(dir_out)/ntr-o3ds/reboot/reboot2.bin
@@ -75,26 +75,20 @@ $(dir_out)/3ds/$(name):
 	@mv $(dir_out)/$(name).3dsx $@
 	@mv $(dir_out)/$(name).smdh $@
 
-$(dir_out)/rei-n3ds/: $(dir_data)/firmware.bin
+$(dir_out)/rei-n3ds/:
 	@mkdir -p "$(dir_out)/rei-n3ds"
-	@cp -av $(dir_data)/firmware.bin $@
 
-$(dir_out)/rei-o3ds/: $(dir_data)/firmwareo3ds.bin
+$(dir_out)/rei-o3ds/:
 	@mkdir -p "$(dir_out)/rei-o3ds"
-	@cp -av $(dir_data)/firmwareo3ds.bin $(dir_out)/rei-o3ds/firmware.bin
     
 $(dir_out)/rei-n3ds/emunand/emunand.bin: $(dir_emu)/emuCode.s
 	@armips $<
 	@mkdir -p "$(dir_out)/rei-n3ds/emunand"
-	@mv emunand.bin $(dir_out)/rei-n3ds/emunand
+	@cp -av emunand.bin $(dir_out)/rei-n3ds/emunand
 
-$(dir_out)/rei-o3ds/emunand/emunand.bin: $(dir_emu)/emuCodeo3ds.s
-	@armips $<
+$(dir_out)/rei-o3ds/emunand/emunand.bin: emunand.bin
 	@mkdir -p "$(dir_out)/rei-o3ds/emunand"
-	@cp -av emunand.bin $(dir_out)/rei-o3ds/emunand
-
-$(dir_out)/rei-n3ds/emunand/emunand90.bin: $(dir_out)/rei-o3ds/emunand/emunand.bin
-	@mv emunand.bin $(dir_out)/rei-n3ds/emunand/emunand90.bin
+	@mv emunand.bin $(dir_out)/rei-o3ds/emunand
 
 $(dir_out)/rei-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCode.s
 	@armips $<
@@ -103,6 +97,10 @@ $(dir_out)/rei-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCode.s
 
 $(dir_out)/rei-o3ds/reboot/reboot2.bin: reboot2.bin
 	@cp -av reboot2.bin $(dir_out)/rei-o3ds/reboot
+
+$(dir_out)/rei-o3ds/reboot/reboot190.bin: $(dir_reboot)/rebootCode90.s
+	@armips $<
+	@mv reboot1.bin $(dir_out)/rei-o3ds/reboot/reboot190.bin
 
 $(dir_out)/ntr-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCodeNtr.s
 	@armips $<

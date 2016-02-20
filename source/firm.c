@@ -28,10 +28,10 @@ u8 loadFirm(u8 a9lhBoot){
     //Get pressed buttons
     pressed = HID_PAD;
     //Determine if A9LH is installed
-    if(a9lhBoot || fileSize("/rei/installeda9lh")){
+    if(a9lhBoot || fileExists("/rei/installeda9lh")){
         a9lhSetup = 1;
         //Check flag for > 9.2 SysNAND
-        if(fileSize("/rei/updatedsysnand")) updatedSys = 1;
+        if(fileExists("/rei/updatedsysnand")) updatedSys = 1;
     }
 
     section = firmLocation->section;
@@ -39,7 +39,7 @@ u8 loadFirm(u8 a9lhBoot){
     /* If L and R are pressed on a 9.0/2 SysNAND, or L on an updated
        SysNAND, boot 9.0 FIRM */
     if((!updatedSys & ((pressed & BUTTON_L1R1) == BUTTON_L1R1)) |
-       (updatedSys & (pressed == BUTTON_L1))) mode = 0;
+       (updatedSys & (pressed & BUTTON_L1))) mode = 0;
 
     //If not using an A9LH setup, do so by decrypting FIRM0
     if(!a9lhSetup && !mode){
@@ -77,15 +77,14 @@ u8 loadEmu(void){
 
     //Read emunand code from SD
     char path[] = "/rei/emunand/emunand.bin";
-    char path2[] = "/rei/emunand/emunand90.bin";
-    char *pathPtr = ((!mode) & console) ? path2 : path;
-    u32 size = fileSize(pathPtr);
+    u32 size = fileSize(path);
     if (!size) return 1;
     if(!console | !mode) nandRedir[5] = 0xA4;
+    //Find offset for emuNAND code from the offset in nandRedir
     u8 *emuCodeTmp = &nandRedir[4];
     emuCodeOffset = *(u32*)emuCodeTmp - (u32)section[2].address +
                     section[2].offset + (u32)firmLocation;
-    fileRead((u8*)emuCodeOffset, pathPtr, size);
+    fileRead((u8*)emuCodeOffset, path, size);
 
     //Find and patch emunand related offsets
     u32 *pos_sdmmc = memsearch((u32*)emuCodeOffset, "SDMC", size, 4);
@@ -98,6 +97,11 @@ u8 loadEmu(void){
     *pos_sdmmc = sdmmcOffset;
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
+    //Patch emuNAND code in memory for O3DS and 9.0 N3DS
+    if(!console | !mode){
+        u32 *pos_instr = memsearch((u32*)emuCodeOffset, "\xA6\x01\x08\x30", size, 4);
+        memcpy((u8*)pos_instr, emuInstr, sizeof(emuInstr));
+    }
 
     //Add emunand hooks
     memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
@@ -114,8 +118,8 @@ u8 patchFirm(void){
 
     /* If L is pressed on a 9.0/9.2 SysNAND, or L+R on a > 9.2 SysNAND,
        or the 9.0 FIRM is loaded on a > 9.2 SysNAND, boot emuNAND */
-    if((updatedSys & (!mode | (pressed == BUTTON_L1R1))) |
-       ((!updatedSys) & mode & !(pressed & BUTTON_L1))){
+    if((updatedSys & ((!mode) | (((pressed & BUTTON_L1R1) == BUTTON_L1R1) &
+       (pressed != SAFEMODE)))) | ((!updatedSys) & mode & !(pressed & BUTTON_L1))){
         if (loadEmu()) return 1;
     }
     else if (a9lhSetup){
@@ -133,18 +137,20 @@ u8 patchFirm(void){
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
-    //Apply FIRM reboot patch. Not needed with A9LH and N3DS
-    if(!console && !a9lhSetup && mode &&
-       ((fileSize("/rei/reversereboot") > 0) == (pressed & BUTTON_A))){
+    //Apply FIRM reboot patch. Not needed on N3DS
+    if((!console) & mode & (pressed != SAFEMODE) &
+       !(fileExists("/rei/reversereboot") ^ (pressed & BUTTON_A))){
         u32 rebootOffset = 0,
             rebootOffset2 = 0;
 
         //Read reboot code from SD and write patched FIRM path in memory
         char path[] = "/rei/reboot/reboot1.bin";
-        u32 size = fileSize(path);
+        char path2[] = "/rei/reboot/reboot190.bin";
+        char *pathPtr = mode ? path : path2;
+        u32 size = fileSize(pathPtr);
         if (!size) return 1;
         getReboot(firmLocation, firmSize, &rebootOffset, &rebootOffset2);
-        fileRead((u8*)rebootOffset, path, size);
+        fileRead((u8*)rebootOffset, pathPtr, size);
         memcpy((u8*)rebootOffset + size, L"sdmc:", 10);
         memcpy((u8*)rebootOffset + size + 10, L"" PATCHED_FIRM_PATH, sizeof(PATCHED_FIRM_PATH) * 2);
         path[18] = '2';

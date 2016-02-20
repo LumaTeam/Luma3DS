@@ -63,6 +63,7 @@ int fileWrite(const u8 *buffer, const char *path, u32 size){
     FIL fp;
     unsigned int br = 0;
 
+    f_unlink(path);
     if(f_open(&fp, path, FA_WRITE | FA_OPEN_ALWAYS) == FR_OK){
         fr = f_write(&fp, buffer, size, &br);
         f_close(&fp);
@@ -83,4 +84,14 @@ int fileSize(const char* path){
 	error:
 		f_close(&fp);
 	return size;
+}
+
+int fileExists(const char* path){
+    FRESULT fr;
+    FIL fp;
+    int exists = 1;
+    fr = f_open(&fp, path, FA_READ);
+    if (fr != FR_OK)exists = 0;
+    f_close(&fp);
+    return exists;
 }

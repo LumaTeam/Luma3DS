@@ -13,6 +13,7 @@
 #define BUTTON_L1R1        (3 << 8)
 #define BUTTON_L1          (1 << 9)
 #define BUTTON_A           1
+#define SAFEMODE           (BUTTON_L1R1 | BUTTON_A | (1 << 6))
 #define PATCHED_FIRM_PATH  "/rei/patched_firmware.bin"
 
 u8 loadFirm(u8 a9lh);

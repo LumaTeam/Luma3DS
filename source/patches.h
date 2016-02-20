@@ -16,6 +16,7 @@ u8 nandRedir[0x08];
 u8 sigPat1[2];
 u8 sigPat2[4];
 u8 FIRMblock[4];
+u8 emuInstr[5];
 
 /**************************************************
 *                   Functions
