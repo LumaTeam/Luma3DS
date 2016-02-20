@@ -15,7 +15,7 @@ See https://github.com/Reisyukaku/ReiNand and http://gbatemp.net/threads/reinand
 
 The FIRMs you need are here:
 
-http://www12.zippyshare.com/v/JNkWUhDd/file.html
+http://www99.zippyshare.com/v/kEIiQl0x/file.html
 
 **Credits:**
  
