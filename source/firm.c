@@ -145,12 +145,10 @@ u8 patchFirm(void){
 
         //Read reboot code from SD and write patched FIRM path in memory
         char path[] = "/rei/reboot/reboot1.bin";
-        char path2[] = "/rei/reboot/reboot190.bin";
-        char *pathPtr = mode ? path : path2;
-        u32 size = fileSize(pathPtr);
+        u32 size = fileSize(path);
         if (!size) return 1;
         getReboot(firmLocation, firmSize, &rebootOffset, &rebootOffset2);
-        fileRead((u8*)rebootOffset, pathPtr, size);
+        fileRead((u8*)rebootOffset, path, size);
         memcpy((u8*)rebootOffset + size, L"sdmc:", 10);
         memcpy((u8*)rebootOffset + size + 10, L"" PATCHED_FIRM_PATH, sizeof(PATCHED_FIRM_PATH) * 2);
         path[18] = '2';

@@ -48,7 +48,7 @@ emunand: $(dir_out)/rei-n3ds/emunand/emunand.bin
 emunando3ds: $(dir_out)/rei-o3ds/emunand/emunand.bin
 
 .PHONY: reboot
-reboot: $(dir_out)/rei-o3ds/reboot/reboot1.bin $(dir_out)/rei-o3ds/reboot/reboot2.bin $(dir_out)/rei-o3ds/reboot/reboot190.bin
+reboot: $(dir_out)/rei-o3ds/reboot/reboot1.bin $(dir_out)/rei-o3ds/reboot/reboot2.bin
 
 .PHONY: rebootntr
 rebootntr: $(dir_out)/ntr-o3ds/reboot/reboot1.bin $(dir_out)/ntr-o3ds/reboot/reboot2.bin
@@ -97,10 +97,6 @@ $(dir_out)/rei-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCode.s
 
 $(dir_out)/rei-o3ds/reboot/reboot2.bin: reboot2.bin
 	@cp -av reboot2.bin $(dir_out)/rei-o3ds/reboot
-
-$(dir_out)/rei-o3ds/reboot/reboot190.bin: $(dir_reboot)/rebootCode90.s
-	@armips $<
-	@mv reboot1.bin $(dir_out)/rei-o3ds/reboot/reboot190.bin
 
 $(dir_out)/ntr-o3ds/reboot/reboot1.bin: $(dir_reboot)/rebootCodeNtr.s
 	@armips $<
