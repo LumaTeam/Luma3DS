@@ -1,21 +1,10 @@
-.nds
+.arm.little
 
 firm_size equ 0x000EA000
 firm_addr equ 0x24000000
 fopen equ 0x08059D10
 fread equ 0x0804CC54
 pxi_wait_recv equ 0x08054134
-
-.macro svc, num
-	.if isArm()
-		.word 0xEF000000 | num
-	.else
-		.if num > 0xFF
-			.error "bitch you crazu"
-		.endif
-		.halfword 0xDF00 | num
-	.endif
-.endmacro
 
 .create "reboot1.bin", 0x080849DC
 .org 0x080849DC
@@ -48,9 +37,9 @@ patch005:
 	mov r3, r2
 	mov r1, r2
 	mov r0, r2
-	svc 0x7C
+	swi 0x7C
 	ldr r0, =0x80FF4FC
-	svc 0x7B
+	swi 0x7B
 
 @@inf_loop:
 	b @@inf_loop

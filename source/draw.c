@@ -17,6 +17,8 @@ void clearScreen(void){
 }
 
 void loadSplash(void){
+    //Check that it's a no-LCD-init boot via PDN_GPU_CNT
+    if (*((u8*)0x10141200) == 0x1) return;
     clearScreen();
     if(fileRead(fb->top_left, "/rei/splash.bin", 0x46500) != 0) return;
     unsigned i,t; for(t=220;t>0;t--){for(i=0xFFFF;i>0;i--);}; //Ghetto sleep func

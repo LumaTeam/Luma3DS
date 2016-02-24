@@ -21,14 +21,14 @@ u8  mode = 1,
 u16 pressed;
 
 //Load firm into FCRAM
-u8 loadFirm(u8 a9lhBoot){
+u8 loadFirm(void){
 
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
     //Get pressed buttons
     pressed = HID_PAD;
-    //Determine if A9LH is installed
-    if(a9lhBoot || fileExists("/rei/installeda9lh")){
+    //Determine if A9LH is installed via PDN_SPI_CNT and an user flag
+    if((*((u8*)0x101401C0) == 0x0) || fileExists("/rei/installeda9lh")){
         a9lhSetup = 1;
         //Check flag for > 9.2 SysNAND
         if(fileExists("/rei/updatedsysnand")) updatedSys = 1;
