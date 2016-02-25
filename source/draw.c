@@ -17,7 +17,7 @@ void clearScreen(void){
 }
 
 void loadSplash(void){
-    //Check that it's a no-LCD-init boot via PDN_GPU_CNT
+    //Check if it's a no-screen-init A9LH boot via PDN_GPU_CNT
     if (*((u8*)0x10141200) == 0x1) return;
     clearScreen();
     if(fileRead(fb->top_left, "/rei/splash.bin", 0x46500) != 0) return;

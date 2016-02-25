@@ -131,7 +131,6 @@ void rsa_use_keyslot(u32 keyslot);
 int rsa_verify(const void* data, u32 size, const void* sig, u32 mode);
 
 //NAND/FIRM stuff
-void getNandCTR(u8 *buf, u8 console);
 void nandFirm0(u8 *outbuf, const u32 size, u8 console);
 void arm9loader(void *armHdr, u8 mode);
 

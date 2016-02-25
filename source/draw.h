@@ -12,5 +12,4 @@ struct fb {
     u8 *bottom;
 };
 
-void clearScreen(void);
 void loadSplash(void);

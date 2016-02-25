@@ -13,6 +13,7 @@
 
 firmHeader *firmLocation = (firmHeader *)0x24000000;
 firmSectionHeader *section;
+vu32 *arm11Entry = (vu32*)0x1FFFFFF8;
 u32 firmSize = 0;
 u8  mode = 1,
     console = 1,
@@ -20,13 +21,14 @@ u8  mode = 1,
     updatedSys = 0;
 u16 pressed;
 
-//Load firm into FCRAM
-u8 loadFirm(void){
+void setupCFW(void){
 
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
+
     //Get pressed buttons
     pressed = HID_PAD;
+
     //Determine if A9LH is installed via PDN_SPI_CNT and an user flag
     if((*((u8*)0x101401C0) == 0x0) || fileExists("/rei/installeda9lh")){
         a9lhSetup = 1;
@@ -34,17 +36,20 @@ u8 loadFirm(void){
         if(fileExists("/rei/updatedsysnand")) updatedSys = 1;
     }
 
-    section = firmLocation->section;
-
     /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
        is not pressed, boot 9.0 FIRM */
     if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;
+}
 
-    //If not using an A9LH setup, do so by decrypting FIRM0
+//Load firm into FCRAM
+u8 loadFirm(void){
+
+    //If not using an A9LH setup, load 9.0 FIRM from NAND
     if(!a9lhSetup && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
+        //Check for correct decryption
         if(memcmp((u8*)firmLocation, "FIRM", 4) != 0) return 1;
     }
     //Load FIRM from SD
@@ -56,6 +61,10 @@ u8 loadFirm(void){
         if (!firmSize) return 1;
         fileRead((u8*)firmLocation, pathPtr, firmSize);
     }
+
+    section = firmLocation->section;
+
+    //Check that the loaded FIRM matches the console
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 1;
 
     if(console) arm9loader((u8*)firmLocation + section[2].offset, mode);
@@ -96,6 +105,7 @@ u8 loadEmu(void){
     *pos_sdmmc = sdmmcOffset;
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
+
     //Patch emuNAND code in memory for O3DS and 9.0 N3DS
     if(!console || !mode){
         u32 *pos_instr = memsearch((u32*)emuCodeOffset, "\xA6\x01\x08\x30", size, 4);
@@ -121,82 +131,69 @@ u8 patchFirm(void){
        (!updatedSys && mode && !(pressed & (BUTTON_L1 | BUTTON_R1)))){
         if (loadEmu()) return 1;
     }
-    else if(a9lhSetup){
+    else if (a9lhSetup){
         //Patch FIRM partitions writes on SysNAND to protect A9LH
         u32 writeOffset = 0;
         getFIRMWrite(firmLocation, firmSize, &writeOffset);
         memcpy((u8*)writeOffset, FIRMblock, sizeof(FIRMblock));
     }
 
+    //Disable signature checks
     u32 sigOffset = 0,
         sigOffset2 = 0;
 
-    //Disable signature checks
     getSignatures(firmLocation, firmSize, &sigOffset, &sigOffset2);
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
-    //Apply FIRM reboot patch. Not needed on N3DS
-    if(!console && mode && pressed != SAFEMODE &&
-       fileExists("/rei/reversereboot") == (pressed & BUTTON_A)){
+    //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
+    if(mode){
         u32 rebootOffset = 0,
-            rebootOffset2 = 0;
+            fOpenOffset = 0;
 
-        //Read reboot code from SD and write patched FIRM path in memory
-        char path[] = "/rei/reboot/reboot1.bin";
+        //Read reboot code from SD
+        char path[] = "/rei/reboot/reboot.bin";
         u32 size = fileSize(path);
         if (!size) return 1;
-        getReboot(firmLocation, firmSize, &rebootOffset, &rebootOffset2);
+        getReboot(firmLocation, firmSize, &rebootOffset);
         fileRead((u8*)rebootOffset, path, size);
-        memcpy((u8*)rebootOffset + size, L"sdmc:", 10);
-        memcpy((u8*)rebootOffset + size + 10, L"" PATCHED_FIRM_PATH, sizeof(PATCHED_FIRM_PATH) * 2);
-        path[18] = '2';
-        size = fileSize(path);
-        if (!size) return 1;
-        fileRead((u8*)rebootOffset2, path, size);
+
+        //Calculate the fOpen offset and put it in the right location
+        u32 *pos_fopen = memsearch((u32*)rebootOffset, "OPEN", size, 4);
+        getfOpen(firmLocation, firmSize, &fOpenOffset);
+        *pos_fopen = fOpenOffset;
 
         //Write patched FIRM to SD
-        if (fileWrite((u8*)firmLocation, PATCHED_FIRM_PATH, firmSize) != 0) return 1;
+        if(fileWrite((u8*)firmLocation, "/rei/patched_firmware.bin", firmSize) != 0) return 1;
     }
 
     return 0;
 }
 
+//De-initialize the screens, fixes N3DS 3D
+void __attribute__((naked)) deinitScreen(void)
+{
+    *arm11Entry = 0;
+
+    *(vu32*)0x10202A44 = 0;
+    *(vu32*)0x10202244 = 0;
+    *(vu32*)0x1020200C = 0;
+    *(vu32*)0x10202014 = 0;
+
+    while (!*arm11Entry);
+    ((void (*)())*arm11Entry)();
+}
+
 //Firmlaunchhax
 void launchFirm(void){
 
-    //Set MPU
-    __asm__ (
-        "msr cpsr_c, #0xDF\n\t"         //Set system mode, disable interrupts
-        "ldr r0, =0x10000035\n\t"       //Memory area 0x10000000-0x18000000, enabled, 128MB
-        "ldr r4, =0x18000035\n\t"       //Memory area 0x18000000-0x20000000, enabled, 128MB
-        "mcr p15, 0, r0, c6, c3, 0\n\t" //Set memory area 3 (0x10000000-0x18000000)
-        "mcr p15, 0, r4, c6, c4, 0\n\t" //Set memory area 4 (0x18000000-0x20000000)
-        "mrc p15, 0, r0, c2, c0, 0\n\t" //read data cacheable bit
-        "mrc p15, 0, r4, c2, c0, 1\n\t" //read inst cacheable bit
-        "mrc p15, 0, r1, c3, c0, 0\n\t" //read data writeable
-        "mrc p15, 0, r2, c5, c0, 2\n\t" //read data access permission
-        "mrc p15, 0, r3, c5, c0, 3\n\t" //read inst access permission
-        "orr r0, r0, #0x30\n\t"
-        "orr r4, r4, #0x30\n\t"
-        "orr r1, r1, #0x30\n\t"
-        "bic r2, r2, #0xF0000\n\t"
-        "bic r3, r3, #0xF0000\n\t"
-        "orr r2, r2, #0x30000\n\t"
-        "orr r3, r3, #0x30000\n\t"
-        "mcr p15, 0, r0, c2, c0, 0\n\t" //write data cacheable bit
-        "mcr p15, 0, r4, c2, c0, 1\n\t" //write inst cacheable bit
-        "mcr p15, 0, r1, c3, c0, 0\n\t" //write data writeable
-        "mcr p15, 0, r2, c5, c0, 2\n\t" //write data access permission
-        "mcr p15, 0, r3, c5, c0, 3\n\t" //write inst access permission
-        ::: "r0", "r1", "r2", "r3", "r4"
-    );
-    
     //Copy firm partitions to respective memory locations
     memcpy(section[0].address, (u8*)firmLocation + section[0].offset, section[0].size);
     memcpy(section[1].address, (u8*)firmLocation + section[1].offset, section[1].size);
     memcpy(section[2].address, (u8*)firmLocation + section[2].offset, section[2].size);
-    *(u32 *)0x1FFFFFF8 = (u32)firmLocation->arm11Entry;
+    *arm11Entry = (u32)deinitScreen;
+    while (*arm11Entry);
+    *arm11Entry = (u32)firmLocation->arm11Entry;
     
     //Final jump to arm9 binary
     console ? ((void (*)())0x801B01C)() : ((void (*)())firmLocation->arm9Entry)();

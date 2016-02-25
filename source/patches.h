@@ -22,7 +22,8 @@ u8 emuInstr[5];
 *                   Functions
 **************************************************/
 void getSignatures(void *pos, u32 size, u32 *off, u32 *off2);
-void getReboot(void *pos, u32 size, u32 *off, u32 *off2);
+void getReboot(void *pos, u32 size, u32 *off);
+void getfOpen(void *pos, u32 size, u32 *off);
 void getFIRMWrite(void *pos, u32 size, u32 *off);
 
 #endif
