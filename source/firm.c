@@ -146,6 +146,12 @@ u8 patchFirm(void){
     memcpy((u8*)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((u8*)sigOffset2, sigPat2, sizeof(sigPat2));
 
+    //Patch ARM9 entrypoint on N3DS to skip arm9loader
+    if(console){
+        u32 *arm9Entry = (u32*)&firmLocation->arm9Entry;
+        *arm9Entry = 0x801B01C;
+    }
+
     //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
     if(mode){
         u32 rebootOffset = 0,
@@ -196,5 +202,5 @@ void launchFirm(void){
     *arm11Entry = (u32)firmLocation->arm11Entry;
     
     //Final jump to arm9 binary
-    console ? ((void (*)())0x801B01C)() : ((void (*)())firmLocation->arm9Entry)();
+    ((void (*)())firmLocation->arm9Entry)();
 }
