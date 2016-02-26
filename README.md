@@ -6,7 +6,8 @@
 
 You'll need armips added to your Path. [HERE](https://www.dropbox.com/s/ceuv2qeqp38lpah/armips.exe?dl=0) is a pre-compiled version.
 
-Lastly, just run Make and everything should work!
+    make - Compiles for use with CakeHax/CakeBrah entry
+    make a9lh - Compiles for use with arm9loaderhax
 
 Copy everything in 'out' folder to SD root and run!
 
@@ -20,6 +21,8 @@ Copy everything in 'out' folder to SD root and run!
 * RAM dump (edit RAM.txt with a base 10 number for offset) [Start Button + X]
 
 * Emunand (with 'Rei' version string)
+
+* Compatibility with arm9loaderhax
  
 
 **Credits:**
@@ -28,9 +31,11 @@ Copy everything in 'out' folder to SD root and run!
     
  3DBREW for saving me plenty of reverse engineering time.
     
- Patois for Brahma code.
+ Patois/Cakes for CakesBrah.
  
  Normmatt for sdmmc.c and generally being helpful!
+ 
+ AuroraWright for being helpful!
     
  Me (Rei) for coding everything else.
  

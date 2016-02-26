@@ -38,10 +38,17 @@ void loadFirm(void){
     //Parse firmware
     section = firmLocation->section;
     arm9loader((u8*)firmLocation + section[2].offset);
+    
+    //Set MPU for emu/thread code region
+    getMPU(firmLocation, firmSize, &mpuOffset);
+    memcpy((u8*)mpuOffset, mpu, sizeof(mpu));
 }
 
 //Nand redirection
 void loadEmu(void){
+    
+    //Check for force sysnand
+    if(((~*(unsigned *)0x10146000) & 0xFFF) == (1 << 3)) return;
     
     //Read emunand code from SD
 	const char path[] = "/rei/emunand/emunand.bin";
@@ -64,9 +71,6 @@ void loadEmu(void){
     //Add emunand hooks
     memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuWrite, nandRedir, sizeof(nandRedir));
-    
-    //Set MPU for emu code region
-    memcpy((u8*)mpuOffset, mpu, sizeof(mpu));
 }
 
 //Patches
