@@ -10,10 +10,10 @@
 #include "fs.h"
 #include "emunand.h"
 #include "crypto.h"
+#include "draw.h"
 
 firmHeader *firmLocation = (firmHeader *)0x24000000;
 firmSectionHeader *section;
-vu32 *arm11Entry = (vu32*)0x1FFFFFF8;
 u32 firmSize = 0;
 u8  mode = 1,
     console = 1,
@@ -148,8 +148,8 @@ u8 patchFirm(void){
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console){
-        u32 *arm9Entry = (u32*)&firmLocation->arm9Entry;
-        *arm9Entry = 0x801B01C;
+        u32 *arm9 = (u32*)&firmLocation->arm9Entry;
+        *arm9 = 0x801B01C;
     }
 
     //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
@@ -176,29 +176,20 @@ u8 patchFirm(void){
     return 0;
 }
 
-//De-initialize the screens, fixes N3DS 3D
-void __attribute__((naked)) deinitScreen(void)
-{
-    *arm11Entry = 0;
-
-    *(vu32*)0x10202A44 = 0;
-    *(vu32*)0x10202244 = 0;
-    *(vu32*)0x10202014 = 0;
-
-    while (!*arm11Entry);
-    ((void (*)())*arm11Entry)();
-}
-
-//Firmlaunchhax
 void launchFirm(void){
 
     //Copy firm partitions to respective memory locations
     memcpy(section[0].address, (u8*)firmLocation + section[0].offset, section[0].size);
     memcpy(section[1].address, (u8*)firmLocation + section[1].offset, section[1].size);
     memcpy(section[2].address, (u8*)firmLocation + section[2].offset, section[2].size);
-    *arm11Entry = (u32)deinitScreen;
-    while (*arm11Entry);
-    *arm11Entry = (u32)firmLocation->arm11Entry;
+
+    //Run ARM11 screen stuff
+    vu32 *arm11 = (vu32*)0x1FFFFFF8;
+    *arm11 = (u32)shutdownLCD;
+    while (*arm11);
+    
+    //Set ARM11 kernel
+    *arm11 = (u32)firmLocation->arm11Entry;
     
     //Final jump to arm9 binary
     ((void (*)())firmLocation->arm9Entry)();

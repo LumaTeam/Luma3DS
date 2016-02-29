@@ -13,3 +13,4 @@ struct fb {
 };
 
 void loadSplash(void);
+void shutdownLCD(void);
