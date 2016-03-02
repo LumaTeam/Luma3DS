@@ -6,6 +6,12 @@ LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 OPENSSL := openssl
 
+ifeq ($(OS),Windows_NT)
+	ARMIPS := armips.exe
+else
+	ARMIPS := armips
+endif
+
 PYTHON3 := python
 PYTHON_VER_MAJOR := $(word 2, $(subst ., , $(shell python --version 2>&1)))
 ifneq ($(PYTHON_VER_MAJOR), 3)
@@ -33,7 +39,7 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 
 .PHONY: all
-all: launcher a9lh emunand reboot ninjhax
+all: launcher a9lh emunand reboot emureboot ninjhax
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat 
@@ -46,6 +52,9 @@ emunand: $(dir_out)/rei/emunand/emunand.bin
 
 .PHONY: reboot
 reboot: $(dir_out)/rei/reboot/reboot.bin
+
+.PHONY: emureboot
+emureboot: $(dir_out)/rei/reboot/emureboot.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
@@ -73,14 +82,19 @@ $(dir_out)/rei:
 	@mkdir -p "$(dir_out)/rei"
 
 $(dir_out)/rei/emunand/emunand.bin: $(dir_emu)/emuCode.s
-	@armips $<
+	@$(ARMIPS) $<
 	@mkdir -p "$(dir_out)/rei/emunand"
 	@mv emunand.bin $(dir_out)/rei/emunand
 
 $(dir_out)/rei/reboot/reboot.bin: $(dir_reboot)/rebootCode.s
-	@armips $<
+	@$(ARMIPS) $<
 	@mkdir -p "$(dir_out)/rei/reboot"
 	@mv reboot.bin $(dir_out)/rei/reboot
+
+$(dir_out)/rei/reboot/emureboot.bin: $(dir_reboot)/emuRebootCode.s
+	@$(ARMIPS) $<
+	@mkdir -p "$(dir_out)/rei/reboot"
+	@mv emureboot.bin $(dir_out)/rei/reboot
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
