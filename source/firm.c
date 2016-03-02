@@ -50,7 +50,7 @@ void setupCFW(void){
     /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
        or R is pressed on a > 9.2 SysNAND, boot emuNAND */
     if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
-       (!updatedSys && mode && !(pressed & (BUTTON_L1 | BUTTON_R1)))) emuNAND = 1;
+       (!updatedSys && mode && !(pressed & BUTTON_R1))) emuNAND = 1;
 
     //skip patching if requested and firm exists
     if(mode && fileExists("/rei/use_patched_fw")){
