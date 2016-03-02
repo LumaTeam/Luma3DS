@@ -128,7 +128,7 @@ u8 patchFirm(void){
     /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
        or R is pressed on a > 9.2 SysNAND, boot emuNAND */
     if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
-       (!updatedSys && mode && !(pressed & (BUTTON_L1 | BUTTON_R1)))){
+       (!updatedSys && mode && !(pressed & BUTTON_R1))){
         if (loadEmu()) return 1;
     }
     else if (a9lhSetup){
