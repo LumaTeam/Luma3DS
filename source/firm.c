@@ -18,8 +18,15 @@ u32 firmSize = 0;
 u8  mode = 1,
     console = 1,
     a9lhSetup = 0,
-    updatedSys = 0;
+    updatedSys = 0,
+    emuNAND = 0,
+    usePatchedFirm = 0;
 u16 pressed;
+
+static char firmPath[] = "/rei/firmware.bin";
+static char firmPath90[] = "/rei/firmware90.bin";
+static char firmPathPatched[] = "/rei/patched_firmware.bin";
+static char firmPathEmuPatched[] = "/rei/patched_emu_firmware.bin";
 
 void setupCFW(void){
 
@@ -39,6 +46,17 @@ void setupCFW(void){
     /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
        is not pressed, boot 9.0 FIRM */
     if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;
+
+    /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
+       or R is pressed on a > 9.2 SysNAND, boot emuNAND */
+    if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
+       (!updatedSys && mode && !(pressed & BUTTON_R1))) emuNAND = 1;
+
+    //skip patching if requested and firm exists
+    if(mode && fileExists("/rei/use_patched_fw")){
+        char *path = (emuNAND) ? firmPathEmuPatched : firmPathPatched;
+        if(fileExists(path)) usePatchedFirm = 1;
+    }
 }
 
 //Load firm into FCRAM
@@ -54,9 +72,13 @@ u8 loadFirm(void){
     }
     //Load FIRM from SD
     else{
-        char firmPath[] = "/rei/firmware.bin";
-        char firmPath2[] = "/rei/firmware90.bin";
-        char *pathPtr = mode ? firmPath : firmPath2;
+        char *pathPtr;
+        if(usePatchedFirm) //use already existing patches
+            pathPtr = (emuNAND) ? firmPathEmuPatched : firmPathPatched;
+        else if(mode) //use new firm
+            pathPtr = firmPath;
+        else //use old 9.0 firm
+            pathPtr = firmPath90;
         firmSize = fileSize(pathPtr);
         if (!firmSize) return 1;
         fileRead((u8*)firmLocation, pathPtr, firmSize);
@@ -124,11 +146,11 @@ u8 loadEmu(void){
 
 //Patches
 u8 patchFirm(void){
+    //skip if we already loaded a patched firm
+    if(usePatchedFirm) return 0;
 
-    /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
-       or R is pressed on a > 9.2 SysNAND, boot emuNAND */
-    if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
-       (!updatedSys && mode && !(pressed & BUTTON_R1))){
+    if(emuNAND){
+        //do emuNAND patches
         if (loadEmu()) return 1;
     }
     else if (a9lhSetup){
@@ -158,7 +180,7 @@ u8 patchFirm(void){
             fOpenOffset = 0;
 
         //Read reboot code from SD
-        char path[] = "/rei/reboot/reboot.bin";
+        char *path = (emuNAND) ? "/rei/reboot/emureboot.bin" : "/rei/reboot/reboot.bin";
         u32 size = fileSize(path);
         if (!size) return 1;
         getReboot(firmLocation, firmSize, &rebootOffset);
@@ -170,7 +192,8 @@ u8 patchFirm(void){
         *pos_fopen = fOpenOffset;
 
         //Write patched FIRM to SD
-        if(fileWrite((u8*)firmLocation, "/rei/patched_firmware.bin", firmSize) != 0) return 1;
+        path = (emuNAND) ? firmPathEmuPatched : firmPathPatched;
+        if(fileWrite((u8*)firmLocation, path, firmSize) != 0) return 1;
     }
 
     return 0;
