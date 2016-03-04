@@ -5,10 +5,6 @@
 */
 #include "memory.h"
 
-void memcpy32(u32 *dest, u32 *src, u32 size){
-    for (u32 i = 0; i < size; i++) dest[i] = src[i];
-}
-
 void memcpy(void *dest, const void *src, u32 size){
     char *destc = (char *)dest;
     const char *srcc = (const char *)src;
