@@ -390,36 +390,37 @@ void decArm9Bin(void *armHdr, u8 mode){
     u32 slot = mode ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
-    memcpy((u8*)keyY, (void *)(armHdr+0x10), 0x10);
-    memcpy((u8*)CTR, (void *)(armHdr+0x20), 0x10);
-    u32 size = atoi((void *)(armHdr+0x30));
+    memcpy(keyY, armHdr+0x10, 0x10);
+    memcpy(CTR, armHdr+0x20, 0x10);
+    u32 size = atoi(armHdr+0x30);
 
     if(mode){
         //Set 0x11 to key2 for the arm9bin and misc keys
-        aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x11);
-        aes((u8*)keyX, (void *)(armHdr+0x60), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, (u8*)keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes(keyX, armHdr+0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(slot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
-    aes_setkey(slot, (u8*)keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setiv((u8*)CTR, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(slot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setiv(CTR, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(slot);
 
     //Decrypt arm9bin
-    aes((void *)(armHdr+0x800), (void *)(armHdr+0x800), size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(armHdr+0x800, armHdr+0x800, size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
 //Sets the N3DS 9.6 KeyXs
 void setKeyXs(void *armHdr){
 
     //Set keys 0x19..0x1F keyXs
-    u8* decKey = (void *)(armHdr+0x89824);
-    aes_setkey(0x11, (u8*)key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+    void *keyData = armHdr+0x89814;
+    void *decKey = keyData+0x10;
+    aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x11);
     for(u32 slot = 0x19; slot < 0x20; slot++){
-        aes(decKey, (void *)(armHdr+0x89814), 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, (u8*)decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        *(u8*)(armHdr+0x89814+0xF) += 1;
+        aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        *(u8*)(keyData+0xF) += 1;
     }
 }
