@@ -49,8 +49,7 @@ void setupCFW(void){
 
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(*(u8*)0x10010000 == 0x7) {
-            mode = updatedSys ? 1 : (tempConfig & 0x1);
-            emuNAND = 0;
+            if(!updatedSys) mode = tempConfig & 0x1;
             overrideConfig = 1;
         //Else, force the last boot options unless A is pressed
         } else if(!(pressed & BUTTON_A)) {
@@ -85,7 +84,7 @@ void setupCFW(void){
     if(fileExists("/rei/usepatchedfw")){
         //Only needed with this flag
         if(!mode) firmPathPatched = "/rei/patched_firmware90.bin";
-        if (fileExists(firmPathPatched)) usePatchedFirm = 1;
+        if(fileExists(firmPathPatched)) usePatchedFirm = 1;
     }
 }
 
