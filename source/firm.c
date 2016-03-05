@@ -101,26 +101,26 @@ u8 loadFirm(void){
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8*)firmLocation, firmSize, console);
         //Check for correct decryption
-        if(memcmp((u8*)firmLocation, "FIRM", 4) != 0) return 1;
+        if(memcmp((u8*)firmLocation, "FIRM", 4) != 0) return 0;
     }
     //Load FIRM from SD
     else{
         char *path = usePatchedFirm ? firmPathPatched :
                                       (mode ? "/rei/firmware.bin" : "/rei/firmware90.bin");
         firmSize = fileSize(path);
-        if (!firmSize) return 1;
+        if(!firmSize) return 0;
         fileRead((u8*)firmLocation, path, firmSize);
     }
 
     section = firmLocation->section;
 
     //Check that the loaded FIRM matches the console
-    if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 1;
+    if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 0;
 
     if(console && !usePatchedFirm)
         decArm9Bin((u8*)firmLocation + section[2].offset, mode);
 
-    return 0;
+    return 1;
 }
 
 //Nand redirection
@@ -137,7 +137,7 @@ u8 loadEmu(void){
     //Read emunand code from SD
     char path[] = "/rei/emunand/emunand.bin";
     u32 size = fileSize(path);
-    if (!size) return 1;
+    if(!size) return 0;
     if(!console || !mode) nandRedir[5] = 0xA4;
     //Find offset for emuNAND code from the offset in nandRedir
     u8 *emuCodeTmp = &nandRedir[4];
@@ -170,20 +170,20 @@ u8 loadEmu(void){
     //Set MPU for emu code region
     memcpy((u8*)mpuOffset, mpu, sizeof(mpu));
 
-    return 0;
+    return 1;
 }
 
 //Patches
 u8 patchFirm(void){
 
     //Skip patching
-    if(usePatchedFirm) return 0;
+    if(usePatchedFirm) return 1;
 
     //Apply emuNAND patches
     if(emuNAND){
-        if (loadEmu()) return 1;
+        if(loadEmu()) return 0;
     }
-    else if (a9lhSetup){
+    else if(a9lhSetup){
         //Patch FIRM partitions writes on SysNAND to protect A9LH
         u32 writeOffset = 0;
         getFIRMWrite(firmLocation, firmSize, &writeOffset);
@@ -212,7 +212,7 @@ u8 patchFirm(void){
         //Read reboot code from SD
         char path[] = "/rei/reboot/reboot.bin";
         u32 size = fileSize(path);
-        if (!size) return 1;
+        if(!size) return 0;
         getReboot(firmLocation, firmSize, &rebootOffset);
         fileRead((u8*)rebootOffset, path, size);
 
@@ -230,9 +230,9 @@ u8 patchFirm(void){
 
     //Write patched FIRM to SD if needed
     if(firmPathPatched)
-        if(fileWrite((u8*)firmLocation, firmPathPatched, firmSize) != 0) return 1;
+        if(!fileWrite((u8*)firmLocation, firmPathPatched, firmSize)) return 0;
 
-    return 0;
+    return 1;
 }
 
 void launchFirm(void){

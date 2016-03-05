@@ -14,8 +14,8 @@ u8 main(){
     mountSD();
     loadSplash();
     setupCFW();
-    if (loadFirm()) return 1;
-    if (patchFirm()) return 1;
+    if (!loadFirm()) return 0;
+    if (!patchFirm()) return 0;
     launchFirm();
-    return 0;
+    return 1;
 }
