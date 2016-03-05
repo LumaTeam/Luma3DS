@@ -18,16 +18,6 @@ int mountSD()
     return 0;
 }
 
-int unmountSD()
-{
-    if (f_mount(NULL, "0:", 1) != FR_OK) {
-        //printF("Failed to mount SD card!");
-        return 1;
-    }
-    //printF("Unmounted SD card");
-    return 0;
-}
-
 int fileReadOffset(u8 *dest, const char *path, u32 size, u32 offset){
     FRESULT fr;
     FIL fp;

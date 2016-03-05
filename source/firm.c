@@ -26,6 +26,10 @@ char *firmPathPatched = NULL;
 
 void setupCFW(void){
 
+    //Determine if booting with A9LH via PDN_SPI_CNT
+    u8 a9lhBoot = (*(u8*)0x101401C0 == 0x0) ? 1 : 0;
+    //Retrieve the last booted FIRM via CFG_BOOTENV
+    u8 previousFirm = *(u8*)0x10010000;
     u8 overrideConfig = 0;
     char lastConfigPath[] = "rei/lastbootcfg";
 
@@ -35,23 +39,23 @@ void setupCFW(void){
     //Get pressed buttons
     pressed = HID_PAD;
 
-    //Determine if A9LH is installed via PDN_SPI_CNT and an user flag
-    if((*(u8*)0x101401C0 == 0x0) || fileExists("/rei/installeda9lh")){
+    //Determine if A9LH is installed
+    if(a9lhBoot || fileExists("/rei/installeda9lh")){
         a9lhSetup = 1;
         //Check flag for > 9.2 SysNAND
         if(fileExists("/rei/updatedsysnand")) updatedSys = 1;
     }
 
-    //If using A9LH and it's a MCU reboot, try to force boot options
-    if(a9lhSetup && *(u8*)0x10010000 && fileExists(lastConfigPath)){
+    //If booting with A9LH and it's a MCU reboot, try to force boot options
+    if(a9lhBoot && previousFirm && fileExists(lastConfigPath)){
         u8 tempConfig;
         fileRead((u8*)&tempConfig, lastConfigPath, 1);
 
         //Always force a sysNAND boot when quitting AGB_FIRM
-        if(*(u8*)0x10010000 == 0x7) {
+        if(previousFirm == 0x7) {
             if(!updatedSys) mode = tempConfig & 0x1;
             overrideConfig = 1;
-        //Else, force the last boot options unless A is pressed
+        //Else, force the last used boot options unless A is pressed
         } else if(!(pressed & BUTTON_A)) {
             mode = tempConfig & 0x1;
             emuNAND = (tempConfig >> 1) & 0x1;
@@ -71,7 +75,7 @@ void setupCFW(void){
            (!updatedSys && mode && !(pressed & BUTTON_R1))) emuNAND = 1;
 
         //Write the current boot options on A9LH
-        if(a9lhSetup){
+        if(a9lhBoot){
             u8 tempConfig = (mode | (emuNAND << 1)) & 0x3;
             fileWrite((u8*)&tempConfig, lastConfigPath, 1);
         }
