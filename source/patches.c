@@ -54,7 +54,6 @@ void getfOpen(void *pos, u32 size, u32 *off){
     //Calculate fOpen
     u32 p9addr = *(u32*)(memsearch(pos, "ess9", size, 4) + 0xC);
     u32 p9off = (u32)(memsearch(pos, "code", size, 4) + 0x1FF);
-
     unsigned char pattern[] = {0xB0, 0x04, 0x98, 0x0D};
 
     *off = (u32)memsearch(pos, pattern, size, 4) - 2 - p9off + p9addr;

@@ -259,7 +259,7 @@ void decArm9Bin(void *armHdr, u8 mode){
     u8 keyX[0x10];
     u8 keyY[0x10];
     u8 CTR[0x10];
-    u32 slot = mode ? 0x16 : 0x15;
+    u8 slot = mode ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, armHdr+0x10, 0x10);
@@ -290,7 +290,7 @@ void setKeyXs(void *armHdr){
     void *decKey = keyData+0x10;
     aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x11);
-    for(u32 slot = 0x19; slot < 0x20; slot++){
+    for(u8 slot = 0x19; slot < 0x20; slot++){
         aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         *(u8*)(keyData+0xF) += 1;

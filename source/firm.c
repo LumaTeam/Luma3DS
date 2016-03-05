@@ -26,6 +26,8 @@ char *firmPathPatched = NULL;
 
 void setupCFW(void){
 
+    u8 overrideConfig = 0;
+
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
 
@@ -33,20 +35,47 @@ void setupCFW(void){
     pressed = HID_PAD;
 
     //Determine if A9LH is installed via PDN_SPI_CNT and an user flag
-    if((*((u8*)0x101401C0) == 0x0) || fileExists("/rei/installeda9lh")){
+    if((*(u8*)0x101401C0 == 0x0) || fileExists("/rei/installeda9lh")){
         a9lhSetup = 1;
         //Check flag for > 9.2 SysNAND
         if(fileExists("/rei/updatedsysnand")) updatedSys = 1;
     }
 
-    /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
-       is not pressed, boot 9.0 FIRM */
-    if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;
+    //If using A9LH and it's a MCU reboot, try to force boot options
+    if(a9lhSetup && *(u8*)0x10010000 && fileExists("rei/lastbootcfg")){
+        u8 tempConfig;
+        fileRead((u8*)&tempConfig, "rei/lastbootcfg", 1);
 
-    /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
-       or R is pressed on a > 9.2 SysNAND, boot emuNAND */
-    if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
-       (!updatedSys && mode && !(pressed & BUTTON_R1))) emuNAND = 1;
+        //Always force a sysNAND boot when quitting AGB_FIRM
+        if(*(u8*)0x10010000 == 0x7) {
+            mode = updatedSys ? 1 : (tempConfig & 0x1);
+            emuNAND = 0;
+            overrideConfig = 1;
+        //Else, force the last boot options unless A is pressed
+        } else if(!(pressed & BUTTON_A)) {
+            mode = tempConfig & 0x1;
+            emuNAND = (tempConfig >> 1) & 0x1;
+            overrideConfig = 1;
+        }
+    }
+
+    if(!overrideConfig){
+
+        /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
+           is not pressed, boot 9.0 FIRM */
+        if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;
+
+        /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
+           or R is pressed on a > 9.2 SysNAND, boot emuNAND */
+        if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
+           (!updatedSys && mode && !(pressed & BUTTON_R1))) emuNAND = 1;
+
+        //Write the current boot options on A9LH
+        if(a9lhSetup){
+            u8 tempConfig = (mode | (emuNAND << 1)) & 0x3;
+            fileWrite((u8*)&tempConfig, "rei/lastbootcfg", 1);
+        }
+    }
 
     if(mode) firmPathPatched = emuNAND ? "/rei/patched_firmware_emu.bin" :
                                          "/rei/patched_firmware_sys.bin";
@@ -142,8 +171,11 @@ u8 loadEmu(void){
 
 //Patches
 u8 patchFirm(void){
+
+    //Skip patching
     if(usePatchedFirm) return 0;
 
+    //Apply emuNAND patches
     if(emuNAND){
         if (loadEmu()) return 1;
     }
@@ -168,8 +200,8 @@ u8 patchFirm(void){
         *arm9 = 0x801B01C;
     }
 
+    //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
     if(mode){
-        //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
         u32 rebootOffset = 0,
             fOpenOffset = 0;
 
@@ -187,8 +219,8 @@ u8 patchFirm(void){
 
         //Patch path for emuNAND-patched FIRM
         if(emuNAND){
-            u32 *pos_path = memsearch((u32*)rebootOffset, L"sys", size, 6);
-            memcpy((u8*)pos_path, L"emu", 6);
+            u32 *pos_path = memsearch((u32*)rebootOffset, L"sy", size, 4);
+            memcpy((u8*)pos_path, L"emu", 5);
         }
     }
 
