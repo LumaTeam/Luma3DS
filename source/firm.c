@@ -27,6 +27,7 @@ char *firmPathPatched = NULL;
 void setupCFW(void){
 
     u8 overrideConfig = 0;
+    char lastConfigPath[] = "rei/lastbootcfg";
 
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
@@ -42,9 +43,9 @@ void setupCFW(void){
     }
 
     //If using A9LH and it's a MCU reboot, try to force boot options
-    if(a9lhSetup && *(u8*)0x10010000 && fileExists("rei/lastbootcfg")){
+    if(a9lhSetup && *(u8*)0x10010000 && fileExists(lastConfigPath)){
         u8 tempConfig;
-        fileRead((u8*)&tempConfig, "rei/lastbootcfg", 1);
+        fileRead((u8*)&tempConfig, lastConfigPath, 1);
 
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(*(u8*)0x10010000 == 0x7) {
@@ -73,7 +74,7 @@ void setupCFW(void){
         //Write the current boot options on A9LH
         if(a9lhSetup){
             u8 tempConfig = (mode | (emuNAND << 1)) & 0x3;
-            fileWrite((u8*)&tempConfig, "rei/lastbootcfg", 1);
+            fileWrite((u8*)&tempConfig, lastConfigPath, 1);
         }
     }
 
@@ -206,7 +207,7 @@ u8 patchFirm(void){
             fOpenOffset = 0;
 
         //Read reboot code from SD
-        char *path = "/rei/reboot/reboot.bin";
+        char path[] = "/rei/reboot/reboot.bin";
         u32 size = fileSize(path);
         if (!size) return 1;
         getReboot(firmLocation, firmSize, &rebootOffset);
