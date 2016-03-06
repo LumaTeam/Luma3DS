@@ -22,7 +22,7 @@ void getEmunandSect(u32 *off, u32 *head){
 
 void getSDMMC(void *pos, u32 *off, u32 size){
     //Look for struct code
-    unsigned char pattern[] = {0x21, 0x20, 0x18, 0x20};
+    const unsigned char pattern[] = {0x21, 0x20, 0x18, 0x20};
     *off = (u32)memsearch(pos, pattern, size, 4) - 1;
     
     //Get DCD values
@@ -41,7 +41,7 @@ void getSDMMC(void *pos, u32 *off, u32 size){
 
 void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
     //Look for read/write code
-    unsigned char pattern[] = {0x1E, 0x00, 0xC8, 0x05};
+    const unsigned char pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
     *writeOff = (u32)memsearch(pos, pattern, size, 4) - 6;
     *readOff = (u32)memsearch((void *)(*writeOff - 0x1000), pattern, 0x1000, 4) - 6;
@@ -49,7 +49,7 @@ void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
 
 void getMPU(void *pos, u32 *off, u32 size){
     //Look for MPU pattern
-    unsigned char pattern[] = {0x03, 0x00, 0x24, 0x00};
+    const unsigned char pattern[] = {0x03, 0x00, 0x24, 0x00};
 
     *off = (u32)memsearch(pos, pattern, size, 4);
 }

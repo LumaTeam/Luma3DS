@@ -12,12 +12,12 @@
 /**************************************************
 *                   Patches
 **************************************************/
-u8 mpu[0x2C];       
+const u8 mpu[0x2C];       
 u8 nandRedir[0x08];
-u8 sigPat1[2];
-u8 sigPat2[4];
-u8 FIRMblock[4];
-u8 emuInstr[5];
+const u8 sigPat1[2];
+const u8 sigPat2[4];
+const u8 FIRMblock[4];
+const u8 emuInstr[5];
 
 /**************************************************
 *                   Functions
