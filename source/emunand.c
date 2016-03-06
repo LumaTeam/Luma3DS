@@ -8,12 +8,12 @@
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
-static u8 *temp = (u8*)0x24300000;
+static u8 *temp = (u8 *)0x24300000;
 
 void getEmunandSect(u32 *off, u32 *head){
     u32 nandSize = getMMCDevice(0)->total_size;
     if(sdmmc_sdcard_readsectors(nandSize, 1, temp) == 0){
-        if(*(u32*)(temp + 0x100) == NCSD_MAGIC){
+        if(*(u32 *)(temp + 0x100) == NCSD_MAGIC){
             *off = 0;
             *head = nandSize;
         }
@@ -26,10 +26,10 @@ void getSDMMC(void *pos, u32 *off, u32 size){
     *off = (u32)memsearch(pos, pattern, size, 4) - 1;
     
     //Get DCD values
-    u8 buf[4],
-       p;
+    u8 buf[4];
     u32 addr = 0,
-        additive = 0;
+        additive = 0,
+        p;
     memcpy(buf, (void *)(*off+0x0A), 4);
     for (p = 0; p < 4; p++) addr |= ((u32) buf[p]) << (8 * p);
     memcpy(buf, (void *)(*off+0x0E), 4);

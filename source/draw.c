@@ -12,7 +12,7 @@ static struct fb *fb = (struct fb *)0x23FFFE00;
 
 void shutdownLCD(void){
 
-    vu32 *arm11 = (vu32*)0x1FFFFFF8;
+    vu32 *arm11 = (vu32 *)0x1FFFFFF8;
 
     //Clear ARM11 entry offset
     *arm11 = 0;
@@ -36,7 +36,7 @@ void clearScreen(void){
 
 void loadSplash(void){
     //Check if it's a no-screen-init A9LH boot via PDN_GPU_CNT
-    if(*(u8*)0x10141200 == 0x1) return;
+    if(*(u8 *)0x10141200 == 0x1) return;
     clearScreen();
     if(!fileRead(fb->top_left, "/rei/splash.bin", 0x46500)) return;
     u64 i = 0xFFFFFF; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func

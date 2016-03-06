@@ -17,8 +17,8 @@
 #define SAFEMODE           (BUTTON_L1 | BUTTON_R1 | BUTTON_A | (1 << 6))
 
 void setupCFW(void);
-u8 loadFirm(void);
-u8 patchFirm(void);
+u32 loadFirm(void);
+u32 patchFirm(void);
 void launchFirm(void);
 
 #endif

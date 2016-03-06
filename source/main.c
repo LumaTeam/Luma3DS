@@ -10,7 +10,7 @@
 #include "firm.h"
 #include "draw.h"
 
-u8 main(){
+u32 main(){
     mountSD();
     loadSplash();
     setupCFW();
