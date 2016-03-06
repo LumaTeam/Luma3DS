@@ -49,7 +49,7 @@
 #define AES_KEYY				2
 
 //NAND/FIRM stuff
-void nandFirm0(u8 *outbuf, const u32 size, u8 console);
+void nandFirm0(u8 *outbuf, u32 size, u8 console);
 void decArm9Bin(void *armHdr, u8 mode);
 void setKeyXs(void *armHdr);
 
