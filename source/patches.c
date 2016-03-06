@@ -48,8 +48,8 @@ void getReboot(void *pos, u32 size, u32 *off){
 
 void getfOpen(void *pos, u32 size, u32 *off){
     //Calculate fOpen
-    u32 p9addr = *(u32*)(memsearch(pos, "ess9", size, 4) + 0xC);
-    u32 p9off = (u32)(memsearch(pos, "code", size, 4) + 0x1FF);
+    u32 p9addr = *(u32 *)((u8 *)memsearch(pos, "ess9", size, 4) + 0xC);
+    u32 p9off = (u32)memsearch(pos, "code", size, 4) + 0x1FF;
     unsigned char pattern[] = {0xB0, 0x04, 0x98, 0x0D};
 
     *off = (u32)memsearch(pos, pattern, size, 4) - 2 - p9off + p9addr;
@@ -57,7 +57,7 @@ void getfOpen(void *pos, u32 size, u32 *off){
 
 void getFIRMWrite(void *pos, u32 size, u32 *off){
     //Look for FIRM writing code
-    void *firmwrite = memsearch(pos, "exe:", size, 4);
+    u8 *firmwrite = (u8 *)memsearch(pos, "exe:", size, 4);
     unsigned char pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     *off = (u32)memsearch(firmwrite - 0x100, pattern, 0x100, 4);

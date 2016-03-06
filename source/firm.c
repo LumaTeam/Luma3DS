@@ -118,7 +118,7 @@ u32 loadFirm(void){
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 0;
 
     if(console && !usePatchedFirm)
-        decArm9Bin((void *)firmLocation + section[2].offset, mode);
+        decArm9Bin((u8 *)firmLocation + section[2].offset, mode);
 
     return 1;
 }
@@ -236,12 +236,12 @@ u32 patchFirm(void){
 
 void launchFirm(void){
 
-    if(console && mode) setKeyXs((void *)firmLocation + section[2].offset);
+    if(console && mode) setKeyXs((u8 *)firmLocation + section[2].offset);
 
     //Copy firm partitions to respective memory locations
-    memcpy(section[0].address, (void *)firmLocation + section[0].offset, section[0].size);
-    memcpy(section[1].address, (void *)firmLocation + section[1].offset, section[1].size);
-    memcpy(section[2].address, (void *)firmLocation + section[2].offset, section[2].size);
+    memcpy(section[0].address, (u8 *)firmLocation + section[0].offset, section[0].size);
+    memcpy(section[1].address, (u8 *)firmLocation + section[1].offset, section[1].size);
+    memcpy(section[2].address, (u8 *)firmLocation + section[2].offset, section[2].size);
 
     //Run ARM11 screen stuff
     vu32 *arm11 = (vu32 *)0x1FFFFFF8;

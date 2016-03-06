@@ -250,7 +250,7 @@ void nandFirm0(u8 *outbuf, u32 size, u32 console){
 }
 
 //Decrypts the N3DS arm9bin
-void decArm9Bin(void *armHdr, u32 mode){
+void decArm9Bin(u8 *armHdr, u32 mode){
 
     //Firm keys
     u8 keyY[0x10];
@@ -284,10 +284,10 @@ void decArm9Bin(void *armHdr, u32 mode){
 }
 
 //Sets the N3DS 9.6 KeyXs
-void setKeyXs(void *armHdr){
+void setKeyXs(u8 *armHdr){
 
-    void *keyData = armHdr+0x89814;
-    void *decKey = keyData+0x10;
+    u8 *keyData = armHdr+0x89814;
+    u8 *decKey = keyData+0x10;
 
     //Set keys 0x19..0x1F keyXs
     aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
@@ -295,6 +295,6 @@ void setKeyXs(void *armHdr){
     for(u8 slot = 0x19; slot < 0x20; slot++){
         aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        *(u8 *)(keyData+0xF) += 1;
+        *(keyData+0xF) += 1;
     }
 }

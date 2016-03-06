@@ -50,7 +50,7 @@
 
 //NAND/FIRM stuff
 void nandFirm0(u8 *outbuf, u32 size, u32 console);
-void decArm9Bin(void *armHdr, u32 mode);
-void setKeyXs(void *armHdr);
+void decArm9Bin(u8 *armHdr, u32 mode);
+void setKeyXs(u8 *armHdr);
 
 #endif
