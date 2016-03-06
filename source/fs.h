@@ -2,15 +2,15 @@
 *   fs.h
 */
 
-#ifndef __fs_h__
-#define __fs_h__
+#ifndef FS_INC
+#define FS_INC
 
 #include "types.h"
 
-int mountSD(void);
-int fileRead(u8 *dest, const char *path, u32 size);
-int fileWrite(const u8 *buffer, const char *path, u32 size);
-int fileSize(const char* path);
-int fileExists(const char* path);
+u8 mountSD(void);
+u8 fileRead(u8 *dest, const char *path, u32 size);
+u8 fileWrite(const u8 *buffer, const char *path, u32 size);
+u32 fileSize(const char* path);
+u8 fileExists(const char* path);
 
 #endif

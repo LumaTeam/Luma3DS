@@ -3,6 +3,7 @@
 *       by Reisyukaku
 *   Copyright (c) 2015 All Rights Reserved
 */
+
 #ifndef TYPES_INC
 #define TYPES_INC
 

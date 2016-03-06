@@ -3,8 +3,9 @@
 *       by Reisyukaku
 *   Copyright (c) 2015 All Rights Reserved
 */
-#ifndef MEM_INC
-#define MEM_INC
+
+#ifndef MEMORY_INC
+#define MEMORY_INC
 
 #include "types.h"
 

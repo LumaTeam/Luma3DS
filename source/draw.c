@@ -7,7 +7,6 @@
 #include "draw.h"
 #include "fs.h"
 #include "memory.h"
-#include "types.h"
 
 static struct fb *fb = (struct fb *)0x23FFFE00;
 

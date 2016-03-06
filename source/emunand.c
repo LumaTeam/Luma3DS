@@ -6,7 +6,6 @@
 
 #include "emunand.h"
 #include "memory.h"
-#include "fatfs/ff.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 static u8 *temp = (u8*)0x24300000;

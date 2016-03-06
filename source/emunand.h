@@ -4,8 +4,8 @@
 *   Copyright (c) 2015 All Rights Reserved
 */
 
-#ifndef EMU_INC
-#define EMU_INC
+#ifndef EMUNAND_INC
+#define EMUNAND_INC
 
 #include "types.h"
 

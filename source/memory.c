@@ -3,27 +3,28 @@
 *       by Reisyukaku
 *   Copyright (c) 2015 All Rights Reserved
 */
+
 #include "memory.h"
 
 void memcpy(void *dest, const void *src, u32 size){
-    char *destc = (char *)dest;
-    const char *srcc = (const char *)src;
     u32 i; for (i = 0; i < size; i++) {
+        char *destc = (char *)dest;
+        const char *srcc = (const char *)src;
         destc[i] = srcc[i];
     }
 }
 
 void memset(void *dest, int filler, u32 size){
-    char *destc = (char *)dest;
     u32 i; for (i = 0; i < size; i++) {
+        char *destc = (char *)dest;
         destc[i] = filler;
     }
 }
 
 int memcmp(const void *buf1, const void *buf2, u32 size){
-    const char *buf1c = (const char *)buf1;
-    const char *buf2c = (const char *)buf2;
     u32 i; for (i = 0; i < size; i++) {
+        const char *buf1c = (const char *)buf1;
+        const char *buf2c = (const char *)buf2;
         int cmp = buf1c[i] - buf2c[i];
         if (cmp) return cmp;
     }

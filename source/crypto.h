@@ -1,9 +1,8 @@
 // From http://github.com/b1l1s/ctr
 
-#ifndef __CRYPTO_H
-#define __CRYPTO_H
+#ifndef CRYPTO_INC
+#define CRYPTO_INC
 
-#include <stdint.h>
 #include "types.h"
 
 /**************************AES****************************/
@@ -54,4 +53,4 @@ void nandFirm0(u8 *outbuf, const u32 size, u8 console);
 void decArm9Bin(void *armHdr, u8 mode);
 void setKeyXs(void *armHdr);
 
-#endif /*__CRYPTO_H*/
+#endif

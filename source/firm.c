@@ -181,7 +181,7 @@ u8 patchFirm(void){
 
     //Apply emuNAND patches
     if(emuNAND){
-        if(loadEmu()) return 0;
+        if(!loadEmu()) return 0;
     }
     else if(a9lhSetup){
         //Patch FIRM partitions writes on SysNAND to protect A9LH

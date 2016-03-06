@@ -1,8 +1,6 @@
 // From http://github.com/b1l1s/ctr
 
 #include "crypto.h"
-
-#include <stddef.h>
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
@@ -256,7 +254,6 @@ void nandFirm0(u8 *outbuf, const u32 size, u8 console){
 void decArm9Bin(void *armHdr, u8 mode){
 
     //Firm keys
-    u8 keyX[0x10];
     u8 keyY[0x10];
     u8 CTR[0x10];
     u8 slot = mode ? 0x16 : 0x15;
@@ -264,9 +261,14 @@ void decArm9Bin(void *armHdr, u8 mode){
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, armHdr+0x10, 0x10);
     memcpy(CTR, armHdr+0x20, 0x10);
-    u32 size = atoi(armHdr+0x30);
+    u32 size = 0;
+    //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
+    for(u8 *tmp = armHdr+0x30; *tmp; tmp++)
+        size = (size<<3)+(size<<1)+(*tmp)-'0';
 
     if(mode){
+        u8 keyX[0x10];
+
         //Set 0x11 to key2 for the arm9bin and misc keys
         aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x11);
@@ -286,11 +288,11 @@ void decArm9Bin(void *armHdr, u8 mode){
 void setKeyXs(void *armHdr){
 
     //Set keys 0x19..0x1F keyXs
-    void *keyData = armHdr+0x89814;
-    void *decKey = keyData+0x10;
     aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x11);
     for(u8 slot = 0x19; slot < 0x20; slot++){
+        void *keyData = armHdr+0x89814;
+        void *decKey = keyData+0x10;
         aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         *(u8*)(keyData+0xF) += 1;
