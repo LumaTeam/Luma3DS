@@ -50,11 +50,9 @@ _start:
 
     @ Set cache settings
     mov r0, #0x25
-    mov r1, #0x25
-    mov r2, #0x25
     mcr p15, 0, r0, c3, c0, 0	@ Write bufferable 0, 2, 5
-    mcr p15, 0, r1, c2, c0, 0	@ Data cacheable 0, 2, 5
-    mcr p15, 0, r2, c2, c0, 1	@ Inst cacheable 0, 2, 5
+    mcr p15, 0, r0, c2, c0, 0	@ Data cacheable 0, 2, 5
+    mcr p15, 0, r0, c2, c0, 1	@ Inst cacheable 0, 2, 5
 
     bl startCFW
 
