@@ -22,9 +22,10 @@ dir_out := out
 dir_emu := emunand
 dir_reboot := reboot
 dir_ninjhax := CakeBrah
+dir_loader := loader
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -ffast-math
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) --no-print-directory
 
 objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -33,7 +34,7 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 
 .PHONY: all
-all: launcher a9lh emunand reboot ninjhax
+all: launcher a9lh emunand reboot ninjhax loader
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat 
@@ -50,18 +51,21 @@ reboot: $(dir_out)/rei/reboot/reboot.bin
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
 
+.PHONY: loader
+loader: $(dir_out)/rei/loader.bin
+
 .PHONY: clean
 clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
-	rm -rf $(dir_out) $(dir_build)
+	rm -rf $(dir_out) $(dir_build) $(dir_loader)/build $(dir_loader)/loader.elf
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
 
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)/rei
-	@cp -av $(dir_build)/main.bin $(dir_out)/arm9loaderhax.bin
+	@cp -av $(dir_build)/main.bin $@
 
 $(dir_out)/3ds/$(name):
 	@mkdir -p "$(dir_out)/3ds/$(name)"
@@ -75,12 +79,16 @@ $(dir_out)/rei:
 $(dir_out)/rei/emunand/emunand.bin: $(dir_emu)/emuCode.s
 	@armips $<
 	@mkdir -p "$(dir_out)/rei/emunand"
-	@mv emunand.bin $(dir_out)/rei/emunand
+	@mv emunand.bin $@
 
 $(dir_out)/rei/reboot/reboot.bin: $(dir_reboot)/rebootCode.s
 	@armips $<
 	@mkdir -p "$(dir_out)/rei/reboot"
-	@mv reboot.bin $(dir_out)/rei/reboot
+	@mv reboot.bin $@
+
+$(dir_out)/rei/loader.bin: $(dir_out)/rei $(dir_loader)/Makefile
+	@cd $(dir_loader) && make
+	@mv $(dir_loader)/loader.bin $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@

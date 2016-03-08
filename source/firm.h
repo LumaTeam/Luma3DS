@@ -13,8 +13,9 @@
 #define HID_PAD            ((~*(u16*)0x10146000) & 0xFFF)
 #define BUTTON_R1          (1 << 8)
 #define BUTTON_L1          (1 << 9)
+#define BUTTON_L1R1        (BUTTON_R1 | BUTTON_L1)
 #define BUTTON_A           1
-#define SAFEMODE           (BUTTON_L1 | BUTTON_R1 | BUTTON_A | (1 << 6))
+#define SAFEMODE           (BUTTON_L1R1 | BUTTON_A | (1 << 6))
 
 void setupCFW(void);
 u32 loadFirm(void);

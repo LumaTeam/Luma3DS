@@ -11,6 +11,7 @@
 #include "emunand.h"
 #include "crypto.h"
 #include "draw.h"
+#include "loader.h"
 
 firmHeader *firmLocation = (firmHeader *)0x24000000;
 firmSectionHeader *section;
@@ -64,6 +65,9 @@ void setupCFW(void){
     }
 
     if(!overrideConfig){
+
+        //If L and R are pressed, chainload an external payload
+        if(a9lhBoot && (pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
 
         /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
            is not pressed, boot 9.0 FIRM */

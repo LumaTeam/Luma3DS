@@ -10,12 +10,14 @@
 #include "firm.h"
 #include "draw.h"
 
-u32 main(){
+void main(){
     mountSD();
-    loadSplash();
     setupCFW();
-    if(!loadFirm()) return 0;
-    if(!patchFirm()) return 0;
+}
+
+void startCFW(){
+    loadSplash();
+    if(!loadFirm()) return;
+    if(!patchFirm()) return;
     launchFirm();
-    return 1;
 }

@@ -2,7 +2,7 @@ out
 CakeHax
 CakeBrah
 build
-data
+loader/build
 *.bin
 *.3dsx
 *.smdh
