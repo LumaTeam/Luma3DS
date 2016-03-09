@@ -37,6 +37,10 @@ void clearScreen(void){
 void loadSplash(void){
     //Check if it's a no-screen-init A9LH boot via PDN_GPU_CNT
     if(*(u8 *)0x10141200 == 0x1) return;
+	
+	//If booting with A9LH and it's a MCU reboot, skip the splash
+	if(*(u8 *)0x10010000 && (*(u8 *)0x101401C0 == 0x0)) return;
+	
     clearScreen();
     if(!fileRead(fb->top_left, "/rei/splash.bin", 0x46500)) return;
     u64 i = 0xFFFFFF; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
