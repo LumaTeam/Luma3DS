@@ -69,6 +69,9 @@ void setupCFW(void){
         //If L and R are pressed, chainload an external payload
         if(a9lhBoot && (pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
 
+        //Check if it's a no-screen-init A9LH boot via PDN_GPU_CNT
+        if(*(u8 *)0x10141200 != 0x1) loadSplash();
+
         /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
            is not pressed, boot 9.0 FIRM */
         if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;

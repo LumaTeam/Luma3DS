@@ -16,7 +16,6 @@ void main(){
 }
 
 void startCFW(){
-    loadSplash();
     if(!loadFirm()) return;
     if(!patchFirm()) return;
     launchFirm();
