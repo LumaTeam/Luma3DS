@@ -1314,7 +1314,7 @@ int cmp_lfn (			/* 1:Matched, 0:Not matched */
 }
 
 
-
+#if _FS_MINIMIZE <= 1 || _USE_LABEL || _FS_RPATH >= 2
 static
 int pick_lfn (			/* 1:Succeeded, 0:Buffer overflow */
 	WCHAR* lfnbuf,		/* Pointer to the Unicode-LFN buffer */
@@ -1345,6 +1345,7 @@ int pick_lfn (			/* 1:Succeeded, 0:Buffer overflow */
 
 	return 1;
 }
+#endif
 
 
 #if !_FS_READONLY
@@ -1385,7 +1386,7 @@ void fit_lfn (
 /*-----------------------------------------------------------------------*/
 /* Create numbered name                                                  */
 /*-----------------------------------------------------------------------*/
-#if _USE_LFN
+#if _USE_LFN && !_FS_READONLY
 static
 void gen_numname (
 	BYTE* dst,			/* Pointer to the buffer to store numbered SFN */
