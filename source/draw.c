@@ -37,7 +37,8 @@ void clearScreen(void){
 void loadSplash(void){
     clearScreen();
     //Don't delay boot if no splash image is on the SD
-    if(!fileRead(fb->top_left, "/rei/splash.bin", 0x46500) &&
-       !fileRead(fb->bottom, "/rei/splashbottom.bin", 0x38400)) return;
-    u64 i = 0xFFFFFF; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
+    if(fileRead(fb->top_left, "/rei/splash.bin", 0x46500) +
+       fileRead(fb->bottom, "/rei/splashbottom.bin", 0x38400)){
+        u64 i = 0xFFFFFF; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
+    }
 }
