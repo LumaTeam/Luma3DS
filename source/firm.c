@@ -13,17 +13,17 @@
 #include "draw.h"
 #include "loader.h"
 
-firmHeader *firmLocation = (firmHeader *)0x24000000;
-firmSectionHeader *section;
-u32 firmSize = 0,
-    mode = 1,
-    console = 1,
-    emuNAND = 0,
-    a9lhSetup = 0,
-    updatedSys = 0,
-    usePatchedFirm = 0;
-u16 pressed;
-char *firmPathPatched = NULL;
+static firmHeader *const firmLocation = (firmHeader *)0x24000000;
+static const firmSectionHeader *section;
+static u32 firmSize = 0,
+           mode = 1,
+           console = 1,
+           emuNAND = 0,
+           a9lhSetup = 0,
+           updatedSys = 0,
+           usePatchedFirm = 0;
+static u16 pressed;
+static const char *firmPathPatched = NULL;
 
 void setupCFW(void){
 
@@ -131,7 +131,7 @@ u32 loadFirm(void){
 }
 
 //Nand redirection
-u32 loadEmu(void){
+static u32 loadEmu(void){
 
     u32 emuOffset = 0,
         emuHeader = 0,
@@ -251,7 +251,7 @@ void launchFirm(void){
     memcpy(section[2].address, (u8 *)firmLocation + section[2].offset, section[2].size);
 
     //Run ARM11 screen stuff
-    vu32 *arm11 = (vu32 *)0x1FFFFFF8;
+    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
     *arm11 = (u32)shutdownLCD;
     while(*arm11);
     

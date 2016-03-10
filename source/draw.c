@@ -8,11 +8,15 @@
 #include "fs.h"
 #include "memory.h"
 
-static struct fb *fb = (struct fb *)0x23FFFE00;
+static const struct fb {
+    u8 *top_left;
+    u8 *top_right;
+    u8 *bottom;
+} *const fb = (struct fb *)0x23FFFE00;
 
-void shutdownLCD(void){
+void __attribute__((naked)) shutdownLCD(void){
 
-    vu32 *arm11 = (vu32 *)0x1FFFFFF8;
+    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
     //Clear ARM11 entry offset
     *arm11 = 0;
@@ -28,7 +32,7 @@ void shutdownLCD(void){
     ((void (*)())*arm11)();
 }
 
-void clearScreen(void){
+static void clearScreen(void){
     memset(fb->top_left, 0, 0x46500);
     memset(fb->top_right, 0, 0x46500);
     memset(fb->bottom, 0, 0x38400);

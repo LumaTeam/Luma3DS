@@ -52,7 +52,7 @@ u32 fileSize(const char *path){
 
 u32 fileExists(const char *path){
     FIL fp;
-    u8 exists = 0;
+    u32 exists = 0;
 
     if(f_open(&fp, path, FA_READ) == FR_OK) exists = 1;
 

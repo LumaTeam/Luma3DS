@@ -54,7 +54,7 @@ __asm__\
 }
 #endif /*__thumb__*/
 
-void aes_setkey(u8 keyslot, const void* key, u32 keyType, u32 mode)
+static void aes_setkey(u8 keyslot, const void* key, u32 keyType, u32 mode)
 {
 	if(keyslot <= 0x03) return; // Ignore TWL keys for now
 	u32 * key32 = (u32 *)key;
@@ -67,7 +67,7 @@ void aes_setkey(u8 keyslot, const void* key, u32 keyType, u32 mode)
 	REG_AESKEYFIFO[keyType] = key32[3];
 }
 
-void aes_use_keyslot(u8 keyslot)
+static void aes_use_keyslot(u8 keyslot)
 {
 	if(keyslot > 0x3F)
 		return;
@@ -76,7 +76,7 @@ void aes_use_keyslot(u8 keyslot)
 	*REG_AESCNT = *REG_AESCNT | 0x04000000; /* mystery bit */
 }
 
-void aes_setiv(const void* iv, u32 mode)
+static void aes_setiv(const void* iv, u32 mode)
 {
 	const u32 *iv32 = (const u32 *)iv;
 	*REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
@@ -98,7 +98,7 @@ void aes_setiv(const void* iv, u32 mode)
 	}
 }
 
-void aes_advctr(void *ctr, u32 val, u32 mode)
+static void aes_advctr(void *ctr, u32 val, u32 mode)
 {
 	u32 *ctr32 = (u32*)ctr;
 	
@@ -125,7 +125,7 @@ void aes_advctr(void *ctr, u32 val, u32 mode)
 	}
 }
 
-void aes_change_ctrmode(void *ctr, u32 fromMode, u32 toMode)
+static void aes_change_ctrmode(void *ctr, u32 fromMode, u32 toMode)
 {
 	u32 *ctr32 = (u32 *)ctr;
 	int i;
@@ -147,7 +147,7 @@ void aes_change_ctrmode(void *ctr, u32 fromMode, u32 toMode)
 	}
 }
 
-void aes_batch(void *dst, const void *src, u32 blockCount)
+static void aes_batch(void *dst, const void *src, u32 blockCount)
 {
 	*REG_AESBLKCNT = blockCount << 16;
 	*REG_AESCNT |=	AES_CNT_START;
@@ -180,7 +180,7 @@ void aes_batch(void *dst, const void *src, u32 blockCount)
 	}
 }
 
-void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
+static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
 {
 	*REG_AESCNT =	mode |
 					AES_CNT_INPUT_ORDER | AES_CNT_OUTPUT_ORDER |
@@ -228,12 +228,12 @@ void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivM
 ****************************************************************/
 
 //Nand key#2 (0x12C10)
-const u8 key2[0x10] = {
+static const u8 key2[0x10] = {
     0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0
 };
 
 //Get Nand CTR key
-void getNandCTR(u8 *buf, u32 console){
+static void getNandCTR(u8 *buf, u32 console){
     u8 *addr = (console ? (u8 *)0x080D8BBC : (u8 *)0x080D797C) + 0x0F;
     for(u8 keyLen = 0x10; keyLen; keyLen--)
         *(buf++) = *(addr--);

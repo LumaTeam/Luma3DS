@@ -58,7 +58,8 @@ loader: $(dir_out)/rei/loader.bin
 clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
-	rm -rf $(dir_out) $(dir_build) $(dir_loader)/build $(dir_loader)/loader.elf
+	@rm -rf $(dir_out) $(dir_build)
+	@cd $(dir_loader) && make clean
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher

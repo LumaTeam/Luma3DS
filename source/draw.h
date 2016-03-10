@@ -9,13 +9,7 @@
 
 #include "types.h"
 
-struct fb {
-    u8 *top_left;
-    u8 *top_right;
-    u8 *bottom;
-};
-
 void loadSplash(void);
-void shutdownLCD(void);
+void __attribute__((naked)) shutdownLCD(void);
 
 #endif
