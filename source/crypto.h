@@ -1,7 +1,6 @@
 // From http://github.com/b1l1s/ctr
 
-#ifndef CRYPTO_INC
-#define CRYPTO_INC
+#pragma once
 
 #include "types.h"
 
@@ -52,5 +51,3 @@
 void nandFirm0(u8 *outbuf, u32 size, u32 console);
 void decArm9Bin(u8 *armHdr, u32 mode);
 void setKeyXs(u8 *armHdr);
-
-#endif

@@ -4,8 +4,7 @@
 *   Copyright (c) 2015 All Rights Reserved
 */
 
-#ifndef EMUNAND_INC
-#define EMUNAND_INC
+#pragma once
 
 #include "types.h"
 
@@ -15,5 +14,3 @@ void getEmunandSect(u32 *off, u32 *head);
 void getSDMMC(void *pos, u32 *off, u32 size);
 void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff);
 void getMPU(void *pos, u32 *off, u32 size);
-
-#endif

@@ -2,11 +2,8 @@
 *   loader.h
 */
 
-#ifndef LOADER_INC
-#define LOADER_INC
+#pragma once
 
 #include "types.h"
 
 void loadPayload(void);
-
-#endif

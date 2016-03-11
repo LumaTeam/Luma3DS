@@ -4,8 +4,7 @@
 *   Copyright (c) 2015 All Rights Reserved
 */
 
-#ifndef PATCHES_INC
-#define PATCHES_INC
+#pragma once
 
 #include "types.h"
 
@@ -26,5 +25,3 @@ void getSignatures(void *pos, u32 size, u32 *off, u32 *off2);
 void getReboot(void *pos, u32 size, u32 *off);
 void getfOpen(void *pos, u32 size, u32 *off);
 void getFIRMWrite(void *pos, u32 size, u32 *off);
-
-#endif

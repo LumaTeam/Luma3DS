@@ -4,12 +4,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define u8 uint8_t
-#define u16 uint16_t
-#define u32 uint32_t
-#define u64 uint64_t
-
-#define vu8 volatile u8
-#define vu16 volatile u16
-#define vu32 volatile u32
-#define vu64 volatile u64
+//Common data types
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef volatile u8 vu8;
+typedef volatile u16 vu16;
+typedef volatile u32 vu32;
+typedef volatile u64 vu64;

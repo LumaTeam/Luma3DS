@@ -28,7 +28,7 @@ static const char *firmPathPatched = NULL;
 void setupCFW(void){
 
     //Determine if booting with A9LH via PDN_SPI_CNT
-    u8 a9lhBoot = (*(u8 *)0x101401C0 == 0x0) ? 1 : 0;
+    u32 a9lhBoot = (*(u8 *)0x101401C0 == 0x0) ? 1 : 0;
     //Retrieve the last booted FIRM via CFG_BOOTENV
     u8 previousFirm = *(u8 *)0x10010000;
     u32 overrideConfig = 0;
@@ -135,11 +135,11 @@ static u32 loadEmu(void){
 
     u32 emuOffset = 0,
         emuHeader = 0,
-        emuRead = 0,
-        emuWrite = 0,
-        sdmmcOffset = 0,
-        mpuOffset = 0,
-        emuCodeOffset = 0;
+        emuRead,
+        emuWrite,
+        sdmmcOffset,
+        mpuOffset,
+        emuCodeOffset;
 
     //Read emunand code from SD
     const char path[] = "/rei/emunand/emunand.bin";
@@ -197,23 +197,21 @@ u32 patchFirm(void){
     }
 
     //Disable signature checks
-    u32 sigOffset = 0,
-        sigOffset2 = 0;
+    u32 sigOffset,
+        sigOffset2;
 
     getSignatures(firmLocation, firmSize, &sigOffset, &sigOffset2);
     memcpy((void *)sigOffset, sigPat1, sizeof(sigPat1));
     memcpy((void *)sigOffset2, sigPat2, sizeof(sigPat2));
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
-    if(console){
-        u32 *arm9 = (u32 *)&firmLocation->arm9Entry;
-        *arm9 = 0x801B01C;
-    }
+    if(console)
+        firmLocation->arm9Entry = (u8 *)0x801B01C;
 
     //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
     if(mode){
-        u32 rebootOffset = 0,
-            fOpenOffset = 0;
+        u32 rebootOffset,
+            fOpenOffset;
 
         //Read reboot code from SD
         const char path[] = "/rei/reboot/reboot.bin";
@@ -254,10 +252,10 @@ void launchFirm(void){
     vu32 *const arm11 = (u32 *)0x1FFFFFF8;
     *arm11 = (u32)shutdownLCD;
     while(*arm11);
-    
+
     //Set ARM11 kernel
     *arm11 = (u32)firmLocation->arm11Entry;
-    
+
     //Final jump to arm9 binary
     ((void (*)())firmLocation->arm9Entry)();
 }

@@ -4,8 +4,7 @@
 *   Copyright (c) 2015 All Rights Reserved
 */
 
-#ifndef FIRM_INC
-#define FIRM_INC
+#pragma once
 
 #include "types.h"
 
@@ -17,9 +16,25 @@
 #define BUTTON_A           1
 #define SAFEMODE           (BUTTON_L1R1 | BUTTON_A | (1 << 6))
 
+//FIRM Header layout
+typedef struct firmSectionHeader {
+    u32 offset;
+    u8 *address;
+    u32 size;
+    u32 procType;
+    u8 hash[0x20];
+} firmSectionHeader;
+
+typedef struct firmHeader {
+    u32 magic;
+    u32 reserved1;
+    u8 *arm11Entry;
+    u8 *arm9Entry;
+    u8 reserved2[0x30];
+    firmSectionHeader section[4];
+} firmHeader;
+
 void setupCFW(void);
 u32 loadFirm(void);
 u32 patchFirm(void);
 void launchFirm(void);
-
-#endif
