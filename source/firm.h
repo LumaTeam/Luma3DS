@@ -8,8 +8,11 @@
 
 #include "types.h"
 
-#define PDN_MPCORE_CFG     (*(u8*)0x10140FFC)
-#define HID_PAD            ((~*(u16*)0x10146000) & 0xFFF)
+#define PDN_MPCORE_CFG     (*(vu8 *)0x10140FFC)
+#define HID_PAD            ((~*(vu16 *)0x10146000) & 0xFFF)
+#define PDN_SPI_CNT        (*(vu8 *)0x101401C0)
+#define CFG_BOOTENV        (*(vu8 *)0x10010000)
+#define PDN_GPU_CNT        (*(vu8 *)0x10141200)
 #define BUTTON_R1          (1 << 8)
 #define BUTTON_L1          (1 << 9)
 #define BUTTON_L1R1        (BUTTON_R1 | BUTTON_L1)

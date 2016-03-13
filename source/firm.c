@@ -27,10 +27,10 @@ static const char *firmPathPatched = NULL;
 
 void setupCFW(void){
 
-    //Determine if booting with A9LH via PDN_SPI_CNT
-    u32 a9lhBoot = (*(u8 *)0x101401C0 == 0x0) ? 1 : 0;
-    //Retrieve the last booted FIRM via CFG_BOOTENV
-    u8 previousFirm = *(u8 *)0x10010000;
+    //Determine if booting with A9LH
+    u32 a9lhBoot = (PDN_SPI_CNT == 0x0) ? 1 : 0;
+    //Retrieve the last booted FIRM
+    u8 previousFirm = CFG_BOOTENV;
     u32 overrideConfig = 0;
     const char lastConfigPath[] = "rei/lastbootcfg";
 
@@ -69,8 +69,8 @@ void setupCFW(void){
         //If L and R are pressed, chainload an external payload
         if(a9lhBoot && (pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
 
-        //Check if it's a no-screen-init A9LH boot via PDN_GPU_CNT
-        if(*(u8 *)0x10141200 != 0x1) loadSplash();
+        //Check if it's a no-screen-init A9LH boot
+        if(PDN_GPU_CNT != 0x1) loadSplash();
 
         /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
            is not pressed, boot 9.0 FIRM */

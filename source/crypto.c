@@ -54,10 +54,10 @@ __asm__\
 }
 #endif /*__thumb__*/
 
-static void aes_setkey(u8 keyslot, const void* key, u32 keyType, u32 mode)
+static void aes_setkey(u8 keyslot, const void *key, u32 keyType, u32 mode)
 {
 	if(keyslot <= 0x03) return; // Ignore TWL keys for now
-	u32 * key32 = (u32 *)key;
+	u32 *key32 = (u32 *)key;
 	*REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
 	*REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
 
@@ -76,7 +76,7 @@ static void aes_use_keyslot(u8 keyslot)
 	*REG_AESCNT = *REG_AESCNT | 0x04000000; /* mystery bit */
 }
 
-static void aes_setiv(const void* iv, u32 mode)
+static void aes_setiv(const void *iv, u32 mode)
 {
 	const u32 *iv32 = (const u32 *)iv;
 	*REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
@@ -100,7 +100,7 @@ static void aes_setiv(const void* iv, u32 mode)
 
 static void aes_advctr(void *ctr, u32 val, u32 mode)
 {
-	u32 *ctr32 = (u32*)ctr;
+	u32 *ctr32 = (u32 *)ctr;
 	
 	int i;
 	if(mode & AES_INPUT_BE)
