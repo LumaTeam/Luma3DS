@@ -8,7 +8,6 @@
 
 #include "fs.h"
 #include "firm.h"
-#include "draw.h"
 
 void main(){
     mountSD();
