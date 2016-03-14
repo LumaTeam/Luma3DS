@@ -133,8 +133,8 @@ u32 loadFirm(void){
 //Nand redirection
 static u32 loadEmu(void){
 
-    u32 emuOffset = 0,
-        emuHeader = 0,
+    u32 emuOffset = 1,
+        emuHeader = 1,
         emuRead,
         emuWrite,
         sdmmcOffset,
