@@ -17,6 +17,7 @@
 #define BUTTON_L1          (1 << 9)
 #define BUTTON_L1R1        (BUTTON_R1 | BUTTON_L1)
 #define BUTTON_A           1
+#define BUTTON_B           (1 << 1)
 #define SAFEMODE           (BUTTON_L1R1 | BUTTON_A | (1 << 6))
 
 //FIRM Header layout

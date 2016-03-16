@@ -8,15 +8,20 @@
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
-void getEmunandSect(u32 *off, u32 *head){
+void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
     u8 *const temp = (u8 *)0x24300000;
 
     u32 nandSize = getMMCDevice(0)->total_size;
-    if(sdmmc_sdcard_readsectors(nandSize, 1, temp) == 0){
+    u32 nandOffset = emuNAND == 1 ? 0 :
+                                  (nandSize > 0x200000 ? 0x400000 : 0x200000);
+
+    if(sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) == 0){
         if(*(u32 *)(temp + 0x100) == NCSD_MAGIC){
-            *off = 0;
-            *head = nandSize;
+            *off = nandOffset;
+            *head = nandOffset + nandSize;
         }
+        //Fallback to the first emuNAND if there's no second one
+        else if(emuNAND == 2) getEmunandSect(off, head, 1);
     }
 }
 

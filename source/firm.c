@@ -53,11 +53,11 @@ void setupCFW(void){
         fileRead(&tempConfig, lastConfigPath, 1);
 
         //Always force a sysNAND boot when quitting AGB_FIRM
-        if(previousFirm == 0x7) {
+        if(previousFirm == 0x7){
             if(!updatedSys) mode = tempConfig & 0x1;
             overrideConfig = 1;
         //Else, force the last used boot options unless A is pressed
-        } else if(!(pressed & BUTTON_A)) {
+        } else if(!(pressed & BUTTON_A)){
             mode = tempConfig & 0x1;
             emuNAND = (tempConfig >> 1) & 0x1;
             overrideConfig = 1;
@@ -79,7 +79,11 @@ void setupCFW(void){
         /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 SysNAND, boot emuNAND */
         if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
-           (!updatedSys && mode && !(pressed & BUTTON_R1))) emuNAND = 1;
+           (!updatedSys && mode && !(pressed & BUTTON_R1))){
+            //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
+            if(mode && (pressed & BUTTON_B)) emuNAND = 2;
+            else emuNAND = 1;
+        }
 
         //Write the current boot options on A9LH
         if(a9lhBoot){
@@ -88,8 +92,9 @@ void setupCFW(void){
         }
     }
 
-    if(mode) firmPathPatched = emuNAND ? "/rei/patched_firmware_emu.bin" :
-                                         "/rei/patched_firmware_sys.bin";
+    if(mode) firmPathPatched = emuNAND ? (emuNAND == 1 ? "/rei/patched_firmware_emu.bin" :
+                                                        "/rei/patched_firmware_em2.bin") :
+                                                        "/rei/patched_firmware_sys.bin";
 
     //Skip decrypting and patching FIRM
     if(fileExists("/rei/usepatchedfw")){
@@ -156,7 +161,7 @@ static u32 loadEmu(void){
     u32 *pos_offset = (u32 *)memsearch((void *)emuCodeOffset, "NAND", size, 4);
     u32 *pos_header = (u32 *)memsearch((void *)emuCodeOffset, "NCSD", size, 4);
     getSDMMC(firmLocation, &sdmmcOffset, firmSize);
-    getEmunandSect(&emuOffset, &emuHeader);
+    getEmunandSect(&emuOffset, &emuHeader, emuNAND);
     getEmuRW(firmLocation, firmSize, &emuRead, &emuWrite);
     getMPU(firmLocation, &mpuOffset, firmSize);
     *pos_sdmmc = sdmmcOffset;
@@ -228,7 +233,8 @@ u32 patchFirm(void){
         //Patch path for emuNAND-patched FIRM
         if(emuNAND){
             void *pos_path = memsearch((void *)rebootOffset, L"sy", size, 4);
-            memcpy(pos_path, L"emu", 5);
+            const wchar_t *path = emuNAND == 1 ? L"emu" : L"em2";
+            memcpy(pos_path, path, 5);
         }
     }
 
