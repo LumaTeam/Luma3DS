@@ -36,7 +36,8 @@ void main(){
        ((pressed & BUTTON_UP) && loadPayload("/rei/payloads/up.bin")) ||
        ((pressed & BUTTON_DOWN) && loadPayload("/rei/payloads/down.bin")) ||
        loadPayload("/rei/payloads/default.bin")){
-        initLCD();
+        //Determine if screen was already inited
+        if(*(vu8 *)0x10141200 == 0x1) initLCD();
         ((void (*)())PAYLOAD_ADDRESS)();
     }
 }

@@ -102,9 +102,6 @@ void initLCD()
         ((void (*)())*arm11)();
     }
 
-    //Determine if screen was already inited
-    if(*(vu8 *)0x10141200 != 0x1) return;
-
     //Set CakeBrah framebuffers
     *(vu32 *)0x23FFFE00 = 0x18300000;
     *(vu32 *)0x23FFFE04 = 0x18300000;
