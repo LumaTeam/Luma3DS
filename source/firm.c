@@ -22,7 +22,7 @@ static u32 firmSize = 0,
            a9lhSetup = 0,
            updatedSys = 0,
            usePatchedFirm = 0;
-static u16 pressed;
+extern u16 pressed;
 static const char *firmPathPatched = NULL;
 
 void setupCFW(void){
@@ -36,9 +36,6 @@ void setupCFW(void){
 
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
-
-    //Get pressed buttons
-    pressed = HID_PAD;
 
     //Determine if A9LH is installed
     if(a9lhBoot || fileExists("/rei/installeda9lh")){
