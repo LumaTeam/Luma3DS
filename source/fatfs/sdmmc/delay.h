@@ -6,4 +6,4 @@
 
 #include "common.h"
 
-void waitcycles(u32 us);
+void ioDelay(u32 us);

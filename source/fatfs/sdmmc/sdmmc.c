@@ -286,7 +286,7 @@ static void InitSD()
 static int Nand_Init()
 {
     inittarget(&handleNAND);
-    waitcycles(0xF000);
+    ioDelay(0xF000);
 
     sdmmc_send_command(&handleNAND,0,0);
 
@@ -337,7 +337,7 @@ static int SD_Init()
 {
     inittarget(&handleSD);
 
-    waitcycles(1u << 18); //Card needs a little bit of time to be detected, it seems
+    ioDelay(1u << 18); //Card needs a little bit of time to be detected, it seems
     
     //If not inserted
     if (!(*((vu16*)0x1000601c) & TMIO_STAT0_SIGSTATE)) return -1;

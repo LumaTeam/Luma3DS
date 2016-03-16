@@ -1,10 +1,17 @@
-.arm
-.global waitcycles
-.type   waitcycles STT_FUNC
+// Copyright 2014 Normmatt
+// Licensed under GPLv2 or any later version
+// Refer to the license.txt file included.
 
-@waitcycles ( u32 us )
-waitcycles:
-    waitcycles_loop:
-        subs r0, #1
-        bgt waitcycles_loop
-    bx lr
+.arm
+.global ioDelay
+.type   ioDelay STT_FUNC
+
+@ioDelay ( u32 us )
+ioDelay:
+	ldr r1, =0x18000000  @ VRAM
+1:
+	@ Loop doing uncached reads from VRAM to make loop timing more reliable
+	ldr r2, [r1]
+	subs r0, #1
+	bgt 1b
+	bx lr
