@@ -8,10 +8,20 @@
 
 #include "fs.h"
 #include "firm.h"
+#include "linux.h"
+
+u16 pressed;
 
 void main(void){
     mountSD();
-    setupCFW();
+    
+    pressed = HID_PAD;
+    if(pressed & 32){
+        loadLinux();
+        runLinux();
+    }else{
+        setupCFW();
+    }
 }
 
 void startCFW(void){

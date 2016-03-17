@@ -12,6 +12,7 @@ Copy everything in 'out' folder to SD root and run!
 **Usage / Features:**
 
 See https://github.com/Reisyukaku/ReiNand and http://gbatemp.net/threads/reinand-mod-o3ds-n3ds-sysnand.411110
+Hold left to load zImage and nintendo3ds_ctr.dtb from the root of the SD card.
 
 The FIRMs you need are here:
 
