@@ -69,7 +69,7 @@ DRESULT disk_read (
 DRESULT disk_write (
 	__attribute__((unused))
 	BYTE pdrv,			/* Physical drive nmuber to identify the drive */
-	const BYTE *buff,	/* Data to be written */
+	const BYTE *buff,       	/* Data to be written */
 	DWORD sector,		/* Sector address in LBA */
 	UINT count			/* Number of sectors to write */
 )

@@ -5,7 +5,7 @@
 
 #define PAYLOAD_ADDRESS	0x23F00000
 
-u32 loadPayload(const char *path){
+static u32 loadPayload(const char *path){
     FIL payload;
     unsigned int br;
     if(f_open(&payload, path, FA_READ) == FR_OK)
@@ -19,7 +19,7 @@ u32 loadPayload(const char *path){
     return 0;
 }
 
-void main(){
+void main(void){
     FATFS fs;
     f_mount(&fs, "0:", 1);
 

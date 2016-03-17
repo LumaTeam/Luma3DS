@@ -1,12 +1,10 @@
 #include "screeninit.h"
 #include "i2c.h"
 
-void initLCD()
-{
+void initLCD(void){
     vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
-    void __attribute__((naked)) ARM11()
-    {
+    void __attribute__((naked)) ARM11(void){
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
         *(vu32 *)0x1020200C &= 0xFFFEFFFE;

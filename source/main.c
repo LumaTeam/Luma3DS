@@ -9,12 +9,12 @@
 #include "fs.h"
 #include "firm.h"
 
-void main(){
+void main(void){
     mountSD();
     setupCFW();
 }
 
-void startCFW(){
+void startCFW(void){
     if(!loadFirm()) return;
     if(!patchFirm()) return;
     launchFirm();

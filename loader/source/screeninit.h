@@ -2,4 +2,4 @@
 
 #include "types.h"
 
-void initLCD();
+void initLCD(void);
