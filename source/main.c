@@ -13,9 +13,6 @@
 void main(void){
     mountSD();
     setupCFW();
-}
-
-void startCFW(void){
     if(!loadFirm()) return;
     if(!patchFirm()) return;
     launchFirm();
