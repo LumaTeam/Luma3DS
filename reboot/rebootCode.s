@@ -99,7 +99,7 @@ Memcpy:
 		BX      LR
 	
 FileName:
-	.dcw "sdmc:/rei/patched_firmware_sys.bin"
+	.dcw "sdmc:/aurei/patched_firmware_sys.bin"
 	.word 0x0
 
 .pool

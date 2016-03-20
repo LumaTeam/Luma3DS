@@ -32,17 +32,17 @@ void __attribute__((naked)) shutdownLCD(void){
     ((void (*)())*arm11)();
 }
 
-static void clearScreen(void){
-    memset(fb->top_left, 0, 0x46500);
-    memset(fb->top_right, 0, 0x46500);
-    memset(fb->bottom, 0, 0x38400);
+static void clearScreens(void){
+    memset32(fb->top_left, 0, 0x46500);
+    memset32(fb->top_right, 0, 0x46500);
+    memset32(fb->bottom, 0, 0x38400);
 }
 
 void loadSplash(void){
-    clearScreen();
+    clearScreens();
     //Don't delay boot if no splash image is on the SD
-    if(fileRead(fb->top_left, "/rei/splash.bin", 0x46500) +
-       fileRead(fb->bottom, "/rei/splashbottom.bin", 0x38400)){
-        u64 i = 0xFFFFFF; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
+    if(fileRead(fb->top_left, "/aurei/splash.bin", 0x46500) +
+       fileRead(fb->bottom, "/aurei/splashbottom.bin", 0x38400)){
+        u64 i = 0x1300000; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
     }
 }

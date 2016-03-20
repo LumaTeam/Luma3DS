@@ -19,6 +19,12 @@ void memset(void *dest, int filler, u32 size){
         destc[i] = (u8)filler;
 }
 
+void memset32(void *dest, u32 filler, u32 size){
+    u32 *dest32 = (u32 *)dest;
+    for (u32 i = 0; i < size / 4; i++)
+        dest32[i] = filler;
+}
+
 int memcmp(const void *buf1, const void *buf2, u32 size){
     const u8 *buf1c = (const u8 *)buf1;
     const u8 *buf2c = (const u8 *)buf2;

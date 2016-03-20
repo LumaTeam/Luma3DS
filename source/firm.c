@@ -32,7 +32,7 @@ void setupCFW(void){
     //Retrieve the last booted FIRM
     u8 previousFirm = CFG_BOOTENV;
     u32 overrideConfig = 0;
-    const char lastConfigPath[] = "rei/lastbootcfg";
+    const char lastConfigPath[] = "aurei/lastbootcfg";
 
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
@@ -41,10 +41,10 @@ void setupCFW(void){
     pressed = HID_PAD;
 
     //Determine if A9LH is installed
-    if(a9lhBoot || fileExists("/rei/installeda9lh")){
+    if(a9lhBoot || fileExists("/aurei/installeda9lh")){
         a9lhSetup = 1;
         //Check flag for > 9.2 SysNAND
-        if(fileExists("/rei/updatedsysnand")) updatedSys = 1;
+        if(fileExists("/aurei/updatedsysnand")) updatedSys = 1;
     }
 
     //If booting with A9LH and it's a MCU reboot, try to force boot options
@@ -92,14 +92,14 @@ void setupCFW(void){
         }
     }
 
-    if(mode) firmPathPatched = emuNAND ? (emuNAND == 1 ? "/rei/patched_firmware_emu.bin" :
-                                                        "/rei/patched_firmware_em2.bin") :
-                                                        "/rei/patched_firmware_sys.bin";
+    if(mode) firmPathPatched = emuNAND ? (emuNAND == 1 ? "/aurei/patched_firmware_emu.bin" :
+                                                        "/aurei/patched_firmware_em2.bin") :
+                                                        "/aurei/patched_firmware_sys.bin";
 
     //Skip decrypting and patching FIRM
-    if(fileExists("/rei/usepatchedfw")){
+    if(fileExists("/aurei/usepatchedfw")){
         //Only needed with this flag
-        if(!mode) firmPathPatched = "/rei/patched_firmware90.bin";
+        if(!mode) firmPathPatched = "/aurei/patched_firmware90.bin";
         if(fileExists(firmPathPatched)) usePatchedFirm = 1;
     }
 }
@@ -118,7 +118,7 @@ u32 loadFirm(void){
     //Load FIRM from SD
     else{
         const char *path = usePatchedFirm ? firmPathPatched :
-                                (mode ? "/rei/firmware.bin" : "/rei/firmware90.bin");
+                                (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
         if(!firmSize) return 0;
         fileRead((u8 *)firmLocation, path, firmSize);
@@ -147,7 +147,7 @@ static u32 loadEmu(void){
         emuCodeOffset;
 
     //Read emunand code from SD
-    const char path[] = "/rei/emunand/emunand.bin";
+    const char path[] = "/aurei/emunand/emunand.bin";
     u32 size = fileSize(path);
     if(!size) return 0;
     if(!console || !mode) nandRedir[5] = 0xA4;
@@ -167,6 +167,9 @@ static u32 loadEmu(void){
     *pos_sdmmc = sdmmcOffset;
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
+
+    //No emuNAND detected
+    if(!*pos_header) return 0;
 
     //Patch emuNAND code in memory for O3DS and 9.0 N3DS
     if(!console || !mode){
@@ -219,7 +222,7 @@ u32 patchFirm(void){
             fOpenOffset;
 
         //Read reboot code from SD
-        const char path[] = "/rei/reboot/reboot.bin";
+        const char path[] = "/aurei/reboot/reboot.bin";
         u32 size = fileSize(path);
         if(!size) return 0;
         getReboot(firmLocation, firmSize, &rebootOffset);
