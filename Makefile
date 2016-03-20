@@ -12,7 +12,7 @@ ifneq ($(PYTHON_VER_MAJOR), 3)
 	PYTHON3 := py -3
 endif
 
-name := ReiNand
+name := AuReiNand
 
 dir_source := source
 dir_data := data
@@ -26,7 +26,7 @@ dir_loader := loader
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -ffast-math
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) --no-print-directory
+FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
 
 objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 			  $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -43,29 +43,29 @@ launcher: $(dir_out)/$(name).dat
 a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: emunand
-emunand: $(dir_out)/rei/emunand/emunand.bin
+emunand: $(dir_out)/aurei/emunand/emunand.bin
 
 .PHONY: reboot
-reboot: $(dir_out)/rei/reboot/reboot.bin
+reboot: $(dir_out)/aurei/reboot/reboot.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
 
 .PHONY: loader
-loader: $(dir_out)/rei/loader.bin
+loader: $(dir_out)/aurei/loader.bin
 
 .PHONY: clean
 clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@rm -rf $(dir_out) $(dir_build)
-	@cd $(dir_loader) && make clean
+	@$(MAKE) -C $(dir_loader) clean
 
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei
+$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/aurei
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)/rei
+$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)/aurei
 	@cp -av $(dir_build)/main.bin $@
 
 $(dir_out)/3ds/$(name):
@@ -74,21 +74,21 @@ $(dir_out)/3ds/$(name):
 	@mv $(dir_out)/$(name).3dsx $@
 	@mv $(dir_out)/$(name).smdh $@
 
-$(dir_out)/rei:
-	@mkdir -p "$(dir_out)/rei"
+$(dir_out)/aurei:
+	@mkdir -p "$(dir_out)/aurei"
 
-$(dir_out)/rei/emunand/emunand.bin: $(dir_emu)/emuCode.s
+$(dir_out)/aurei/emunand/emunand.bin: $(dir_emu)/emuCode.s
 	@armips $<
-	@mkdir -p "$(dir_out)/rei/emunand"
+	@mkdir -p "$(dir_out)/aurei/emunand"
 	@mv emunand.bin $@
 
-$(dir_out)/rei/reboot/reboot.bin: $(dir_reboot)/rebootCode.s
+$(dir_out)/aurei/reboot/reboot.bin: $(dir_reboot)/rebootCode.s
 	@armips $<
-	@mkdir -p "$(dir_out)/rei/reboot"
+	@mkdir -p "$(dir_out)/aurei/reboot"
 	@mv reboot.bin $@
 
-$(dir_out)/rei/loader.bin: $(dir_out)/rei $(dir_loader)/Makefile
-	@cd $(dir_loader) && make
+$(dir_out)/aurei/loader.bin: $(dir_out)/aurei $(dir_loader)/Makefile
+	@$(MAKE) -C $(dir_loader)
 	@mv $(dir_loader)/loader.bin $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf

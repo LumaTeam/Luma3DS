@@ -26,16 +26,16 @@ void main(void){
     //Get pressed buttons
     u16 pressed = HID_PAD;
 
-    if(((pressed & BUTTON_B) && loadPayload("/rei/payloads/b.bin")) ||
-       ((pressed & BUTTON_X) && loadPayload("/rei/payloads/x.bin")) ||
-       ((pressed & BUTTON_Y) && loadPayload("/rei/payloads/y.bin")) ||
-       ((pressed & BUTTON_SELECT) && loadPayload("/rei/payloads/select.bin")) ||
-       ((pressed & BUTTON_START) && loadPayload("/rei/payloads/start.bin")) ||
-       ((pressed & BUTTON_RIGHT) && loadPayload("/rei/payloads/right.bin")) ||
-       ((pressed & BUTTON_LEFT) && loadPayload("/rei/payloads/left.bin")) ||
-       ((pressed & BUTTON_UP) && loadPayload("/rei/payloads/up.bin")) ||
-       ((pressed & BUTTON_DOWN) && loadPayload("/rei/payloads/down.bin")) ||
-       loadPayload("/rei/payloads/default.bin")){
+    if(((pressed & BUTTON_B) && loadPayload("/aurei/payloads/b.bin")) ||
+       ((pressed & BUTTON_X) && loadPayload("/aurei/payloads/x.bin")) ||
+       ((pressed & BUTTON_Y) && loadPayload("/aurei/payloads/y.bin")) ||
+       ((pressed & BUTTON_SELECT) && loadPayload("/aurei/payloads/select.bin")) ||
+       ((pressed & BUTTON_START) && loadPayload("/aurei/payloads/start.bin")) ||
+       ((pressed & BUTTON_RIGHT) && loadPayload("/aurei/payloads/right.bin")) ||
+       ((pressed & BUTTON_LEFT) && loadPayload("/aurei/payloads/left.bin")) ||
+       ((pressed & BUTTON_UP) && loadPayload("/aurei/payloads/up.bin")) ||
+       ((pressed & BUTTON_DOWN) && loadPayload("/aurei/payloads/down.bin")) ||
+       loadPayload("/aurei/payloads/default.bin")){
         //Determine if screen was already inited
         if(*(vu8 *)0x10141200 == 0x1) initLCD();
         ((void (*)())PAYLOAD_ADDRESS)();

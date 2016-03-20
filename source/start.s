@@ -10,7 +10,7 @@ _start:
     mcr p15, 0, r0, c5, c0, 2 @ write data access
     mcr p15, 0, r0, c5, c0, 3 @ write instruction access
 
-    @ Set MPU permissions
+    @ Set MPU permissions and cache settings
     ldr r0, =0xFFFF001D	@ ffff0000 32k
     ldr r1, =0x01FF801D	@ 01ff8000 32k
     ldr r2, =0x08000027	@ 08000000 1M
@@ -27,6 +27,11 @@ _start:
     mcr p15, 0, r5, c6, c5, 0
     mcr p15, 0, r6, c6, c6, 0
     mcr p15, 0, r7, c6, c7, 0
+    mov r4, #0x25
+    mov r0, #0x5
+    mcr p15, 0, r4, c2, c0, 0  @ data cacheable
+    mcr p15, 0, r4, c2, c0, 1  @ instruction cacheable
+    mcr p15, 0, r0, c3, c0, 0  @ data bufferable
 
     @ Enable caches
     mrc p15, 0, r0, c1, c0, 0  @ read control register
@@ -48,13 +53,11 @@ _start:
 
     bl main
 
-    @ Set cache settings
-    mov r0, #0x25
-    mcr p15, 0, r0, c3, c0, 0	@ Write bufferable 0, 2, 5
-    mcr p15, 0, r0, c2, c0, 0	@ Data cacheable 0, 2, 5
-    mcr p15, 0, r0, c2, c0, 1	@ Inst cacheable 0, 2, 5
+    mcr p15, 0, r4, c3, c0, 0  @ data bufferable
 
     bl startCFW
+
+    bl shutdown
 
 .die:
     b .die

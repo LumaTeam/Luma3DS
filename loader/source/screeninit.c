@@ -2,9 +2,10 @@
 #include "i2c.h"
 
 void initLCD(void){
-    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
+    vu32 *const arm11 = (vu32 *)0x1FFFFFF8;
 
     void __attribute__((naked)) ARM11(void){
+        __asm(".word 0xF10C01C0");
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
         *(vu32 *)0x1020200C &= 0xFFFEFFFE;
@@ -91,6 +92,11 @@ void initLCD(void){
         *(vu32 *)0x10400568 = 0x18346500;
         *(vu32 *)0x1040056c = 0x18346500;
 
+        //Set CakeBrah framebuffers
+        *((vu32 *)0x23FFFE00) = 0x18300000;
+        *((vu32 *)0x23FFFE04) = 0x18300000;
+        *((vu32 *)0x23FFFE08) = 0x18346500;
+
         //Clear ARM11 entry offset
         *arm11 = 0;
 
@@ -100,14 +106,6 @@ void initLCD(void){
         ((void (*)())*arm11)();
     }
 
-    //Set CakeBrah framebuffers
-    *(vu32 *)0x23FFFE00 = 0x18300000;
-    *(vu32 *)0x23FFFE04 = 0x18300000;
-    *(vu32 *)0x23FFFE08 = 0x18346500;
-
     *arm11 = (u32)ARM11;
-
-    //This delay is needed for some reason
-    for(vu32 i = 0; i < 0x2000; ++i);
     while(*arm11);
 }
