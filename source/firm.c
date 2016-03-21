@@ -15,14 +15,13 @@
 
 static firmHeader *const firmLocation = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
-static u32 firmSize = 0,
+static u32 firmSize,
            mode = 1,
            console = 1,
            emuNAND = 0,
            a9lhSetup = 0,
-           updatedSys = 0,
            usePatchedFirm = 0;
-static u16 pressed;
+static u8 *arm9Section;
 static const char *firmPathPatched = NULL;
 
 void setupCFW(void){
@@ -31,6 +30,7 @@ void setupCFW(void){
     u32 a9lhBoot = (PDN_SPI_CNT == 0x0) ? 1 : 0;
     //Retrieve the last booted FIRM
     u8 previousFirm = CFG_BOOTENV;
+    u32 updatedSys = 0;
     u32 overrideConfig = 0;
     const char lastConfigPath[] = "aurei/lastbootcfg";
 
@@ -38,7 +38,7 @@ void setupCFW(void){
     if(PDN_MPCORE_CFG == 1) console = 0;
 
     //Get pressed buttons
-    pressed = HID_PAD;
+    u16 pressed = HID_PAD;
 
     //Determine if A9LH is installed
     if(a9lhBoot || fileExists("/aurei/installeda9lh")){
@@ -104,7 +104,7 @@ void setupCFW(void){
     }
 }
 
-//Load firm into FCRAM
+//Load FIRM into FCRAM
 u32 loadFirm(void){
 
     //If not using an A9LH setup or the patched FIRM, load 9.0 FIRM from NAND
@@ -129,54 +129,57 @@ u32 loadFirm(void){
     //Check that the loaded FIRM matches the console
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 0;
 
+    arm9Section = (u8 *)firmLocation + section[2].offset;
+
     if(console && !usePatchedFirm)
-        decArm9Bin((u8 *)firmLocation + section[2].offset, mode);
+        decArm9Bin(arm9Section, mode);
 
     return 1;
 }
 
-//Nand redirection
-static u32 loadEmu(void){
+//NAND redirection
+static u32 loadEmu(u8 *proc9Offset){
 
     u32 emuOffset = 1,
         emuHeader = 1,
         emuRead,
-        emuWrite,
-        sdmmcOffset,
-        mpuOffset,
-        emuCodeOffset;
+        emuWrite;
 
     //Read emunand code from SD
     const char path[] = "/aurei/emunand/emunand.bin";
     u32 size = fileSize(path);
     if(!size) return 0;
-    getEmuCode(firmLocation, &emuCodeOffset, firmSize);
-    fileRead((u8 *)emuCodeOffset, path, size);
+    u8 *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
+    fileRead(emuCodeOffset, path, size);
 
-    //Find and patch emunand related offsets
+    //Look for emuNAND
     getEmunandSect(&emuOffset, &emuHeader, emuNAND);
+
     //No emuNAND detected
     if(!emuHeader) return 0;
-    getSDMMC(firmLocation, &sdmmcOffset, firmSize);
-    getEmuRW(firmLocation, firmSize, &emuRead, &emuWrite);
-    getMPU(firmLocation, &mpuOffset, firmSize);
-    u32 *pos_offset = (u32 *)memsearch((void *)emuCodeOffset, "NAND", size, 4);
-    u32 *pos_header = (u32 *)memsearch((void *)emuCodeOffset, "NCSD", size, 4);
-    u32 *pos_sdmmc = (u32 *)memsearch((void *)emuCodeOffset, "SDMC", size, 4);
-    *pos_sdmmc = sdmmcOffset;
+
+    //Place emuNAND data
+    u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", size, 4);
+    u32 *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", size, 4);
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
 
+    //Find and place the SDMMC struct
+    u32 *pos_sdmmc = (u32 *)memsearch(emuCodeOffset, "SDMC", size, 4);
+    *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
+
     //Calculate offset for the hooks
-    *(u32 *)(nandRedir + 4) = emuCodeOffset - (u32)firmLocation -
+    *(u32 *)(nandRedir + 4) = (u32)emuCodeOffset - (u32)firmLocation -
                               section[2].offset + (u32)section[2].address;
 
     //Add emunand hooks
+    getEmuRW(arm9Section, section[2].size, &emuRead, &emuWrite);
     memcpy((void *)emuRead, nandRedir, sizeof(nandRedir));
     memcpy((void *)emuWrite, nandRedir, sizeof(nandRedir));
 
     //Set MPU for emu code region
-    memcpy((void *)mpuOffset, mpu, sizeof(mpu));
+    void *mpuOffset = getMPU(arm9Section, section[2].size);
+    memcpy(mpuOffset, mpu, sizeof(mpu));
 
     return 1;
 }
@@ -187,15 +190,39 @@ u32 patchFirm(void){
     //Skip patching
     if(usePatchedFirm) return 1;
 
-    //Apply emuNAND patches
-    if(emuNAND){
-        if(!loadEmu()) return 0;
+    if(mode || emuNAND){
+        //Find the Process9 NCCH location
+        u8 *proc9Offset = getProc9(arm9Section, section[2].size);
+
+        //Apply emuNAND patches
+        if(emuNAND)
+            if(!loadEmu(proc9Offset)) return 0;
+
+        //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
+        if(mode){
+            //Read reboot code from SD
+            const char path[] = "/aurei/reboot/reboot.bin";
+            u32 size = fileSize(path);
+            if(!size) return 0;
+            u8 *rebootOffset = getReboot(arm9Section, section[2].size);
+            fileRead(rebootOffset, path, size);
+
+            //Calculate the fOpen offset and put it in the right location
+            u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", size, 4);
+            *pos_fopen = getfOpen(arm9Section, section[2].size, proc9Offset);
+
+            //Patch path for emuNAND-patched FIRM
+            if(emuNAND){
+                void *pos_path = memsearch(rebootOffset, L"sy", size, 4);
+                memcpy(pos_path, emuNAND == 1 ? L"emu" : L"em2", 5);
+            }
+        }
     }
-    else if(a9lhSetup){
+
+    if(a9lhSetup && !emuNAND){
         //Patch FIRM partitions writes on SysNAND to protect A9LH
-        u32 writeOffset = 0;
-        getFIRMWrite(firmLocation, firmSize, &writeOffset);
-        memcpy((void *)writeOffset, FIRMblock, sizeof(FIRMblock));
+        void *writeOffset = getFIRMWrite(arm9Section, section[2].size);
+        memcpy(writeOffset, FIRMblock, sizeof(FIRMblock));
     }
 
     //Disable signature checks
@@ -210,31 +237,6 @@ u32 patchFirm(void){
     if(console)
         firmLocation->arm9Entry = (u8 *)0x801B01C;
 
-    //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
-    if(mode){
-        u32 rebootOffset,
-            fOpenOffset;
-
-        //Read reboot code from SD
-        const char path[] = "/aurei/reboot/reboot.bin";
-        u32 size = fileSize(path);
-        if(!size) return 0;
-        getReboot(firmLocation, firmSize, &rebootOffset);
-        fileRead((u8 *)rebootOffset, path, size);
-
-        //Calculate the fOpen offset and put it in the right location
-        getfOpen(firmLocation, firmSize, &fOpenOffset);
-        u32 *pos_fopen = (u32 *)memsearch((void *)rebootOffset, "OPEN", size, 4);
-        *pos_fopen = fOpenOffset;
-
-        //Patch path for emuNAND-patched FIRM
-        if(emuNAND){
-            void *pos_path = memsearch((void *)rebootOffset, L"sy", size, 4);
-            const wchar_t *path = emuNAND == 1 ? L"emu" : L"em2";
-            memcpy(pos_path, path, 5);
-        }
-    }
-
     //Write patched FIRM to SD if needed
     if(firmPathPatched)
         if(!fileWrite((u8 *)firmLocation, firmPathPatched, firmSize)) return 0;
@@ -244,12 +246,12 @@ u32 patchFirm(void){
 
 void launchFirm(void){
 
-    if(console && mode) setKeyXs((u8 *)firmLocation + section[2].offset);
+    if(console && mode) setKeyXs(arm9Section);
 
     //Copy firm partitions to respective memory locations
     memcpy(section[0].address, (u8 *)firmLocation + section[0].offset, section[0].size);
     memcpy(section[1].address, (u8 *)firmLocation + section[1].offset, section[1].size);
-    memcpy(section[2].address, (u8 *)firmLocation + section[2].offset, section[2].size);
+    memcpy(section[2].address, arm9Section, section[2].size);
 
     //Run ARM11 screen stuff
     vu32 *const arm11 = (u32 *)0x1FFFFFF8;

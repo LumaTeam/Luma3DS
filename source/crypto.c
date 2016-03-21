@@ -243,8 +243,10 @@ static void getNandCTR(u8 *buf, u32 console){
 void nandFirm0(u8 *outbuf, u32 size, u32 console){
     u8 CTR[0x10];
     getNandCTR(CTR, console);
-    aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
+
     sdmmc_nand_readsectors(0x0B130000 / 0x200, size / 0x200, outbuf);
+
+    aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x06);
     aes(outbuf, outbuf, size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
