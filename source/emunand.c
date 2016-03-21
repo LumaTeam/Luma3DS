@@ -63,3 +63,11 @@ void getMPU(void *pos, u32 *off, u32 size){
 
     *off = (u32)memsearch(pos, pattern, size, 4);
 }
+
+void getEmuCode(void *pos, u32 *off, u32 size){
+    u8 *proc9 = (u8 *)memsearch(pos, "ess9", size, 4);
+    const unsigned char pattern[] = {0x00, 0xFF, 0xFF, 0xFF};
+ 
+    //Looking for the last spot before Process9
+    *off = (u32)memsearch(pos, pattern, size - (size - (u32)(proc9 - (u8 *)pos)), 4) + 0xD;
+}

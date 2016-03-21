@@ -150,10 +150,7 @@ static u32 loadEmu(void){
     const char path[] = "/aurei/emunand/emunand.bin";
     u32 size = fileSize(path);
     if(!size) return 0;
-    if(!console || !mode) nandRedir[5] = 0xA4;
-    //Find offset for emuNAND code from the offset in nandRedir
-    emuCodeOffset = *(u32 *)(nandRedir + 4) - (u32)section[2].address +
-                    section[2].offset + (u32)firmLocation;
+    getEmuCode(firmLocation, &emuCodeOffset, firmSize);
     fileRead((u8 *)emuCodeOffset, path, size);
 
     //Find and patch emunand related offsets
@@ -171,11 +168,9 @@ static u32 loadEmu(void){
     //No emuNAND detected
     if(!*pos_header) return 0;
 
-    //Patch emuNAND code in memory for O3DS and 9.0 N3DS
-    if(!console || !mode){
-        void *pos_instr = memsearch((void *)emuCodeOffset, "\xA6\x01\x08\x30", size, 4);
-        memcpy(pos_instr, emuInstr, sizeof(emuInstr));
-    }
+    //Calculate offset for the hooks
+    *(u32 *)(nandRedir + 4) = emuCodeOffset - (u32)firmLocation -
+                              section[2].offset + (u32)section[2].address;
 
     //Add emunand hooks
     memcpy((void *)emuRead, nandRedir, sizeof(nandRedir));

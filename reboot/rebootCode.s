@@ -1,12 +1,11 @@
-.nds
-.create "reboot.bin", 0
+.arm.little
 
 byteswritten equ 0x2000E000
-externalFirm equ 0x2000A000
 kernelCode equ 0x080F0000
 buffer equ 0x24000000
 fileOpen equ 0x4E45504F ;dummy
 
+.create "reboot.bin", 0
 .arm
 //Code jumps here right after the sprintf call
 process9Reboot:
@@ -34,18 +33,16 @@ process9Reboot:
 		ldreq r1, =(FileName - OpenFirm - 12)
 		addeq r1, pc
 		addne r1, sp, #0x3A8-0x70
-		ldr r0, =externalFirm
 		moveq r2, #1
 		movne r2, #0
-		str r2, [r0]
+		str r2, [externalFirm]
 		mov r2, #1
 		add r0, r7, #8
 		ldr r6, =fileOpen
 		blx r6
 	
     SeekFirm:
-		ldr r0, =externalFirm
-		ldr r0, [r0]
+		ldr r0, [externalFirm]
 		cmp r0, #1
 		moveq r0, r7
         ldreq r1, =byteswritten
@@ -97,10 +94,13 @@ Memcpy:
 		LDMFD   SP!, {R0-R4}
 		MOV     LR, R12
 		BX      LR
-	
+
 FileName:
 	.dcw "sdmc:/aurei/patched_firmware_sys.bin"
 	.word 0x0
+
+externalFirm:
+	.word 0x2000A000
 
 .pool
 
