@@ -154,19 +154,18 @@ static u32 loadEmu(void){
     fileRead((u8 *)emuCodeOffset, path, size);
 
     //Find and patch emunand related offsets
-    u32 *pos_sdmmc = (u32 *)memsearch((void *)emuCodeOffset, "SDMC", size, 4);
-    u32 *pos_offset = (u32 *)memsearch((void *)emuCodeOffset, "NAND", size, 4);
-    u32 *pos_header = (u32 *)memsearch((void *)emuCodeOffset, "NCSD", size, 4);
-    getSDMMC(firmLocation, &sdmmcOffset, firmSize);
     getEmunandSect(&emuOffset, &emuHeader, emuNAND);
+    //No emuNAND detected
+    if(!emuHeader) return 0;
+    getSDMMC(firmLocation, &sdmmcOffset, firmSize);
     getEmuRW(firmLocation, firmSize, &emuRead, &emuWrite);
     getMPU(firmLocation, &mpuOffset, firmSize);
+    u32 *pos_offset = (u32 *)memsearch((void *)emuCodeOffset, "NAND", size, 4);
+    u32 *pos_header = (u32 *)memsearch((void *)emuCodeOffset, "NCSD", size, 4);
+    u32 *pos_sdmmc = (u32 *)memsearch((void *)emuCodeOffset, "SDMC", size, 4);
     *pos_sdmmc = sdmmcOffset;
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
-
-    //No emuNAND detected
-    if(!*pos_header) return 0;
 
     //Calculate offset for the hooks
     *(u32 *)(nandRedir + 4) = emuCodeOffset - (u32)firmLocation -
@@ -224,8 +223,8 @@ u32 patchFirm(void){
         fileRead((u8 *)rebootOffset, path, size);
 
         //Calculate the fOpen offset and put it in the right location
-        u32 *pos_fopen = (u32 *)memsearch((void *)rebootOffset, "OPEN", size, 4);
         getfOpen(firmLocation, firmSize, &fOpenOffset);
+        u32 *pos_fopen = (u32 *)memsearch((void *)rebootOffset, "OPEN", size, 4);
         *pos_fopen = fOpenOffset;
 
         //Patch path for emuNAND-patched FIRM

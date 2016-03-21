@@ -23,10 +23,9 @@ void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
         //Fallback to the first emuNAND if there's no second one
         else if(emuNAND == 2) getEmunandSect(off, head, 1);
         //Check if a RedNAND is present
-        else if(sdmmc_sdcard_readsectors(1, 1, temp) == 0){
+        else if(sdmmc_sdcard_readsectors(1, 1, temp) == 0)
             if(*(u32 *)(temp + 0x100) != NCSD_MAGIC)
                 *head = 0;
-        }
     }
 }
 
