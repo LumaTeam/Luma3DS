@@ -15,7 +15,8 @@ static const struct fb {
 } *const fb = (struct fb *)0x23FFFE00;
 
 void __attribute__((naked)) shutdownLCD(void){
-
+    //Disable interrupts
+    __asm(".word 0xF10C01C0");
     vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
     //Clear ARM11 entry offset
