@@ -50,9 +50,12 @@ u8 *getReboot(void *pos, u32 size){
 }
 
 u32 getfOpen(void *pos, u32 size, u8 *proc9Offset){
-    //Calculate fOpen
+    //Offset Process9 code gets loaded to in memory (defined in ExHeader)
     u32 p9MemAddr = *(u32 *)(proc9Offset + 0xC);
-    u32 p9CodeOff = (u32)memsearch(pos, "code", size, 4) + 0x1FF;
+    //Start of Process9 .code section (start of NCCH + ExeFS offset + ExeFS header size)
+    u32 p9CodeOff = (u32)(proc9Offset - 0x204) + (*(u32 *)(proc9Offset - 0x64) * 0x200) + 0x200;
+
+    //Calculate fOpen
     const unsigned char pattern[] = {0xB0, 0x04, 0x98, 0x0D};
 
     return (u32)memsearch(pos, pattern, size, 4) - 2 - p9CodeOff + p9MemAddr;
