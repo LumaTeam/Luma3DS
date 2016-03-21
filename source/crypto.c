@@ -252,7 +252,7 @@ void nandFirm0(u8 *outbuf, u32 size, u32 console){
 }
 
 //Decrypts the N3DS arm9bin
-void decArm9Bin(u8 *armHdr, u32 mode){
+void decryptArm9Bin(u8 *arm9Section, u32 mode){
 
     //Firm keys
     u8 keyY[0x10];
@@ -260,11 +260,11 @@ void decArm9Bin(u8 *armHdr, u32 mode){
     u8 slot = mode ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
-    memcpy(keyY, armHdr+0x10, 0x10);
-    memcpy(CTR, armHdr+0x20, 0x10);
+    memcpy(keyY, arm9Section+0x10, 0x10);
+    memcpy(CTR, arm9Section+0x20, 0x10);
     u32 size = 0;
     //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
-    for(u8 *tmp = armHdr+0x30; *tmp; tmp++)
+    for(u8 *tmp = arm9Section+0x30; *tmp; tmp++)
         size = (size<<3)+(size<<1)+(*tmp)-'0';
 
     if(mode){
@@ -273,7 +273,7 @@ void decArm9Bin(u8 *armHdr, u32 mode){
         //Set 0x11 to key2 for the arm9bin and misc keys
         aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x11);
-        aes(keyX, armHdr+0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes(keyX, arm9Section+0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
@@ -282,13 +282,13 @@ void decArm9Bin(u8 *armHdr, u32 mode){
     aes_use_keyslot(slot);
 
     //Decrypt arm9bin
-    aes(armHdr+0x800, armHdr+0x800, size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(arm9Section+0x800, arm9Section+0x800, size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
 //Sets the N3DS 9.6 KeyXs
-void setKeyXs(u8 *armHdr){
+void setKeyXs(u8 *arm9Section){
 
-    u8 *keyData = armHdr+0x89814;
+    u8 *keyData = arm9Section+0x89814;
     u8 *decKey = keyData+0x10;
 
     //Set keys 0x19..0x1F keyXs

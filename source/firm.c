@@ -131,8 +131,7 @@ u32 loadFirm(void){
 
     arm9Section = (u8 *)firmLocation + section[2].offset;
 
-    if(console && !usePatchedFirm)
-        decArm9Bin(arm9Section, mode);
+    if(console && !usePatchedFirm) decryptArm9Bin(arm9Section, mode);
 
     return 1;
 }
