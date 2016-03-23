@@ -15,6 +15,7 @@
 #include "loader.h"
 #include "utils.h"
 #include "buttons.h"
+#include "../build/patches.h"
 
 //FIRM patches version
 #define PATCH_VER 1
@@ -100,14 +101,14 @@ void setupCFW(void){
 
         /* If tha FIRM patches version is different or user switched to/from A9LH,
            and "Use pre-patched FIRMs" is set, delete all patched FIRMs */
-        u16 bootConfig = (PATCH_VER << 11) | (!a9lhSetup << 10);
+        u16 bootConfig = (PATCH_VER << 11) | (a9lhSetup << 10);
         if ((config >> 1) & 0x1 && bootConfig != (config & 0xFC00))
             deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
 
         //We also need to remember the used boot mode on A9LH
         if(a9lhBoot) bootConfig |= (mode << 8) | (emuNAND << 9);
 
-        //If boot configuration is different from previously, overwrite it
+        //If the boot configuration is different from previously, overwrite it
         if(bootConfig != (config & 0xFF00)){
             //Preserve user settings (first byte)
             u16 tempConfig = ((config & 0xFF) | bootConfig);
@@ -165,12 +166,8 @@ static void loadEmu(u8 *proc9Offset){
         emuRead,
         emuWrite;
 
-    //Read emunand code from SD
-    const char path[] = "/aurei/patches/emunand.bin";
-    u32 size = fileSize(path);
-    if(!size) error("aurei/patches/emunand.bin doesn't exist");
     u8 *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
-    fileRead(emuCodeOffset, path, size);
+    memcpy(emuCodeOffset, emunand, emunand_size);
 
     //Look for emuNAND
     getEmunandSect(&emuOffset, &emuHeader, emuNAND);
@@ -179,13 +176,13 @@ static void loadEmu(u8 *proc9Offset){
     if(!emuHeader) error("No emuNAND has been detected");
 
     //Place emuNAND data
-    u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", size, 4);
-    u32 *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", size, 4);
+    u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", emunand_size, 4);
+    u32 *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", emunand_size, 4);
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
 
     //Find and place the SDMMC struct
-    u32 *pos_sdmmc = (u32 *)memsearch(emuCodeOffset, "SDMC", size, 4);
+    u32 *pos_sdmmc = (u32 *)memsearch(emuCodeOffset, "SDMC", emunand_size, 4);
     *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
 
     //Calculate offset for the hooks
@@ -218,19 +215,16 @@ void patchFirm(void){
         //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
         if(mode){
             //Read reboot code from SD
-            const char path[] = "/aurei/patches/reboot.bin";
-            u32 size = fileSize(path);
-            if(!size) error("aurei/patches/reboot.bin doesn't exist");
             u8 *rebootOffset = getReboot(arm9Section, section[2].size);
-            fileRead(rebootOffset, path, size);
+            memcpy(rebootOffset, reboot, reboot_size);
 
             //Calculate the fOpen offset and put it in the right location
-            u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", size, 4);
+            u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
             *pos_fopen = getfOpen(arm9Section, section[2].size, proc9Offset);
 
             //Patch path for emuNAND-patched FIRM
             if(emuNAND){
-                void *pos_path = memsearch(rebootOffset, L"sy", size, 4);
+                void *pos_path = memsearch(rebootOffset, L"sy", reboot_size, 4);
                 memcpy(pos_path, emuNAND == 1 ? L"emu" : L"em2", 5);
             }
         }
