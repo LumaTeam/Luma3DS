@@ -8,6 +8,7 @@
 */
 
 #include "screeninit.h"
+#include "draw.h"
 #include "i2c.h"
 
 static vu32 *const arm11 = (vu32 *)0x1FFFFFF8;
@@ -31,8 +32,10 @@ void deinitScreens(void){
         ((void (*)())*arm11)();
     }
 
-    *arm11 = (u32)ARM11;
-    while(*arm11);
+    if(PDN_GPU_CNT != 0x1){
+        *arm11 = (u32)ARM11;
+        while(*arm11);
+    }
 }
 
 void initScreens(void){
@@ -140,6 +143,10 @@ void initScreens(void){
         ((void (*)())*arm11)();
     }
 
-    *arm11 = (u32)ARM11;
-    while(*arm11);
+    if(PDN_GPU_CNT == 0x1){
+        *arm11 = (u32)ARM11;
+        while(*arm11);
+    }
+
+    clearScreens();
 }

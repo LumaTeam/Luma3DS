@@ -56,8 +56,7 @@ void configureCFW(const char *configPath){
     options.text[1] = "( ) Use pre-patched FIRMs";
     options.text[2] = "( ) Force A9LH detection";
 
-    if(PDN_GPU_CNT == 0x1) initScreens();
-    clearScreens();
+    initScreens();
 
     drawString("AuReiNand configuration", 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
@@ -110,8 +109,7 @@ void deleteFirms(const char *firmPaths[], u32 firms){
 }
 
 void error(const char *message){
-    if(PDN_GPU_CNT == 0x1) initScreens();
-    clearScreens();
+    initScreens();
 
     drawString("An error has occurred:", 10, 10, COLOR_RED);
     int pos_y = drawString(message, 10, 30, COLOR_WHITE);

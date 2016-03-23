@@ -8,17 +8,13 @@
 #include "fs.h"
 #include "memory.h"
 #include "screeninit.h"
-#include "draw.h"
 #include "../build/loader.h"
 
 #define PAYLOAD_ADDRESS	0x24F00000
 
 void loadPayload(void){
     if(fileExists("aurei/payloads/default.bin")){
-        if(PDN_GPU_CNT == 0x1){
-            initScreens();
-            clearScreens();
-        }
+        initScreens();
         memcpy((void *)PAYLOAD_ADDRESS, loader, loader_size);
         ((void (*)())PAYLOAD_ADDRESS)();
     }
