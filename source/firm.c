@@ -77,7 +77,7 @@ void setupCFW(void){
     if(needConfig){
 
         //If L and R are pressed, chainload an external payload
-        if(a9lhBoot && (pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
+        if((pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
 
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
