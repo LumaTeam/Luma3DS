@@ -28,13 +28,16 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 all: launcher a9lh ninjhax
 
 .PHONY: launcher
-launcher: $(dir_out)/$(name).dat 
+launcher: $(dir_out)/$(name).dat
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
+
+.PHONY: release
+release: $(dir_out)/$(name).zip
 
 .PHONY: clean
 clean:
@@ -58,6 +61,9 @@ $(dir_out)/3ds/$(name): $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
 	@mv $(dir_out)/$(name).3dsx $@
 	@mv $(dir_out)/$(name).smdh $@
+
+$(dir_out)/$(name).zip: launcher a9lh ninjhax
+	@cd $(dir_out) && zip -9 -r $(name) *
 
 $(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s
 	@mkdir -p "$(dir_build)"
