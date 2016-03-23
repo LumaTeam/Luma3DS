@@ -52,7 +52,7 @@ static u16 waitInput(void){
 void configureCFW(const char *configPath){
     struct options options;
 
-    options.text[0] = "( ) Updated SysNAND mode";
+    options.text[0] = "( ) Updated SysNAND mode (A9LH-only)";
     options.text[1] = "( ) Use pre-patched FIRMs";
     options.text[2] = "( ) Force A9LH detection";
 
