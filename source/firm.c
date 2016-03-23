@@ -55,7 +55,7 @@ void setupCFW(void){
     //Determine if A9LH is installed
     if(a9lhBoot || (config >> 2) & 0x1){
         a9lhSetup = 1;
-        //Check setting for > 9.2 SysNAND
+        //Check setting for > 9.2 sysNAND
         updatedSys = config & 0x1;
     }
 
@@ -86,12 +86,12 @@ void setupCFW(void){
         //If screens are inited, load splash screen
         if(PDN_GPU_CNT != 0x1) loadSplash();
 
-        /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
+        /* If L is pressed, and on an updated sysNAND setup the SAFE MODE combo
            is not pressed, boot 9.0 FIRM */
         if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFEMODE)) mode = 0;
 
-        /* If L or R aren't pressed on a 9.0/9.2 SysNAND, or the 9.0 FIRM is selected
-           or R is pressed on a > 9.2 SysNAND, boot emuNAND */
+        /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
+           or R is pressed on a > 9.2 sysNAND, boot emuNAND */
         if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFEMODE))) ||
            (!updatedSys && mode && !(pressed & BUTTON_R1))){
             //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
@@ -166,22 +166,23 @@ static void loadEmu(u8 *proc9Offset){
         emuRead,
         emuWrite;
 
-    void *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
-    memcpy(emuCodeOffset, emunand, emunand_size);
-
     //Look for emuNAND
     getEmunandSect(&emuOffset, &emuHeader, emuNAND);
 
     //No emuNAND detected
     if(!emuHeader) error("No emuNAND has been detected");
 
-    //Place emuNAND data
+    //Copy the emuNAND patch
+    void *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
+    memcpy(emuCodeOffset, emunand, emunand_size);
+
+    //Add the data of the found emuNAND
     u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", emunand_size, 4);
     u32 *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", emunand_size, 4);
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
 
-    //Find and place the SDMMC struct
+    //Find and add the SDMMC struct
     u32 *pos_sdmmc = (u32 *)memsearch(emuCodeOffset, "SDMC", emunand_size, 4);
     *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
 
@@ -231,7 +232,7 @@ void patchFirm(void){
     }
 
     if(a9lhSetup && !emuNAND){
-        //Patch FIRM partitions writes on SysNAND to protect A9LH
+        //Patch FIRM partitions writes on sysNAND to protect A9LH
         void *writeOffset = getFirmWrite(arm9Section, section[2].size);
         memcpy(writeOffset, writeBlock, sizeof(writeBlock));
     }
