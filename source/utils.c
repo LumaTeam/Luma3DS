@@ -1,10 +1,11 @@
 /*
-*   config.c
+*   utils.c
 *       by Aurora Wright
 *   Copyright (c) 2016 All Rights Reserved
 */
 
-#include "config.h"
+#include "utils.h"
+#include "screeninit.h"
 #include "draw.h"
 #include "fs.h"
 #include "i2c.h"
@@ -14,8 +15,8 @@
 #define OPTIONS 3
 
 #define COLOR_TITLE    0xFF9900
-#define COLOR_NORMAL   0xFFFFFF
-#define COLOR_SELECTED 0x0000FF
+#define COLOR_WHITE    0xFFFFFF
+#define COLOR_RED      0x0000FF
 #define COLOR_BLACK    0x000000
 
 struct options {
@@ -55,10 +56,11 @@ void configureCFW(const char *configPath){
     options.text[1] = "( ) Use pre-patched FIRMs";
     options.text[2] = "( ) Force A9LH detection";
 
+    if(PDN_GPU_CNT == 0x1) initScreens();
     clearScreens();
 
     drawString("AuReiNand configuration", 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save and reboot", 10, 30, COLOR_NORMAL);
+    drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
 
     //Read and parse the existing configuration
     u16 tempConfig = 0;
@@ -75,8 +77,8 @@ void configureCFW(const char *configPath){
 
         do{
             for(u32 i = 0; i < OPTIONS; i++){
-                options.pos_y[i] = drawString(options.text[i], 10, !i ? 60 : options.pos_y[i - 1] + SPACING_VERT, options.selected == i ? COLOR_SELECTED : COLOR_NORMAL);
-                drawCharacter('x', 10 + SPACING_HORIZ, options.pos_y[i], options.enabled[i] ? (options.selected == i ? COLOR_SELECTED : COLOR_NORMAL) : COLOR_BLACK);
+                options.pos_y[i] = drawString(options.text[i], 10, !i ? 60 : options.pos_y[i - 1] + SPACING_VERT, options.selected == i ? COLOR_RED : COLOR_WHITE);
+                drawCharacter('x', 10 + SPACING_HORIZ, options.pos_y[i], options.enabled[i] ? (options.selected == i ? COLOR_RED : COLOR_WHITE) : COLOR_BLACK);
             }
             pressed = waitInput();
         } while(!(pressed & (BUTTON_UP | BUTTON_DOWN | BUTTON_A | BUTTON_START)));
@@ -105,4 +107,19 @@ void deleteFirms(const char *firmPaths[], u32 firms){
         fileDelete(firmPaths[firms - 1]);
         firms--;
     }
+}
+
+void error(const char *message){
+    if(PDN_GPU_CNT == 0x1) initScreens();
+    clearScreens();
+
+    drawString("An error has occurred:", 10, 10, COLOR_RED);
+    int pos_y = drawString(message, 10, 30, COLOR_WHITE);
+    drawString("Press any button to shutdown", 10, pos_y + 2 * SPACING_VERT, COLOR_WHITE);
+
+    waitInput();
+
+    //Shutdown
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
+    while(1);
 }

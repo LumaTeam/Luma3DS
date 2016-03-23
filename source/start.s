@@ -52,7 +52,5 @@ _start:
 
     bl main
 
-    bl shutdown
-
 .die:
     b .die

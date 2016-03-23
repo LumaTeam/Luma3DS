@@ -13,7 +13,7 @@
 #include "draw.h"
 #include "screeninit.h"
 #include "loader.h"
-#include "config.h"
+#include "utils.h"
 #include "buttons.h"
 
 //FIRM patches version
@@ -79,10 +79,8 @@ void setupCFW(void){
         if(a9lhBoot && (pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
 
         //If no configuration file exists or SELECT is held, load configuration menu
-        if(needConfig == 2 || (pressed & BUTTON_SELECT)){
-            if(PDN_GPU_CNT == 0x1) initScreens();
+        if(needConfig == 2 || (pressed & BUTTON_SELECT))
             configureCFW(configPath);
-        }
 
         //If screens are inited, load splash screen
         if(PDN_GPU_CNT != 0x1) loadSplash();
@@ -128,7 +126,7 @@ void setupCFW(void){
 }
 
 //Load FIRM into FCRAM
-u32 loadFirm(void){
+void loadFirm(void){
 
     //If not using an A9LH setup or the patched FIRM, load 9.0 FIRM from NAND
     if(!usePatchedFirm && !a9lhSetup && !mode){
@@ -136,31 +134,31 @@ u32 loadFirm(void){
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0((u8 *)firmLocation, firmSize, console);
         //Check for correct decryption
-        if(memcmp(firmLocation, "FIRM", 4) != 0) return 0;
+        if(memcmp(firmLocation, "FIRM", 4) != 0)
+            error("Couldn't decrypt FIRM0 from NAND");
     }
     //Load FIRM from SD
     else{
         const char *path = usePatchedFirm ? patchedFirms[selectedFirm - 1] :
                                 (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
-        if(!firmSize) return 0;
+        if(!firmSize) error("firmware(90).bin doesn't exist");
         fileRead((u8 *)firmLocation, path, firmSize);
     }
 
     section = firmLocation->section;
 
     //Check that the loaded FIRM matches the console
-    if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) return 0;
+    if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
+        error("firmware(90).bin doesn't match the console");
 
     arm9Section = (u8 *)firmLocation + section[2].offset;
 
     if(console && !usePatchedFirm) decryptArm9Bin(arm9Section, mode);
-
-    return 1;
 }
 
 //NAND redirection
-static u32 loadEmu(u8 *proc9Offset){
+static void loadEmu(u8 *proc9Offset){
 
     u32 emuOffset = 1,
         emuHeader = 1,
@@ -168,9 +166,9 @@ static u32 loadEmu(u8 *proc9Offset){
         emuWrite;
 
     //Read emunand code from SD
-    const char path[] = "/aurei/emunand/emunand.bin";
+    const char path[] = "/aurei/patches/emunand.bin";
     u32 size = fileSize(path);
-    if(!size) return 0;
+    if(!size) error("emunand.bin doesn't exist");
     u8 *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
     fileRead(emuCodeOffset, path, size);
 
@@ -178,7 +176,7 @@ static u32 loadEmu(u8 *proc9Offset){
     getEmunandSect(&emuOffset, &emuHeader, emuNAND);
 
     //No emuNAND detected
-    if(!emuHeader) return 0;
+    if(!emuHeader) error("No emuNAND has been detected");
 
     //Place emuNAND data
     u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", size, 4);
@@ -202,30 +200,27 @@ static u32 loadEmu(u8 *proc9Offset){
     //Set MPU for emu code region
     void *mpuOffset = getMPU(arm9Section, section[2].size);
     memcpy(mpuOffset, mpu, sizeof(mpu));
-
-    return 1;
 }
 
 //Patches
-u32 patchFirm(void){
+void patchFirm(void){
 
     //Skip patching
-    if(usePatchedFirm) return 1;
+    if(usePatchedFirm) return;
 
     if(mode || emuNAND){
         //Find the Process9 NCCH location
         u8 *proc9Offset = getProc9(arm9Section, section[2].size);
 
         //Apply emuNAND patches
-        if(emuNAND)
-            if(!loadEmu(proc9Offset)) return 0;
+        if(emuNAND) loadEmu(proc9Offset);
 
         //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
         if(mode){
             //Read reboot code from SD
-            const char path[] = "/aurei/reboot/reboot.bin";
+            const char path[] = "/aurei/patches/reboot.bin";
             u32 size = fileSize(path);
-            if(!size) return 0;
+            if(!size) error("reboot.bin doesn't exist");
             u8 *rebootOffset = getReboot(arm9Section, section[2].size);
             fileRead(rebootOffset, path, size);
 
@@ -261,9 +256,8 @@ u32 patchFirm(void){
 
     //Write patched FIRM to SD if needed
     if(selectedFirm)
-        if(!fileWrite((u8 *)firmLocation, patchedFirms[selectedFirm - 1], firmSize)) return 0;
-
-    return 1;
+        if(!fileWrite((u8 *)firmLocation, patchedFirms[selectedFirm - 1], firmSize))
+            error("Couldn't write the patched FIRM (no free space?)");
 }
 
 void launchFirm(void){

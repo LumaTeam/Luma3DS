@@ -43,10 +43,10 @@ launcher: $(dir_out)/$(name).dat
 a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: emunand
-emunand: $(dir_out)/aurei/emunand/emunand.bin
+emunand: $(dir_out)/aurei/patches/emunand.bin
 
 .PHONY: reboot
-reboot: $(dir_out)/aurei/reboot/reboot.bin
+reboot: $(dir_out)/aurei/patches/reboot.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
@@ -77,14 +77,15 @@ $(dir_out)/3ds/$(name):
 $(dir_out)/aurei:
 	@mkdir -p "$(dir_out)/aurei"
 
-$(dir_out)/aurei/emunand/emunand.bin: $(dir_emu)/emuCode.s
+$(dir_out)/aurei/patches:
+	@mkdir -p "$(dir_out)/aurei/patches"
+
+$(dir_out)/aurei/patches/emunand.bin: $(dir_emu)/emuCode.s $(dir_out)/aurei/patches
 	@armips $<
-	@mkdir -p "$(dir_out)/aurei/emunand"
 	@mv emunand.bin $@
 
-$(dir_out)/aurei/reboot/reboot.bin: $(dir_reboot)/rebootCode.s
+$(dir_out)/aurei/patches/reboot.bin: $(dir_reboot)/rebootCode.s $(dir_out)/aurei/patches
 	@armips $<
-	@mkdir -p "$(dir_out)/aurei/reboot"
 	@mv reboot.bin $@
 
 $(dir_out)/aurei/loader.bin: $(dir_out)/aurei $(dir_loader)/Makefile

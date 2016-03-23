@@ -31,6 +31,6 @@ typedef struct firmHeader {
 } firmHeader;
 
 void setupCFW(void);
-u32 loadFirm(void);
-u32 patchFirm(void);
+void loadFirm(void);
+void patchFirm(void);
 void launchFirm(void);
