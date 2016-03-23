@@ -1,5 +1,7 @@
 /*
 *   fs.c
+*       by Reisyukaku / Aurora Wright
+*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "fs.h"
@@ -58,4 +60,8 @@ u32 fileExists(const char *path){
 
     f_close(&fp);
     return exists;
+}
+
+void fileDelete(const char *path){
+    f_unlink(path);
 }

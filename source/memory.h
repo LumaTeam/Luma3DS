@@ -1,7 +1,7 @@
 /*
 *   memory.h
-*       by Reisyukaku
-*   Copyright (c) 2015 All Rights Reserved
+*       by Reisyukaku / Aurora Wright
+*   Copyright (c) 2016 All Rights Reserved
 */
 
 #pragma once

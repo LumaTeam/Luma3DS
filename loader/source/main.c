@@ -1,6 +1,5 @@
 #include "types.h"
 #include "buttons.h"
-#include "screeninit.h"
 #include "fatfs/ff.h"
 
 #define PAYLOAD_ADDRESS	0x23F00000
@@ -35,9 +34,6 @@ void main(void){
        ((pressed & BUTTON_LEFT) && loadPayload("/aurei/payloads/left.bin")) ||
        ((pressed & BUTTON_UP) && loadPayload("/aurei/payloads/up.bin")) ||
        ((pressed & BUTTON_DOWN) && loadPayload("/aurei/payloads/down.bin")) ||
-       loadPayload("/aurei/payloads/default.bin")){
-        //Determine if screen was already inited
-        if(*(vu8 *)0x10141200 == 0x1) initLCD();
+       loadPayload("/aurei/payloads/default.bin"))
         ((void (*)())PAYLOAD_ADDRESS)();
-    }
 }

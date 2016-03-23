@@ -1,7 +1,7 @@
 /*
 *   firm.c
-*       by Reisyukaku
-*   Copyright (c) 2015 All Rights Reserved
+*       by Reisyukaku / Aurora Wright
+*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "firm.h"
@@ -11,18 +11,28 @@
 #include "emunand.h"
 #include "crypto.h"
 #include "draw.h"
+#include "screeninit.h"
 #include "loader.h"
+#include "config.h"
+#include "buttons.h"
+
+//FIRM patches version
+#define PATCH_VER 1
 
 static firmHeader *const firmLocation = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
+static u8 *arm9Section;
+static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
+                                     "/aurei/patched_firmware_emu.bin",
+                                     "/aurei/patched_firmware_em2.bin",
+                                     "/aurei/patched_firmware90.bin" };
 static u32 firmSize,
            mode = 1,
            console = 1,
            emuNAND = 0,
            a9lhSetup = 0,
-           usePatchedFirm = 0;
-static u8 *arm9Section;
-static const char *firmPathPatched = NULL;
+           usePatchedFirm = 0,
+           selectedFirm = 0;
 
 void setupCFW(void){
 
@@ -30,46 +40,51 @@ void setupCFW(void){
     u32 a9lhBoot = (PDN_SPI_CNT == 0x0) ? 1 : 0;
     //Retrieve the last booted FIRM
     u8 previousFirm = CFG_BOOTENV;
-    u32 updatedSys = 0;
-    u32 overrideConfig = 0;
-    const char lastConfigPath[] = "aurei/lastbootcfg";
-
     //Detect the console being used
     if(PDN_MPCORE_CFG == 1) console = 0;
-
     //Get pressed buttons
     u16 pressed = HID_PAD;
+    u32 updatedSys = 0;
+
+    //Attempt to read the configuration file
+    const char configPath[] = "aurei/config.bin";
+    u16 config = 0;
+    u32 needConfig = fileRead((u8 *)&config, configPath, 2) ? 1 : 2;
 
     //Determine if A9LH is installed
-    if(a9lhBoot || fileExists("/aurei/installeda9lh")){
+    if(a9lhBoot || (config >> 2) & 0x1){
         a9lhSetup = 1;
-        //Check flag for > 9.2 SysNAND
-        if(fileExists("/aurei/updatedsysnand")) updatedSys = 1;
+        //Check setting for > 9.2 SysNAND
+        updatedSys = config & 0x1;
     }
 
-    //If booting with A9LH and it's a MCU reboot, try to force boot options
-    if(a9lhBoot && previousFirm && fileExists(lastConfigPath)){
-        u8 tempConfig;
-        fileRead(&tempConfig, lastConfigPath, 1);
-
+    /* If booting with A9LH, it's a MCU reboot and a previous configuration exists,
+       try to force boot options */
+    if(a9lhBoot && previousFirm && needConfig == 1){
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(previousFirm == 0x7){
-            if(!updatedSys) mode = tempConfig & 0x1;
-            overrideConfig = 1;
+            if(!updatedSys) mode = (config >> 8) & 0x1;
+            needConfig = 0;
         //Else, force the last used boot options unless A is pressed
         } else if(!(pressed & BUTTON_A)){
-            mode = tempConfig & 0x1;
-            emuNAND = (tempConfig >> 1) & 0x1;
-            overrideConfig = 1;
+            mode = (config >> 8) & 0x1;
+            emuNAND = (config >> 9) & 0x1;
+            needConfig = 0;
         }
     }
 
-    if(!overrideConfig){
+    if(needConfig){
 
         //If L and R are pressed, chainload an external payload
         if(a9lhBoot && (pressed & BUTTON_L1R1) == BUTTON_L1R1) loadPayload();
 
-        //Check if it's a no-screen-init A9LH boot
+        //If no configuration file exists or SELECT is held, load configuration menu
+        if(needConfig == 2 || (pressed & BUTTON_SELECT)){
+            if(PDN_GPU_CNT == 0x1) initScreens();
+            configureCFW(configPath);
+        }
+
+        //If screens are inited, load splash screen
         if(PDN_GPU_CNT != 0x1) loadSplash();
 
         /* If L is pressed, and on an updated SysNAND setup the SAFE MODE combo
@@ -85,22 +100,30 @@ void setupCFW(void){
             else emuNAND = 1;
         }
 
-        //Write the current boot options on A9LH
-        if(a9lhBoot){
-            u8 tempConfig = (mode | (emuNAND << 1)) & 0x3;
-            fileWrite(&tempConfig, lastConfigPath, 1);
+        /* If tha FIRM patches version is different or user switched to/from A9LH,
+           and "Use pre-patched FIRMs" is set, delete all patched FIRMs */
+        u16 bootConfig = (PATCH_VER << 11) | (!a9lhSetup << 10);
+        if ((config >> 1) & 0x1 && bootConfig != (config & 0xFC00))
+            deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
+
+        //We also need to remember the used boot mode on A9LH
+        if(a9lhBoot) bootConfig |= (mode << 8) | (emuNAND << 9);
+
+        //If boot configuration is different from previously, overwrite it
+        if(bootConfig != (config & 0xFF00)){
+            //Preserve used settings (first byte)
+            u16 tempConfig = ((config & 0xFF) | bootConfig);
+            fileWrite((u8 *)&tempConfig, configPath, 2);
         }
     }
 
-    if(mode) firmPathPatched = emuNAND ? (emuNAND == 1 ? "/aurei/patched_firmware_emu.bin" :
-                                                        "/aurei/patched_firmware_em2.bin") :
-                                                        "/aurei/patched_firmware_sys.bin";
+    if(mode) selectedFirm = emuNAND ? (emuNAND == 1 ? 2 : 3) : 1;
 
     //Skip decrypting and patching FIRM
-    if(fileExists("/aurei/usepatchedfw")){
-        //Only needed with this flag
-        if(!mode) firmPathPatched = "/aurei/patched_firmware90.bin";
-        if(fileExists(firmPathPatched)) usePatchedFirm = 1;
+    if((config >> 1) & 0x1){
+        //Only needed with this setting
+        if(!mode) selectedFirm = 4;
+        if(fileExists(patchedFirms[selectedFirm - 1])) usePatchedFirm = 1;
     }
 }
 
@@ -117,7 +140,7 @@ u32 loadFirm(void){
     }
     //Load FIRM from SD
     else{
-        const char *path = usePatchedFirm ? firmPathPatched :
+        const char *path = usePatchedFirm ? patchedFirms[selectedFirm - 1] :
                                 (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
         if(!firmSize) return 0;
@@ -220,8 +243,8 @@ u32 patchFirm(void){
 
     if(a9lhSetup && !emuNAND){
         //Patch FIRM partitions writes on SysNAND to protect A9LH
-        void *writeOffset = getFIRMWrite(arm9Section, section[2].size);
-        memcpy(writeOffset, FIRMblock, sizeof(FIRMblock));
+        void *writeOffset = getFirmWrite(arm9Section, section[2].size);
+        memcpy(writeOffset, writeBlock, sizeof(writeBlock));
     }
 
     //Disable signature checks
@@ -237,8 +260,8 @@ u32 patchFirm(void){
         firmLocation->arm9Entry = (u8 *)0x801B01C;
 
     //Write patched FIRM to SD if needed
-    if(firmPathPatched)
-        if(!fileWrite((u8 *)firmLocation, firmPathPatched, firmSize)) return 0;
+    if(selectedFirm)
+        if(!fileWrite((u8 *)firmLocation, patchedFirms[selectedFirm - 1], firmSize)) return 0;
 
     return 1;
 }
@@ -252,14 +275,12 @@ void launchFirm(void){
     memcpy(section[1].address, (u8 *)firmLocation + section[1].offset, section[1].size);
     memcpy(section[2].address, arm9Section, section[2].size);
 
-    //Run ARM11 screen stuff
-    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
-    *arm11 = (u32)shutdownLCD;
-    while(*arm11);
+    //Fixes N3DS 3D
+    deinitScreens();
 
-    //Set ARM11 kernel
-    *arm11 = (u32)firmLocation->arm11Entry;
+    //Set ARM11 kernel entrypoint
+    *(vu32 *)0x1FFFFFF8 = (u32)firmLocation->arm11Entry;
 
-    //Final jump to arm9 binary
+    //Final jump to arm9 kernel
     ((void (*)())firmLocation->arm9Entry)();
 }

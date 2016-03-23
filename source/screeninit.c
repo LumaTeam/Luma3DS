@@ -1,11 +1,45 @@
+/*
+*   screeninit.c
+*       by Aurora Wright
+*   Screen init code by dark_samus, bil1s, Normmatt, delebile and others.
+*   Screen deinit code by tiniVi.
+*
+*   Copyright (c) 2016 All Rights Reserved
+*/
+
 #include "screeninit.h"
 #include "i2c.h"
 
-void initLCD(void){
-    vu32 *const arm11 = (vu32 *)0x1FFFFFF8;
+static vu32 *const arm11 = (vu32 *)0x1FFFFFF8;
 
+void deinitScreens(void){
     void __attribute__((naked)) ARM11(void){
+        //Disable interrupts
         __asm(".word 0xF10C01C0");
+
+        //Clear ARM11 entry offset
+        *arm11 = 0;
+
+        //Shutdown LCDs
+        *(vu32 *)0x10202A44 = 0;
+        *(vu32 *)0x10202244 = 0;
+        *(vu32 *)0x10202014 = 0;
+    
+        //Wait for the entry to be set
+        while(!*arm11);
+        //Jump to it
+        ((void (*)())*arm11)();
+    }
+
+    *arm11 = (u32)ARM11;
+    while(*arm11);
+}
+
+void initScreens(void){
+    void __attribute__((naked)) ARM11(void){
+        //Disable interrupts
+        __asm(".word 0xF10C01C0");
+
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
         *(vu32 *)0x1020200C &= 0xFFFEFFFE;

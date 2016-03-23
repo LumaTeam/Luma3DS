@@ -1,9 +1,9 @@
 /*
 *   main.c
-*       by Reisyukaku
-*   Copyright (c) 2015 All Rights Reserved
+*       by Reisyukaku / Aurora Wright
+*   Copyright (c) 2016 All Rights Reserved
 *
-*   Minimalist CFW for N3DS
+*   Minimalist CFW for (N)3DS
 */
 
 #include "fs.h"
