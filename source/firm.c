@@ -166,7 +166,7 @@ static void loadEmu(u8 *proc9Offset){
         emuRead,
         emuWrite;
 
-    u8 *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
+    void *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
     memcpy(emuCodeOffset, emunand, emunand_size);
 
     //Look for emuNAND
@@ -215,7 +215,7 @@ void patchFirm(void){
         //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
         if(mode){
             //Read reboot code from SD
-            u8 *rebootOffset = getReboot(arm9Section, section[2].size);
+            void *rebootOffset = getReboot(arm9Section, section[2].size);
             memcpy(rebootOffset, reboot, reboot_size);
 
             //Calculate the fOpen offset and put it in the right location

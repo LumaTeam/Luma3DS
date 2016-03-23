@@ -22,6 +22,6 @@ const u8 writeBlock[4];
 **************************************************/
 u8 *getProc9(void *pos, u32 size);
 void getSignatures(void *pos, u32 size, u32 *off, u32 *off2);
-u8 *getReboot(void *pos, u32 size);
+void *getReboot(void *pos, u32 size);
 u32 getfOpen(void *pos, u32 size, u8 *proc9Offset);
 void *getFirmWrite(void *pos, u32 size);

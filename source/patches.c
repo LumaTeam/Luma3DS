@@ -42,7 +42,7 @@ void getSignatures(void *pos, u32 size, u32 *off, u32 *off2){
     *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
 }
 
-u8 *getReboot(void *pos, u32 size){
+void *getReboot(void *pos, u32 size){
     //Look for FIRM reboot code
     const unsigned char pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
 
