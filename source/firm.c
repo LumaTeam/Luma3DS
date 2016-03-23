@@ -109,7 +109,7 @@ void setupCFW(void){
 
         //If boot configuration is different from previously, overwrite it
         if(bootConfig != (config & 0xFF00)){
-            //Preserve used settings (first byte)
+            //Preserve user settings (first byte)
             u16 tempConfig = ((config & 0xFF) | bootConfig);
             fileWrite((u8 *)&tempConfig, configPath, 2);
         }
