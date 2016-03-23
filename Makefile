@@ -34,7 +34,7 @@ objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 
 .PHONY: all
-all: loader launcher a9lh ninjhax
+all: launcher a9lh ninjhax
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat 
