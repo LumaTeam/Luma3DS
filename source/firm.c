@@ -135,14 +135,14 @@ void loadFirm(void){
         nandFirm0((u8 *)firmLocation, firmSize, console);
         //Check for correct decryption
         if(memcmp(firmLocation, "FIRM", 4) != 0)
-            error("Couldn't decrypt FIRM0 from NAND");
+            error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
     }
     //Load FIRM from SD
     else{
         const char *path = usePatchedFirm ? patchedFirms[selectedFirm - 1] :
                                 (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
-        if(!firmSize) error("firmware(90).bin doesn't exist");
+        if(!firmSize) error("aurei/firmware(90).bin doesn't exist");
         fileRead((u8 *)firmLocation, path, firmSize);
     }
 
@@ -150,7 +150,7 @@ void loadFirm(void){
 
     //Check that the loaded FIRM matches the console
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
-        error("firmware(90).bin doesn't match the console");
+        error("aurei/firmware(90).bin doesn't match this\nconsole, or it's encrypted");
 
     arm9Section = (u8 *)firmLocation + section[2].offset;
 
@@ -168,7 +168,7 @@ static void loadEmu(u8 *proc9Offset){
     //Read emunand code from SD
     const char path[] = "/aurei/patches/emunand.bin";
     u32 size = fileSize(path);
-    if(!size) error("emunand.bin doesn't exist");
+    if(!size) error("aurei/patches/emunand.bin doesn't exist");
     u8 *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
     fileRead(emuCodeOffset, path, size);
 
@@ -220,7 +220,7 @@ void patchFirm(void){
             //Read reboot code from SD
             const char path[] = "/aurei/patches/reboot.bin";
             u32 size = fileSize(path);
-            if(!size) error("reboot.bin doesn't exist");
+            if(!size) error("aurei/patches/reboot.bin doesn't exist");
             u8 *rebootOffset = getReboot(arm9Section, section[2].size);
             fileRead(rebootOffset, path, size);
 
