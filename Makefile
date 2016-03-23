@@ -78,7 +78,8 @@ $(dir_build)/patches.h: $(dir_emu)/emuCode.s $(dir_reboot)/rebootCode.s
 
 $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
-	@bin2c -o  $@ -n loader $(dir_loader)/loader.bin
+	@mv $(dir_loader)/loader.bin $(dir_build)
+	@bin2c -o  $@ -n loader $(dir_build)/loader.bin
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
