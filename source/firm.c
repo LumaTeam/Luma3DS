@@ -79,7 +79,10 @@ void setupCFW(void){
         /* If L and one of the payload buttons are pressed, and if not using A9LH
            the Safe Mode combo is not pressed, chainload an external payload */
         if((pressed & BUTTON_L1) && (pressed & PAYLOAD_BUTTONS) &&
-           !(!a9lhSetup && pressed == SAFE_MODE)) loadPayload();
+           pressed != SAFE_MODE) loadPayload();
+
+        if(a9lhSetup && pressed == SAFE_MODE)
+            error("Using Safe Mode would brick you, or remove A9LH!");
 
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
