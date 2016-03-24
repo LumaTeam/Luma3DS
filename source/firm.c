@@ -76,9 +76,10 @@ void setupCFW(void){
 
     if(needConfig){
 
-        //If L and R are pressed, chainload an external payload
+        /* If L and one of the payload buttons are pressed, and if not using A9LH
+           the Safe Mode combo is not pressed, chainload an external payload */
         if((pressed & BUTTON_L1) && (pressed & PAYLOAD_BUTTONS) &&
-           !(!updatedSys && pressed == SAFE_MODE)) loadPayload();
+           !(!a9lhSetup && pressed == SAFE_MODE)) loadPayload();
 
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
@@ -88,7 +89,7 @@ void setupCFW(void){
         if(PDN_GPU_CNT != 0x1) loadSplash();
 
         /* If L is pressed, boot 9.0 FIRM */
-        if(pressed & BUTTON_L1) mode = 0;
+        if(pressed == BUTTON_L1) mode = 0;
 
         /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
