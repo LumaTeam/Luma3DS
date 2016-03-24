@@ -77,8 +77,8 @@ void setupCFW(void){
     if(needConfig){
 
         //If L and R are pressed, chainload an external payload
-        if((pressed & BUTTON_L1) && (pressed & PAYLOAD_BUTTONS) && pressed != SAFE_MODE)
-            loadPayload();
+        if((pressed & BUTTON_L1) && (pressed & PAYLOAD_BUTTONS) &&
+           !(!updatedSys && pressed == SAFE_MODE)) loadPayload();
 
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
@@ -87,13 +87,12 @@ void setupCFW(void){
         //If screens are inited, load splash screen
         if(PDN_GPU_CNT != 0x1) loadSplash();
 
-        /* If L is pressed, and on an updated sysNAND setup the Safe Mode combo
-           is not pressed, boot 9.0 FIRM */
-        if((pressed & BUTTON_L1) && !(updatedSys && pressed == SAFE_MODE)) mode = 0;
+        /* If L is pressed, boot 9.0 FIRM */
+        if(pressed & BUTTON_L1) mode = 0;
 
         /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
-        if((updatedSys && (!mode || ((pressed & BUTTON_R1) && pressed != SAFE_MODE))) ||
+        if((updatedSys && (!mode || (pressed & BUTTON_R1))) ||
            (!updatedSys && mode && !(pressed & BUTTON_R1))){
             //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
             if(mode && (pressed & BUTTON_B)) emuNAND = 2;
