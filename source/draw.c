@@ -43,7 +43,7 @@ void loadSplash(void){
 }
 
 void drawCharacter(char character, int pos_x, int pos_y, u32 color){
-    u8 *select = fb->top_left;
+    u8 *const select = fb->top_left;
 
     for(int y = 0; y < 8; y++){
         unsigned char char_pos = font[character * 8 + y];

@@ -9,7 +9,7 @@ static u32 loadPayload(const char *path){
     unsigned int br;
     if(f_open(&payload, path, FA_READ) == FR_OK)
     {
-        f_read(&payload, (void*)PAYLOAD_ADDRESS, f_size(&payload), &br);
+        f_read(&payload, (void *)PAYLOAD_ADDRESS, f_size(&payload), &br);
         f_close(&payload);
 
         return 1;
