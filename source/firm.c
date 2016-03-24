@@ -54,6 +54,9 @@ void setupCFW(void){
 
     //Determine if A9LH is installed
     if(a9lhBoot || (config >> 2) & 0x1){
+        if(pressed == SAFE_MODE)
+            error("Using Safe Mode would brick you, or remove A9LH!");
+
         a9lhSetup = 1;
         //Check setting for > 9.2 sysNAND
         updatedSys = config & 0x1;
@@ -75,9 +78,6 @@ void setupCFW(void){
     }
 
     if(needConfig){
-
-        if(a9lhSetup && pressed == SAFE_MODE)
-            error("Using Safe Mode would brick you, or remove A9LH!");
 
         /* If L and one of the payload buttons are pressed, and if not using A9LH
            the Safe Mode combo is not pressed, chainload an external payload */
