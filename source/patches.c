@@ -63,8 +63,8 @@ u32 getfOpen(void *pos, u32 size, u8 *proc9Offset){
 
 void *getFirmWrite(void *pos, u32 size){
     //Look for FIRM writing code
-    u8 *firmwrite = (u8 *)memsearch(pos, "exe:", size, 4);
+    u8 *const off = (u8 *)memsearch(pos, "exe:", size, 4);
     const unsigned char pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
-    return memsearch(firmwrite - 0x100, pattern, 0x100, 4);
+    return memsearch(off - 0x100, pattern, 0x100, 4);
 }

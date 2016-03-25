@@ -42,9 +42,9 @@ static u16 waitInput(void){
         for(u32 i = 0x13000; i; i--){
             if (key != HID_PAD)
                 break;
-            if(i==1) pressedkey = 1;
+            if(i == 1) pressedkey = 1;
         }
-    } while (!pressedkey);
+    } while(!pressedkey);
 
     return key;
 }

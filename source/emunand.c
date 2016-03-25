@@ -34,7 +34,7 @@ u32 getSDMMC(void *pos, u32 size){
     const unsigned char pattern[] = {0x21, 0x20, 0x18, 0x20};
     const u8 *off = (u8 *)memsearch(pos, pattern, size, 4) - 1;
 
-    return *(u32 *)(off+0x0A) + *(u32 *)(off+0x0E);
+    return *(u32 *)(off + 0x0A) + *(u32 *)(off + 0x0E);
 }
 
 void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
