@@ -63,7 +63,7 @@ void configureCFW(const char *configPath){
 
     //Read and parse the existing configuration
     u16 tempConfig = 0;
-    fileRead((u8 *)&tempConfig, configPath, 2);
+    fileRead(&tempConfig, configPath, 2);
     for(u32 i = 0; i < OPTIONS; i++)
         options.enabled[i] = (tempConfig >> i) & 0x1;
 
@@ -94,7 +94,7 @@ void configureCFW(const char *configPath){
     //Parse and write the selected options
     for(u32 i = 0; i < OPTIONS; i++)
         tempConfig |= options.enabled[i] << i;
-    fileWrite((u8 *)&tempConfig, configPath, 2);
+    fileWrite(&tempConfig, configPath, 2);
 
     //Reboot
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);

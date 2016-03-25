@@ -50,7 +50,7 @@ void setupCFW(void){
     //Attempt to read the configuration file
     const char configPath[] = "aurei/config.bin";
     u16 config = 0;
-    u32 needConfig = fileRead((u8 *)&config, configPath, 2) ? 1 : 2;
+    u32 needConfig = fileRead(&config, configPath, 2) ? 1 : 2;
 
     //Determine if A9LH is installed
     if(a9lhBoot || (config >> 2) & 0x1){
@@ -116,7 +116,7 @@ void setupCFW(void){
         if(bootConfig != (config & 0xFF00)){
             //Preserve user settings (first byte)
             u16 tempConfig = ((config & 0xFF) | bootConfig);
-            fileWrite((u8 *)&tempConfig, configPath, 2);
+            fileWrite(&tempConfig, configPath, 2);
         }
     }
 
@@ -148,7 +148,7 @@ void loadFirm(void){
                                 (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
         if(!firmSize) error("aurei/firmware(90).bin doesn't exist");
-        fileRead((u8 *)firmLocation, path, firmSize);
+        fileRead(firmLocation, path, firmSize);
     }
 
     section = firmLocation->section;
@@ -255,7 +255,7 @@ void patchFirm(void){
 
     //Write patched FIRM to SD if needed
     if(selectedFirm)
-        if(!fileWrite((u8 *)firmLocation, patchedFirms[selectedFirm - 1], firmSize))
+        if(!fileWrite(firmLocation, patchedFirms[selectedFirm - 1], firmSize))
             error("Couldn't write the patched FIRM (no free space?)");
 }
 

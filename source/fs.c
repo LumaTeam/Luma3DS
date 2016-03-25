@@ -14,7 +14,7 @@ u32 mountSD(void){
     return 1;
 }
 
-u32 fileRead(u8 *dest, const char *path, u32 size){
+u32 fileRead(void *dest, const char *path, u32 size){
     FRESULT fr;
     FIL fp;
     unsigned int br = 0;
@@ -29,7 +29,7 @@ u32 fileRead(u8 *dest, const char *path, u32 size){
     return fr ? 0 : 1;
 }
 
-u32 fileWrite(const u8 *buffer, const char *path, u32 size){
+u32 fileWrite(const void *buffer, const char *path, u32 size){
     FRESULT fr;
     FIL fp;
     unsigned int br = 0;
