@@ -14,18 +14,21 @@ void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
     u32 nandSize = getMMCDevice(0)->total_size;
     u32 nandOffset = emuNAND == 1 ? 0 :
                                   (nandSize > 0x200000 ? 0x400000 : 0x200000);
-
-    if(sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) == 0){
+	// Check if RedNAND
+    if (sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) == 0) {
+        if(*(u32 *)(temp + 0x100) == NCSD_MAGIC){
+                *off = nandOffset + 1;
+                *head = nandOffset + 1;
+        }
+    }
+    // GWNand
+    else if(sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) == 0){
         if(*(u32 *)(temp + 0x100) == NCSD_MAGIC){
             *off = nandOffset;
             *head = nandOffset + nandSize;
         }
         //Fallback to the first emuNAND if there's no second one
         else if(emuNAND == 2) getEmunandSect(off, head, 1);
-        //Check if a RedNAND is present
-        else if(sdmmc_sdcard_readsectors(1, 1, temp) == 0)
-            if(*(u32 *)(temp + 0x100) != NCSD_MAGIC)
-                *head = 0;
     }
 }
 
@@ -54,7 +57,7 @@ u32 *getMPU(void *pos, u32 size){
 
 void *getEmuCode(u8 *pos, u32 size, u8 *proc9Offset){
     const unsigned char pattern[] = {0x00, 0xFF, 0xFF, 0xFF};
- 
+
     //Looking for the last free space before Process9
     return (u8 *)memsearch(pos, pattern, size - (size - (u32)(proc9Offset - pos)), 4) + 0xD;
 }
