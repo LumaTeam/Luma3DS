@@ -35,7 +35,7 @@ void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
 
 u32 getSDMMC(void *pos, u32 size){
     //Look for struct code
-    const unsigned char pattern[] = {0x21, 0x20, 0x18, 0x20};
+    const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
     const u8 *off = (u8 *)memsearch(pos, pattern, size, 4) - 1;
 
     return *(u32 *)(off + 0x0A) + *(u32 *)(off + 0x0E);
@@ -43,7 +43,7 @@ u32 getSDMMC(void *pos, u32 size){
 
 void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
     //Look for read/write code
-    const unsigned char pattern[] = {0x1E, 0x00, 0xC8, 0x05};
+    const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
     *writeOff = (u32)memsearch(pos, pattern, size, 4) - 6;
     *readOff = (u32)memsearch((void *)(*writeOff - 0x1000), pattern, 0x1000, 4) - 6;
@@ -51,13 +51,13 @@ void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
 
 u32 *getMPU(void *pos, u32 size){
     //Look for MPU pattern
-    const unsigned char pattern[] = {0x03, 0x00, 0x24, 0x00};
+    const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
 
     return (u32 *)memsearch(pos, pattern, size, 4);
 }
 
 void *getEmuCode(u8 *pos, u32 size, u8 *proc9Offset){
-    const unsigned char pattern[] = {0x00, 0xFF, 0xFF, 0xFF};
+    const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF};
  
     //Looking for the last free space before Process9
     return (u8 *)memsearch(pos, pattern, size - (size - (u32)(proc9Offset - pos)), 4) + 0xD;

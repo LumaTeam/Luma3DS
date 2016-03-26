@@ -29,8 +29,8 @@ u8 *getProc9(void *pos, u32 size){
 
 void getSignatures(void *pos, u32 size, u32 *off, u32 *off2){
     //Look for signature checks
-    const unsigned char pattern[] = {0xC0, 0x1C, 0x76, 0xE7};
-    const unsigned char pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
+    const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7};
+    const u8 pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
     *off = (u32)memsearch(pos, pattern, size, 4);
     *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
@@ -38,7 +38,7 @@ void getSignatures(void *pos, u32 size, u32 *off, u32 *off2){
 
 void *getReboot(void *pos, u32 size){
     //Look for FIRM reboot code
-    const unsigned char pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
+    const u8 pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
 
     return (u8 *)memsearch(pos, pattern, size, 4) - 0x10;
 }
@@ -56,7 +56,7 @@ u32 getfOpen(u8 *proc9Offset, void *rebootOffset){
 u16 *getFirmWrite(void *pos, u32 size){
     //Look for FIRM writing code
     u8 *const off = (u8 *)memsearch(pos, "exe:", size, 4);
-    const unsigned char pattern[] = {0x00, 0x28, 0x01, 0xDA};
+    const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
 }
