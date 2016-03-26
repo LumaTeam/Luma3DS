@@ -15,17 +15,21 @@ void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
     u32 nandOffset = emuNAND == 1 ? 0 :
                                   (nandSize > 0x200000 ? 0x400000 : 0x200000);
 
+    //Check for Gateway emuNAND
     if(sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) == 0){
         if(*(u32 *)(temp + 0x100) == NCSD_MAGIC){
-            *off = nandOffset;
-            *head = nandOffset + nandSize;
+                *off = nandOffset;
+                *head = nandOffset + nandSize;
         }
-        //Fallback to the first emuNAND if there's no second one
-        else if(emuNAND == 2) getEmunandSect(off, head, 1);
-        //Check if a RedNAND is present
-        else if(sdmmc_sdcard_readsectors(1, 1, temp) == 0)
-            if(*(u32 *)(temp + 0x100) != NCSD_MAGIC)
-                *head = 0;
+        //Check for RedNAND
+        else if(sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) == 0){
+            if(*(u32 *)(temp + 0x100) == NCSD_MAGIC){
+                *off = nandOffset + 1;
+                *head = nandOffset + 1;
+            }
+            //Fallback to the first emuNAND if there's no second one
+            else if(emuNAND == 2) getEmunandSect(off, head, 1);
+        }
     }
 }
 

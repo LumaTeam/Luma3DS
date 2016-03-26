@@ -165,8 +165,8 @@ void loadFirm(void){
 //NAND redirection
 static void loadEmu(u8 *proc9Offset){
 
-    u32 emuOffset = 1,
-        emuHeader = 1,
+    u32 emuOffset,
+        emuHeader = 0,
         emuRead,
         emuWrite;
 
