@@ -176,7 +176,7 @@ static void loadEmu(u8 *proc9Offset){
     //No emuNAND detected
     if(!emuHeader) error("No emuNAND has been detected");
 
-    //Copy the emuNAND patch
+    //Copy emuNAND code
     void *emuCodeOffset = getEmuCode(arm9Section, section[2].size, proc9Offset);
     memcpy(emuCodeOffset, emunand, emunand_size);
 
@@ -225,9 +225,12 @@ void patchFirm(void){
 
         //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
         if(mode){
-            //Read reboot code from SD
+            //Calculate offset for the firmlaunch code
             void *rebootOffset = getReboot(arm9Section, section[2].size);
+            //Calculate offset for the fOpen function
             u32 fOpenOffset = getfOpen(proc9Offset, rebootOffset);
+
+            //Copy firmlaunch code
             memcpy(rebootOffset, reboot, reboot_size);
 
             //Put the fOpen offset in the right location
