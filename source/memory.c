@@ -36,7 +36,7 @@ int memcmp(const void *buf1, const void *buf2, u32 size){
 }
 
 void *memsearch(void *start_pos, const void *search, u32 size, u32 size_search){
-    for(void *pos = start_pos + size - size_search; pos >= start_pos; pos--)
+    for(u8 *pos = (u8 *)start_pos + size - size_search; pos >= (u8 *)start_pos; pos--)
         if(memcmp(pos, search, size_search) == 0) return pos;
     return NULL;
 }

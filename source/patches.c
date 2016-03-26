@@ -11,19 +11,13 @@
 *                   Patches
 **************************************************/
 
-const u8 mpu[0x2C] = {
-    0x03, 0x00, 0x36, 0x00, 0x00, 0x00, 0x10, 0x10, 0x01, 0x00, 0x00, 0x01, 0x03, 0x00, 0x36, 0x00, 
-    0x00, 0x00, 0x00, 0x20, 0x01, 0x01, 0x01, 0x01, 0x03, 0x06, 0x20, 0x00, 0x00, 0x00, 0x00, 0x08, 
-    0x01, 0x01, 0x01, 0x01, 0x03, 0x06, 0x1C, 0x00, 0x00, 0x00, 0x02, 0x08
-};
+const u32 mpuPatch[3] = {0x00360003, 0x00200603, 0x001C0603};
 
-//Branch to emunand function. To be filled in
-u8 nandRedir[0x08] = {0x00, 0x4C, 0xA0, 0x47, 0x00, 0x00, 0x00, 0x00};
+const u16 nandRedir[2] = {0x4C00, 0x47A0};
 
-const u8 sigPat1[2] = {0x00, 0x20};
-const u8 sigPat2[4] = {0x00, 0x20, 0x70, 0x47};
+const u16 sigPatch[2] = {0x2000, 0x4770};
 
-const u8 writeBlock[4] = {0x00, 0x20, 0xC0, 0x46};
+const u16 writeBlock[2] = {0x2000, 0x46C0};
 
 /**************************************************
 *                   Functions
@@ -49,22 +43,20 @@ void *getReboot(void *pos, u32 size){
     return (u8 *)memsearch(pos, pattern, size, 4) - 0x10;
 }
 
-u32 getfOpen(void *pos, u32 size, u8 *proc9Offset){
+u32 getfOpen(u8 *proc9Offset, void *rebootOffset){
     //Offset Process9 code gets loaded to in memory (defined in ExHeader)
     u32 p9MemAddr = *(u32 *)(proc9Offset + 0xC);
-    //Start of Process9 .code section (start of NCCH + ExeFS offset + ExeFS header size)
+    //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
     u32 p9CodeOff = (u32)(proc9Offset - 0x204) + (*(u32 *)(proc9Offset - 0x64) * 0x200) + 0x200;
 
-    //Calculate fOpen
-    const unsigned char pattern[] = {0xB0, 0x04, 0x98, 0x0D};
-
-    return (u32)memsearch(pos, pattern, size, 4) - 2 - p9CodeOff + p9MemAddr;
+    //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
+    return (u32)rebootOffset + 9 - (-((*(u32 *)rebootOffset & 0x00FFFFFF) << 2) & 0xFFFFF) - p9CodeOff + p9MemAddr;
 }
 
-void *getFirmWrite(void *pos, u32 size){
+u16 *getFirmWrite(void *pos, u32 size){
     //Look for FIRM writing code
     u8 *const off = (u8 *)memsearch(pos, "exe:", size, 4);
     const unsigned char pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
-    return memsearch(off - 0x100, pattern, 0x100, 4);
+    return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
 }

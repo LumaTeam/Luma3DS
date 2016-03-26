@@ -45,16 +45,16 @@ void getEmuRW(void *pos, u32 size, u32 *readOff, u32 *writeOff){
     *readOff = (u32)memsearch((void *)(*writeOff - 0x1000), pattern, 0x1000, 4) - 6;
 }
 
-void *getMPU(void *pos, u32 size){
+u32 *getMPU(void *pos, u32 size){
     //Look for MPU pattern
     const unsigned char pattern[] = {0x03, 0x00, 0x24, 0x00};
 
-    return memsearch(pos, pattern, size, 4);
+    return (u32 *)memsearch(pos, pattern, size, 4);
 }
 
-void *getEmuCode(void *pos, u32 size, u8 *proc9Offset){
+void *getEmuCode(u8 *pos, u32 size, u8 *proc9Offset){
     const unsigned char pattern[] = {0x00, 0xFF, 0xFF, 0xFF};
  
     //Looking for the last free space before Process9
-    return (u8 *)memsearch(pos, pattern, size - (size - (u32)(proc9Offset - (u8 *)pos)), 4) + 0xD;
+    return (u8 *)memsearch(pos, pattern, size - (size - (u32)(proc9Offset - pos)), 4) + 0xD;
 }

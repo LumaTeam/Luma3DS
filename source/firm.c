@@ -92,7 +92,7 @@ void setupCFW(void){
         if(PDN_GPU_CNT != 0x1) loadSplash();
 
         /* If L is pressed, boot 9.0 FIRM */
-        if(pressed == BUTTON_L1) mode = 0;
+        if(pressed & BUTTON_L1) mode = 0;
 
         /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
@@ -191,17 +191,23 @@ static void loadEmu(u8 *proc9Offset){
     *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
 
     //Calculate offset for the hooks
-    *(u32 *)(nandRedir + 4) = (u32)emuCodeOffset - (u32)firmLocation -
-                              section[2].offset + (u32)section[2].address;
+    u32 branchOffset = (u32)emuCodeOffset - (u32)firmLocation -
+                       section[2].offset + (u32)section[2].address;
 
     //Add emunand hooks
     getEmuRW(arm9Section, section[2].size, &emuRead, &emuWrite);
-    memcpy((void *)emuRead, nandRedir, sizeof(nandRedir));
-    memcpy((void *)emuWrite, nandRedir, sizeof(nandRedir));
+    *(u16 *)emuRead = nandRedir[0];
+    *((u16 *)emuRead + 1) = nandRedir[1];
+    *((u32 *)emuRead + 1) = branchOffset;
+    *(u16 *)emuWrite = nandRedir[0];
+    *((u16 *)emuWrite + 1) = nandRedir[1];
+    *((u32 *)emuWrite + 1) = branchOffset;
 
     //Set MPU for emu code region
-    void *mpuOffset = getMPU(arm9Section, section[2].size);
-    memcpy(mpuOffset, mpu, sizeof(mpu));
+    u32 *mpuOffset = getMPU(arm9Section, section[2].size);
+    *mpuOffset = mpuPatch[0];
+    *(mpuOffset + 6) = mpuPatch[1];
+    *(mpuOffset + 9) = mpuPatch[2];
 }
 
 //Patches
@@ -221,11 +227,12 @@ void patchFirm(void){
         if(mode){
             //Read reboot code from SD
             void *rebootOffset = getReboot(arm9Section, section[2].size);
+            u32 fOpenOffset = getfOpen(proc9Offset, rebootOffset);
             memcpy(rebootOffset, reboot, reboot_size);
 
-            //Calculate the fOpen offset and put it in the right location
+            //Put the fOpen offset in the right location
             u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
-            *pos_fopen = getfOpen(arm9Section, section[2].size, proc9Offset);
+            *pos_fopen = fOpenOffset;
 
             //Patch path for emuNAND-patched FIRM
             if(emuNAND){
@@ -237,8 +244,9 @@ void patchFirm(void){
 
     if(a9lhSetup && !emuNAND){
         //Patch FIRM partitions writes on sysNAND to protect A9LH
-        void *writeOffset = getFirmWrite(arm9Section, section[2].size);
-        memcpy(writeOffset, writeBlock, sizeof(writeBlock));
+        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
+        *writeOffset = writeBlock[0];
+        *(writeOffset + 1) = writeBlock[1];
     }
 
     //Disable signature checks
@@ -246,8 +254,9 @@ void patchFirm(void){
         sigOffset2;
 
     getSignatures(firmLocation, firmSize, &sigOffset, &sigOffset2);
-    memcpy((void *)sigOffset, sigPat1, sizeof(sigPat1));
-    memcpy((void *)sigOffset2, sigPat2, sizeof(sigPat2));
+    *(u16 *)sigOffset = sigPatch[0];
+    *(u16 *)sigOffset2 = sigPatch[0];
+    *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console)
