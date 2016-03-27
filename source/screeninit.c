@@ -11,7 +11,7 @@
 #include "draw.h"
 #include "i2c.h"
 
-static vu32 *const arm11 = (vu32 *)0x1FFFFFF8;
+static vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
 void deinitScreens(void){
     void __attribute__((naked)) ARM11(void){

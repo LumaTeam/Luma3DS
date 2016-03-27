@@ -20,7 +20,7 @@
 //FIRM patches version
 #define PATCH_VER 1
 
-static firmHeader *const firmLocation = (firmHeader *)0x24000000;
+static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 static u8 *arm9Section;
 static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
@@ -142,9 +142,9 @@ void loadFirm(void){
     if(!usePatchedFirm && !a9lhSetup && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
-        nandFirm0((u8 *)firmLocation, firmSize, console);
+        nandFirm0((u8 *)firm, firmSize, console);
         //Check for correct decryption
-        if(memcmp(firmLocation, "FIRM", 4) != 0)
+        if(memcmp(firm, "FIRM", 4) != 0)
             error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
     }
     //Load FIRM from SD
@@ -153,16 +153,16 @@ void loadFirm(void){
                                 (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
         if(!firmSize) error("aurei/firmware(90).bin doesn't exist");
-        fileRead(firmLocation, path, firmSize);
+        fileRead(firm, path, firmSize);
     }
 
-    section = firmLocation->section;
+    section = firm->section;
 
     //Check that the loaded FIRM matches the console
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
         error("aurei/firmware(90).bin doesn't match this\nconsole, or it's encrypted");
 
-    arm9Section = (u8 *)firmLocation + section[2].offset;
+    arm9Section = (u8 *)firm + section[2].offset;
 
     if(console && !usePatchedFirm) decryptArm9Bin(arm9Section, mode);
 }
@@ -196,7 +196,7 @@ static void loadEmu(u8 *proc9Offset){
     *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
 
     //Calculate offset for the hooks
-    u32 branchOffset = (u32)emuCodeOffset - (u32)firmLocation -
+    u32 branchOffset = (u32)emuCodeOffset - (u32)firm -
                        section[2].offset + (u32)section[2].address;
 
     //Add emunand hooks
@@ -261,18 +261,18 @@ void patchFirm(void){
     u32 sigOffset,
         sigOffset2;
 
-    getSignatures(firmLocation, firmSize, &sigOffset, &sigOffset2);
+    getSigChecks(arm9Section, section[2].size, &sigOffset, &sigOffset2);
     *(u16 *)sigOffset = sigPatch[0];
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console)
-        firmLocation->arm9Entry = (u8 *)0x801B01C;
+        firm->arm9Entry = (u8 *)0x801B01C;
 
     //Write patched FIRM to SD if needed
     if(selectedFirm)
-        if(!fileWrite(firmLocation, patchedFirms[selectedFirm - 1], firmSize))
+        if(!fileWrite(firm, patchedFirms[selectedFirm - 1], firmSize))
             error("Couldn't write the patched FIRM (no free space?)");
 }
 
@@ -281,16 +281,16 @@ void launchFirm(void){
     if(console && mode) setKeyXs(arm9Section);
 
     //Copy firm partitions to respective memory locations
-    memcpy(section[0].address, (u8 *)firmLocation + section[0].offset, section[0].size);
-    memcpy(section[1].address, (u8 *)firmLocation + section[1].offset, section[1].size);
+    memcpy(section[0].address, (u8 *)firm + section[0].offset, section[0].size);
+    memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
     memcpy(section[2].address, arm9Section, section[2].size);
 
     //Fixes N3DS 3D
     deinitScreens();
 
     //Set ARM11 kernel entrypoint
-    *(vu32 *)0x1FFFFFF8 = (u32)firmLocation->arm11Entry;
+    *(vu32 *)0x1FFFFFF8 = (u32)firm->arm11Entry;
 
     //Final jump to arm9 kernel
-    ((void (*)())firmLocation->arm9Entry)();
+    ((void (*)())firm->arm9Entry)();
 }

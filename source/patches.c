@@ -27,7 +27,7 @@ u8 *getProc9(void *pos, u32 size){
     return (u8 *)memsearch(pos, "ess9", size, 4);
 }
 
-void getSignatures(void *pos, u32 size, u32 *off, u32 *off2){
+void getSigChecks(void *pos, u32 size, u32 *off, u32 *off2){
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7};
     const u8 pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};

@@ -20,7 +20,7 @@ const u16 writeBlock[2];
 *                   Functions
 **************************************************/
 u8 *getProc9(void *pos, u32 size);
-void getSignatures(void *pos, u32 size, u32 *off, u32 *off2);
+void getSigChecks(void *pos, u32 size, u32 *off, u32 *off2);
 void *getReboot(void *pos, u32 size);
 u32 getfOpen(u8 *proc9Offset, void *rebootOffset);
 u16 *getFirmWrite(void *pos, u32 size);
