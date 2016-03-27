@@ -57,7 +57,7 @@ void configureCFW(const char *configPath){
 
     initScreens();
 
-    drawString("AuReiNand configuration", 10, 10, COLOR_TITLE);
+    drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
 
     //Read and parse the existing configuration
