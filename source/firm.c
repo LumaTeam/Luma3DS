@@ -28,12 +28,12 @@ static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
                                      "/aurei/patched_firmware_em2.bin",
                                      "/aurei/patched_firmware90.bin" };
 static u32 firmSize,
-           mode = 1,
-           console = 1,
-           emuNAND = 0,
-           a9lhSetup = 0,
-           usePatchedFirm = 0,
-           selectedFirm = 0;
+           console,
+           mode,
+           emuNAND,
+           a9lhSetup,
+           selectedFirm,
+           usePatchedFirm;
 
 void setupCFW(void){
 
@@ -42,17 +42,18 @@ void setupCFW(void){
     //Retrieve the last booted FIRM
     u8 previousFirm = CFG_BOOTENV;
     //Detect the console being used
-    if(PDN_MPCORE_CFG == 1) console = 0;
+    console = (PDN_MPCORE_CFG == 1) ? 0 : 1;
     //Get pressed buttons
     u16 pressed = HID_PAD;
-    u32 updatedSys = 0;
 
     //Attempt to read the configuration file
     const char configPath[] = "aurei/config.bin";
     u16 config = 0;
     u32 needConfig = fileRead(&config, configPath, 2) ? 1 : 2;
 
-    //Determine if A9LH is installed
+    //Determine if A9LH is installed and the user has an updated sysNAND
+    u32 updatedSys;
+
     if(a9lhBoot || (config >> 2) & 0x1){
         if(pressed == SAFE_MODE)
             error("Using Safe Mode would brick you, or remove A9LH!");
@@ -60,7 +61,13 @@ void setupCFW(void){
         a9lhSetup = 1;
         //Check setting for > 9.2 sysNAND
         updatedSys = config & 0x1;
+    } else{
+        a9lhSetup = 0;
+        updatedSys = 0;
     }
+
+    //Determine if the user chose to use pre-patched FIRMs
+    u32 usePatchedFirmSet = (config >> 1) & 0x1;
 
     /* If booting with A9LH, it's a MCU reboot and a previous configuration exists,
        try to force boot options */
@@ -68,9 +75,10 @@ void setupCFW(void){
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(previousFirm == 0x7){
             if(!updatedSys) mode = (config >> 8) & 0x1;
+            emuNAND = 0;
             needConfig = 0;
-        //Else, force the last used boot options unless A is pressed
-        } else if(!(pressed & BUTTON_A)){
+        //Else, force the last used boot options unless A, L or R are pressed
+        } else if(!(pressed & OPTION_BUTTONS)){
             mode = (config >> 8) & 0x1;
             emuNAND = (config >> 9) & 0x1;
             needConfig = 0;
@@ -92,21 +100,20 @@ void setupCFW(void){
         if(PDN_GPU_CNT != 0x1) loadSplash();
 
         /* If L is pressed, boot 9.0 FIRM */
-        if(pressed & BUTTON_L1) mode = 0;
+        mode = (pressed & BUTTON_L1) ? 0 : 1;
 
         /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
         if((updatedSys && (!mode || (pressed & BUTTON_R1))) ||
            (!updatedSys && mode && !(pressed & BUTTON_R1))){
             //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
-            if(mode && (pressed & BUTTON_B)) emuNAND = 2;
-            else emuNAND = 1;
-        }
+            emuNAND = (mode && (pressed & BUTTON_B)) ? 2 : 1;
+        } else emuNAND = 0;
 
         /* If tha FIRM patches version is different or user switched to/from A9LH,
            and "Use pre-patched FIRMs" is set, delete all patched FIRMs */
         u16 bootConfig = (PATCH_VER << 11) | (a9lhSetup << 10);
-        if ((config >> 1) & 0x1 && bootConfig != (config & 0xFC00))
+        if(usePatchedFirmSet && bootConfig != (config & 0xFC00))
             deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
 
         //We also need to remember the used boot mode on A9LH
@@ -120,14 +127,12 @@ void setupCFW(void){
         }
     }
 
-    if(mode) selectedFirm = emuNAND ? (emuNAND == 1 ? 2 : 3) : 1;
+    //Determine which patched FIRM we need to write or attempt to use (if any)
+    selectedFirm = mode ? (emuNAND ? (emuNAND == 1 ? 2 : 3) : 1) :
+                          (usePatchedFirmSet ? 4 : 0);
 
-    //Skip decrypting and patching FIRM
-    if((config >> 1) & 0x1){
-        //Only needed with this setting
-        if(!mode) selectedFirm = 4;
-        if(fileExists(patchedFirms[selectedFirm - 1])) usePatchedFirm = 1;
-    }
+    //Determine if we need to use a pre-patched FIRM
+    usePatchedFirm = (usePatchedFirmSet && fileExists(patchedFirms[selectedFirm - 1])) ? 1 : 0;
 }
 
 //Load FIRM into FCRAM

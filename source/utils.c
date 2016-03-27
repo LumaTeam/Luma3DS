@@ -27,7 +27,7 @@ struct options {
 };
 
 static u16 waitInput(void){
-    u32 pressedkey = 0;
+    u32 pressedKey = 0;
     u16 key;
 
     //Wait for no keys to be pressed
@@ -40,11 +40,10 @@ static u16 waitInput(void){
 
         //Make sure it's pressed
         for(u32 i = 0x13000; i; i--){
-            if (key != HID_PAD)
-                break;
-            if(i == 1) pressedkey = 1;
+            if(key != HID_PAD) break;
+            if(i == 1) pressedKey = 1;
         }
-    } while(!pressedkey);
+    } while(!pressedKey);
 
     return key;
 }
