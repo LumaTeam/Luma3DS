@@ -41,7 +41,7 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize){
     const u8 *patternc = (const u8 *)pattern;
 
     //Preprocessing
-    int table[256];
+    u32 table[256];
 
     for(u32 i = 0; i < 256; ++i)
         table[i] = patternSize + 1;
