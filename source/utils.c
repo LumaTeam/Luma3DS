@@ -11,19 +11,14 @@
 #include "i2c.h"
 #include "buttons.h"
 
-//Number of options that can be configured
-#define OPTIONS 3
-
 #define COLOR_TITLE    0xFF9900
 #define COLOR_WHITE    0xFFFFFF
 #define COLOR_RED      0x0000FF
 #define COLOR_BLACK    0x000000
 
-struct options {
-    char *text[OPTIONS];
-    int pos_y[OPTIONS];
-    u32 enabled[OPTIONS];
-    u32 selected;
+struct option {
+    int posY;
+    u32 enabled;
 };
 
 static u16 waitInput(void){
@@ -48,52 +43,75 @@ static u16 waitInput(void){
     return key;
 }
 
-void configureCFW(const char *configPath){
-    struct options options;
-
-    options.text[0] = "( ) Updated SysNAND mode (A9LH-only)";
-    options.text[1] = "( ) Use pre-patched FIRMs";
-    options.text[2] = "( ) Force A9LH detection";
-
+void configureCFW(const char *configPath, const char *firm90Path){
     initScreens();
 
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
 
+    const char *optionsText[] = { "( ) Updated SysNAND mode (A9LH-only)",
+                                  "( ) Use pre-patched FIRMs",
+                                  "( ) Force A9LH detection",
+                                  "( ) Use 9.0 FIRM as default",
+                                  "( ) Use second EmuNAND as default",
+                                  "( ) Show current NAND in System Settings" };
+
+    u32 optionsAmount = sizeof(optionsText) / sizeof(char *);
+    struct option options[optionsAmount];
+
     //Read and parse the existing configuration
-    u16 tempConfig = 0;
-    fileRead(&tempConfig, configPath, 2);
-    for(u32 i = 0; i < OPTIONS; i++)
-        options.enabled[i] = (tempConfig >> i) & 0x1;
+    u32 tempConfig = 0;
+    fileRead(&tempConfig, configPath, 3);
+    for(u32 i = 0; i < optionsAmount; i++)
+        options[i].enabled = (tempConfig >> i) & 0x1;
 
     //Pre-select the first configuration option
-    options.selected = 0;
+    u32 selectedOption = 0;
 
     //Boring configuration menu
     while(1){
         u16 pressed = 0;
 
         do{
-            for(u32 i = 0; i < OPTIONS; i++){
-                options.pos_y[i] = drawString(options.text[i], 10, !i ? 60 : options.pos_y[i - 1] + SPACING_VERT, options.selected == i ? COLOR_RED : COLOR_WHITE);
-                drawCharacter('x', 10 + SPACING_HORIZ, options.pos_y[i], options.enabled[i] ? (options.selected == i ? COLOR_RED : COLOR_WHITE) : COLOR_BLACK);
+            for(u32 i = 0; i < optionsAmount; i++){
+                options[i].posY = drawString(optionsText[i], 10, !i ? 60 : options[i - 1].posY + SPACING_Y, selectedOption == i ? COLOR_RED : COLOR_WHITE);
+                drawCharacter('x', 10 + SPACING_X, options[i].posY, options[i].enabled ? (selectedOption == i ? COLOR_RED : COLOR_WHITE) : COLOR_BLACK);
             }
             pressed = waitInput();
-        } while(!(pressed & (BUTTON_UP | BUTTON_DOWN | BUTTON_A | BUTTON_START)));
+        } while(!(pressed & MENU_BUTTONS));
 
-        if(pressed == BUTTON_UP) options.selected = !options.selected ? OPTIONS - 1 : options.selected - 1;
-        else if(pressed == BUTTON_DOWN) options.selected = options.selected == OPTIONS - 1 ? 0 : options.selected + 1;
-        else if(pressed == BUTTON_A) options.enabled[options.selected] = !options.enabled[options.selected];
-        else if(pressed == BUTTON_START) break;
+        switch(pressed){
+            case BUTTON_UP:
+                selectedOption = !selectedOption ? optionsAmount - 1 : selectedOption - 1;
+                break;
+            case BUTTON_DOWN:
+                selectedOption = selectedOption == optionsAmount - 1 ? 0 : selectedOption + 1;
+                break;
+            case BUTTON_LEFT:
+                selectedOption = 0;
+                break;
+            case BUTTON_RIGHT:
+                selectedOption = optionsAmount - 1;
+                break;
+            case BUTTON_A:
+                options[selectedOption].enabled = !options[selectedOption].enabled;
+                break;
+        }
+
+        if(pressed == BUTTON_START) break;
     }
 
-    //Preserve the last-used boot options (second byte)
-    tempConfig &= 0xFF00;
+    //If the user has been using A9LH and the "Updated SysNAND" setting changed, delete the patched 9.0 FIRM
+    if(((tempConfig >> 16) & 0x1) && ((tempConfig & 0x1) != options[0].enabled))
+        fileDelete(firm90Path);
+
+    //Preserve the last-used boot options (last 12 bits)
+    tempConfig &= 0xFFF000;
 
     //Parse and write the selected options
-    for(u32 i = 0; i < OPTIONS; i++)
-        tempConfig |= options.enabled[i] << i;
-    fileWrite(&tempConfig, configPath, 2);
+    for(u32 i = 0; i < optionsAmount; i++)
+        tempConfig |= options[i].enabled << i;
+    fileWrite(&tempConfig, configPath, 3);
 
     //Reboot
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
@@ -111,8 +129,8 @@ void error(const char *message){
     initScreens();
 
     drawString("An error has occurred:", 10, 10, COLOR_RED);
-    int pos_y = drawString(message, 10, 30, COLOR_WHITE);
-    drawString("Press any button to shutdown", 10, pos_y + 2 * SPACING_VERT, COLOR_WHITE);
+    int posY = drawString(message, 10, 30, COLOR_WHITE);
+    drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
 
     waitInput();
 

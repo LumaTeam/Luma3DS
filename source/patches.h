@@ -19,8 +19,9 @@ const u16 writeBlock[2];
 /**************************************************
 *                   Functions
 **************************************************/
-u8 *getProc9(void *pos, u32 size);
-void getSigChecks(void *pos, u32 size, u32 *off, u32 *off2);
-void *getReboot(void *pos, u32 size);
+u8 *getProc9(u8 *pos, u32 size);
+void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2);
+void *getReboot(u8 *pos, u32 size);
 u32 getfOpen(u8 *proc9Offset, void *rebootOffset);
-u16 *getFirmWrite(void *pos, u32 size);
+u16 *getFirmWrite(u8 *pos, u32 size);
+void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize);

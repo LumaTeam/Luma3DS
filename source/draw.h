@@ -10,10 +10,10 @@
 
 #include "types.h"
 
-#define SPACING_VERT 10
-#define SPACING_HORIZ 8
+#define SPACING_Y 10
+#define SPACING_X 8
 
 void loadSplash(void);
 void clearScreens(void);
-void drawCharacter(char character, int pos_x, int pos_y, u32 color);
-int drawString(const char *string, int pos_x, int pos_y, u32 color);
+void drawCharacter(char character, int posX, int posY, u32 color);
+int drawString(const char *string, int posX, int posY, u32 color);

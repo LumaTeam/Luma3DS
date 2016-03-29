@@ -2,6 +2,8 @@
 *   memory.c
 *       by Reisyukaku / Aurora Wright
 *   Copyright (c) 2016 All Rights Reserved
+*
+*   Quick Search algorithm adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
 */
 
 #include "memory.h"
@@ -35,8 +37,25 @@ int memcmp(const void *buf1, const void *buf2, u32 size){
     return 0;
 }
 
-void *memsearch(void *start_pos, const void *search, u32 size, u32 size_search){
-    for(u8 *pos = (u8 *)start_pos + size - size_search; pos >= (u8 *)start_pos; pos--)
-        if(memcmp(pos, search, size_search) == 0) return pos;
+u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize){
+    const u8 *patternc = (const u8 *)pattern;
+
+    //Preprocessing
+    int table[256];
+
+    for(u32 i = 0; i < 256; ++i)
+        table[i] = patternSize + 1;
+    for(u32 i = 0; i < patternSize; ++i)
+        table[patternc[i]] = patternSize - i;
+
+    //Searching
+    u32 j = 0;
+
+    while(j <= size - patternSize){
+        if(memcmp(patternc, startPos + j, patternSize) == 0)
+            return startPos + j;
+        j += table[startPos[j + patternSize]];
+    }
+
     return NULL;
 }

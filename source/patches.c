@@ -23,24 +23,24 @@ const u16 writeBlock[2] = {0x2000, 0x46C0};
 *                   Functions
 **************************************************/
 
-u8 *getProc9(void *pos, u32 size){
-    return (u8 *)memsearch(pos, "ess9", size, 4);
+u8 *getProc9(u8 *pos, u32 size){
+    return memsearch(pos, "ess9", size, 4);
 }
 
-void getSigChecks(void *pos, u32 size, u32 *off, u32 *off2){
+void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2){
     //Look for signature checks
-    const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7};
-    const u8 pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
+    const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
+             pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
     *off = (u32)memsearch(pos, pattern, size, 4);
     *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
 }
 
-void *getReboot(void *pos, u32 size){
+void *getReboot(u8 *pos, u32 size){
     //Look for FIRM reboot code
     const u8 pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
 
-    return (u8 *)memsearch(pos, pattern, size, 4) - 0x10;
+    return memsearch(pos, pattern, size, 4) - 0x10;
 }
 
 u32 getfOpen(u8 *proc9Offset, void *rebootOffset){
@@ -53,10 +53,17 @@ u32 getfOpen(u8 *proc9Offset, void *rebootOffset){
     return (u32)rebootOffset + 9 - (-((*(u32 *)rebootOffset & 0x00FFFFFF) << 2) & 0xFFFFF) - p9CodeOff + p9MemAddr;
 }
 
-u16 *getFirmWrite(void *pos, u32 size){
+u16 *getFirmWrite(u8 *pos, u32 size){
     //Look for FIRM writing code
-    u8 *const off = (u8 *)memsearch(pos, "exe:", size, 4);
+    u8 *const off = memsearch(pos, "exe:", size, 4);
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
+}
+
+void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize){
+    u8 *const off = memsearch(pos, "loade", size, 5);
+
+    *loaderOffset = (u32)off - 0x200;
+    *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
 }

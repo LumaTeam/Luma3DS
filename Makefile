@@ -11,6 +11,7 @@ version := $(shell git describe --abbrev=0 --tags)
 dir_source := source
 dir_patches := patches
 dir_loader := loader
+dir_injector := injector
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
 dir_build := build
@@ -47,6 +48,7 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@rm -rf $(dir_out) $(dir_build)
 	@$(MAKE) -C $(dir_loader) clean
+	@$(MAKE) -C $(dir_injector) clean
 
 $(dir_out):
 	@mkdir -p "$(dir_out)/aurei/payloads"
@@ -67,12 +69,13 @@ $(dir_out)/3ds/$(name): $(dir_out)
 $(dir_out)/$(name).zip: launcher a9lh ninjhax
 	@cd $(dir_out) && zip -9 -r $(name) *
 
-$(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s
+$(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
 	@mkdir -p "$(dir_build)"
 	@armips $<
 	@armips $(word 2,$^)
-	@mv emunand.bin reboot.bin $(dir_build)
-	@bin2c -o $@ -n emunand $(dir_build)/emunand.bin -n reboot $(dir_build)/reboot.bin
+	@$(MAKE) -C $(dir_injector)
+	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(dir_build)
+	@bin2c -o $@ -n emunand $(dir_build)/emunand.bin -n reboot $(dir_build)/reboot.bin -n injector $(dir_build)/injector.cxi
 
 $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
