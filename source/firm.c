@@ -71,7 +71,7 @@ void setupCFW(void){
     if(a9lhBoot && previousFirm && needConfig == 1){
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(previousFirm == 0x7){
-            if(!updatedSys) mode = (config >> 12) & 0x1;
+            mode = updatedSys ? 1 : (config >> 12) & 0x1;
             emuNAND = 0;
             needConfig = 0;
         //Else, force the last used boot options unless A, L or R are pressed
