@@ -113,6 +113,9 @@ void configureCFW(const char *configPath, const char *firm90Path){
         tempConfig |= options[i].enabled << i;
     fileWrite(&tempConfig, configPath, 3);
 
+    //Zero the last booted FIRM flag
+    CFG_BOOTENV = 0;
+
     //Reboot
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(1);

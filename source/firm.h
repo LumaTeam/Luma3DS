@@ -10,7 +10,6 @@
 
 #define PDN_MPCORE_CFG (*(vu8 *)0x10140FFC)
 #define PDN_SPI_CNT    (*(vu8 *)0x101401C0)
-#define CFG_BOOTENV    (*(vu8 *)0x10010000)
 
 //FIRM Header layout
 typedef struct firmSectionHeader {
