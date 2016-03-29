@@ -5,6 +5,8 @@
 
 You'll need armips and [bin2c](https://sourceforge.net/projects/bin2c/) added to your Path. [HERE](http://www91.zippyshare.com/v/ePGpjk9r/file.html) is a pre-compiled version of armips.
 
+You also need to have a recent build of makerom in your path for the injector to be built.
+
 Lastly, just run Make and everything should work!
 
 Copy everything in 'out' folder to SD root and run!
@@ -30,3 +32,5 @@ A skilled reverser gave me the new reboot patch.
 The screen init code is from dark_samus, bil1s, Normmatt, delebile and everyone who contributed.
 
 The code for printing to the screen is from CakesFW.
+
+ARM11 userland patching is only possible thanks to @yifanlu's 3ds_injector, which is bundled in the CFW.
