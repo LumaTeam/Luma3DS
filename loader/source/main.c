@@ -25,8 +25,7 @@ void main(void){
     //Get pressed buttons
     u16 pressed = HID_PAD;
 
-    if(((pressed & BUTTON_B) && loadPayload("/aurei/payloads/b.bin")) ||
-       ((pressed & BUTTON_X) && loadPayload("/aurei/payloads/x.bin")) ||
+    if(((pressed & BUTTON_X) && loadPayload("/aurei/payloads/x.bin")) ||
        ((pressed & BUTTON_Y) && loadPayload("/aurei/payloads/y.bin")) ||
        ((pressed & BUTTON_SELECT) && loadPayload("/aurei/payloads/select.bin")) ||
        ((pressed & BUTTON_START) && loadPayload("/aurei/payloads/start.bin")) ||

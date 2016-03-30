@@ -32,7 +32,7 @@ void deinitScreens(void){
         ((void (*)())*arm11)();
     }
 
-    if(PDN_GPU_CNT != 0x1){
+    if(PDN_GPU_CNT != 1){
         *arm11 = (u32)ARM11;
         while(*arm11);
     }
@@ -143,7 +143,7 @@ void initScreens(void){
         ((void (*)())*arm11)();
     }
 
-    if(PDN_GPU_CNT == 0x1){
+    if(PDN_GPU_CNT == 1){
         *arm11 = (u32)ARM11;
         while(*arm11);
     }

@@ -146,15 +146,6 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
             static const u8 blockEShopUpdateCheckPatch[] = {
                 0x00, 0x20, 0x08, 0x60, 0x70, 0x47
             };
-            static const u8 countryRespPattern[] = {
-                0x01, 0x20, 0x01, 0x90, 0x22, 0x46, 0x06, 0x9B
-            };
-            static const char countryRespPatchModel[] = {
-                0x06, 0x9A, 0x03, 0x20, 0x90, 0x47, 0x55, 0x21, 0x01, 0x70, 0x53, 0x21, 0x41, 0x70, 0x00, 0x21, 
-                0x81, 0x70, 0x60, 0x61, 0x00, 0x20
-            };
-            const char *country;
-            char countryRespPatch[sizeof(countryRespPatchModel)];
 
             patch_memory(code, size, 
                 blockAutoUpdatesPattern, 
@@ -168,7 +159,18 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 blockEShopUpdateCheckPatch, 
                 sizeof(blockEShopUpdateCheckPatch), 1
             );
+
             if(R_SUCCEEDED(load_secureinfo())){
+                static const char countryRespPattern[] = {
+                    0x01, 0x20, 0x01, 0x90, 0x22, 0x46, 0x06, 0x9B
+                };
+                static const char countryRespPatchModel[] = {
+                    0x06, 0x9A, 0x03, 0x20, 0x90, 0x47, 0x55, 0x21, 0x01, 0x70, 0x53, 0x21, 0x41, 0x70, 0x00, 0x21, 
+                    0x81, 0x70, 0x60, 0x61, 0x00, 0x20
+                };
+                const char *country;
+                char countryRespPatch[sizeof(countryRespPatchModel)];
+
                 switch(secureinfo[0x100]){
                     case 1: country = "US"; break;
                     case 2: country = "GB"; break; // sorry rest-of-Europe, you have to change this
@@ -178,7 +180,6 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                     case 6: country = "TW"; break;
                     default: case 0: country = "JP"; break;
                 }
-
                 // patch XML response Country
                 memcpy(countryRespPatch, 
                     countryRespPatchModel, 
@@ -203,10 +204,10 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(load_config()) && ((config >> 5) & 0x1)){
+            if(R_SUCCEEDED(load_config()) && ((config >> 5) & 1)){
                 static const u16 verPattern[] = u"Ver.";
-                const u32 currentFirm = ((config >> 12) & 0x1);
-                const u32 currentNand = ((config >> 13) & 0x3);
+                const u32 currentFirm = ((config >> 12) & 1);
+                const u32 currentNand = ((config >> 13) & 3);
 
                 patch_memory(code, size,
                     verPattern,
@@ -245,8 +246,6 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
             static const u8 secureinfoSigCheckPatch[] = {
                 0x00, 0x26
             };
-            static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
-            static const u16 secureinfoFilenamePatch[] = u"C";
 
             // disable SecureInfo signature check
             patch_memory(code, size, 
@@ -255,7 +254,11 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 secureinfoSigCheckPatch, 
                 sizeof(secureinfoSigCheckPatch), 1
             );
+
             if(R_SUCCEEDED(load_secureinfo())){
+                static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
+                static const u16 secureinfoFilenamePatch[] = u"C";
+
                 // use SecureInfo_C
                 patch_memory(code, size, 
                     secureinfoFilenamePattern, 

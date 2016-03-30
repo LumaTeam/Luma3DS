@@ -54,13 +54,13 @@ void setupCFW(void){
     //Determine if A9LH is installed and the user has an updated sysNAND
     u32 updatedSys;
 
-    if(a9lhBoot || (config >> 2) & 0x1){
+    if(a9lhBoot || (config >> 2) & 1){
         if(pressed == SAFE_MODE)
             error("Using Safe Mode would brick you, or remove A9LH!");
 
         a9lhSetup = 1;
         //Check setting for > 9.2 sysNAND
-        updatedSys = config & 0x1;
+        updatedSys = config & 1;
     } else{
         a9lhSetup = 0;
         updatedSys = 0;
@@ -71,13 +71,13 @@ void setupCFW(void){
     if(a9lhBoot && previousFirm && needConfig == 1){
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(previousFirm == 0x7){
-            mode = updatedSys ? 1 : (config >> 12) & 0x1;
+            mode = updatedSys ? 1 : (config >> 12) & 1;
             emuNAND = 0;
             needConfig = 0;
         //Else, force the last used boot options unless A, L or R are pressed
         } else if(!(pressed & OPTION_BUTTONS)){
-            mode = (config >> 12) & 0x1;
-            emuNAND = (config >> 13) & 0x3;
+            mode = (config >> 12) & 1;
+            emuNAND = (config >> 13) & 3;
             needConfig = 0;
         }
     }
@@ -94,29 +94,33 @@ void setupCFW(void){
             configureCFW(configPath, patchedFirms[3]);
 
         //If screens are inited, load splash screen
-        if(PDN_GPU_CNT != 0x1) loadSplash();
+        if(PDN_GPU_CNT != 1) loadSplash();
 
         /* If L is pressed, boot 9.0 FIRM */
-        mode = ((config >> 3) & 0x1) ? ((!(pressed & BUTTON_L1R1)) ? 0 : 1) :
-                                       ((pressed & BUTTON_L1) ? 0 : 1);
+        mode = ((config >> 3) & 1) ? ((!(pressed & BUTTON_L1R1)) ? 0 : 1) :
+                                     ((pressed & BUTTON_L1) ? 0 : 1);
 
         /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
         if((updatedSys && (!mode || (pressed & BUTTON_R1))) ||
            (!updatedSys && mode && !(pressed & BUTTON_R1))){
             //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
-            emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 0x1))) ? 2 : 1;
+            emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
         } else emuNAND = 0;
 
-        u32 tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16) | (emuNAND << 13) | (mode << 12);
+        u32 tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
 
-        /* If tha FIRM patches version is different or user switched to/from A9LH,
-           delete all patched FIRMs */
-        if((tempConfig & 0xFF0000) != (config & 0xFF0000))
-            deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
+        /* If the NAND/FIRM information is displayed in System Settings or using A9LH,
+           save boot options */
+        if(a9lhSetup || ((config >> 5) & 1)) tempConfig |= (emuNAND << 13) | (mode << 12);
 
         //If the boot configuration is different from previously, overwrite it
         if((tempConfig & 0xFFF000) != (config & 0xFFF000)){
+            /* If tha FIRM patches version is different or user switched to/from A9LH,
+               delete all patched FIRMs */
+            if((tempConfig & 0xFF0000) != (config & 0xFF0000))
+                deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
+
             //Preserve user settings (first 12 bits)
             tempConfig |= config & 0xFFF;
             fileWrite(&tempConfig, configPath, 3);
@@ -126,10 +130,10 @@ void setupCFW(void){
     /* Determine which patched FIRM we need to write or attempt to use (if any).
        Patched 9.0 FIRM is only needed if "Use pre-patched FIRMs" is set */
     selectedFirm = mode ? (emuNAND ? (emuNAND == 1 ? 2 : 3) : 1) :
-                          (((config >> 1) & 0x1) ? 4 : 0);
+                          (((config >> 1) & 1) ? 4 : 0);
 
     //If "Use pre-patched FIRMs" is set and the appropriate FIRM exists, use it
-    usePatchedFirm = (((config >> 1) & 0x1) && fileExists(patchedFirms[selectedFirm - 1])) ? 1 : 0;
+    usePatchedFirm = (((config >> 1) & 1) && fileExists(patchedFirms[selectedFirm - 1])) ? 1 : 0;
 }
 
 //Load FIRM into FCRAM
@@ -268,9 +272,11 @@ void patchFirm(void){
         loaderSize;
 
     getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderOffset, &loaderSize);
+    //Check that the injector CXI isn't larger than the original
     if(injector_size <= (int)loaderSize){
         memset((void *)loaderOffset, 0, loaderSize);
         memcpy((void *)loaderOffset, injector, injector_size);
+        //Patch content size and ExeFS size to match the repaced loader's ones
         *((u32 *)loaderOffset + 0x41) = loaderSize / 0x200;
         *((u32 *)loaderOffset + 0x69) = loaderSize / 0x200 - 5;
     }

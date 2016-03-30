@@ -63,7 +63,7 @@ void configureCFW(const char *configPath, const char *firm90Path){
     u32 tempConfig = 0;
     fileRead(&tempConfig, configPath, 3);
     for(u32 i = 0; i < optionsAmount; i++)
-        options[i].enabled = (tempConfig >> i) & 0x1;
+        options[i].enabled = (tempConfig >> i) & 1;
 
     //Pre-select the first configuration option
     u32 selectedOption = 0;
@@ -102,8 +102,7 @@ void configureCFW(const char *configPath, const char *firm90Path){
     }
 
     //If the user has been using A9LH and the "Updated SysNAND" setting changed, delete the patched 9.0 FIRM
-    if(((tempConfig >> 16) & 0x1) && ((tempConfig & 0x1) != options[0].enabled))
-        fileDelete(firm90Path);
+    if(((tempConfig >> 16) & 1) && ((tempConfig & 1) != options[0].enabled)) fileDelete(firm90Path);
 
     //Preserve the last-used boot options (last 12 bits)
     tempConfig &= 0xFFF000;
