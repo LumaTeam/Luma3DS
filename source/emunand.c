@@ -8,11 +8,11 @@
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
-void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
+void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND){
     u8 *const temp = (u8 *)0x24300000;
 
-    u32 nandSize = getMMCDevice(0)->total_size;
-    u32 nandOffset = emuNAND == 1 ? 0 :
+    const u32 nandSize = getMMCDevice(0)->total_size;
+    u32 nandOffset = *emuNAND == 1 ? 0 :
                                   (nandSize > 0x200000 ? 0x400000 : 0x200000);
 
     //Check for RedNAND
@@ -28,7 +28,11 @@ void getEmunandSect(u32 *off, u32 *head, u32 emuNAND){
                 *head = nandOffset + nandSize;
             }
             //Fallback to the first emuNAND if there's no second one
-            else if(emuNAND == 2) getEmunandSect(off, head, 1);
+            else if(*emuNAND == 2){
+                *emuNAND = 1;
+                getEmunandSect(off, head, emuNAND);
+            }
+            else *emuNAND = 0;
         }
     }
 }

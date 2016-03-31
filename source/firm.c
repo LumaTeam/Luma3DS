@@ -18,7 +18,7 @@
 #include "../build/patches.h"
 
 //FIRM patches version
-#define PATCH_VER 2
+#define PATCH_VER 3
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
@@ -27,13 +27,17 @@ static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
                                      "/aurei/patched_firmware_emu.bin",
                                      "/aurei/patched_firmware_em2.bin",
                                      "/aurei/patched_firmware90.bin" };
+static const char configPath[] = "aurei/config.bin";
+
 static u32 firmSize,
            console,
            mode,
            emuNAND,
            a9lhSetup,
            selectedFirm,
-           usePatchedFirm;
+           usePatchedFirm,
+           emuOffset,
+           emuHeader;
 
 void setupCFW(void){
 
@@ -47,8 +51,8 @@ void setupCFW(void){
     u16 pressed = HID_PAD;
 
     //Attempt to read the configuration file
-    const char configPath[] = "aurei/config.bin";
-    u32 config = 0;
+    u32 config = 0,
+        tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
     u32 needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
 
     //Determine if A9LH is installed and the user has an updated sysNAND
@@ -70,12 +74,13 @@ void setupCFW(void){
        try to force boot options */
     if(a9lhBoot && previousFirm && needConfig == 1){
         //Always force a sysNAND boot when quitting AGB_FIRM
-        if(previousFirm == 0x7){
+        if(previousFirm == 7){
             mode = updatedSys ? 1 : (config >> 12) & 1;
             emuNAND = 0;
+            tempConfig |= 1 << 15;
             needConfig = 0;
         //Else, force the last used boot options unless A, L or R are pressed
-        } else if(!(pressed & OPTION_BUTTONS)){
+        } else if(!(pressed & OPTION_BUTTONS) && ((config >> 15) & 1)){
             mode = (config >> 12) & 1;
             emuNAND = (config >> 13) & 3;
             needConfig = 0;
@@ -108,32 +113,43 @@ void setupCFW(void){
             emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
         } else emuNAND = 0;
 
-        u32 tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
-
-        /* If the NAND/FIRM information is displayed in System Settings or using A9LH,
-           save boot options */
-        if(a9lhSetup || ((config >> 5) & 1)) tempConfig |= (emuNAND << 13) | (mode << 12);
-
-        //If the boot configuration is different from previously, overwrite it
-        if((tempConfig & 0xFFF000) != (config & 0xFFF000)){
-            /* If tha FIRM patches version is different or user switched to/from A9LH,
-               delete all patched FIRMs */
-            if((tempConfig & 0xFF0000) != (config & 0xFF0000))
-                deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
-
-            //Preserve user settings (first 12 bits)
-            tempConfig |= config & 0xFFF;
-            fileWrite(&tempConfig, configPath, 3);
-        }
+        /* If tha FIRM patches version is different or user switched to/from A9LH,
+           delete all patched FIRMs */
+        if((tempConfig & 0xFF0000) != (config & 0xFF0000))
+            deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
     }
 
-    /* Determine which patched FIRM we need to write or attempt to use (if any).
-       Patched 9.0 FIRM is only needed if "Use pre-patched FIRMs" is set */
-    selectedFirm = mode ? (emuNAND ? (emuNAND == 1 ? 2 : 3) : 1) :
-                          (((config >> 1) & 1) ? 4 : 0);
+    u32 usePatchedFirmSet = ((config >> 1) & 1);
 
-    //If "Use pre-patched FIRMs" is set and the appropriate FIRM exists, use it
-    usePatchedFirm = (((config >> 1) & 1) && fileExists(patchedFirms[selectedFirm - 1])) ? 1 : 0;
+    while(1){
+        /* Determine which patched FIRM we need to write or attempt to use (if any).
+           Patched 9.0 FIRM is only needed if "Use pre-patched FIRMs" is set */
+        selectedFirm = mode ? (emuNAND ? (emuNAND == 1 ? 2 : 3) : 1) :
+                              (usePatchedFirmSet ? 4 : 0);
+
+        //If "Use pre-patched FIRMs" is set and the appropriate FIRM exists, use it
+        if(usePatchedFirmSet && fileExists(patchedFirms[selectedFirm - 1]))
+            usePatchedFirm = 1;
+        //Detect EmuNAND
+        else if(emuNAND){
+            getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
+            //If none exists, force SysNAND + 9.6/10.x FIRM and re-detect patched FIRMs
+            if(!emuNAND){
+                mode = 1;
+                continue;
+            }
+        }
+        break;
+    }
+
+    tempConfig |= (emuNAND << 13) | (mode << 12);
+
+    //If the boot configuration is different from previously, overwrite it
+    if(tempConfig != (config & 0xFFF000)){
+        //Preserve user settings (first 12 bits)
+        tempConfig |= config & 0xFFF;
+        fileWrite(&tempConfig, configPath, 3);
+    }
 }
 
 //Load FIRM into FCRAM
@@ -169,18 +185,7 @@ void loadFirm(void){
 }
 
 //NAND redirection
-static void loadEmu(u8 *proc9Offset){
-
-    u32 emuOffset,
-        emuHeader = 0,
-        emuRead,
-        emuWrite;
-
-    //Look for emuNAND
-    getEmunandSect(&emuOffset, &emuHeader, emuNAND);
-
-    //No emuNAND detected
-    if(!emuHeader) error("No emuNAND has been detected");
+static inline void loadEmu(u8 *proc9Offset){
 
     //Copy emuNAND code
     void *emuCodeOffset = getEmuCode(proc9Offset);
@@ -201,6 +206,9 @@ static void loadEmu(u8 *proc9Offset){
                        section[2].offset + (u32)section[2].address;
 
     //Add emunand hooks
+    u32 emuRead,
+        emuWrite;
+
     getEmuRW(arm9Section, section[2].size, &emuRead, &emuWrite);
     *(u16 *)emuRead = nandRedir[0];
     *((u16 *)emuRead + 1) = nandRedir[1];

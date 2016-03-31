@@ -20,7 +20,7 @@ static const struct fb {
     u8 *bottom;
 } *const fb = (struct fb *)0x23FFFE00;
 
-static int strlen(const char *string){
+static inline int strlen(const char *string){
     char *stringEnd = (char *)string;
     while(*stringEnd) stringEnd++;
     return stringEnd - string;
