@@ -82,7 +82,7 @@ void initScreens(void){
         *(vu32 *)0x1040049C = 0x00000000;
 
         // Disco register
-        for(vu32 i = 0; i < 256; i++)
+        for(u32 i = 0; i < 256; i++)
             *(vu32 *)0x10400484 = 0x10101 * i;
 
         // Bottom screen
@@ -116,7 +116,7 @@ void initScreens(void){
         *(vu32 *)0x1040059C = 0x00000000;
 
         // Disco register
-        for(vu32 i = 0; i < 256; i++)
+        for(u32 i = 0; i < 256; i++)
             *(vu32 *)0x10400584 = 0x10101 * i;
 
         // Enable backlight

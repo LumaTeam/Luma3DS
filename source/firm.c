@@ -52,9 +52,7 @@ void setupCFW(void){
     //Attempt to read the configuration file
     const char configPath[] = "aurei/config.bin";
     u32 config = 0,
-        tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
-
-    u32 needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
+        needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
 
     //Determine if A9LH is installed and the user has an updated sysNAND
     u32 updatedSys;
@@ -71,6 +69,8 @@ void setupCFW(void){
         updatedSys = 0;
     }
 
+    u32 tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
+
     /* If booting with A9LH, it's a MCU reboot and a previous configuration exists,
        try to force boot options */
     if(a9lhBoot && previousFirm && needConfig == 1){
@@ -83,7 +83,7 @@ void setupCFW(void){
             needConfig = 0;
         /* Else, force the last used boot options unless A, L or R are pressed
            or the no-forcing flag is set */
-        } else if(!(pressed & OPTION_BUTTONS) && ((config >> 15) & 1)){
+        } else if(!(pressed & OPTION_BUTTONS) && !((config >> 15) & 1)){
             mode = (config >> 12) & 1;
             emuNAND = (config >> 13) & 3;
             needConfig = 0;
