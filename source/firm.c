@@ -78,9 +78,11 @@ void setupCFW(void){
         if(previousFirm == 7){
             mode = updatedSys ? 1 : (config >> 12) & 1;
             emuNAND = 0;
+            //Flag to prevent multiple boot options-forcing
             tempConfig |= 1 << 15;
             needConfig = 0;
-        //Else, force the last used boot options unless A, L or R are pressed
+        /* Else, force the last used boot options unless A, L or R are pressed
+           or the no-forcing flag is set */
         } else if(!(pressed & OPTION_BUTTONS) && ((config >> 15) & 1)){
             mode = (config >> 12) & 1;
             emuNAND = (config >> 13) & 3;
