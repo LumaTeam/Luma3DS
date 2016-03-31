@@ -27,7 +27,6 @@ static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
                                      "/aurei/patched_firmware_emu.bin",
                                      "/aurei/patched_firmware_em2.bin",
                                      "/aurei/patched_firmware90.bin" };
-static const char configPath[] = "aurei/config.bin";
 
 static u32 firmSize,
            console,
@@ -51,8 +50,10 @@ void setupCFW(void){
     u16 pressed = HID_PAD;
 
     //Attempt to read the configuration file
+    const char configPath[] = "aurei/config.bin";
     u32 config = 0,
         tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
+
     u32 needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
 
     //Determine if A9LH is installed and the user has an updated sysNAND
