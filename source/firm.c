@@ -162,10 +162,19 @@ void loadFirm(void){
     if(!usePatchedFirm && !a9lhSetup && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
-        nandFirm0((u8 *)firm, firmSize, console);
+        nandFirm0(0, 0, (u8 *)firm, firmSize, console);
         //Check for correct decryption
         if(memcmp(firm, "FIRM", 4) != 0)
             error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
+    }
+    // Load firm from emuNAND
+    else if (!usePatchedFirm && emuNAND){
+        //Read FIRM from NAND and write to FCRAM
+        firmSize = console ? 0xF2000 : 0xE9000;
+        nandFirm0(1, emuOffset, (u8 *)firm, firmSize, console);
+        //Check for correct decryption
+        if(memcmp(firm, "FIRM", 4) != 0)
+            error("Couldn't decrypt emuNAND FIRM0");
     }
     //Load FIRM from SD
     else{

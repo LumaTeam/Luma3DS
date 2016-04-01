@@ -229,6 +229,43 @@ static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, 
 	}
 }
 
+static void sha_init(u32 mode)
+{
+    while(*REG_SHACNT & 1);
+    *REG_SHACNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
+}
+
+static void sha_update(const void* src, u32 size)
+{    
+    const u32* src32 = (const u32*)src;
+    
+    while(size >= 0x40) {
+        while(*REG_SHACNT & 1);
+        for(u32 i = 0; i < 4; i++) {
+            *REG_SHAINFIFO = *src32++;
+            *REG_SHAINFIFO = *src32++;
+            *REG_SHAINFIFO = *src32++;
+            *REG_SHAINFIFO = *src32++;
+        }
+        size -= 0x40;
+    }
+    while(*REG_SHACNT & 1);
+    memcpy((void*)REG_SHAINFIFO, src32, size);
+}
+
+static void sha_get(void* res) {
+    *REG_SHACNT = (*REG_SHACNT & ~SHA_NORMAL_ROUND) | SHA_FINAL_ROUND;
+    while(*REG_SHACNT & SHA_FINAL_ROUND);
+    while(*REG_SHACNT & 1);
+    memcpy(res, (void*)REG_SHAHASH, (256 / 8));
+}
+
+static void sha_quick(void* res, const void* src, u32 size, u32 mode) {
+    sha_init(mode);
+    sha_update(src, size);
+    sha_get(res);
+}
+
 /****************************************************************
 *                   Nand/FIRM Crypto stuff
 ****************************************************************/
@@ -240,17 +277,25 @@ static const u8 key2[0x10] = {
 
 //Get Nand CTR key
 static void getNandCTR(u8 *buf, u32 console){
-    u8 *addr = (console ? (u8 *)0x080D8BBC : (u8 *)0x080D797C) + 0x0F;
-    for(u8 keyLen = 0x10; keyLen; keyLen--)
-        *(buf++) = *(addr--);
+    // calculate CTRNAND/TWL ctr from NAND CID
+    // Taken from Decrypt9
+    u8 NandCid[16];
+    u8 shasum[32];
+    
+    sdmmc_get_cid(1, (uint32_t *)NandCid);
+    sha_quick(shasum, NandCid, 16, SHA256_MODE);
+    memcpy(buf, shasum, 16);
 }
 
 //Read firm0 from NAND and write to buffer
-void nandFirm0(u8 *outbuf, u32 size, u32 console){
+void nandFirm0(u32 usesd, u32 sdoff, u8 *outbuf, u32 size, u32 console){
     u8 CTR[0x10];
     getNandCTR(CTR, console);
 
-    sdmmc_nand_readsectors(0x0B130000 / 0x200, size / 0x200, outbuf);
+    if (usesd)
+        sdmmc_sdcard_readsectors(sdoff + (0x0B130000 / 0x200), size / 0x200, outbuf);
+    else
+        sdmmc_nand_readsectors(0x0B130000 / 0x200, size / 0x200, outbuf);
 
     aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x06);
