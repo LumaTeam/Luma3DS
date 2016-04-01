@@ -281,16 +281,15 @@ void patchFirm(void){
     //Replace the FIRM loader with the injector
     u32 loaderOffset,
         loaderSize;
+    u8 *sec0;
+    char temp[100];
 
-    getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderOffset, &loaderSize);
-    //Check that the injector CXI isn't larger than the original
-    if(injector_size <= (int)loaderSize){
-        memset((void *)loaderOffset, 0, loaderSize);
-        memcpy((void *)loaderOffset, injector, injector_size);
-        //Patch content size and ExeFS size to match the repaced loader's ones
-        *((u32 *)loaderOffset + 0x41) = loaderSize / 0x200;
-        *((u32 *)loaderOffset + 0x69) = loaderSize / 0x200 - 5;
-    }
+    sec0 = (u8 *)firm + section[0].offset;
+    getLoader(sec0, section[0].size, &loaderOffset, &loaderSize);
+    memmove(sec0 + loaderOffset + injector_size, 
+            sec0 + loaderOffset + loaderSize, 
+            section[0].size - (loaderOffset + loaderSize));
+    memcpy(sec0 + loaderOffset, injector, injector_size);
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console)

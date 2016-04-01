@@ -15,6 +15,17 @@ void memcpy(void *dest, const void *src, u32 size){
         destc[i] = srcc[i];
 }
 
+void memmove(void *dest, const void *src, u32 size){
+    if (dest < src)
+        return memcpy(dest, src, size);
+    else{
+        u8 *destc = (u8 *)dest;
+        const u8 *srcc = (const u8 *)src;
+        for(u32 i = size-1; i >= 0; i--)
+            destc[i] = srcc[i];
+    }
+}
+
 void memset(void *dest, int filler, u32 size){
     u8 *destc = (u8 *)dest;
     for(u32 i = 0; i < size; i++)

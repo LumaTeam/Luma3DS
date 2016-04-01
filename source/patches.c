@@ -64,6 +64,6 @@ u16 *getFirmWrite(u8 *pos, u32 size){
 void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize){
     u8 *const off = memsearch(pos, "loade", size, 5);
 
-    *loaderOffset = (u32)off - 0x200;
+    *loaderOffset = (u32)(off - pos) - 0x200;
     *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
 }
