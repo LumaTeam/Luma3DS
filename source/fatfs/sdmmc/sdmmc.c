@@ -402,3 +402,44 @@ int sdmmc_sdcard_init()
     return result | SD_Init();
 }
 
+int sdmmc_get_cid(int isNand, uint32_t *info)
+{
+    struct mmcdevice *device;
+    if(isNand)
+        device = &handleNAND;
+    else
+        device = &handleSD;
+    
+    inittarget(device);
+    // use cmd7 to put sd card in standby mode
+    // CMD7
+    {
+        sdmmc_send_command(device,0x10507,0);
+        //if((device->error & 0x4)) return -1;
+    }
+
+    // get sd card info
+    // use cmd10 to read CID
+    {
+        sdmmc_send_command(device,0x1060A,device->initarg << 0x10);
+        //if((device->error & 0x4)) return -2;
+
+        for( int i = 0; i < 4; ++i ) {
+            info[i] = device->ret[i];
+        }
+    }
+
+    // put sd card back to transfer mode
+    // CMD7
+    {
+        sdmmc_send_command(device,0x10507,device->initarg << 0x10);
+        //if((device->error & 0x4)) return -3;
+    }
+
+    if(isNand)
+    {
+        inittarget(&handleSD);
+    }
+    
+    return 0;
+}

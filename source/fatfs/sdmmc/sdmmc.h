@@ -125,3 +125,4 @@ mmcdevice *getMMCDevice(int drive);
 
 u32 sdmmc_nand_readsectors(u32 sector_no, u32 numsectors, vu8 *out);
 u32 sdmmc_nand_writesectors(u32 sector_no, u32 numsectors, vu8 *in);
+int sdmmc_get_cid(int isNand, uint32_t *info);
