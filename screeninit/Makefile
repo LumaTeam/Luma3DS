@@ -18,7 +18,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 export TARGET		:=	$(shell basename $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source source/fatfs source/fatfs/sdmmc
+SOURCES		:=	source
 
 #---------------------------------------------------------------------------------
 # Setup some defines
@@ -30,11 +30,11 @@ SOURCES		:=	source source/fatfs source/fatfs/sdmmc
 ARCH	:=	-mthumb -mthumb-interwork
 
 CFLAGS	:=	-g -Wall -O2\
-			-march=armv5te -mtune=arm946e-s\
+			-mcpu=mpcore -mlittle-endian\
 			-ffast-math -Wno-main -std=c99\
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM9
+CFLAGS	+=	$(INCLUDE) -DARM11
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
 
