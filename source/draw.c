@@ -80,7 +80,8 @@ int drawString(const char *string, int posX, int posY, u32 color)
             posY += SPACING_Y;
             line_i = 0;
             i++;
-        } else if(line_i >= (SCREEN_TOP_WIDTH - posX) / SPACING_X)
+        }
+        else if(line_i >= (SCREEN_TOP_WIDTH - posX) / SPACING_X)
         {
             // Make sure we never get out of the screen.
             posY += SPACING_Y;

@@ -128,7 +128,8 @@ void setupCFW(void)
         {
             //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
             emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
-        } else emuNAND = 0;
+        }
+        else emuNAND = 0;
 
         /* If tha FIRM patches version is different or user switched to/from A9LH,
            delete all patched FIRMs */

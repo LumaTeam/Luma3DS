@@ -36,31 +36,31 @@ static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSiz
     return NULL;
 }
 
-static u32 patch_memory(u8 *start, u32 size, const void *pattern, u32 patsize, int offset, const void *replace, u32 repsize, u32 count)
+static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, int offset, const void *replace, u32 repSize, u32 count)
 {
     u32 i;
 
     for(i = 0; i < count; i++)
     {
-        u8 *found = memsearch(start, pattern, size, patsize);
+        u8 *found = memsearch(start, pattern, size, patSize);
 
         if(found == NULL)
             break;
 
-        memcpy(found + offset, replace, repsize);
+        memcpy(found + offset, replace, repSize);
 
         u32 at = (u32)(found - start);
 
-        if(at + patsize > size) size = 0;
-        else size = size - (at + patsize);
+        if(at + patSize > size) size = 0;
+        else size = size - (at + patSize);
 
-        start = found + patsize;
+        start = found + patSize;
     }
 
     return i;
 }
 
-static int file_open(IFile *file, FS_ArchiveID id, const char *path, int flags)
+static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
 {
     FS_Archive archive;
     FS_Path ppath;
@@ -76,7 +76,7 @@ static int file_open(IFile *file, FS_ArchiveID id, const char *path, int flags)
     return IFile_Open(file, archive, ppath, flags);
 }
 
-static int load_secureinfo()
+static int loadSecureinfo()
 {
     IFile file;
     Result ret;
@@ -85,7 +85,7 @@ static int load_secureinfo()
     if(secureinfo[0] == 0xFF)
         return 0;
 
-    ret = file_open(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ);
+    ret = fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ);
     if(R_SUCCEEDED(ret))
     {
         ret = IFile_Read(&file, &total, secureinfo, sizeof(secureinfo));
@@ -97,7 +97,7 @@ static int load_secureinfo()
     return ret;
 }
 
-static int load_config()
+static int loadConfig()
 {
     IFile file;
     Result ret;
@@ -106,7 +106,7 @@ static int load_config()
     if(config)
         return 0;
 
-    ret = file_open(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
+    ret = fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
     if(R_SUCCEEDED(ret))
     {
         ret = IFile_Read(&file, &total, (void *)&config, 3);
@@ -116,7 +116,7 @@ static int load_config()
     return ret;
 }
 
-u32 patch_code(u64 progid, u8 *code, u32 size)
+void patchCode(u64 progid, u8 *code, u32 size)
 {
     switch(progid)
     {
@@ -134,7 +134,8 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
                 0x01, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
             };
 
-            patch_memory(code, size, 
+            //Patch SMDH region checks
+            patchMemory(code, size, 
                 regionFreePattern, 
                 sizeof(regionFreePattern), -16, 
                 regionFreePatch, 
@@ -152,27 +153,30 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
             static const u8 blockAutoUpdatesPatch[] = {
                 0xE3, 0xA0
             };
-            static const u8 blockEShopUpdateCheckPattern[] = {
+            static const u8 skipEshopUpdateCheckPattern[] = {
                 0x30, 0xB5, 0xF1, 0xB0
             };
-            static const u8 blockEShopUpdateCheckPatch[] = {
+            static const u8 skipEshopUpdateCheckPatch[] = {
                 0x00, 0x20, 0x08, 0x60, 0x70, 0x47
             };
 
-            patch_memory(code, size, 
+            //Block silent auto-updates
+            patchMemory(code, size, 
                 blockAutoUpdatesPattern, 
                 sizeof(blockAutoUpdatesPattern), 0, 
                 blockAutoUpdatesPatch, 
                 sizeof(blockAutoUpdatesPatch), 1
             );
-            patch_memory(code, size, 
-                blockEShopUpdateCheckPattern, 
-                sizeof(blockEShopUpdateCheckPattern), 0, 
-                blockEShopUpdateCheckPatch, 
-                sizeof(blockEShopUpdateCheckPatch), 1
+
+            //Skip update checks to access the EShop
+            patchMemory(code, size, 
+                skipEshopUpdateCheckPattern, 
+                sizeof(skipEshopUpdateCheckPattern), 0, 
+                skipEshopUpdateCheckPatch, 
+                sizeof(skipEshopUpdateCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(load_secureinfo()))
+            if(R_SUCCEEDED(loadSecureinfo()))
             {
                 static const char countryRespPattern[] = {
                     0x01, 0x20, 0x01, 0x90, 0x22, 0x46, 0x06, 0x9B
@@ -194,14 +198,14 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
                     case 6: country = "TW"; break;
                     default: case 0: country = "JP"; break;
                 }
-                // patch XML response Country
+                //Patch XML response Country
                 memcpy(countryRespPatch, 
                     countryRespPatchModel, 
                     sizeof(countryRespPatchModel)
                 );
                 countryRespPatch[6] = country[0];
                 countryRespPatch[10] = country[1];
-                patch_memory(code, size, 
+                patchMemory(code, size, 
                     countryRespPattern, 
                     sizeof(countryRespPattern), 0, 
                     countryRespPatch, 
@@ -219,13 +223,14 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(load_config()) && ((config >> 5) & 1))
+            if(R_SUCCEEDED(loadConfig()) && ((config >> 5) & 1))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentFirm = ((config >> 12) & 1);
                 const u32 currentNand = ((config >> 13) & 3);
 
-                patch_memory(code, size,
+                //Patch Ver. string
+                patchMemory(code, size,
                     verPattern,
                     sizeof(verPattern) - sizeof(u16), 0,
                     currentNand ? ((currentNand == 1) ? ((currentFirm == 1) ? u" Emu" : u"Emu9") : u"Emu2") :
@@ -246,7 +251,8 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
                 0x0B, 0x18, 0x21, 0xC8
             };
 
-            patch_memory(code, size, 
+            //Disable updates from foreign carts (makes carts region-free)
+            patchMemory(code, size, 
                 stopCartUpdatesPattern, 
                 sizeof(stopCartUpdatesPattern), 0, 
                 stopCartUpdatesPatch,
@@ -265,21 +271,21 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
                 0x00, 0x26
             };
 
-            // disable SecureInfo signature check
-            patch_memory(code, size, 
+            //Disable SecureInfo signature check
+            patchMemory(code, size, 
                 secureinfoSigCheckPattern, 
                 sizeof(secureinfoSigCheckPattern), 0, 
                 secureinfoSigCheckPatch, 
                 sizeof(secureinfoSigCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(load_secureinfo()))
+            if(R_SUCCEEDED(loadSecureinfo()))
             {
                 static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
                 static const u16 secureinfoFilenamePatch[] = u"C";
 
-                // use SecureInfo_C
-                patch_memory(code, size, 
+                //Use SecureInfo_C
+                patchMemory(code, size, 
                     secureinfoFilenamePattern, 
                     sizeof(secureinfoFilenamePattern) - sizeof(u16),
                     sizeof(secureinfoFilenamePattern) - sizeof(u16), 
@@ -291,6 +297,4 @@ u32 patch_code(u64 progid, u8 *code, u32 size)
             break;
         }
     }
-
-    return 0;
 }

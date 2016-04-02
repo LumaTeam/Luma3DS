@@ -40,7 +40,8 @@ static u16 waitInput(void)
             if(key != HID_PAD) break;
             if(i == 1) pressedKey = 1;
         }
-    } while(!pressedKey);
+    }
+    while(!pressedKey);
 
     return key;
 }
@@ -85,7 +86,8 @@ void configureCFW(const char *configPath, const char *firm90Path)
             }
 
             pressed = waitInput();
-        } while(!(pressed & MENU_BUTTONS));
+        }
+        while(!(pressed & MENU_BUTTONS));
 
         switch(pressed)
         {

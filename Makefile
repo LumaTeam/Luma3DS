@@ -20,7 +20,6 @@ dir_out := out
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -ffast-math
-CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
 
 objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -97,6 +96,7 @@ $(dir_build)/main.elf: $(objects_cfw)
 	$(CC) -nostartfiles $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/memory.o : CFLAGS+=-O3
+$(dir_build)/utils.o : CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
 
 $(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
 	@mkdir -p "$(@D)"
