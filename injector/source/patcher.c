@@ -192,7 +192,6 @@ void patchCode(u64 progid, u8 *code, u32 size)
                 {
                     case 1: country = "US"; break;
                     case 2: country = "GB"; break; // sorry rest-of-Europe, you have to change this
-                    case 3: country = "AU"; break;
                     case 4: country = "CN"; break;
                     case 5: country = "KR"; break;
                     case 6: country = "TW"; break;
