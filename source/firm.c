@@ -44,13 +44,13 @@ void setupCFW(void)
     u32 a9lhBoot = !PDN_SPI_CNT ? 1 : 0;
 
     //Retrieve the last booted FIRM
-    u8 previousFirm = CFG_BOOTENV;
+    u32 previousFirm = CFG_BOOTENV;
 
     //Detect the console being used
     console = (PDN_MPCORE_CFG == 1) ? 0 : 1;
 
     //Get pressed buttons
-    u16 pressed = HID_PAD;
+    u32 pressed = HID_PAD;
 
     //Attempt to read the configuration file
     const char configPath[] = "aurei/config.bin";

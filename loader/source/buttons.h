@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-#define HID_PAD       (*(vu16 *)0x10146000 ^ 0xFFF)
+#define HID_PAD       (*(vu32 *)0x10146000 ^ 0xFFF)
 #define BUTTON_X      (1 << 10)
 #define BUTTON_Y      (1 << 11)
 #define BUTTON_SELECT (1 << 2)

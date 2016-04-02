@@ -8,8 +8,8 @@
 
 #include "types.h"
 
-#define PDN_MPCORE_CFG (*(vu8 *)0x10140FFC)
-#define PDN_SPI_CNT    (*(vu8 *)0x101401C0)
+#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
+#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
 
 //FIRM Header layout
 typedef struct firmSectionHeader {

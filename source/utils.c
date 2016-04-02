@@ -21,10 +21,10 @@ struct option {
     u32 enabled;
 };
 
-static u16 waitInput(void)
+static u32 waitInput(void)
 {
     u32 pressedKey = 0;
-    u16 key;
+    u32 key;
 
     //Wait for no keys to be pressed
     while(HID_PAD);

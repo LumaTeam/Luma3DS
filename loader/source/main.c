@@ -26,7 +26,7 @@ void main(void)
     f_mount(&fs, "0:", 1);
 
     //Get pressed buttons
-    u16 pressed = HID_PAD;
+    u32 pressed = HID_PAD;
 
     if(((pressed & BUTTON_X) && loadPayload("/aurei/payloads/x.bin")) ||
        ((pressed & BUTTON_Y) && loadPayload("/aurei/payloads/y.bin")) ||
