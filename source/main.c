@@ -9,7 +9,8 @@
 #include "fs.h"
 #include "firm.h"
 
-void main(void){
+void main(void)
+{
     mountSD();
     setupCFW();
     loadFirm();

@@ -1,6 +1,7 @@
 #include "types.h"
 
-void main(void){
+void main(void)
+{
    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
    *(vu32 *)0x10141200 = 0x1007F;
@@ -96,6 +97,7 @@ void main(void){
 
    //Wait for the entry to be set
    while(!*arm11);
+
    //Jump to it
    ((void (*)())*arm11)();
 }

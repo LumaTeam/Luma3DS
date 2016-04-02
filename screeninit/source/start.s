@@ -5,7 +5,4 @@ _start:
     @ Disable interrupts
     CPSID aif
 
-    bl main
-
-.die:
-    b .die
+    b main

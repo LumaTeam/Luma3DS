@@ -239,14 +239,16 @@ static const u8 key2[0x10] = {
 };
 
 //Get Nand CTR key
-static void getNandCTR(u8 *buf, u32 console){
+static void getNandCTR(u8 *buf, u32 console)
+{
     u8 *addr = (console ? (u8 *)0x080D8BBC : (u8 *)0x080D797C) + 0x0F;
     for(u8 keyLen = 0x10; keyLen; keyLen--)
         *(buf++) = *(addr--);
 }
 
 //Read firm0 from NAND and write to buffer
-void nandFirm0(u8 *outbuf, u32 size, u32 console){
+void nandFirm0(u8 *outbuf, u32 size, u32 console)
+{
     u8 CTR[0x10];
     getNandCTR(CTR, console);
 
@@ -258,8 +260,8 @@ void nandFirm0(u8 *outbuf, u32 size, u32 console){
 }
 
 //Decrypts the N3DS arm9bin
-void decryptArm9Bin(u8 *arm9Section, u32 mode){
-
+void decryptArm9Bin(u8 *arm9Section, u32 mode)
+{
     //Firm keys
     u8 keyY[0x10];
     u8 CTR[0x10];
@@ -268,12 +270,15 @@ void decryptArm9Bin(u8 *arm9Section, u32 mode){
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, arm9Section + 0x10, 0x10);
     memcpy(CTR, arm9Section + 0x20, 0x10);
+
+    //Calculate the size of the ARM9 binary
     u32 size = 0;
     //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
     for(u8 *tmp = arm9Section + 0x30; *tmp; tmp++)
         size = (size << 3) + (size << 1) + (*tmp) - '0';
 
-    if(mode){
+    if(mode)
+    {
         u8 keyX[0x10];
 
         //Set 0x11 to key2 for the arm9bin and misc keys
@@ -292,15 +297,16 @@ void decryptArm9Bin(u8 *arm9Section, u32 mode){
 }
 
 //Sets the N3DS 9.6 KeyXs
-void setKeyXs(u8 *arm9Section){
-
+void setKeyXs(u8 *arm9Section)
+{
     u8 *keyData = arm9Section + 0x89814;
     u8 *decKey = keyData + 0x10;
 
     //Set keys 0x19..0x1F keyXs
     aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x11);
-    for(u8 slot = 0x19; slot < 0x20; slot++){
+    for(u8 slot = 0x19; slot < 0x20; slot++)
+    {
         aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         *(keyData + 0xF) += 1;

@@ -21,7 +21,8 @@ struct option {
     u32 enabled;
 };
 
-static u16 waitInput(void){
+static u16 waitInput(void)
+{
     u32 pressedKey = 0;
     u16 key;
 
@@ -34,7 +35,8 @@ static u16 waitInput(void){
         key = HID_PAD;
 
         //Make sure it's pressed
-        for(u32 i = 0x13000; i; i--){
+        for(u32 i = 0x13000; i; i--)
+        {
             if(key != HID_PAD) break;
             if(i == 1) pressedKey = 1;
         }
@@ -43,7 +45,8 @@ static u16 waitInput(void){
     return key;
 }
 
-void configureCFW(const char *configPath, const char *firm90Path){
+void configureCFW(const char *configPath, const char *firm90Path)
+{
     initScreens();
 
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
@@ -62,6 +65,7 @@ void configureCFW(const char *configPath, const char *firm90Path){
     //Read and parse the existing configuration
     u32 tempConfig = 0;
     fileRead(&tempConfig, configPath, 3);
+
     for(u32 i = 0; i < optionsAmount; i++)
         options[i].enabled = (tempConfig >> i) & 1;
 
@@ -69,18 +73,22 @@ void configureCFW(const char *configPath, const char *firm90Path){
     u32 selectedOption = 0;
 
     //Boring configuration menu
-    while(1){
+    while(1)
+    {
         u16 pressed = 0;
 
-        do{
-            for(u32 i = 0; i < optionsAmount; i++){
+        do {
+            for(u32 i = 0; i < optionsAmount; i++)
+            {
                 options[i].posY = drawString(optionsText[i], 10, !i ? 60 : options[i - 1].posY + SPACING_Y, selectedOption == i ? COLOR_RED : COLOR_WHITE);
                 drawCharacter('x', 10 + SPACING_X, options[i].posY, options[i].enabled ? (selectedOption == i ? COLOR_RED : COLOR_WHITE) : COLOR_BLACK);
             }
+
             pressed = waitInput();
         } while(!(pressed & MENU_BUTTONS));
 
-        switch(pressed){
+        switch(pressed)
+        {
             case BUTTON_UP:
                 selectedOption = !selectedOption ? optionsAmount - 1 : selectedOption - 1;
                 break;
@@ -110,6 +118,7 @@ void configureCFW(const char *configPath, const char *firm90Path){
     //Parse and write the selected options
     for(u32 i = 0; i < optionsAmount; i++)
         tempConfig |= options[i].enabled << i;
+
     fileWrite(&tempConfig, configPath, 3);
 
     //Zero the last booted FIRM flag
@@ -120,14 +129,17 @@ void configureCFW(const char *configPath, const char *firm90Path){
     while(1);
 }
 
-void deleteFirms(const char *firmPaths[], u32 firms){
-    while(firms){
+void deleteFirms(const char *firmPaths[], u32 firms)
+{
+    while(firms)
+    {
         fileDelete(firmPaths[firms - 1]);
         firms--;
     }
 }
 
-void error(const char *message){
+void error(const char *message)
+{
     initScreens();
 
     drawString("An error has occurred:", 10, 10, COLOR_RED);

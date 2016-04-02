@@ -50,7 +50,4 @@ _start:
     mov r1, #0x340
     str r1, [r0]
 
-    bl main
-
-.die:
-    b .die
+    b main

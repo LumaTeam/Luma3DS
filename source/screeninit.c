@@ -17,8 +17,10 @@
 
 static vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
-void deinitScreens(void){
-    void __attribute__((naked)) ARM11(void){
+void deinitScreens(void)
+{
+    void __attribute__((naked)) ARM11(void)
+    {
         //Disable interrupts
         __asm(".word 0xF10C01C0");
 
@@ -32,22 +34,28 @@ void deinitScreens(void){
     
         //Wait for the entry to be set
         while(!*arm11);
+
         //Jump to it
         ((void (*)())*arm11)();
     }
 
-    if(PDN_GPU_CNT != 1){
+    if(PDN_GPU_CNT != 1)
+    {
         *arm11 = (u32)ARM11;
         while(*arm11);
     }
 }
 
-void initScreens(void){
-    memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
+void initScreens(void)
+{
+    if(PDN_GPU_CNT == 1)
+    {
+        memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
 
-    if(PDN_GPU_CNT == 1){
         *arm11 = SCREENINIT_ADDRESS;
         while(*arm11);
+
+        //Turn on backlight
         i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
     }
 

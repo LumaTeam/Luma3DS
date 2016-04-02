@@ -12,7 +12,4 @@ _start:
     mcr p15, 0, r0, c7, c6, 0  @ flush D-cache
     mcr p15, 0, r0, c7, c10, 4 @ drain write buffer
 
-    bl main
-
-.die:
-    b .die
+    b main

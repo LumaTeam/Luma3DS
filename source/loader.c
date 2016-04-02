@@ -12,8 +12,10 @@
 
 #define PAYLOAD_ADDRESS	0x24F00000
 
-void loadPayload(void){
-    if(fileExists("aurei/payloads/default.bin")){
+void loadPayload(void)
+{
+    if(fileExists("aurei/payloads/default.bin"))
+    {
         initScreens();
         memcpy((void *)PAYLOAD_ADDRESS, loader, loader_size);
         ((void (*)())PAYLOAD_ADDRESS)();

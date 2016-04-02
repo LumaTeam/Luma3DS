@@ -96,6 +96,8 @@ $(dir_build)/main.elf: $(objects_cfw)
 	# FatFs requires libgcc for __aeabi_uidiv
 	$(CC) -nostartfiles $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
+$(dir_build)/memory.o : CFLAGS+=-O3
+
 $(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<

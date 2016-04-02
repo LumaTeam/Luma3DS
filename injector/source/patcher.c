@@ -11,7 +11,8 @@ static u32 config = 0;
 static u8 secureinfo[0x111] = {0};
 
 //Quick Search algorithm, adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
-static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize){
+static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
+{
     const u8 *patternc = (const u8 *)pattern;
 
     //Preprocessing
@@ -25,7 +26,8 @@ static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSiz
     //Searching
     u32 j = 0;
 
-    while(j <= size - patternSize){
+    while(j <= size - patternSize)
+    {
         if(memcmp(patternc, startPos + j, patternSize) == 0)
             return startPos + j;
         j += table[startPos[j + patternSize]];
@@ -34,11 +36,14 @@ static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSiz
     return NULL;
 }
 
-static u32 patch_memory(u8 *start, u32 size, const void *pattern, u32 patsize, int offset, const void *replace, u32 repsize, u32 count){
+static u32 patch_memory(u8 *start, u32 size, const void *pattern, u32 patsize, int offset, const void *replace, u32 repsize, u32 count)
+{
     u32 i;
 
-    for(i = 0; i < count; i++){
+    for(i = 0; i < count; i++)
+    {
         u8 *found = memsearch(start, pattern, size, patsize);
+
         if(found == NULL)
             break;
 
@@ -55,7 +60,8 @@ static u32 patch_memory(u8 *start, u32 size, const void *pattern, u32 patsize, i
     return i;
 }
 
-static int file_open(IFile *file, FS_ArchiveID id, const char *path, int flags){
+static int file_open(IFile *file, FS_ArchiveID id, const char *path, int flags)
+{
     FS_Archive archive;
     FS_Path ppath;
 
@@ -70,7 +76,8 @@ static int file_open(IFile *file, FS_ArchiveID id, const char *path, int flags){
     return IFile_Open(file, archive, ppath, flags);
 }
 
-static int load_secureinfo(){
+static int load_secureinfo()
+{
     IFile file;
     Result ret;
     u64 total;
@@ -79,7 +86,8 @@ static int load_secureinfo(){
         return 0;
 
     ret = file_open(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ);
-    if(R_SUCCEEDED(ret)){
+    if(R_SUCCEEDED(ret))
+    {
         ret = IFile_Read(&file, &total, secureinfo, sizeof(secureinfo));
         IFile_Close(&file);
         if(R_SUCCEEDED(ret) && total == sizeof(secureinfo))
@@ -89,7 +97,8 @@ static int load_secureinfo(){
     return ret;
 }
 
-static int load_config(){
+static int load_config()
+{
     IFile file;
     Result ret;
     u64 total;
@@ -98,7 +107,8 @@ static int load_config(){
         return 0;
 
     ret = file_open(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
-    if(R_SUCCEEDED(ret)){
+    if(R_SUCCEEDED(ret))
+    {
         ret = IFile_Read(&file, &total, (void *)&config, 3);
         IFile_Close(&file);
     }
@@ -106,9 +116,10 @@ static int load_config(){
     return ret;
 }
 
-u32 patch_code(u64 progid, u8 *code, u32 size){
-    switch(progid){
-
+u32 patch_code(u64 progid, u8 *code, u32 size)
+{
+    switch(progid)
+    {
         case 0x0004003000008F02LL: // USA Menu
         case 0x0004003000008202LL: // EUR Menu
         case 0x0004003000009802LL: // JPN Menu
@@ -129,6 +140,7 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 regionFreePatch, 
                 sizeof(regionFreePatch), 1
             );
+
             break;
         }
 
@@ -160,7 +172,8 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 sizeof(blockEShopUpdateCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(load_secureinfo())){
+            if(R_SUCCEEDED(load_secureinfo()))
+            {
                 static const char countryRespPattern[] = {
                     0x01, 0x20, 0x01, 0x90, 0x22, 0x46, 0x06, 0x9B
                 };
@@ -171,7 +184,8 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 const char *country;
                 char countryRespPatch[sizeof(countryRespPatchModel)];
 
-                switch(secureinfo[0x100]){
+                switch(secureinfo[0x100])
+                {
                     case 1: country = "US"; break;
                     case 2: country = "GB"; break; // sorry rest-of-Europe, you have to change this
                     case 3: country = "AU"; break;
@@ -194,6 +208,7 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                     sizeof(countryRespPatch), 1
                 );
             }
+
             break;
         }
 
@@ -204,7 +219,8 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(load_config()) && ((config >> 5) & 1)){
+            if(R_SUCCEEDED(load_config()) && ((config >> 5) & 1))
+            {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentFirm = ((config >> 12) & 1);
                 const u32 currentNand = ((config >> 13) & 3);
@@ -217,6 +233,7 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                     sizeof(verPattern) - sizeof(u16), 1
                 );
             }
+
             break;
         }
 
@@ -235,6 +252,7 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 stopCartUpdatesPatch,
                 sizeof(stopCartUpdatesPatch), 2
             );
+
             break;
         }
 
@@ -255,7 +273,8 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                 sizeof(secureinfoSigCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(load_secureinfo())){
+            if(R_SUCCEEDED(load_secureinfo()))
+            {
                 static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
                 static const u16 secureinfoFilenamePatch[] = u"C";
 
@@ -268,6 +287,7 @@ u32 patch_code(u64 progid, u8 *code, u32 size){
                     sizeof(secureinfoFilenamePatch) - sizeof(u16), 2
                 );
             }
+
             break;
         }
     }

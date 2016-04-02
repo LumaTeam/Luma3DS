@@ -9,18 +9,21 @@
 
 static FATFS fs;
 
-u32 mountSD(void){
+u32 mountSD(void)
+{
     if(f_mount(&fs, "0:", 1) != FR_OK) return 0;
     return 1;
 }
 
-u32 fileRead(void *dest, const char *path, u32 size){
+u32 fileRead(void *dest, const char *path, u32 size)
+{
     FRESULT fr;
     FIL fp;
     unsigned int br = 0;
 
     fr = f_open(&fp, path, FA_READ);
-    if(fr == FR_OK){
+    if(fr == FR_OK)
+    {
         if(!size) size = f_size(&fp);
         fr = f_read(&fp, dest, size, &br);
     }
@@ -29,7 +32,8 @@ u32 fileRead(void *dest, const char *path, u32 size){
     return fr ? 0 : 1;
 }
 
-u32 fileWrite(const void *buffer, const char *path, u32 size){
+u32 fileWrite(const void *buffer, const char *path, u32 size)
+{
     FRESULT fr;
     FIL fp;
     unsigned int br = 0;
@@ -41,7 +45,8 @@ u32 fileWrite(const void *buffer, const char *path, u32 size){
     return fr ? 0 : 1;
 }
 
-u32 fileSize(const char *path){
+u32 fileSize(const char *path)
+{
     FIL fp;
     u32 size = 0;
 
@@ -52,7 +57,8 @@ u32 fileSize(const char *path){
     return size;
 }
 
-u32 fileExists(const char *path){
+u32 fileExists(const char *path)
+{
     FIL fp;
     u32 exists = 0;
 
@@ -62,6 +68,7 @@ u32 fileExists(const char *path){
     return exists;
 }
 
-void fileDelete(const char *path){
+void fileDelete(const char *path)
+{
     f_unlink(path);
 }
