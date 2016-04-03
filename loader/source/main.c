@@ -23,6 +23,7 @@ static u32 loadPayload(const char *path)
 void main(void)
 {
     FATFS fs;
+
     f_mount(&fs, "0:", 1);
 
     //Get pressed buttons

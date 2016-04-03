@@ -26,7 +26,9 @@ static u8 *arm9Section;
 static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
                                      "/aurei/patched_firmware_emu.bin",
                                      "/aurei/patched_firmware_em2.bin",
-                                     "/aurei/patched_firmware90.bin" };
+                                     "/aurei/patched_firmware90.bin",
+                                     "/aurei/patched_firmware_twl.bin",
+                                     "/aurei/patched_firmware_agb.bin" };
 
 static u32 firmSize,
            console,
@@ -212,6 +214,80 @@ void loadFirm(void)
     if(console && !usePatchedFirm) decryptArm9Bin(arm9Section, mode);
 }
 
+static inline void patchTwlAgb(u32 mode)
+{
+    static firmHeader *const twlAgbFirm = (firmHeader *)0x25000000;
+
+    const char *path = mode ? "aurei/firmware_agb.bin" : "aurei/firmware_twl.bin";
+    u32 size = fileSize(path);
+
+    //Skip patching
+    if(!size) return;
+
+    fileRead(twlAgbFirm, path, size);
+
+    const firmSectionHeader *twlAgbSection = twlAgbFirm->section;
+
+    //Check that the loaded FIRM matches the console
+    if((((u32)twlAgbSection[3].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
+        error(mode ? "aurei/firmware_agb.bin doesn't match this\nconsole, or it's encrypted" :
+                     "aurei/firmware_twl.bin doesn't match this\nconsole, or it's encrypted");
+
+    if(console) decryptArm9Bin((u8 *)twlAgbFirm + twlAgbSection[3].offset, 0);
+
+    struct patchData {
+        u32 offset[2];
+        union {
+            u8 type0[8];
+            u16 type1;
+        } patch;
+        u32 type;
+    };
+
+    const struct patchData twlPatches[] = {
+        {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
+        {{0x173A0E, 0x17474A}, { .type1 = 0x2001 }, 1},
+        {{0x174802, 0x17553E}, { .type1 = 0x2000 }, 2},
+        {{0x174964, 0x1756A0}, { .type1 = 0x2000 }, 2},
+        {{0x174D52, 0x175A8E}, { .type1 = 0x2001 }, 2},
+        {{0x174D5E, 0x175A9A}, { .type1 = 0x2001 }, 2},
+        {{0x174D6A, 0x175AA6}, { .type1 = 0x2001 }, 2},
+        {{0x174E56, 0x175B92}, { .type1 = 0x2001 }, 1},
+        {{0x174E58, 0x175B94}, { .type1 = 0x4770 }, 1}
+    };
+
+    const struct patchData agbPatches[] = {
+        {{0x9D2A8, 0x9DF64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
+        {{0xD7A12, 0xD8B8A}, { .type1 = 0xEF26 }, 1}
+    };
+
+    //Calculate the amount of patches to apply
+    u32 numPatches = mode ? (sizeof(agbPatches) / sizeof(struct patchData)) : (sizeof(twlPatches) / sizeof(struct patchData));
+    const struct patchData *patches = mode ? agbPatches : twlPatches;
+
+    //Patch
+    for(u32 i = 0; i < numPatches; i++)
+    {
+        switch(patches[i].type)
+        {
+            case 0:
+                memcpy((u8 *)twlAgbFirm + patches[i].offset[console], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
+                break;
+            case 2:
+                *(u16 *)((u8 *)twlAgbFirm + patches[i].offset[console] + 2) = 0;
+            case 1:
+                *(u16 *)((u8 *)twlAgbFirm + patches[i].offset[console]) = patches[i].patch.type1;
+                break;
+        }
+    }
+
+    //Patch ARM9 entrypoint on N3DS to skip arm9loader
+    if(console)
+        twlAgbFirm->arm9Entry = (u8 *)0x801301C;
+
+    fileWrite(twlAgbFirm, mode ? patchedFirms[5] : patchedFirms[4], size);
+}
+
 //NAND redirection
 static inline void patchEmuNAND(u8 *proc9Offset)
 {
@@ -297,6 +373,10 @@ static inline void injectLoader(void)
 //Patches
 void patchFirm(void)
 {
+    //Only patch AGB_FIRM/TWL_FIRM if the patched ones don't already exist
+    if(!fileExists(patchedFirms[4])) patchTwlAgb(0);
+    if(!fileExists(patchedFirms[5])) patchTwlAgb(1);
+
     //Skip patching
     if(usePatchedFirm) return;
 
