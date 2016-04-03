@@ -46,7 +46,7 @@ static u32 waitInput(void)
     return key;
 }
 
-void configureCFW(const char *configPath, const char *firm90Path)
+void configureCFW(const char *configPath, const char *patchedFirms[])
 {
     initScreens();
 
@@ -58,7 +58,8 @@ void configureCFW(const char *configPath, const char *firm90Path)
                                   "( ) Force A9LH detection",
                                   "( ) Use 9.0 FIRM as default",
                                   "( ) Use second EmuNAND as default",
-                                  "( ) Show current NAND in System Settings" };
+                                  "( ) Show current NAND in System Settings",
+                                  "( ) Show splash screen in patched AGB_FIRM" };
 
     u32 optionsAmount = sizeof(optionsText) / sizeof(char *);
     struct option options[optionsAmount];
@@ -112,7 +113,10 @@ void configureCFW(const char *configPath, const char *firm90Path)
     }
 
     //If the user has been using A9LH and the "Updated SysNAND" setting changed, delete the patched 9.0 FIRM
-    if(((tempConfig >> 16) & 1) && ((tempConfig & 1) != options[0].enabled)) fileDelete(firm90Path);
+    if(((tempConfig >> 16) & 1) && ((tempConfig & 1) != options[0].enabled)) fileDelete(patchedFirms[3]);
+
+    //If the "Show splash screen in patched AGB_FIRM" setting changed, delete the patched AGB_FIRM
+    if(((tempConfig >> 6) & 1) != options[6].enabled) fileDelete(patchedFirms[5]);
 
     //Preserve the last-used boot options (last 12 bits)
     tempConfig &= 0xFFF000;

@@ -38,7 +38,8 @@ static u32 firmSize,
            selectedFirm,
            usePatchedFirm,
            emuOffset,
-           emuHeader;
+           emuHeader,
+           config;
 
 void setupCFW(void)
 {
@@ -56,8 +57,13 @@ void setupCFW(void)
 
     //Attempt to read the configuration file
     const char configPath[] = "/aurei/config.bin";
-    u32 config = 0,
-        needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
+    u32 needConfig;
+    if(fileRead(&config, configPath, 3)) needConfig = 1;
+    else
+    {
+        config = 0;
+        needConfig = 2;
+    }
 
     //Determine if A9LH is installed and the user has an updated sysNAND
     u32 updatedSys;
@@ -114,7 +120,7 @@ void setupCFW(void)
 
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
-            configureCFW(configPath, patchedFirms[3]);
+            configureCFW(configPath, patchedFirms);
 
         //If screens are inited, load splash screen
         if(PDN_GPU_CNT != 1) loadSplash();
@@ -261,8 +267,10 @@ static inline void patchTwlAgb(u32 mode)
         {{0xD7A12, 0xD8B8A}, { .type1 = 0xEF26 }, 1}
     };
 
-    //Calculate the amount of patches to apply
-    u32 numPatches = mode ? (sizeof(agbPatches) / sizeof(struct patchData)) : (sizeof(twlPatches) / sizeof(struct patchData));
+    /* Calculate the amount of patches to apply. Only count the splash screen patch for AGB_FIRM
+       if the matching option was enabled (keep it as last) */
+    u32 numPatches = mode ? (sizeof(agbPatches) / sizeof(struct patchData)) - !((config >> 6) & 1) :
+                            (sizeof(twlPatches) / sizeof(struct patchData));
     const struct patchData *patches = mode ? agbPatches : twlPatches;
 
     //Patch
