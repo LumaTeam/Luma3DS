@@ -55,7 +55,7 @@ void setupCFW(void)
     u32 pressed = HID_PAD;
 
     //Attempt to read the configuration file
-    const char configPath[] = "aurei/config.bin";
+    const char configPath[] = "/aurei/config.bin";
     u32 config = 0,
         needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
 
@@ -216,9 +216,9 @@ void loadFirm(void)
 
 static inline void patchTwlAgb(u32 mode)
 {
-    firmHeader *const twlAgbFirm = (firmHeader *)0x25000000;
+    static firmHeader *const twlAgbFirm = (firmHeader *)0x25000000;
 
-    const char *path = mode ? "aurei/firmware_agb.bin" : "aurei/firmware_twl.bin";
+    const char *path = mode ? "/aurei/firmware_agb.bin" : "/aurei/firmware_twl.bin";
     u32 size = fileSize(path);
 
     //Skip patching if the file doesn't exist
@@ -226,7 +226,7 @@ static inline void patchTwlAgb(u32 mode)
 
     fileRead(twlAgbFirm, path, size);
 
-    const firmSectionHeader *twlAgbSection = twlAgbFirm->section;
+    static const firmSectionHeader *twlAgbSection = twlAgbFirm->section;
 
     //Check that the loaded FIRM matches the console
     if((((u32)twlAgbSection[3].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
@@ -244,7 +244,7 @@ static inline void patchTwlAgb(u32 mode)
         u32 type;
     };
 
-    const struct patchData twlPatches[] = {
+    static const struct patchData twlPatches[] = {
         {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
         {{0x173A0E, 0x17474A}, { .type1 = 0x2001 }, 1},
         {{0x174802, 0x17553E}, { .type1 = 0x2000 }, 2},
@@ -256,7 +256,7 @@ static inline void patchTwlAgb(u32 mode)
         {{0x174E58, 0x175B94}, { .type1 = 0x4770 }, 1}
     };
 
-    const struct patchData agbPatches[] = {
+    static const struct patchData agbPatches[] = {
         {{0x9D2A8, 0x9DF64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
         {{0xD7A12, 0xD8B8A}, { .type1 = 0xEF26 }, 1}
     };
@@ -282,8 +282,7 @@ static inline void patchTwlAgb(u32 mode)
     }
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
-    if(console)
-        twlAgbFirm->arm9Entry = (u8 *)0x801301C;
+    if(console) twlAgbFirm->arm9Entry = (u8 *)0x801301C;
 
     fileWrite(twlAgbFirm, mode ? patchedFirms[5] : patchedFirms[4], size);
 }
@@ -413,8 +412,7 @@ void patchFirm(void)
     injectLoader();
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
-    if(console)
-        firm->arm9Entry = (u8 *)0x801B01C;
+    if(console) firm->arm9Entry = (u8 *)0x801B01C;
 
     //Write patched FIRM to SD if needed
     if(selectedFirm)
