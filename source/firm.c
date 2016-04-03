@@ -216,12 +216,12 @@ void loadFirm(void)
 
 static inline void patchTwlAgb(u32 mode)
 {
-    static firmHeader *const twlAgbFirm = (firmHeader *)0x25000000;
+    firmHeader *const twlAgbFirm = (firmHeader *)0x25000000;
 
     const char *path = mode ? "aurei/firmware_agb.bin" : "aurei/firmware_twl.bin";
     u32 size = fileSize(path);
 
-    //Skip patching
+    //Skip patching if the file doesn't exist
     if(!size) return;
 
     fileRead(twlAgbFirm, path, size);
