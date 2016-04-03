@@ -15,7 +15,7 @@ Copy everything in 'out' folder to SD root and run!
 
 See https://github.com/Reisyukaku/ReiNand and http://gbatemp.net/threads/reinand-mod-o3ds-n3ds-sysnand.411110
 
-The FIRMs you need are [HERE](http://www99.zippyshare.com/v/kEIiQl0x/file.html).
+The FIRMs you need are [HERE](http://www77.zippyshare.com/v/oXDn2Hes/file.html).
 
 **Credits:**
  
@@ -31,6 +31,6 @@ A skilled reverser gave me the new reboot patch.
 
 The screen init code is from dark_samus, bil1s, Normmatt, delebile and everyone who contributed.
 
-The code for printing to the screen is from CakesFW.
+The code for printing to the screen, and the heavy revision to the reboot patch to allow for AGB/TWL loading are from CakesFW.
 
 ARM11 userland patching is only possible thanks to @yifanlu's 3ds_injector, which is bundled in the CFW.
