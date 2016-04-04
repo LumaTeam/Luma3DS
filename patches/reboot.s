@@ -2,7 +2,7 @@
 
 firm_addr equ 0x24000000  ; Temporary location where we'll load the FIRM to
 firm_maxsize equ 0x200000  ; Random value that's bigger than any of the currently known firm's sizes.
-kernel_code equ 0x080F0000
+kernel_code equ 0x080F0000 ; Offset to copy the Kernel9 code to
 
 .create "reboot.bin", 0
 .arm

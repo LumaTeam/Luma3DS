@@ -100,7 +100,7 @@ void setupCFW(void)
             //Flag to prevent multiple boot options-forcing
             tempConfig |= 1 << 15;
         }
-        /* Else, force the last used boot options unless A/L/R/SELECT are pressed
+        /* Else, force the last used boot options unless a payload button or A/L/R are pressed
            or the no-forcing flag is set */
         else if(!(pressed & OVERRIDE_BUTTONS) && !((config >> 15) & 1))
         {
@@ -113,7 +113,7 @@ void setupCFW(void)
     //Boot options aren't being forced
     if(needConfig)
     {
-        /* If L and one of the payload buttons are pressed, and if not using A9LH
+        /* If L and R/Select or one of the single payload buttons are pressed and, if not using A9LH,
            the Safe Mode combo is not pressed, chainload an external payload */
         if(((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
            && pressed != SAFE_MODE)
@@ -167,6 +167,7 @@ void setupCFW(void)
             mode = 1;
             continue;
         }
+
         break;
     }
 
@@ -196,6 +197,7 @@ void loadFirm(void)
         if(memcmp(firm, "FIRM", 4) != 0)
             error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
     }
+
     //Load FIRM from SD
     else
     {
@@ -276,7 +278,7 @@ static inline void patchTwlAgb(u32 whichFirm)
         {{0xD7A12, 0xD8B8A}, { .type1 = 0xEF26 }, 1}
     };
 
-    /* Calculate the amount of patches to apply. Only count the splash screen patch for AGB_FIRM
+    /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = whichFirm ? (sizeof(agbPatches) / sizeof(struct patchData)) - !((config >> 6) & 1) :
                                  (sizeof(twlPatches) / sizeof(struct patchData));

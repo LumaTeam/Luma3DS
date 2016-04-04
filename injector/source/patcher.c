@@ -73,6 +73,7 @@ static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
     ppath.type = PATH_ASCII;
     ppath.data = path;
     ppath.size = len+1;
+
     return IFile_Open(file, archive, ppath, flags);
 }
 
@@ -109,16 +110,16 @@ static int loadConfig()
     ret = fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
     if(R_SUCCEEDED(ret))
     {
-        ret = IFile_Read(&file, &total, (void *)&config, 3);
+        ret = IFile_Read(&file, &total, &config, 3);
         IFile_Close(&file);
     }
 
     return ret;
 }
 
-void patchCode(u64 progid, u8 *code, u32 size)
+void patchCode(u64 progId, u8 *code, u32 size)
 {
-    switch(progid)
+    switch(progId)
     {
         case 0x0004003000008F02LL: // USA Menu
         case 0x0004003000008202LL: // EUR Menu
