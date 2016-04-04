@@ -176,42 +176,6 @@ void patchCode(u64 progid, u8 *code, u32 size)
                 sizeof(skipEshopUpdateCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(loadSecureinfo()))
-            {
-                static const char countryRespPattern[] = {
-                    0x01, 0x20, 0x01, 0x90, 0x22, 0x46, 0x06, 0x9B
-                };
-                static const char countryRespPatchModel[] = {
-                    0x06, 0x9A, 0x03, 0x20, 0x90, 0x47, 0x55, 0x21, 0x01, 0x70, 0x53, 0x21, 0x41, 0x70, 0x00, 0x21, 
-                    0x81, 0x70, 0x60, 0x61, 0x00, 0x20
-                };
-                const char *country;
-                char countryRespPatch[sizeof(countryRespPatchModel)];
-
-                switch(secureinfo[0x100])
-                {
-                    case 1: country = "US"; break;
-                    case 2: country = "GB"; break; // sorry rest-of-Europe, you have to change this
-                    case 4: country = "CN"; break;
-                    case 5: country = "KR"; break;
-                    case 6: country = "TW"; break;
-                    default: case 0: country = "JP"; break;
-                }
-                //Patch XML response Country
-                memcpy(countryRespPatch, 
-                    countryRespPatchModel, 
-                    sizeof(countryRespPatchModel)
-                );
-                countryRespPatch[6] = country[0];
-                countryRespPatch[10] = country[1];
-                patchMemory(code, size, 
-                    countryRespPattern, 
-                    sizeof(countryRespPattern), 0, 
-                    countryRespPatch, 
-                    sizeof(countryRespPatch), 1
-                );
-            }
-
             break;
         }
 

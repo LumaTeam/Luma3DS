@@ -102,7 +102,7 @@ void setupCFW(void)
         }
         /* Else, force the last used boot options unless A/L/R/SELECT are pressed
            or the no-forcing flag is set */
-        else if(!(pressed & OPTION_BUTTONS) && !((config >> 15) & 1))
+        else if(!(pressed & OVERRIDE_BUTTONS) && !((config >> 15) & 1))
         {
             mode = (config >> 12) & 1;
             emuNAND = (config >> 13) & 3;
@@ -115,7 +115,8 @@ void setupCFW(void)
     {
         /* If L and one of the payload buttons are pressed, and if not using A9LH
            the Safe Mode combo is not pressed, chainload an external payload */
-        if((pressed & BUTTON_L1) && (pressed & PAYLOAD_BUTTONS) && pressed != SAFE_MODE)
+        if(((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
+           && pressed != SAFE_MODE)
             loadPayload();
 
         //If no configuration file exists or SELECT is held, load configuration menu
@@ -134,7 +135,8 @@ void setupCFW(void)
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
         if((updatedSys && (!mode || (pressed & BUTTON_R1))) || (!updatedSys && mode && !(pressed & BUTTON_R1)))
         {
-            //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
+            /* If not 9.0 FIRM and the second emuNAND is set as default and B isn't pressed, or vice-versa,
+               attempt to boot it */ 
             emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
         }
         else emuNAND = 0;
@@ -158,17 +160,12 @@ void setupCFW(void)
         if(usePatchedFirmSet && fileExists(patchedFirms[selectedFirm - 1]))
             usePatchedFirm = 1;
 
-        else if(emuNAND)
+        /* If the user is booting EmuNAND but the chosen one is not found,
+           force 9.6/10.x FIRM and re-detect the patched FIRMs */
+        else if(emuNAND && !getEmunandSect(&emuOffset, &emuHeader, &emuNAND))
         {
-            //Detect EmuNAND
-            getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
-
-            //If none exists, force SysNAND + 9.6/10.x FIRM and re-detect patched FIRMs
-            if(!emuNAND)
-            {
-                mode = 1;
-                continue;
-            }
+            mode = 1;
+            continue;
         }
         break;
     }
@@ -205,7 +202,8 @@ void loadFirm(void)
         const char *path = usePatchedFirm ? patchedFirms[selectedFirm - 1] :
                                             (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
         firmSize = fileSize(path);
-        if(!firmSize) error("aurei/firmware(90).bin doesn't exist");
+        if(!firmSize) error(mode ? "aurei/firmware.bin doesn't exist" :
+                                   "aurei/firmware90.bin doesn't exist");
         fileRead(firm, path, firmSize);
     }
 
@@ -213,18 +211,24 @@ void loadFirm(void)
 
     //Check that the loaded FIRM matches the console
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
-        error("aurei/firmware(90).bin doesn't match this\nconsole, or it's encrypted");
+        error(mode ? "aurei/firmware.bin doesn't match this console,\nor it's encrypted" :
+                     "aurei/firmware90.bin doesn't match this console,\nor it's encrypted");
 
     arm9Section = (u8 *)firm + section[2].offset;
 
-    if(console && !usePatchedFirm) decryptArm9Bin(arm9Section, mode);
+    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
+    if(console && !usePatchedFirm)
+    {
+        decryptArm9Bin(arm9Section, mode);
+        firm->arm9Entry = (u8 *)0x801B01C;
+    }
 }
 
-static inline void patchTwlAgb(u32 mode)
+static inline void patchTwlAgb(u32 whichFirm)
 {
     static firmHeader *const twlAgbFirm = (firmHeader *)0x25000000;
 
-    const char *path = mode ? "/aurei/firmware_agb.bin" : "/aurei/firmware_twl.bin";
+    const char *path = whichFirm ? "/aurei/firmware_agb.bin" : "/aurei/firmware_twl.bin";
     u32 size = fileSize(path);
 
     //Skip patching if the file doesn't exist
@@ -236,10 +240,15 @@ static inline void patchTwlAgb(u32 mode)
 
     //Check that the loaded FIRM matches the console
     if((((u32)twlAgbSection[3].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
-        error(mode ? "aurei/firmware_agb.bin doesn't match this\nconsole, or it's encrypted" :
-                     "aurei/firmware_twl.bin doesn't match this\nconsole, or it's encrypted");
+        error(whichFirm ? "aurei/firmware_agb.bin doesn't match this\nconsole, or it's encrypted" :
+                          "aurei/firmware_twl.bin doesn't match this\nconsole, or it's encrypted");
 
-    if(console) decryptArm9Bin((u8 *)twlAgbFirm + twlAgbSection[3].offset, 0);
+    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
+    if(console)
+    {
+        decryptArm9Bin((u8 *)twlAgbFirm + twlAgbSection[3].offset, 0);
+        twlAgbFirm->arm9Entry = (u8 *)0x801301C;
+    }
 
     struct patchData {
         u32 offset[2];
@@ -269,9 +278,9 @@ static inline void patchTwlAgb(u32 mode)
 
     /* Calculate the amount of patches to apply. Only count the splash screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = mode ? (sizeof(agbPatches) / sizeof(struct patchData)) - !((config >> 6) & 1) :
-                            (sizeof(twlPatches) / sizeof(struct patchData));
-    const struct patchData *patches = mode ? agbPatches : twlPatches;
+    u32 numPatches = whichFirm ? (sizeof(agbPatches) / sizeof(struct patchData)) - !((config >> 6) & 1) :
+                                 (sizeof(twlPatches) / sizeof(struct patchData));
+    const struct patchData *patches = whichFirm ? agbPatches : twlPatches;
 
     //Patch
     for(u32 i = 0; i < numPatches; i++)
@@ -289,10 +298,7 @@ static inline void patchTwlAgb(u32 mode)
         }
     }
 
-    //Patch ARM9 entrypoint on N3DS to skip arm9loader
-    if(console) twlAgbFirm->arm9Entry = (u8 *)0x801301C;
-
-    fileWrite(twlAgbFirm, mode ? patchedFirms[5] : patchedFirms[4], size);
+    fileWrite(twlAgbFirm, whichFirm ? patchedFirms[5] : patchedFirms[4], size);
 }
 
 //NAND redirection
@@ -380,9 +386,12 @@ static inline void injectLoader(void)
 //Patches
 void patchFirm(void)
 {
-    //Only patch AGB_FIRM/TWL_FIRM if the patched ones don't already exist
-    if(!fileExists(patchedFirms[4])) patchTwlAgb(0);
-    if(!fileExists(patchedFirms[5])) patchTwlAgb(1);
+    if(mode)
+    {
+        //Only patch AGB_FIRM/TWL_FIRM if the patched ones don't already exist
+        if(!fileExists(patchedFirms[4])) patchTwlAgb(0);
+        if(!fileExists(patchedFirms[5])) patchTwlAgb(1);
+    }
 
     //Skip patching
     if(usePatchedFirm) return;
@@ -418,9 +427,6 @@ void patchFirm(void)
 
     //Replace the FIRM loader with the injector
     injectLoader();
-
-    //Patch ARM9 entrypoint on N3DS to skip arm9loader
-    if(console) firm->arm9Entry = (u8 *)0x801B01C;
 
     //Write patched FIRM to SD if needed
     if(selectedFirm)

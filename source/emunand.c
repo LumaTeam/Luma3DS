@@ -8,7 +8,7 @@
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
-void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
+u32 getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
 {
     u8 *const temp = (u8 *)0x24300000;
 
@@ -33,14 +33,15 @@ void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
                 *head = nandOffset + nandSize;
             }
             //Fallback to the first emuNAND if there's no second one
-            else if(*emuNAND == 2)
+            else
             {
-                *emuNAND = 1;
-                getEmunandSect(off, head, emuNAND);
+                (*emuNAND)--;
+                if(*emuNAND) getEmunandSect(off, head, emuNAND);
+                return 0;
             }
-            else *emuNAND = 0;
         }
     }
+    return 1;
 }
 
 u32 getSDMMC(u8 *pos, u32 size)

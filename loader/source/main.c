@@ -29,14 +29,14 @@ void main(void)
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
-    if(((pressed & BUTTON_X) && loadPayload("/aurei/payloads/x.bin")) ||
-       ((pressed & BUTTON_Y) && loadPayload("/aurei/payloads/y.bin")) ||
-       ((pressed & BUTTON_SELECT) && loadPayload("/aurei/payloads/select.bin")) ||
-       ((pressed & BUTTON_START) && loadPayload("/aurei/payloads/start.bin")) ||
-       ((pressed & BUTTON_RIGHT) && loadPayload("/aurei/payloads/right.bin")) ||
+    if(((pressed & BUTTON_RIGHT) && loadPayload("/aurei/payloads/right.bin")) ||
        ((pressed & BUTTON_LEFT) && loadPayload("/aurei/payloads/left.bin")) ||
        ((pressed & BUTTON_UP) && loadPayload("/aurei/payloads/up.bin")) ||
        ((pressed & BUTTON_DOWN) && loadPayload("/aurei/payloads/down.bin")) ||
+       ((pressed & BUTTON_X) && loadPayload("/aurei/payloads/x.bin")) ||
+       ((pressed & BUTTON_Y) && loadPayload("/aurei/payloads/y.bin")) ||
+       ((pressed & BUTTON_SELECT) && loadPayload("/aurei/payloads/select.bin")) ||
+       ((pressed & BUTTON_R1) && loadPayload("/aurei/payloads/r.bin")) ||
        loadPayload("/aurei/payloads/default.bin"))
         ((void (*)())PAYLOAD_ADDRESS)();
 }
