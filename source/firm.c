@@ -5,15 +5,16 @@
 */
 
 #include "firm.h"
+#include "config.h"
+#include "utils.h"
+#include "fs.h"
 #include "patches.h"
 #include "memory.h"
-#include "fs.h"
 #include "emunand.h"
 #include "crypto.h"
 #include "draw.h"
 #include "screeninit.h"
 #include "loader.h"
-#include "utils.h"
 #include "buttons.h"
 #include "../build/patches.h"
 
@@ -29,7 +30,7 @@ static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
                                      "/aurei/patched_firmware90.bin",
                                      "/aurei/patched_firmware_twl.bin",
                                      "/aurei/patched_firmware_agb.bin" };
-
+u32        config;
 static u32 firmSize,
            console,
            mode,
@@ -39,7 +40,6 @@ static u32 firmSize,
            usePatchedFirm,
            emuOffset,
            emuHeader;
-u32        config;
 
 void setupCFW(void)
 {
@@ -252,16 +252,7 @@ static inline void patchTwlAgb(u32 whichFirm)
         twlAgbFirm->arm9Entry = (u8 *)0x801301C;
     }
 
-    struct patchData {
-        u32 offset[2];
-        union {
-            u8 type0[8];
-            u16 type1;
-        } patch;
-        u32 type;
-    };
-
-    static const struct patchData twlPatches[] = {
+    static const patchData twlPatches[] = {
         {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
         {{0x173A0E, 0x17474A}, { .type1 = 0x2001 }, 1},
         {{0x174802, 0x17553E}, { .type1 = 0x2000 }, 2},
@@ -271,18 +262,17 @@ static inline void patchTwlAgb(u32 whichFirm)
         {{0x174D6A, 0x175AA6}, { .type1 = 0x2001 }, 2},
         {{0x174E56, 0x175B92}, { .type1 = 0x2001 }, 1},
         {{0x174E58, 0x175B94}, { .type1 = 0x4770 }, 1}
-    };
-
-    static const struct patchData agbPatches[] = {
+    },
+    agbPatches[] = {
         {{0x9D2A8, 0x9DF64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
         {{0xD7A12, 0xD8B8A}, { .type1 = 0xEF26 }, 1}
     };
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = whichFirm ? (sizeof(agbPatches) / sizeof(struct patchData)) - !((config >> 6) & 1) :
-                                 (sizeof(twlPatches) / sizeof(struct patchData));
-    const struct patchData *patches = whichFirm ? agbPatches : twlPatches;
+    u32 numPatches = whichFirm ? (sizeof(agbPatches) / sizeof(patchData)) - !((config >> 6) & 1) :
+                                 (sizeof(twlPatches) / sizeof(patchData));
+    const patchData *patches = whichFirm ? agbPatches : twlPatches;
 
     //Patch
     for(u32 i = 0; i < numPatches; i++)

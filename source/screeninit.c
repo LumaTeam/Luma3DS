@@ -8,6 +8,7 @@
 */
 
 #include "screeninit.h"
+#include "config.h"
 #include "memory.h"
 #include "draw.h"
 #include "i2c.h"

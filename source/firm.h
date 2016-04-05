@@ -29,6 +29,15 @@ typedef struct firmHeader {
     firmSectionHeader section[4];
 } firmHeader;
 
+typedef struct patchData {
+    u32 offset[2];
+    union {
+        u8 type0[8];
+        u16 type1;
+    } patch;
+    u32 type;
+} patchData;
+
 void setupCFW(void);
 void loadFirm(void);
 void patchFirm(void);

@@ -96,7 +96,7 @@ $(dir_build)/main.elf: $(objects_cfw)
 	$(CC) -nostartfiles $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/memory.o : CFLAGS+=-O3
-$(dir_build)/utils.o : CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
+$(dir_build)/config.o : CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
 
 $(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
 	@mkdir -p "$(@D)"
