@@ -38,8 +38,8 @@ static u32 firmSize,
            selectedFirm,
            usePatchedFirm,
            emuOffset,
-           emuHeader,
-           config;
+           emuHeader;
+u32        config;
 
 void setupCFW(void)
 {

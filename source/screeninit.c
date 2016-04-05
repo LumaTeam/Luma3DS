@@ -50,6 +50,9 @@ void initScreens(void)
 {
     if(PDN_GPU_CNT == 1)
     {
+        //Write brightness level for the stub to pick up
+        *(vu32 *)0x24F04000 = (config >> 10) & 3;
+
         memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
 
         *arm11 = SCREENINIT_ADDRESS;

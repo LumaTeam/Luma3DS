@@ -129,14 +129,14 @@ memcpy32:  ; memcpy32(void *src, void *dst, unsigned int size)
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-firm_fname: .dcw "sdmc:/aurei/patched_firmware_sys.bin"
-	    .word 0x0
+firm_fname:    .dcw "sdmc:/aurei/patched_firmware_sys.bin"
+	       .word 0x0
 .pool
 twlfirm_fname: .dcw "sdmc:/aurei/patched_firmware_twl.bin"
-	    .word 0x0
+	       .word 0x0
 .pool
 agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
-	    .word 0x0
+	       .word 0x0
 
 .align 4
     kernelcode_start:

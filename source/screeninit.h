@@ -13,5 +13,7 @@
 
 #define PDN_GPU_CNT (*(vu8 *)0x10141200)
 
+u32 config;
+
 void deinitScreens(void);
 void initScreens(void);

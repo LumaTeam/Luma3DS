@@ -2,13 +2,15 @@
 
 void main(void)
 {
+   const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
+   u32 brightnessLevel = *(vu32 *)0x24F04000;
    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
    *(vu32 *)0x10141200 = 0x1007F;
    *(vu32 *)0x10202014 = 0x00000001;
    *(vu32 *)0x1020200C &= 0xFFFEFFFE;
-   *(vu32 *)0x10202240 = 0x45;
-   *(vu32 *)0x10202A40 = 0x45;
+   *(vu32 *)0x10202240 = brightness[brightnessLevel];
+   *(vu32 *)0x10202A40 = brightness[brightnessLevel];
    *(vu32 *)0x10202244 = 0x1023E;
    *(vu32 *)0x10202A44 = 0x1023E;
 

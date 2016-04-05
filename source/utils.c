@@ -72,6 +72,8 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     for(u32 i = 0; i < optionsAmount; i++)
         options[i].enabled = (tempConfig >> i) & 1;
 
+    options[optionsAmount].enabled = (tempConfig >> 10) & 3;
+
     //Pre-select the first configuration option
     u32 selectedOption = 0;
 
@@ -81,11 +83,16 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
         u16 pressed = 0;
 
         do {
+            options[optionsAmount].posY = drawString("Screen-init brightness: 4( ) 3( ) 2( ) 1( )", 10, 53, selectedOption == optionsAmount ? COLOR_RED : COLOR_WHITE);
+
             for(u32 i = 0; i < optionsAmount; i++)
             {
-                options[i].posY = drawString(optionsText[i], 10, !i ? 60 : options[i - 1].posY + SPACING_Y, selectedOption == i ? COLOR_RED : COLOR_WHITE);
+                options[i].posY = drawString(optionsText[i], 10, !i ? options[optionsAmount].posY + 2 * SPACING_Y : options[i - 1].posY + SPACING_Y, selectedOption == i ? COLOR_RED : COLOR_WHITE);
                 drawCharacter('x', 10 + SPACING_X, options[i].posY, options[i].enabled ? (selectedOption == i ? COLOR_RED : COLOR_WHITE) : COLOR_BLACK);
             }
+
+            for(u32 i = 0; i < 4; i++)
+                drawCharacter('x', 10 + (26 + 5 * i) * SPACING_X, options[optionsAmount].posY, options[optionsAmount].enabled == i ? (selectedOption == optionsAmount ? COLOR_RED : COLOR_WHITE) : COLOR_BLACK);
 
             pressed = waitInput();
         }
@@ -94,10 +101,10 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
         switch(pressed)
         {
             case BUTTON_UP:
-                selectedOption = !selectedOption ? optionsAmount - 1 : selectedOption - 1;
+                selectedOption = !selectedOption ? optionsAmount : selectedOption - 1;
                 break;
             case BUTTON_DOWN:
-                selectedOption = selectedOption == optionsAmount - 1 ? 0 : selectedOption + 1;
+                selectedOption = selectedOption >= optionsAmount - 1 ? 0 : selectedOption + 1;
                 break;
             case BUTTON_LEFT:
                 selectedOption = 0;
@@ -106,7 +113,8 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
                 selectedOption = optionsAmount - 1;
                 break;
             case BUTTON_A:
-                options[selectedOption].enabled = !options[selectedOption].enabled;
+                if(selectedOption != optionsAmount) options[selectedOption].enabled = !options[selectedOption].enabled;
+                else options[optionsAmount].enabled = options[optionsAmount].enabled == 3 ? 0 : options[optionsAmount].enabled + 1;
                 break;
         }
 
@@ -125,6 +133,8 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     //Parse and write the selected options
     for(u32 i = 0; i < optionsAmount; i++)
         tempConfig |= options[i].enabled << i;
+
+    tempConfig |= options[optionsAmount].enabled << 10;
 
     fileWrite(&tempConfig, configPath, 3);
 
