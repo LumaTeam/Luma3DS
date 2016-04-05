@@ -2,7 +2,6 @@
 
 firm_addr equ 0x24000000  ; Temporary location where we'll load the FIRM to
 firm_maxsize equ 0x200000  ; Random value that's bigger than any of the currently known firm's sizes.
-kernel_code equ 0x080F0000 ; Offset to copy the Kernel9 code to
 
 .create "reboot.bin", 0
 .arm
@@ -108,23 +107,10 @@ kernel_code equ 0x080F0000 ; Offset to copy the Kernel9 code to
         ; Jump to reboot code
         ldr r0, =(kernelcode_start - goto_reboot - 12)
         add r0, pc
-        ldr r1, =kernel_code
-        ldr r2, =0x300
-        bl memcpy32
-        ldr r0, =kernel_code
         swi 0x7B
 
     die:
         b die
-
-memcpy32:  ; memcpy32(void *src, void *dst, unsigned int size)
-    add r2, r0
-    memcpy32_loop:
-        ldmia r0!, {r3}
-        stmia r1!, {r3}
-        cmp r0, r2
-        blo memcpy32_loop
-    bx lr
 
 bytes_read: .word 0
 fopen: .ascii "OPEN"
@@ -182,7 +168,7 @@ agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
         addne r0, r4  ; src
         ldrne r1, [r5, #4]  ; dest
         ldrne r2, [r5, #8]  ; size
-        blne kernelmemcpy32
+        blne memcpy32
 
         cmp r5, r6
         addlo r5, #0x30
@@ -221,12 +207,12 @@ agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
     bx r0
 .pool
 
-kernelmemcpy32:  ; memcpy32(void *src, void *dst, unsigned int size)
+memcpy32:  ; memcpy32(void *src, void *dst, unsigned int size)
     add r2, r0
-    kmemcpy32_loop:
+    memcpy32_loop:
         ldmia r0!, {r3}
         stmia r1!, {r3}
         cmp r0, r2
-        blo kmemcpy32_loop
+        blo memcpy32_loop
     bx lr
 .close

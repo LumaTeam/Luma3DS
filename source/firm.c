@@ -123,8 +123,8 @@ void setupCFW(void)
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
             configureCFW(configPath, patchedFirms);
 
-        //If screens are inited, load splash screen
-        if(PDN_GPU_CNT != 1) loadSplash();
+        //If screens are inited or the corresponding option is set, load splash screen
+        if(PDN_GPU_CNT != 1 || ((config >> 7) & 1)) loadSplash();
 
         /* If L is pressed, or L or R are not pressed when it is the default FIRM,
            boot 9.0 FIRM */
@@ -173,8 +173,9 @@ void setupCFW(void)
 
     tempConfig |= (emuNAND << 13) | (mode << 12);
 
-    //If the boot configuration is different from previously, overwrite it
-    if(tempConfig != (config & 0xFFF000))
+    /* If the boot configuration is different from previously, overwrite it.
+       Just the no-forcing flag being set is not enough */
+    if((tempConfig & 0xFF7000) != (config & 0xFFF000))
     {
         //Preserve user settings (first 12 bits)
         tempConfig |= config & 0xFFF;
