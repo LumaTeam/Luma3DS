@@ -65,14 +65,11 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     u32 optionsAmount = sizeof(optionsText) / sizeof(char *);
     struct option options[optionsAmount];
 
-    //Read and parse the existing configuration
-    u32 tempConfig = 0;
-    fileRead(&tempConfig, configPath, 3);
-
+    //Parse the existing configuration
     for(u32 i = 0; i < optionsAmount; i++)
-        options[i].enabled = (tempConfig >> i) & 1;
+        options[i].enabled = (config >> i) & 1;
 
-    options[optionsAmount].enabled = (tempConfig >> 10) & 3;
+    options[optionsAmount].enabled = (config >> 10) & 3;
 
     //Pre-select the first configuration option
     u32 selectedOption = 0;
@@ -122,21 +119,21 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     }
 
     //If the user has been using A9LH and the "Updated SysNAND" setting changed, delete the patched 9.0 FIRM
-    if(((tempConfig >> 16) & 1) && ((tempConfig & 1) != options[0].enabled)) fileDelete(patchedFirms[3]);
+    if(((config >> 16) & 1) && ((config & 1) != options[0].enabled)) fileDelete(patchedFirms[3]);
 
     //If the "Show GBA boot screen in patched AGB_FIRM" setting changed, delete the patched AGB_FIRM
-    if(((tempConfig >> 6) & 1) != options[6].enabled) fileDelete(patchedFirms[5]);
+    if(((config >> 6) & 1) != options[6].enabled) fileDelete(patchedFirms[5]);
 
     //Preserve the last-used boot options (last 12 bits)
-    tempConfig &= 0xFFF000;
+    config &= 0xFFF000;
 
-    //Parse and write the selected options
+    //Parse and write the new configuration
     for(u32 i = 0; i < optionsAmount; i++)
-        tempConfig |= options[i].enabled << i;
+        config |= options[i].enabled << i;
 
-    tempConfig |= options[optionsAmount].enabled << 10;
+    config |= options[optionsAmount].enabled << 10;
 
-    fileWrite(&tempConfig, configPath, 3);
+    fileWrite(&config, configPath, 3);
 
     //Zero the last booted FIRM flag
     CFG_BOOTENV = 0;
