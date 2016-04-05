@@ -18,7 +18,7 @@
 #include "../build/patches.h"
 
 //FIRM patches version
-#define PATCH_VER 3
+#define PATCH_VER 4
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
