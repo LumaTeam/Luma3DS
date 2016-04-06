@@ -116,13 +116,13 @@ bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
 firm_fname:    .dcw "sdmc:/aurei/patched_firmware_sys.bin"
-	       .word 0x0
+	       .word 0
 .pool
 twlfirm_fname: .dcw "sdmc:/aurei/patched_firmware_twl.bin"
-	       .word 0x0
+	       .word 0
 .pool
 agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
-	       .word 0x0
+	       .word 0
 
 .align 4
     kernelcode_start:

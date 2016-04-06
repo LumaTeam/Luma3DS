@@ -68,7 +68,7 @@ void setupCFW(void)
     //Determine if A9LH is installed and the user has an updated sysNAND
     u32 updatedSys;
 
-    if(a9lhBoot || (config >> 2) & 1)
+    if(a9lhBoot || CONFIG(2, 1))
     {
         if(pressed == SAFE_MODE)
             error("Using Safe Mode would brick you, or remove A9LH!");
@@ -76,7 +76,7 @@ void setupCFW(void)
         a9lhSetup = 1;
 
         //Check setting for > 9.2 sysNAND
-        updatedSys = config & 1;
+        updatedSys = CONFIG(0, 1);
     }
     else
     {
@@ -93,7 +93,7 @@ void setupCFW(void)
         //Always force a sysNAND boot when quitting AGB_FIRM
         if(previousFirm == 7)
         {
-            mode = updatedSys ? 1 : (config >> 12) & 1;
+            mode = updatedSys ? 1 : CONFIG(12, 1);
             emuNAND = 0;
             needConfig = 0;
 
@@ -102,10 +102,10 @@ void setupCFW(void)
         }
         /* Else, force the last used boot options unless a payload button or A/L/R are pressed
            or the no-forcing flag is set */
-        else if(!(pressed & OVERRIDE_BUTTONS) && !((config >> 15) & 1))
+        else if(!(pressed & OVERRIDE_BUTTONS) && !CONFIG(15, 1))
         {
-            mode = (config >> 12) & 1;
-            emuNAND = (config >> 13) & 3;
+            mode = CONFIG(12, 1);
+            emuNAND = CONFIG(13, 3);
             needConfig = 0;
         }
     }
@@ -124,12 +124,12 @@ void setupCFW(void)
             configureCFW(configPath, patchedFirms);
 
         //If screens are inited or the corresponding option is set, load splash screen
-        if(PDN_GPU_CNT != 1 || ((config >> 7) & 1)) loadSplash();
+        if(PDN_GPU_CNT != 1 || CONFIG(7, 1)) loadSplash();
 
         /* If L is pressed, or L or R are not pressed when it is the default FIRM,
            boot 9.0 FIRM */
-        mode = ((config >> 3) & 1) ? ((!(pressed & BUTTON_L1R1)) ? 0 : 1) :
-                                     ((pressed & BUTTON_L1) ? 0 : 1);
+        mode = CONFIG(3, 1) ? ((!(pressed & BUTTON_L1R1)) ? 0 : 1) :
+                              ((pressed & BUTTON_L1) ? 0 : 1);
 
         /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
            or R is pressed on a > 9.2 sysNAND, boot emuNAND */
@@ -137,7 +137,7 @@ void setupCFW(void)
         {
             /* If not 9.0 FIRM and the second emuNAND is set as default and B isn't pressed, or vice-versa,
                attempt to boot it */ 
-            emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
+            emuNAND = (mode && ((!(pressed & BUTTON_B)) == CONFIG(4, 1))) ? 2 : 1;
         }
         else emuNAND = 0;
 
@@ -147,7 +147,7 @@ void setupCFW(void)
             deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
     }
 
-    u32 usePatchedFirmSet = ((config >> 1) & 1);
+    u32 usePatchedFirmSet = CONFIG(1, 1);
 
     while(1)
     {
@@ -271,7 +271,7 @@ static inline void patchTwlAgb(u32 whichFirm)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = whichFirm ? (sizeof(agbPatches) / sizeof(patchData)) - !((config >> 6) & 1) :
+    u32 numPatches = whichFirm ? (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6, 1)) :
                                  (sizeof(twlPatches) / sizeof(patchData));
     const patchData *patches = whichFirm ? agbPatches : twlPatches;
 

@@ -37,9 +37,9 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     } options[optionsAmount];
 
     //Parse the existing configuration
-    options[0].enabled = (config >> 10) & 3;
+    options[0].enabled = CONFIG(10, 3);
     for(u32 i = optionsAmount; i; i--)
-        options[i].enabled = (config >> (i - 1)) & 1;
+        options[i].enabled = CONFIG((i - 1), 1);
 
     //Pre-select the first configuration option
     u32 selectedOption = 1,
@@ -65,7 +65,7 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
         u32 pressed = 0;
 
         do {
-            //An option changed, black out the 'x' for the previously selected option/brightness level
+            //The status of the selected option changed, black out the previously visible 'x' if needed
             if(optionChanged)
             {
                 if(!selectedOption)
@@ -116,9 +116,13 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
                 selectedOption = optionsAmount - 1;
                 break;
             case BUTTON_A:
-                optionChanged = 1 + options[0].enabled;
+                optionChanged = 1;
                 if(selectedOption) options[selectedOption].enabled = !options[selectedOption].enabled;
-                else options[0].enabled = options[0].enabled == 3 ? 0 : options[0].enabled + 1;
+                else
+                {
+                    optionChanged += options[0].enabled;
+                    options[0].enabled = options[0].enabled == 3 ? 0 : options[0].enabled + 1;
+                }
                 break;
         }
 
@@ -126,10 +130,10 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     }
 
     //If the user has been using A9LH and the "Updated SysNAND" setting changed, delete the patched 9.0 FIRM
-    if(((config >> 16) & 1) && ((config & 1) != options[1].enabled)) fileDelete(patchedFirms[3]);
+    if(CONFIG(16, 1) && (CONFIG(0, 1) != options[1].enabled)) fileDelete(patchedFirms[3]);
 
     //If the "Show GBA boot screen in patched AGB_FIRM" setting changed, delete the patched AGB_FIRM
-    if(((config >> 6) & 1) != options[7].enabled) fileDelete(patchedFirms[5]);
+    if(CONFIG(6, 1) != options[7].enabled) fileDelete(patchedFirms[5]);
 
     //Preserve the last-used boot options (last 12 bits)
     config &= 0xFFF000;

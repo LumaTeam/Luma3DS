@@ -6,3 +6,5 @@ _start:
     CPSID aif
 
     b main
+
+    .word 0

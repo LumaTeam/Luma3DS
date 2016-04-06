@@ -9,6 +9,7 @@
 #include "types.h"
 
 #define CFG_BOOTENV (*(vu32 *)0x10010000)
+#define CONFIG(a, b) ((config >> a) & b)
 
 u32 config; 
 
