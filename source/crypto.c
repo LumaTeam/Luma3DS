@@ -229,47 +229,154 @@ static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, 
 	}
 }
 
+static void sha_wait_idle()
+{
+	while(*REG_SHA_CNT & 1);
+}
+
+static void sha(void *res, const void *src, u32 size, u32 mode)
+{
+	sha_wait_idle();
+	*REG_SHA_CNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
+	
+	const u32 *src32 = (const u32 *)src;
+	int i;
+	while(size >= 0x40)
+	{
+		sha_wait_idle();
+		for(i = 0; i < 4; ++i)
+		{
+			*REG_SHA_INFIFO = *src32++;
+			*REG_SHA_INFIFO = *src32++;
+			*REG_SHA_INFIFO = *src32++;
+			*REG_SHA_INFIFO = *src32++;
+		}
+
+		size -= 0x40;
+	}
+	
+	sha_wait_idle();
+	memcpy((void *)REG_SHA_INFIFO, src32, size);
+	
+	*REG_SHA_CNT = (*REG_SHA_CNT & ~SHA_NORMAL_ROUND) | SHA_FINAL_ROUND;
+	
+	while(*REG_SHA_CNT & SHA_FINAL_ROUND);
+	sha_wait_idle();
+	
+	u32 hashSize = SHA_256_HASH_SIZE;
+	if(mode == SHA_224_MODE)
+		hashSize = SHA_224_HASH_SIZE;
+	else if(mode == SHA_1_MODE)
+		hashSize = SHA_1_HASH_SIZE;
+
+	memcpy(res, (void *)REG_SHA_HASH, hashSize);
+}
+
 /****************************************************************
 *                   Nand/FIRM Crypto stuff
 ****************************************************************/
 
-//Nand key#2 (0x12C10)
-static const u8 key2[0x10] = {
-    0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0
-};
+static u8 nandCTR[0x10],
+          nandSlot;
 
-//Get Nand CTR key
-static void getNandCTR(u8 *buf, u32 console)
+static u32 fatStart;
+
+//Initialize the CTRNAND crypto
+void ctrNandInit(void)
 {
-    u8 *addr = (console ? (u8 *)0x080D8BBC : (u8 *)0x080D797C) + 0x0F;
-    for(u8 keyLen = 0x10; keyLen; keyLen--)
-        *(buf++) = *(addr--);
+    u8 nandCid[0x10];
+    u8 shaSum[0x20];
+
+    sdmmc_get_cid(1, (u32 *)nandCid);
+    sha(shaSum, nandCid, 0x10, SHA_256_MODE);
+    memcpy(nandCTR, shaSum, 0x10);
+
+    if(console)
+    {
+        u8 keyY0x5[0x10] = {0x4D, 0x80, 0x4F, 0x4E, 0x99, 0x90, 0x19, 0x46, 0x13, 0xA2, 0x04, 0xAC, 0x58, 0x44, 0x60, 0xBE};
+        aes_setkey(0x05, keyY0x5, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+        nandSlot = 0x05;
+        fatStart = 0x5CAD7;
+    }
+    else
+    {
+        nandSlot = 0x04;
+        fatStart = 0x5CAE5;
+    }
 }
 
-//Read firm0 from NAND and write to buffer
-void nandFirm0(u8 *outbuf, u32 size, u32 console)
+//Read and decrypt from the selected CTRNAND
+u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 {
-    u8 CTR[0x10];
-    getNandCTR(CTR, console);
+    u8 tmpCTR[0x10];
+    memcpy(tmpCTR, nandCTR, 0x10);
+    aes_advctr(tmpCTR, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    sdmmc_nand_readsectors(0x0B130000 / 0x200, size / 0x200, outbuf);
+    //Read
+    u32 result;
+    if(!firmSource)
+        result = sdmmc_nand_readsectors(sector + fatStart, sectorCount, outbuf);
+    else
+    {
+        sector += emuOffset;
+        result = sdmmc_sdcard_readsectors(sector + fatStart, sectorCount, outbuf);
+    }
 
-    aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(0x06);
-    aes(outbuf, outbuf, size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    //Decrypt
+    aes_use_keyslot(nandSlot);
+    aes(outbuf, outbuf, (sectorCount * 0x200) / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    return result;
 }
 
-//Decrypts the N3DS arm9bin
-void decryptArm9Bin(u8 *arm9Section, u32 mode)
+//Encrypt and write to the selected CTRNAND
+u32 ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf)
+{
+    u8 tmpCTR[0x10];
+    memcpy(tmpCTR, nandCTR, 0x10);
+    aes_advctr(tmpCTR, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    //Encrypt
+    aes_use_keyslot(nandSlot);
+    aes(inbuf, inbuf, (sectorCount * 0x200) / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    //Write
+    if(!firmSource)
+        return sdmmc_nand_writesectors(sector + fatStart, sectorCount, inbuf);
+
+    sector += emuOffset;
+    return sdmmc_sdcard_writesectors(sector + fatStart, sectorCount, inbuf);
+}
+
+//Decrypt a FIRM ExeFS
+void decryptExeFs(u8 *inbuf)
+{
+    u32 exeFsOffset = (u32)inbuf + *(u32 *)(inbuf + 0x1A0) * 0x200;
+    u32 exeFsSize = *(u32 *)(inbuf + 0x1A4) * 0x200;
+    u8 ncchCTR[0x10];
+
+    memset(ncchCTR, 0, 0x10);
+    for(u32 i=0; i<8; i++)
+        ncchCTR[7-i] = *(inbuf + 0x108 + i);
+    ncchCTR[8] = 2;
+
+    aes_setkey(0x2C, inbuf, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setiv(ncchCTR, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x2C);
+    aes(inbuf - 0x200, (void *)exeFsOffset, exeFsSize/AES_BLOCK_SIZE, ncchCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+}
+
+//ARM9Loader replacement
+void arm9Loader(u8 *arm9Section, u32 mode)
 {
     //Firm keys
     u8 keyY[0x10];
-    u8 CTR[0x10];
-    u8 slot = mode ? 0x16 : 0x15;
+    u8 arm9BinCTR[0x10];
+    u8 arm9BinSlot = mode ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, arm9Section + 0x10, 0x10);
-    memcpy(CTR, arm9Section + 0x20, 0x10);
+    memcpy(arm9BinCTR, arm9Section + 0x20, 0x10);
 
     //Calculate the size of the ARM9 binary
     u32 size = 0;
@@ -279,36 +386,36 @@ void decryptArm9Bin(u8 *arm9Section, u32 mode)
 
     if(mode)
     {
+        const u8 key2[0x10] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
         u8 keyX[0x10];
 
         //Set 0x11 to key2 for the arm9bin and misc keys
         aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x11);
         aes(keyX, arm9Section + 0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
-    aes_setkey(slot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setiv(CTR, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(slot);
+    aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setiv(arm9BinCTR, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(arm9BinSlot);
 
     //Decrypt arm9bin
-    aes(arm9Section + 0x800, arm9Section + 0x800, size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-}
+    aes(arm9Section + 0x800, arm9Section + 0x800, size/AES_BLOCK_SIZE, arm9BinCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-//Sets the N3DS 9.6 KeyXs
-void setKeyXs(u8 *arm9Section)
-{
-    u8 *keyData = arm9Section + 0x89814;
-    u8 *decKey = keyData + 0x10;
-
-    //Set keys 0x19..0x1F keyXs
-    aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(0x11);
-    for(u8 slot = 0x19; slot < 0x20; slot++)
+    //Set >=9.6 KeyXs
+    if(mode)
     {
-        aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        *(keyData + 0xF) += 1;
+        u8 *keyData = arm9Section + 0x89814;
+        u8 *decKey = keyData + 0x10;
+
+        //Set keys 0x19..0x1F keyXs
+        aes_use_keyslot(0x11);
+        for(u8 slot = 0x19; slot < 0x20; slot++)
+        {
+            aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+            aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+            *(keyData + 0xF) += 1;
+        }
     }
 }

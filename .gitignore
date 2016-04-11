@@ -1,6 +1,7 @@
 out
 build
 loader/build
+screeninit/build
 injector/build
 *.bin
 *.3dsx

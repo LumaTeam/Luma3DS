@@ -8,9 +8,9 @@
 
 #include "types.h"
 
-u32 mountSD(void);
+u32 mountFs(void);
 u32 fileRead(void *dest, const char *path, u32 size);
 u32 fileWrite(const void *buffer, const char *path, u32 size);
 u32 fileSize(const char *path);
 u32 fileExists(const char *path);
-void fileDelete(const char *path);
+void firmRead(u8 *dest, const char *firmFolder);

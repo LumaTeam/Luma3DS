@@ -187,18 +187,18 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(loadConfig()) && ((config >> 5) & 1))
+            if(R_SUCCEEDED(loadConfig()) && ((config >> 4) & 1))
             {
                 static const u16 verPattern[] = u"Ver.";
-                const u32 currentFirm = ((config >> 12) & 1);
-                const u32 currentNand = ((config >> 13) & 3);
+                const u32 currentNand = ((config >> 16) & 3);
+                const u32 matchingFirm = ((config >> 18) & 1) == (currentNand != 0);
 
                 //Patch Ver. string
                 patchMemory(code, size,
                     verPattern,
                     sizeof(verPattern) - sizeof(u16), 0,
-                    currentNand ? ((currentNand == 1) ? ((currentFirm == 1) ? u" Emu" : u"Emu9") : u"Emu2") :
-                                  ((currentFirm == 1) ? u" Sys" : u"Sys9"),
+                    !currentNand ? ((matchingFirm) ? u" Sys" : u"SysA") :
+                                   ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuA") : ((matchingFirm) ? u"Emu2" : u"Em2A")),
                     sizeof(verPattern) - sizeof(u16), 1
                 );
             }

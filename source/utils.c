@@ -7,7 +7,6 @@
 #include "utils.h"
 #include "screeninit.h"
 #include "draw.h"
-#include "fs.h"
 #include "i2c.h"
 #include "buttons.h"
 
@@ -35,15 +34,6 @@ u32 waitInput(void)
     while(!pressedKey);
 
     return key;
-}
-
-void deleteFirms(const char *firmPaths[], u32 firms)
-{
-    while(firms)
-    {
-        fileDelete(firmPaths[firms - 1]);
-        firms--;
-    }
 }
 
 void error(const char *message)

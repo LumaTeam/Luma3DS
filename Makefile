@@ -42,6 +42,9 @@ ninjhax: $(dir_out)/3ds/$(name)
 .PHONY: release
 release: $(dir_out)/$(name).zip
 
+.PHONY: pathchanger
+pathchanger: $(dir_out)/pathchanger
+
 .PHONY: clean
 clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
@@ -53,6 +56,9 @@ clean:
 
 $(dir_out):
 	@mkdir -p "$(dir_out)/aurei/payloads"
+
+$(dir_out)/pathchanger: $(dir_out)
+	@cc pathchanger/pathchanger.c -o out/pathchanger
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
@@ -108,9 +114,9 @@ $(dir_build)/%.o: $(dir_source)/%.s
 
 $(dir_build)/fatfs/%.o: $(dir_source)/fatfs/%.c
 	@mkdir -p "$(@D)"
-	$(COMPILE.c) -mthumb -mthumb-interwork -Wno-unused-function $(OUTPUT_OPTION) $<
+	$(COMPILE.c) -Wno-unused-function $(OUTPUT_OPTION) $<
 
 $(dir_build)/fatfs/%.o: $(dir_source)/fatfs/%.s
 	@mkdir -p "$(@D)"
-	$(COMPILE.s) -mthumb -mthumb-interwork $(OUTPUT_OPTION) $<
+	$(COMPILE.s) $(OUTPUT_OPTION) $<
 include $(call rwildcard, $(dir_build), *.d)

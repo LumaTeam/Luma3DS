@@ -38,7 +38,10 @@ typedef struct patchData {
     u32 type;
 } patchData;
 
-void setupCFW(void);
-void loadFirm(void);
-void patchFirm(void);
-void launchFirm(void);
+static inline void loadFirm(u32 firmType, u32 externalFirm);
+static inline void patchNativeFirm(u32 firmType, u32 emuNAND, u32 emuHeader, u32 a9lhSetup);
+static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader);
+static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset);
+static inline void injectLoader(void);
+static inline void patchTwlAgbFirm(u32 firmType);
+static inline void launchFirm(u32 bootType);

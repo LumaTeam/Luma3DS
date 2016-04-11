@@ -1,7 +1,7 @@
 .arm.little
 
-firm_addr equ 0x24000000  ; Temporary location where we'll load the FIRM to
-firm_maxsize equ 0x200000  ; Random value that's bigger than any of the currently known firm's sizes.
+payload_addr equ 0x23F00000   ; Brahma payload address.
+payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
 
 .create "reboot.bin", 0
 .arm
@@ -21,80 +21,43 @@ firm_maxsize equ 0x200000  ; Random value that's bigger than any of the currentl
         cmp r0, r2
         bne pxi_wait_recv
 
-    ; Convert 2 bytes of the path string
-    ; This will be the method of getting the lower 2 bytes of the title ID
-    ;   until someone bothers figuring out where the value is derived from.
-    mov r0, #0  ; Result
-    add r1, sp, #0x3A8 - 0x70
-    add r1, #0x22  ; The significant bytes
-    mov r2, #4  ; Maximum loops (amount of bytes * 2)
-
-    hex_string_to_int_loop:
-        ldr r3, [r1], #2  ; 2 because it's a utf-16 string.
-        and r3, #0xFF
-
-        ; Check if it"s a number
-        cmp r3, #'0'
-        blo hex_string_to_int_end
-        sub r3, #'0'
-        cmp r3, #9
-        bls hex_string_to_int_calc
-
-        ; Check if it"s a capital letter
-        cmp r3, #'A' - '0'
-        blo hex_string_to_int_end
-        sub r3, #'A' - '0' - 0xA  ; Make the correct value: 0xF >= al >= 0xA
-        cmp r3, #0xF
-        bls hex_string_to_int_calc
-
-        ; Incorrect value: x > "A"
-        bhi hex_string_to_int_end
-
-        hex_string_to_int_calc:
-            orr r0, r3, r0, lsl #4
-            subs r2, #1
-            bne hex_string_to_int_loop
-    hex_string_to_int_end:
-
-    ; Get the FIRM path
-    cmp r0, #0x0002  ; NATIVE_FIRM
-    adreq r1, firm_fname
-    beq load_firm
-    ldr r5, =0x0102  ; TWL_FIRM
-    cmp r0, r5
-    adreq r1, twlfirm_fname
-    beq load_firm
-    ldr r5, =0x0202  ; AGB_FIRM
-    cmp r0, r5
-    adreq r1, agbfirm_fname
-    beq load_firm
-    bne fallback  ; TODO: Stubbed
+        mov r4, #0
+        adr r1, bin_fname
+        b open_payload
 
     fallback:
-        ; Fallback: Load specified FIRM from exefs
-        add r1, sp, #0x3A8-0x70  ; Location of exefs string.
-        b load_firm
+        mov r4, #1
+        adr r1, dat_fname
 
-    load_firm:
+    open_payload:
         ; Open file
         add r0, r7, #8
         mov r2, #1
         ldr r6, [fopen]
         orr r6, 1
         blx r6
+        cmp r0, #0
+        bne fallback ; If the .bin is not found, try the .dat.
 
-        cmp r0, #0  ; Check if we were able to load the FIRM
-        bne fallback  ; Otherwise, try again with the FIRM from exefs.
-        ; This will loop indefinitely if the exefs FIRM fails to load, but whatever.
-
+    read_payload:
         ; Read file
-		mov r0, r7
+	mov r0, r7
         adr r1, bytes_read
-        mov r2, firm_addr
-        mov r3, firm_maxsize
-		ldr r6, [sp, #0x3A8-0x198]
-		ldr r6, [r6, #0x28]
-		blx r6
+        ldr r2, =payload_addr
+        cmp r4, #0
+        movne r3, #0x12000 ; Skip the first 0x12000 bytes.
+        moveq r3, payload_maxsize
+	ldr r6, [sp, #0x3A8-0x198]
+	ldr r6, [r6, #0x28]
+	blx r6
+        cmp r4, #0
+        movne r4, #0
+        bne read_payload ; Go read the real payload.
+
+    add r0, sp, #0x3A8 - 0x70
+    ldr r0, [r0, #0x27]
+    ldr r1, =payload_addr + 4
+    str r0, [r1] ; Copy the last digits of the wanted firm to the 5th byte of the payload.
 
     ; Set kernel state
     mov r0, #0
@@ -115,13 +78,9 @@ firm_maxsize equ 0x200000  ; Random value that's bigger than any of the currentl
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-firm_fname:    .dcw "sdmc:/aurei/patched_firmware_sys.bin"
-	       .word 0
-.pool
-twlfirm_fname: .dcw "sdmc:/aurei/patched_firmware_twl.bin"
-	       .word 0
-.pool
-agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
+bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
+	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+dat_fname:     .dcw "sdmc:/AuReiNand.dat"
 	       .word 0
 
 .align 4
@@ -157,23 +116,6 @@ agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
         mcr p15, 0, r1, c2, c0, 1  ; icacheable
         mcr p15, 0, r2, c3, c0, 0  ; write bufferable
 
-        ; Copy the firmware
-        mov r4, firm_addr
-        add r5, r4, #0x40  ; Start of loop
-        add r6, r5, #0x30 * 3  ; End of loop (scan 4 entries)
-
-    copy_firm_loop:
-        ldr r0, [r5]
-        cmp r0, #0
-        addne r0, r4  ; src
-        ldrne r1, [r5, #4]  ; dest
-        ldrne r2, [r5, #8]  ; size
-        blne memcpy32
-
-        cmp r5, r6
-        addlo r5, #0x30
-        blo copy_firm_loop
-
     ; Flush cache
     mov r2, #0
     mov r1, r2
@@ -197,22 +139,10 @@ agbfirm_fname: .dcw "sdmc:/aurei/patched_firmware_agb.bin"
     mcr p15, 0, r1, c7, c5, 0  ; flush dcache
     mcr p15, 0, r1, c7, c6, 0  ; flush icache
     mcr p15, 0, r1, c7, c10, 4  ; drain write buffer
-    mov r0, firm_addr
 
-    ; Boot FIRM
-    mov r1, #0x1FFFFFFC
-    ldr r2, [r0, #8]  ; arm11 entry
-    str r2, [r1]
-    ldr r0, [r0, #0xC]  ; arm9 entry
+    ; Jump to payload
+    ldr r0, =payload_addr
     bx r0
-.pool
 
-memcpy32:  ; memcpy32(void *src, void *dst, unsigned int size)
-    add r2, r0
-    memcpy32_loop:
-        ldmia r0!, {r3}
-        stmia r1!, {r3}
-        cmp r0, r2
-        blo memcpy32_loop
-    bx lr
+.pool
 .close

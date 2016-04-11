@@ -5,13 +5,16 @@
 */
 
 #include "fs.h"
+#include "memory.h"
 #include "fatfs/ff.h"
 
-static FATFS fs;
+static FATFS sdFs,
+             nandFs;
 
-u32 mountSD(void)
+u32 mountFs(void)
 {
-    if(f_mount(&fs, "0:", 1) != FR_OK) return 0;
+    if(f_mount(&sdFs, "0:", 1) != FR_OK) return 0;
+    f_mount(&nandFs, "1:", 0);
     return 1;
 }
 
@@ -68,7 +71,58 @@ u32 fileExists(const char *path)
     return exists;
 }
 
-void fileDelete(const char *path)
+void firmRead(u8 *dest, const char *firmFolder)
 {
-    f_unlink(path);
+    char path[48] = "1:/title/00040138/00000000/content";
+    memcpy(&path[18], firmFolder, 8);
+
+    DIR dir;
+    FILINFO info = { .lfname = NULL };
+
+    f_opendir(&dir, path);
+
+    u32 id = 0;
+
+    //Parse the target directory
+    while(f_readdir(&dir, &info) == FR_OK)
+    {
+        //We've parsed the whole folder
+        if(!info.fname[0]) break;
+
+        //Not a cxi
+        if(info.fname[9] != 'a' && info.fname[9] != 'A') continue;
+
+        //Convert the .app name to an integer
+        u32 tempId = 0;
+        for(char *tmp = info.fname; (*tmp) != '.'; tmp++)
+        {
+            if((*tmp) > '9') tempId = (tempId << 4) + ((*tmp) - 'A') + 9;
+            else tempId = (tempId << 4) + (*tmp) - '0';
+        }
+
+        //Found a newer cxi
+        if(tempId > id) id = tempId;
+    }
+
+    f_closedir(&dir);
+
+    //Complete the string with the .app name
+    memcpy(&path[34], "/00000000.app", 14);
+
+    //Last digit of the .app
+    u32 i = 42;
+
+    //Convert back the .app name from integer to array
+    while(id > 15)
+    {
+        u32 remainder = (id % 16);
+        if(remainder > 9) path[i] = remainder - 9 + 'A';
+        else path[i] = remainder + '0';
+        id /= 16;
+        i--;
+    }
+    if(id > 9) path[i] = id - 9 + 'A';
+    else path[i] = id + '0';
+
+    fileRead(dest, path, 0);
 }

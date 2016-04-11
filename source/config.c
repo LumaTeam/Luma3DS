@@ -12,7 +12,7 @@
 #include "i2c.h"
 #include "buttons.h"
 
-void configureCFW(const char *configPath, const char *patchedFirms[])
+void configureCFW(const char *configPath)
 {
     initScreens();
 
@@ -20,10 +20,9 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
 
     const char *optionsText[] = { "Screen-init brightness: 4( ) 3( ) 2( ) 1( )",
+                                  "( ) Autoboot SysNAND",
                                   "( ) Updated SysNAND mode (A9LH-only)",
-                                  "( ) Use pre-patched FIRMs",
                                   "( ) Force A9LH detection",
-                                  "( ) Use 9.0 FIRM as default",
                                   "( ) Use second EmuNAND as default",
                                   "( ) Show current NAND in System Settings",
                                   "( ) Show GBA boot screen in patched AGB_FIRM",
@@ -37,8 +36,8 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     } options[optionsAmount];
 
     //Parse the existing configuration
-    options[0].enabled = CONFIG(10, 3);
-    for(u32 i = optionsAmount; i; i--)
+    options[0].enabled = CONFIG(14, 3);
+    for(u32 i = optionsAmount - 1; i; i--)
         options[i].enabled = CONFIG((i - 1), 1);
 
     //Pre-select the first configuration option
@@ -55,7 +54,9 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
     //Display all the normal options in white, brightness will be displayed later
     for(u32 i = 1; i < optionsAmount; i++)
     {
-        options[i].posY = drawString(optionsText[i], 10, options[i - 1].posY + SPACING_Y + (!(1 - i) * 7), COLOR_WHITE);
+        static int endPos = 59;
+        options[i].posY = endPos + SPACING_Y;
+        endPos = drawString(optionsText[i], 10, options[i].posY, COLOR_WHITE);
         if(options[i].enabled) drawCharacter(selected, 10 + SPACING_X, options[i].posY, COLOR_WHITE);
     }
 
@@ -129,18 +130,12 @@ void configureCFW(const char *configPath, const char *patchedFirms[])
         if(pressed == BUTTON_START) break;
     }
 
-    //If the user has been using A9LH and the "Updated SysNAND" setting changed, delete the patched 9.0 FIRM
-    if(CONFIG(16, 1) && (CONFIG(0, 1) != options[1].enabled)) fileDelete(patchedFirms[3]);
-
-    //If the "Show GBA boot screen in patched AGB_FIRM" setting changed, delete the patched AGB_FIRM
-    if(CONFIG(6, 1) != options[7].enabled) fileDelete(patchedFirms[5]);
-
     //Preserve the last-used boot options (last 12 bits)
-    config &= 0xFFF000;
+    config &= 0xFF0000;
 
     //Parse and write the new configuration
-    config |= options[0].enabled << 10;
-    for(u32 i = optionsAmount; i; i--)
+    config |= options[0].enabled << 14;
+    for(u32 i = optionsAmount - 1; i; i--)
         config |= options[i].enabled << (i - 1);
 
     fileWrite(&config, configPath, 3);

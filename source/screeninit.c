@@ -16,7 +16,7 @@
 
 #define SCREENINIT_ADDRESS 0x24F03000
 
-static vu32 *const arm11 = (u32 *)0x1FFFFFF8;
+vu32 *arm11Entry = (u32 *)0x1FFFFFF8;
 
 void deinitScreens(void)
 {
@@ -26,7 +26,7 @@ void deinitScreens(void)
         __asm(".word 0xF10C01C0");
 
         //Clear ARM11 entry offset
-        *arm11 = 0;
+        *arm11Entry = 0;
 
         //Shutdown LCDs
         *(vu32 *)0x10202A44 = 0;
@@ -34,16 +34,16 @@ void deinitScreens(void)
         *(vu32 *)0x10202014 = 0;
     
         //Wait for the entry to be set
-        while(!*arm11);
+        while(!*arm11Entry);
 
         //Jump to it
-        ((void (*)())*arm11)();
+        ((void (*)())*arm11Entry)();
     }
 
     if(PDN_GPU_CNT != 1)
     {
-        *arm11 = (u32)ARM11;
-        while(*arm11);
+        *arm11Entry = (u32)ARM11;
+        while(*arm11Entry);
     }
 }
 
@@ -54,10 +54,10 @@ void initScreens(void)
         memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
 
         //Write brightness level for the stub to pick up
-        *(vu32 *)(SCREENINIT_ADDRESS + 8) = CONFIG(10, 3);
+        *(vu32 *)(SCREENINIT_ADDRESS + 8) = CONFIG(14, 3);
 
-        *arm11 = SCREENINIT_ADDRESS;
-        while(*arm11);
+        *arm11Entry = SCREENINIT_ADDRESS;
+        while(*arm11Entry);
 
         //Turn on backlight
         i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);

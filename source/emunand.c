@@ -8,7 +8,7 @@
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
-u32 getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
+void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
 {
     u8 *const temp = (u8 *)0x24300000;
 
@@ -40,13 +40,9 @@ u32 getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
             {
                 (*emuNAND)--;
                 if(*emuNAND) getEmunandSect(off, head, emuNAND);
-
-                return 0;
             }
         }
     }
-
-    return 1;
 }
 
 u32 getSDMMC(u8 *pos, u32 size)

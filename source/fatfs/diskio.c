@@ -10,6 +10,9 @@
 #include "diskio.h"		/* FatFs lower layer API */
 #include "sdmmc/sdmmc.h"
 
+/* Definitions of physical drive number for each media */
+#define SDCARD        0
+#define CTRNAND       1
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -34,7 +37,16 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-	sdmmc_sdcard_init();
+        switch(pdrv)
+        {
+            case SDCARD:
+                sdmmc_sdcard_init();
+                break;
+            case CTRNAND:
+                ctrNandInit();
+                break;
+        }
+
 	return RES_OK;
 }
 
@@ -52,11 +64,19 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-	if (sdmmc_sdcard_readsectors(sector, count, buff)) {
-		return RES_PARERR;
-	}
+        switch(pdrv)
+        {
+            case SDCARD:
+                if(sdmmc_sdcard_readsectors(sector, count, (BYTE *)buff))
+		    return RES_PARERR;
+                break;
+            case CTRNAND:
+                if(ctrNandRead(sector, count, (BYTE *)buff))
+		    return RES_PARERR;
+                break;
+        }
 
-	return RES_OK;
+        return RES_OK;
 }
 
 
@@ -74,11 +94,19 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-	if (sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff)) {
-		return RES_PARERR;
-	}
+        switch(pdrv)
+        {
+            case SDCARD:
+                if(sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff))
+		    return RES_PARERR;
+                break;
+            case CTRNAND:
+                if(ctrNandWrite(sector, count, (BYTE *)buff))
+		    return RES_PARERR;
+                break;
+        }
 
-	return RES_OK;
+        return RES_OK;
 }
 #endif
 
