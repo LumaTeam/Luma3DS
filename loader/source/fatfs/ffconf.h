@@ -1,20 +1,12 @@
 /*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module configuration file  R0.11 (C)ChaN, 2015
+/  FatFs - FAT file system module configuration file  R0.11a (C)ChaN, 2015
 /---------------------------------------------------------------------------*/
 
-#define _FFCONF 32020	/* Revision ID */
+#define _FFCONF 64180	/* Revision ID */
 
 /*---------------------------------------------------------------------------/
-/ Functions and Buffer Configurations
+/ Function Configurations
 /---------------------------------------------------------------------------*/
-
-#define	_FS_TINY		0
-/* This option switches tiny buffer configuration. (0:Normal or 1:Tiny)
-/  At the tiny configuration, size of the file object (FIL) is reduced _MAX_SS
-/  bytes. Instead of private sector buffer eliminated from the file object,
-/  common sector buffer in the file system object (FATFS) is used for the file
-/  data transfer. */
-
 
 #define _FS_READONLY	1
 /* This option switches read-only configuration. (0:Read/Write or 1:Read-only)
@@ -73,23 +65,28 @@
 /* This option specifies the OEM code page to be used on the target system.
 /  Incorrect setting of the code page can cause a file open failure.
 /
-/   1    - ASCII (No extended character. Non-LFN cfg. only)
-/   437  - U.S.
-/   720  - Arabic
-/   737  - Greek
-/   775  - Baltic
-/   850  - Multilingual Latin 1
-/   852  - Latin 2
-/   855  - Cyrillic
-/   857  - Turkish
-/   858  - Multilingual Latin 1 + Euro
-/   862  - Hebrew
-/   866  - Russian
-/   874  - Thai
-/   932  - Japanese Shift_JIS (DBCS)
-/   936  - Simplified Chinese GBK (DBCS)
-/   949  - Korean (DBCS)
-/   950  - Traditional Chinese Big5 (DBCS)
+/   1   - ASCII (No extended character. Non-LFN cfg. only)
+/   437 - U.S.
+/   720 - Arabic
+/   737 - Greek
+/   771 - KBL
+/   775 - Baltic
+/   850 - Latin 1
+/   852 - Latin 2
+/   855 - Cyrillic
+/   857 - Turkish
+/   860 - Portuguese
+/   861 - Icelandic
+/   862 - Hebrew
+/   863 - Canadian French
+/   864 - Arabic
+/   865 - Nordic
+/   866 - Russian
+/   869 - Greek 2
+/   932 - Japanese (DBCS)
+/   936 - Simplified Chinese (DBCS)
+/   949 - Korean (DBCS)
+/   950 - Traditional Chinese (DBCS)
 */
 
 
@@ -115,7 +112,7 @@
 /  to 1. This option also affects behavior of string I/O functions. */
 
 
-#define _STRF_ENCODE	0
+#define _STRF_ENCODE	3
 /* When _LFN_UNICODE is 1, this option selects the character encoding on the file to
 /  be read/written via string I/O functions, f_gets(), f_putc(), f_puts and f_printf().
 /
@@ -195,17 +192,25 @@
 / System Configurations
 /---------------------------------------------------------------------------*/
 
+#define	_FS_TINY	0
+/* This option switches tiny buffer configuration. (0:Normal or 1:Tiny)
+/  At the tiny configuration, size of the file object (FIL) is reduced _MAX_SS
+/  bytes. Instead of private sector buffer eliminated from the file object,
+/  common sector buffer in the file system object (FATFS) is used for the file
+/  data transfer. */
+
+
 #define _FS_NORTC	1
-#define _NORTC_MON	2
+#define _NORTC_MON	1
 #define _NORTC_MDAY	1
 #define _NORTC_YEAR	2015
 /* The _FS_NORTC option switches timestamp feature. If the system does not have
 /  an RTC function or valid timestamp is not needed, set _FS_NORTC to 1 to disable
 /  the timestamp feature. All objects modified by FatFs will have a fixed timestamp
 /  defined by _NORTC_MON, _NORTC_MDAY and _NORTC_YEAR.
-/  When timestamp feature is enabled (_FS_NORTC	== 0), get_fattime() function need
+/  When timestamp feature is enabled (_FS_NORTC == 0), get_fattime() function need
 /  to be added to the project to read current time form RTC. _NORTC_MON,
-/  _NORTC_MDAY and _NORTC_YEAR have no effect.
+/  _NORTC_MDAY and _NORTC_YEAR have no effect. 
 /  These options have no effect at read-only configuration (_FS_READONLY == 1). */
 
 
@@ -253,7 +258,7 @@
 /  * Byte order on the memory is little-endian.
 /
 /  If it is the case, _WORD_ACCESS can also be set to 1 to reduce code size.
-/  Following table shows allowable settings of some processor types.
+/  Following table shows allowable settings of some type of processors.
 /
 /  ARM7TDMI   0   *2          ColdFire   0    *1         V850E      0    *2
 /  Cortex-M3  0   *3          Z80        0/1             V850ES     0/1
