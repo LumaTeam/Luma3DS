@@ -18,7 +18,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 export TARGET	:=	$(shell basename $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source source/fatfs source/fatfs/sdmmc source/fatfs/option
+SOURCES		:=	source source/fatfs source/fatfs/sdmmc
 
 #---------------------------------------------------------------------------------
 # Setup some defines

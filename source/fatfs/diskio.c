@@ -35,7 +35,6 @@ DSTATUS disk_initialize (
 )
 {
 	sdmmc_sdcard_init();
-
 	return RES_OK;
 }
 
@@ -53,8 +52,9 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-	if(sdmmc_sdcard_readsectors(sector, count, buff))
-            return RES_PARERR;
+	if (sdmmc_sdcard_readsectors(sector, count, buff)) {
+		return RES_PARERR;
+	}
 
 	return RES_OK;
 }
@@ -74,8 +74,9 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-	if(sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff))
-            return RES_PARERR;
+	if (sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff)) {
+		return RES_PARERR;
+	}
 
 	return RES_OK;
 }
