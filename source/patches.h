@@ -15,7 +15,7 @@ const u32 mpuPatch[3];
 const u16 nandRedir[2];
 const u16 sigPatch[2];
 const u16 writeBlock[2];
-const u8 unitInfoPatch[1];
+const u8 unitInfoPatch;
 
 /**************************************************
 *                   Functions

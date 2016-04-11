@@ -19,7 +19,7 @@ const u16 sigPatch[2] = {0x2000, 0x4770};
 
 const u16 writeBlock[2] = {0x2000, 0x46C0};
 
-const u8 unitInfoPatch[1] = {0xE3};
+const u8 unitInfoPatch = 0xE3;
 
 /**************************************************
 *                   Functions

@@ -277,7 +277,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
         u32 unitInfoOffset;
 
         getUnitInfoValueSet(arm9Section, section[2].size, &unitInfoOffset);
-        *((u8*)unitInfoOffset + 3) = unitInfoPatch[0];
+        *((u8*)unitInfoOffset + 3) = unitInfoPatch;
     }
 
     //Replace the FIRM loader with the injector
@@ -286,11 +286,11 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
 
 static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
 {
-    //Copy nandType code
+    //Copy emuNAND code
     void *emuCodeOffset = getEmuCode(proc9Offset);
     memcpy(emuCodeOffset, emunand, emunand_size);
 
-    //Add the data of the found nandType
+    //Add the data of the found emuNAND
     u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", emunand_size, 4);
     u32 *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", emunand_size, 4);
     *pos_offset = emuOffset;
@@ -304,7 +304,7 @@ static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
     u32 branchOffset = (u32)emuCodeOffset - (u32)firm -
                        section[2].offset + (u32)section[2].address;
 
-    //Add emunand hooks
+    //Add emuNAND hooks
     u32 emuRead,
         emuWrite;
 

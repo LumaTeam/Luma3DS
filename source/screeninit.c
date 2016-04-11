@@ -32,7 +32,7 @@ void deinitScreens(void)
         *(vu32 *)0x10202A44 = 0;
         *(vu32 *)0x10202244 = 0;
         *(vu32 *)0x10202014 = 0;
-    
+
         //Wait for the entry to be set
         while(!*arm11Entry);
 

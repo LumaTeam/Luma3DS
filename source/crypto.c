@@ -379,10 +379,10 @@ void arm9Loader(u8 *arm9Section, u32 mode)
     memcpy(arm9BinCTR, arm9Section + 0x20, 0x10);
 
     //Calculate the size of the ARM9 binary
-    u32 size = 0;
+    u32 arm9BinSize = 0;
     //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
     for(u8 *tmp = arm9Section + 0x30; *tmp; tmp++)
-        size = (size << 3) + (size << 1) + (*tmp) - '0';
+        arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + (*tmp) - '0';
 
     if(mode)
     {
@@ -401,13 +401,13 @@ void arm9Loader(u8 *arm9Section, u32 mode)
     aes_use_keyslot(arm9BinSlot);
 
     //Decrypt arm9bin
-    aes(arm9Section + 0x800, arm9Section + 0x800, size/AES_BLOCK_SIZE, arm9BinCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(arm9Section + 0x800, arm9Section + 0x800, arm9BinSize / AES_BLOCK_SIZE, arm9BinCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     //Set >=9.6 KeyXs
     if(mode)
     {
-        u8 *keyData = arm9Section + 0x89814;
-        u8 *decKey = keyData + 0x10;
+        u8 keyData[] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98};
+        u8 decKey[0x10];
 
         //Set keys 0x19..0x1F keyXs
         aes_use_keyslot(0x11);
