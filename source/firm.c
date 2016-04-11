@@ -61,7 +61,7 @@ void main(void)
         bootType = 1;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = *(vu8 *)0x23F00005 - 0x2F;
+        firmType = *(vu8 *)0x23F00005 - '0';
 
         nandType = CONFIG(16, 3);
         firmSource = CONFIG(18, 1);
@@ -71,7 +71,7 @@ void main(void)
     else
     {
         bootType = 0;
-        firmType = 1;
+        firmType = 0;
 
         //Determine if booting with A9LH
         u32 a9lhBoot = !PDN_SPI_CNT ? 1 : 0;
@@ -182,9 +182,9 @@ void main(void)
         }
     }
 
-    loadFirm(firmType, firmType == 1 && (nandType == 2 || updatedSys == !nandType));
+    loadFirm(firmType, !firmType && (nandType == 2 || updatedSys == !nandType));
 
-    if(firmType == 1) patchNativeFirm(firmType, nandType, emuHeader, a9lhInstalled);
+    if(!firmType) patchNativeFirm(nandType, emuHeader, a9lhInstalled);
     else patchTwlAgbFirm(firmType);
 
     launchFirm(bootType);
@@ -193,9 +193,9 @@ void main(void)
 //Load FIRM into FCRAM
 static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
-    u32 firmSize;
-
     section = firm->section;
+
+    u32 firmSize;
 
     if(externalFirm)
     {
@@ -215,32 +215,34 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     if(!firmSize)
     {
-        firmRead((u8 *)firm, firmFolders[firmType - 1][console]);
+        firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);
     }
 }
 
-static inline void patchNativeFirm(u32 firmType, u32 nandType, u32 emuHeader, u32 a9lhInstalled)
+static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalled)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
+
+    u32 nativeFirmType;
 
     if(console)
     {
         //Determine if we're booting the 9.0 FIRM
-        if(arm9Section[0x51] == 0xFF) firmType--;
+        nativeFirmType = (arm9Section[0x51] == 0xFF) ? 0 : 1;
 
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader((u8 *)firm + section[2].offset, firmType);
+        arm9Loader((u8 *)firm + section[2].offset, nativeFirmType);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
     else
     {
         //Determine if we're booting the 9.0 FIRM
         u8 firm90Hash[0x10] = {0x27, 0x2D, 0xFE, 0xEB, 0xAF, 0x3F, 0x6B, 0x3B, 0xF5, 0xDE, 0x4C, 0x41, 0xDE, 0x95, 0x27, 0x6A};
-        if(memcmp(section[2].hash, firm90Hash, 0x10) == 0) firmType--;
+        nativeFirmType = (memcmp(section[2].hash, firm90Hash, 0x10) == 0) ? 0 : 1;
     }
 
-    if(firmType == 1 || nandType)
+    if(nativeFirmType || nandType)
     {
         //Find the Process9 NCCH location
         u8 *proc9Offset = getProc9(arm9Section, section[2].size);
@@ -249,7 +251,7 @@ static inline void patchNativeFirm(u32 firmType, u32 nandType, u32 emuHeader, u3
         if(nandType) patchEmuNAND(arm9Section, proc9Offset, emuHeader);
 
         //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
-        if(firmType == 1) patchReboots(arm9Section, proc9Offset);
+        if(nativeFirmType) patchReboots(arm9Section, proc9Offset);
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH

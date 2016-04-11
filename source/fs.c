@@ -71,7 +71,7 @@ u32 fileExists(const char *path)
     return exists;
 }
 
-void firmRead(u8 *dest, const char *firmFolder)
+void firmRead(void *dest, const char *firmFolder)
 {
     char path[48] = "1:/title/00040138/00000000/content";
     memcpy(&path[18], firmFolder, 8);

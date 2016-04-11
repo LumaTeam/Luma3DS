@@ -11,11 +11,11 @@ start:
     mov sp, #0x27000000
 
     @ Give read/write access to all the memory regions
-    ldr r5, =0x33333333
-    mcr p15, 0, r5, c5, c0, 2 @ write data access
-    mcr p15, 0, r5, c5, c0, 3 @ write instruction access
+    ldr r0, =0x33333333
+    mcr p15, 0, r0, c5, c0, 2 @ write data access
+    mcr p15, 0, r0, c5, c0, 3 @ write instruction access
 
-    @ Sets MPU permissions and cache settings
+    @ Set MPU permissions and cache settings
     ldr r0, =0xFFFF001D	@ ffff0000 32k
     ldr r1, =0x01FF801D	@ 01ff8000 32k
     ldr r2, =0x08000027	@ 08000000 1M
@@ -38,11 +38,11 @@ start:
     mcr p15, 0, r0, c2, c0, 1	@ Inst cacheable 0, 2, 5
 
     @ Enable caches
-    mrc p15, 0, r4, c1, c0, 0  @ read control register
-    orr r4, r4, #(1<<12)       @ - instruction cache enable
-    orr r4, r4, #(1<<2)        @ - data cache enable
-    orr r4, r4, #(1<<0)        @ - mpu enable
-    mcr p15, 0, r4, c1, c0, 0  @ write control register
+    mrc p15, 0, r0, c1, c0, 0  @ read control register
+    orr r0, r0, #(1<<12)       @ - instruction cache enable
+    orr r0, r0, #(1<<2)        @ - data cache enable
+    orr r0, r0, #(1<<0)        @ - mpu enable
+    mcr p15, 0, r0, c1, c0, 0  @ write control register
 
     @ Flush caches
     mov r0, #0
