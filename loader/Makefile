@@ -29,7 +29,7 @@ SOURCES		:=	source source/fatfs source/fatfs/sdmmc source/fatfs/option
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -O2\
+CFLAGS	:=	-g -Wall -O2 -flto\
 			-march=armv5te -mtune=arm946e-s\
 			-ffast-math -Wno-main -std=c99\
 			$(ARCH)

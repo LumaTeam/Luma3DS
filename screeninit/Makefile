@@ -29,7 +29,7 @@ SOURCES		:=	source
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -O2\
+CFLAGS	:=	-g -Wall -O2 -flto\
 			-mcpu=mpcore -mlittle-endian\
 			-ffast-math -Wno-main -std=c99\
 			$(ARCH)

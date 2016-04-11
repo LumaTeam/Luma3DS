@@ -17,7 +17,7 @@ void memcpy(void *dest, const void *src, u32 size)
         destc[i] = srcc[i];
 }
 
-void memset(void *dest, int filler, u32 size)
+void  __attribute__((used)) memset(void *dest, int filler, u32 size)
 {
     u8 *destc = (u8 *)dest;
 
