@@ -19,6 +19,8 @@ const u16 sigPatch[2] = {0x2000, 0x4770};
 
 const u16 writeBlock[2] = {0x2000, 0x46C0};
 
+const u8 unitInfoPatch[1] = {0xE3};
+
 /**************************************************
 *                   Functions
 **************************************************/
@@ -73,4 +75,12 @@ void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize)
 
     *loaderOffset = (u32)off - 0x200;
     *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
+}
+
+void getUnitInfoValueSet(u8 *pos, u32 size, u32 *off)
+{
+    //Look for UNITINFO value being set
+    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
+
+    *off = (u32)memsearch(pos, pattern, size, 4);
 }

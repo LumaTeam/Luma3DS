@@ -271,6 +271,15 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
+    if(CONFIG(7, 1))
+    {
+        //Apply UNITINFO patch
+        u32 unitInfoOffset;
+
+        getUnitInfoValueSet(arm9Section, section[2].size, &unitInfoOffset);
+        *((u8*)unitInfoOffset + 3) = unitInfoPatch[0];
+    }
+
     //Replace the FIRM loader with the injector
     injectLoader();
 }
