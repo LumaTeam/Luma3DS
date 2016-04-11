@@ -376,8 +376,8 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 2 ?  (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(5, 1));
-    const patchData *patches = firmType == 2 ? twlPatches : agbPatches;
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(5, 1));
+    const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch
     for(u32 i = 0; i < numPatches; i++)
