@@ -44,16 +44,15 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
-        if(found == NULL)
-            break;
+        if(found == NULL) break;
 
         memcpy(found + offset, replace, repSize);
 
         u32 at = (u32)(found - start);
 
-        if(at + patSize > size) size = 0;
-        else size = size - (at + patSize);
+        if(at + patSize > size) break;
 
+        size -= at + patSize;
         start = found + patSize;
     }
 
@@ -72,7 +71,7 @@ static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
     archive.lowPath.data = (u8 *)"";
     ppath.type = PATH_ASCII;
     ppath.data = path;
-    ppath.size = len+1;
+    ppath.size = len + 1;
 
     return IFile_Open(file, archive, ppath, flags);
 }
