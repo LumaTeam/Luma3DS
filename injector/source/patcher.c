@@ -182,48 +182,20 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
         case 0x0004013000003202LL: // FRIENDS
         {
-            static const u8 fpdverPattern[] = {
-                0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01, 0x01
+            static const u8 fpdVerPattern[] = {
+                0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01
             };
-            
-            u8 *fdpver = memsearch(code, fpdverPattern, size, sizeof(fpdverPattern));
-            
-            if(fdpver == NULL) break;
-            else fdpver += sizeof(fpdverPattern);
-            
-            if(*fdpver < 5) *fdpver = 5;
 
-            break;
-        }
-        
-        case 0x0004003000008A02LL: // ErrDisp
-        {
-            static const u8 unitinfoCheckPattern1[] = { 
-                0x14, 0x00, 0xD0, 0xE5, 0xDB, 0x9A, 0x9F, 0xED 
-            };
-            
-            static const u8 unitinfoCheckPattern2[] = {
-                0x14, 0x00, 0xD0, 0xE5, 0x01, 0x00, 0x10, 0xE3
-            } ;
-            
-            static const u8 unitinfoCheckPatch[] = {
-                0x00, 0x00, 0xA0, 0xE3
-            } ;
-            
-            patchMemory(code, size, 
-                unitinfoCheckPattern1, 
-                sizeof(unitinfoCheckPattern1), 0, 
-                unitinfoCheckPatch, 
-                sizeof(unitinfoCheckPatch), 1
-            );
+            u8 *fdpVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
 
-            patchMemory(code, size, 
-                unitinfoCheckPattern2, 
-                sizeof(unitinfoCheckPattern2), 0,
-                unitinfoCheckPatch, 
-                sizeof(unitinfoCheckPatch), 3
-            );
-            
+            if(fdpVer != NULL)
+            {
+                fdpVer += sizeof(fpdVerPattern) + 1;
+
+                //Allow online access to work with old friends modules
+                if(*fdpVer < 5) *fdpVer = 5;
+            }
+
             break;
         }
         
