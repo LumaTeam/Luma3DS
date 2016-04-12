@@ -94,10 +94,10 @@ void firmRead(void *dest, const char *firmFolder)
 
         //Convert the .app name to an integer
         u32 tempId = 0;
-        for(char *tmp = info.fname; (*tmp) != '.'; tmp++)
+        for(char *tmp = info.fname; *tmp != '.'; tmp++)
         {
             tempId <<= 4;
-            tempId += *tmp > '9' ? (*tmp - 'A') + 9 : (*tmp) - '0';
+            tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
         }
 
         //Found a newer cxi
@@ -113,13 +113,12 @@ void firmRead(void *dest, const char *firmFolder)
     u32 i = 42;
 
     //Convert back the .app name from integer to array
-    while(id > 15)
+    while(id > 0)
     {
-        u32 remainder = (id % 16);
-        path[i--] = remainder > 9 ? remainder - 9 + 'A' : remainder + '0';
-        id /= 16;
+        static const char hexDigits[] = "0123456789ABCDEF";
+        path[i--] = hexDigits[id & 0xF];
+        id >>= 4;
     }
-    path[i] = id > 9 ? id - 9 + 'A' : id + '0';
 
     fileRead(dest, path, 0);
 }

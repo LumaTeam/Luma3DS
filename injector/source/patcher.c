@@ -114,7 +114,7 @@ static int loadConfig()
     {
         ret = IFile_Read(&file, &total, &config, 3);
         IFile_Close(&file);
-        if(R_SUCCEEDED(ret)) config |= 1 << 24;
+        if(R_SUCCEEDED(ret)) config |= 1 << 4;
     }
 
     return ret;
