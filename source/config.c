@@ -20,7 +20,7 @@ void configureCFW(const char *configPath)
     drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
 
     const char *multiOptionsText[]  = { "Screen-init brightness: 4( ) 3( ) 2( ) 1( )",
-                                        "New 3DS CPU: Off( ) L2( ) Clock( ) L2+Clock( )" };
+                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Updated SysNAND mode (A9LH-only)",
@@ -37,7 +37,7 @@ void configureCFW(const char *configPath)
         int posXs[4];
     } multiOptions[] = {
         { .posXs = {26, 31, 36, 41} },
-        { .posXs = {17, 23, 32, 44} }
+        { .posXs = {17, 26, 32, 44} }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
@@ -62,7 +62,7 @@ void configureCFW(const char *configPath)
 
     int endPos = 42;
 
-    //Display all the normal options in white
+    //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
     {
         multiOptions[i].posY = endPos + SPACING_Y;
@@ -74,7 +74,7 @@ void configureCFW(const char *configPath)
     singleOptions[0].posY = endPos + SPACING_Y + SPACING_Y / 2;
     endPos = drawString(singleOptionsText[0], 10, singleOptions[0].posY, COLOR_RED);
 
-    //Display all the multiple choice options in white except for the first
+    //Display all the normal options in white except for the first one
     for(u32 i = 1; i < singleOptionsAmount; i++)
     {
         singleOptions[i].posY = endPos + SPACING_Y;
