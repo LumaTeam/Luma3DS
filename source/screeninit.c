@@ -54,7 +54,7 @@ void initScreens(void)
         memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
 
         //Write brightness level for the stub to pick up
-        *(vu32 *)(SCREENINIT_ADDRESS + 8) = CONFIG(14, 3);
+        *(vu32 *)(SCREENINIT_ADDRESS + 8) = MULTICONFIG(0);
 
         *arm11Entry = SCREENINIT_ADDRESS;
         while(*arm11Entry);

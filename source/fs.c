@@ -96,8 +96,8 @@ void firmRead(void *dest, const char *firmFolder)
         u32 tempId = 0;
         for(char *tmp = info.fname; (*tmp) != '.'; tmp++)
         {
-            if((*tmp) > '9') tempId = (tempId << 4) + ((*tmp) - 'A') + 9;
-            else tempId = (tempId << 4) + (*tmp) - '0';
+            tempId <<= 4;
+            tempId += *tmp > '9' ? (*tmp - 'A') + 9 : (*tmp) - '0';
         }
 
         //Found a newer cxi
@@ -116,13 +116,10 @@ void firmRead(void *dest, const char *firmFolder)
     while(id > 15)
     {
         u32 remainder = (id % 16);
-        if(remainder > 9) path[i] = remainder - 9 + 'A';
-        else path[i] = remainder + '0';
+        path[i--] = remainder > 9 ? remainder - 9 + 'A' : remainder + '0';
         id /= 16;
-        i--;
     }
-    if(id > 9) path[i] = id - 9 + 'A';
-    else path[i] = id + '0';
+    path[i] = id > 9 ? id - 9 + 'A' : id + '0';
 
     fileRead(dest, path, 0);
 }

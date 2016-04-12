@@ -48,7 +48,7 @@ void main(void)
 
     //Attempt to read the configuration file
     const char configPath[] = "/aurei/config.bin";
-    if(fileRead(&config, configPath, 3)) needConfig = 1;
+    if(fileRead(&config, configPath, 4)) needConfig = 1;
     else
     {
         config = 0;
@@ -63,10 +63,10 @@ void main(void)
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = *(vu8 *)0x23F00005 - '0';
 
-        nandType = CONFIG(16, 3);
-        firmSource = CONFIG(18, 1);
-        a9lhInstalled = CONFIG(19, 1);
-        updatedSys = (a9lhInstalled && CONFIG(1, 1)) ? 1 : 0;
+        nandType = BOOTCONFIG(0, 3);
+        firmSource = BOOTCONFIG(2, 1);
+        a9lhInstalled = BOOTCONFIG(3, 1);
+        updatedSys = (a9lhInstalled && CONFIG(1)) ? 1 : 0;
     }
     else
     {
@@ -83,10 +83,10 @@ void main(void)
         u32 pressed = HID_PAD;
  
         //Determine if we need to autoboot sysNAND
-        u32 autoBootSys = CONFIG(0, 1);
+        u32 autoBootSys = CONFIG(0);
 
         //Determine if A9LH is installed and the user has an updated sysNAND
-        if(a9lhBoot || CONFIG(2, 1))
+        if(a9lhBoot || CONFIG(2))
         {
             if(pressed == SAFE_MODE)
                 error("Using Safe Mode would brick you, or remove A9LH!");
@@ -94,7 +94,7 @@ void main(void)
             a9lhInstalled = 1;
 
             //Check setting for > 9.2 sysNAND
-            updatedSys = CONFIG(1, 1);
+            updatedSys = CONFIG(1);
         }
         else
         {
@@ -102,7 +102,7 @@ void main(void)
             updatedSys = 0;
         }
 
-        newConfig = a9lhInstalled << 19;
+        newConfig = a9lhInstalled << 3;
 
         /* If booting with A9LH, it's a MCU reboot and a previous configuration exists,
            try to force boot options */
@@ -112,18 +112,18 @@ void main(void)
             if(previousFirm == 7)
             {
                 nandType = 0;
-                firmSource = updatedSys ? 0 : CONFIG(18, 1);
+                firmSource = updatedSys ? 0 : BOOTCONFIG(0, 3);
                 needConfig = 0;
 
                 //Flag to prevent multiple boot options-forcing
-                newConfig |= 1 << 20;
+                newConfig |= 1 << 4;
             }
             /* Else, force the last used boot options unless a payload button or A/L/R are pressed
                or the no-forcing flag is set */
-            else if(!(pressed & OVERRIDE_BUTTONS) && !CONFIG(20, 1))
+            else if(!(pressed & OVERRIDE_BUTTONS) && !BOOTCONFIG(4, 1))
             {
-                nandType = CONFIG(16, 3);
-                firmSource = CONFIG(18, 1);
+                nandType = BOOTCONFIG(0, 3);
+                firmSource = BOOTCONFIG(2, 1);
                 needConfig = 0;
             }
         }
@@ -142,14 +142,14 @@ void main(void)
                 configureCFW(configPath);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if(PDN_GPU_CNT != 1 || CONFIG(8, 1)) loadSplash();
+            if(PDN_GPU_CNT != 1 || CONFIG(7)) loadSplash();
 
             //Determine if we need to boot an emuNAND or sysNAND
             nandType = (pressed & BUTTON_L1) ? autoBootSys : ((pressed & BUTTON_R1) ? updatedSys : !autoBootSys);
 
             /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
                or vice-versa, boot the second emuNAND */
-            if(nandType && ((!(pressed & BUTTON_B)) == CONFIG(3, 1))) nandType++;
+            if(nandType && ((!(pressed & BUTTON_B)) == CONFIG(3))) nandType++;
 
             //Determine the NAND we should take the FIRM from
             firmSource = (pressed & BUTTON_R1) ? !nandType : (nandType != 0);
@@ -169,16 +169,16 @@ void main(void)
 
     if(!bootType)
     {
-        newConfig |= (nandType << 16) | (firmSource << 18);
+        newConfig |= nandType | (firmSource << 2);
 
         /* If the boot configuration is different from previously, overwrite it.
            Just the no-forcing flag being set is not enough */
-        if((newConfig & 0xEF0000) != (config & 0xFF0000))
+        if((newConfig & 0x2F) != (config & 0xFF))
         {
             //Preserve user settings (first 2 bytes)
-            newConfig |= config & 0xFFFF;
+            newConfig |= config & 0xFFFFFFC0;
 
-            fileWrite(&newConfig, configPath, 3);
+            fileWrite(&newConfig, configPath, 4);
         }
     }
 
@@ -271,7 +271,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
-    if(CONFIG(5, 1))
+    if(CONFIG(4))
     {
         //Apply UNITINFO patch
         u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
@@ -383,7 +383,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(7, 1));
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch
