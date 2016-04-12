@@ -58,24 +58,20 @@ void drawCharacter(char character, int posX, int posY, u32 color)
         char charPos = font[character * 8 + y];
 
         for(int x = 7; x >= 0; x--)
-        {
-            int screenPos = (posX * SCREEN_TOP_HEIGHT * 3 + (SCREEN_TOP_HEIGHT - y - posY - 1) * 3) + (7 - x) * 3 * SCREEN_TOP_HEIGHT;
-
             if ((charPos >> x) & 1)
             {
+                int screenPos = (posX * SCREEN_TOP_HEIGHT * 3 + (SCREEN_TOP_HEIGHT - y - posY - 1) * 3) + (7 - x) * 3 * SCREEN_TOP_HEIGHT;
+
                 select[screenPos] = color >> 16;
                 select[screenPos + 1] = color >> 8;
                 select[screenPos + 2] = color;
             }
-        }
     }
 }
 
 int drawString(const char *string, int posX, int posY, u32 color)
 {
-    int length = strlen(string);
-
-    for(int i = 0, line_i = 0; i < length; i++, line_i++)
+    for(int i = 0, line_i = 0; i < strlen(string); i++, line_i++)
     {
         if(string[i] == '\n')
         {
@@ -87,8 +83,8 @@ int drawString(const char *string, int posX, int posY, u32 color)
         {
             // Make sure we never get out of the screen.
             posY += SPACING_Y;
-            line_i = 2;  // Little offset so we know the same string continues.
-            if(string[i] == ' ') i++;  // Spaces at the start look weird
+            line_i = 2; //Little offset so we know the same string continues.
+            if(string[i] == ' ') i++; //Spaces at the start look weird
         }
 
         drawCharacter(string[i], posX + line_i * SPACING_X, posY, color);

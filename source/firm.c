@@ -173,7 +173,7 @@ void main(void)
 
         /* If the boot configuration is different from previously, overwrite it.
            Just the no-forcing flag being set is not enough */
-        if((newConfig & 0x2F) != (config & 0xFF))
+        if((newConfig & 0x2F) != (config & 0x3F))
         {
             //Preserve user settings (first 2 bytes)
             newConfig |= config & 0xFFFFFFC0;

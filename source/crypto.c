@@ -324,7 +324,7 @@ u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 
     //Decrypt
     aes_use_keyslot(nandSlot);
-    aes(outbuf, outbuf, (sectorCount * 0x200) / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(outbuf, outbuf, sectorCount * 0x200 / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     return result;
 }
@@ -334,11 +334,11 @@ u32 ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf)
 {
     u8 tmpCTR[0x10];
     memcpy(tmpCTR, nandCTR, 0x10);
-    aes_advctr(tmpCTR, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_advctr(tmpCTR, (sector + fatStart) * 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     //Encrypt
     aes_use_keyslot(nandSlot);
-    aes(inbuf, inbuf, (sectorCount * 0x200) / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(inbuf, inbuf, sectorCount * 0x200 / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     //Write
     if(!firmSource)
@@ -351,19 +351,19 @@ u32 ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf)
 //Decrypt a FIRM ExeFS
 void decryptExeFs(u8 *inbuf)
 {
-    u32 exeFsOffset = (u32)inbuf + *(u32 *)(inbuf + 0x1A0) * 0x200;
+    u8 *exeFsOffset = inbuf + *(u32 *)(inbuf + 0x1A0) * 0x200;
     u32 exeFsSize = *(u32 *)(inbuf + 0x1A4) * 0x200;
     u8 ncchCTR[0x10];
 
     memset32(ncchCTR, 0, 0x10);
-    for(u32 i=0; i<8; i++)
-        ncchCTR[7-i] = *(inbuf + 0x108 + i);
+    for(u32 i = 0; i < 8; i++)
+        ncchCTR[7 - i] = *(inbuf + 0x108 + i);
     ncchCTR[8] = 2;
 
     aes_setkey(0x2C, inbuf, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_setiv(ncchCTR, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x2C);
-    aes(inbuf - 0x200, (void *)exeFsOffset, exeFsSize/AES_BLOCK_SIZE, ncchCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(inbuf - 0x200, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
 //ARM9Loader replacement
@@ -382,7 +382,7 @@ void arm9Loader(u8 *arm9Section, u32 mode)
     u32 arm9BinSize = 0;
     //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
     for(u8 *tmp = arm9Section + 0x30; *tmp; tmp++)
-        arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + (*tmp) - '0';
+        arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
 
     if(mode)
     {
@@ -415,7 +415,7 @@ void arm9Loader(u8 *arm9Section, u32 mode)
         {
             aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
             aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-            *(keyData + 0xF) += 1;
+            keyData[0xF] += 1;
         }
     }
 }

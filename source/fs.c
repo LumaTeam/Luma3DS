@@ -15,6 +15,7 @@ u32 mountFs(void)
 {
     if(f_mount(&sdFs, "0:", 1) != FR_OK) return 0;
     f_mount(&nandFs, "1:", 0);
+
     return 1;
 }
 
@@ -32,6 +33,7 @@ u32 fileRead(void *dest, const char *path, u32 size)
     }
 
     f_close(&fp);
+
     return fr ? 0 : 1;
 }
 
@@ -45,6 +47,7 @@ u32 fileWrite(const void *buffer, const char *path, u32 size)
     if(fr == FR_OK) fr = f_write(&fp, buffer, size, &br);
 
     f_close(&fp);
+
     return fr ? 0 : 1;
 }
 
@@ -57,6 +60,7 @@ u32 fileSize(const char *path)
         size = f_size(&fp);
 
     f_close(&fp);
+
     return size;
 }
 
@@ -68,6 +72,7 @@ u32 fileExists(const char *path)
     if(f_open(&fp, path, FA_READ) == FR_OK) exists = 1;
 
     f_close(&fp);
+
     return exists;
 }
 

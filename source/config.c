@@ -101,8 +101,7 @@ void configureCFW(const char *configPath)
         while(!(pressed & MENU_BUTTONS));
 
         //Remember the previously selected option
-        static u32 oldSelectedOption;
-        oldSelectedOption = selectedOption;
+        u32 oldSelectedOption = selectedOption;
 
         if(pressed != BUTTON_A)
         {
@@ -126,7 +125,7 @@ void configureCFW(const char *configPath)
                     continue;
             }
 
-            //The user moved to a different option, print the old option in white and the new one in white. Only print 'x's if necessary
+            //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
             {
                 drawString(multiOptionsText[oldSelectedOption], 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
