@@ -142,7 +142,7 @@ void main(void)
                 configureCFW(configPath);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if(PDN_GPU_CNT != 1 || CONFIG(8, 1)) loadSplash();
+            if(PDN_GPU_CNT != 1 || CONFIG(7, 1)) loadSplash();
 
             //Determine if we need to boot an emuNAND or sysNAND
             nandType = (pressed & BUTTON_L1) ? autoBootSys : ((pressed & BUTTON_R1) ? updatedSys : !autoBootSys);
@@ -182,7 +182,7 @@ void main(void)
         }
     }
 
-    loadFirm(firmType, !firmType && (nandType == 2 || updatedSys == !nandType));
+    loadFirm(firmType, !firmType && (nandType == 2 || updatedSys == !firmSource));
 
     if(!firmType) patchNativeFirm(nandType, emuHeader, a9lhInstalled);
     else patchTwlAgbFirm(firmType);
@@ -232,7 +232,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
         nativeFirmType = (arm9Section[0x51] == 0xFF) ? 0 : 1;
 
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader((u8 *)firm + section[2].offset, nativeFirmType);
+        arm9Loader(arm9Section, nativeFirmType);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
     else
@@ -271,13 +271,11 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
-    if(CONFIG(5, 1))
+    if(CONFIG(4, 1))
     {
         //Apply UNITINFO patch
-        u32 unitInfoOffset;
-
-        getUnitInfoValueSet(arm9Section, section[2].size, &unitInfoOffset);
-        *((u8*)unitInfoOffset + 3) = unitInfoPatch;
+        u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
+        *unitInfoOffset = unitInfoPatch;
     }
 
     //Replace the FIRM loader with the injector
@@ -349,7 +347,7 @@ static inline void injectLoader(void)
     //Check that the injector CXI isn't larger than the original
     if(injector_size <= (int)loaderSize)
     {
-        memset((void *)loaderOffset, 0, loaderSize);
+        memset32((void *)loaderOffset, 0, loaderSize);
         memcpy((void *)loaderOffset, injector, injector_size);
 
         //Patch content size and ExeFS size to match the repaced loader's ones
@@ -385,7 +383,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(7, 1));
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6, 1));
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch

@@ -25,6 +25,7 @@ static inline int strlen(const char *string)
 {
     char *stringEnd = (char *)string;
     while(*stringEnd) stringEnd++;
+
     return stringEnd - string;
 }
 

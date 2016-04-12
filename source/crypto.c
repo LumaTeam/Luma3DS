@@ -355,7 +355,7 @@ void decryptExeFs(u8 *inbuf)
     u32 exeFsSize = *(u32 *)(inbuf + 0x1A4) * 0x200;
     u8 ncchCTR[0x10];
 
-    memset(ncchCTR, 0, 0x10);
+    memset32(ncchCTR, 0, 0x10);
     for(u32 i=0; i<8; i++)
         ncchCTR[7-i] = *(inbuf + 0x108 + i);
     ncchCTR[8] = 2;

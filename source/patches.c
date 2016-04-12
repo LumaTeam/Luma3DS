@@ -69,18 +69,18 @@ u16 *getFirmWrite(u8 *pos, u32 size)
     return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
 }
 
+u8 *getUnitInfoValueSet(u8 *pos, u32 size)
+{
+    //Look for UNITINFO value being set
+    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
+
+    return memsearch(pos, pattern, size, 4) + 3;
+}
+
 void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize)
 {
     u8 *const off = memsearch(pos, "loade", size, 5);
 
     *loaderOffset = (u32)off - 0x200;
     *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
-}
-
-void getUnitInfoValueSet(u8 *pos, u32 size, u32 *off)
-{
-    //Look for UNITINFO value being set
-    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
-
-    *off = (u32)memsearch(pos, pattern, size, 4);
 }

@@ -206,7 +206,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(loadConfig()) && ((config >> 6) & 1))
+            if(R_SUCCEEDED(loadConfig()) && ((config >> 5) & 1))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = ((config >> 16) & 3);
@@ -274,29 +274,6 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     sizeof(secureinfoFilenamePattern) - sizeof(u16), 
                     secureinfoFilenamePatch, 
                     sizeof(secureinfoFilenamePatch) - sizeof(u16), 2
-                );
-            }
-
-            break;
-        }
-
-        case 0x0004013020002202LL: // N3DS PTM
-        {
-            if(R_SUCCEEDED(loadConfig()) && ((config >> 4) & 1))
-            {
-                static const u8 configN3dsCpuPattern[] = {
-                    0x02, 0x98, 0x01, 0x79, 0x1C
-                };
-                static const u8 configN3dsCpuPatch[] = {
-                    0x02, 0x98, 0x03, 0x21
-                };
-
-                //Disable SecureInfo signature check
-                patchMemory(code, size, 
-                    configN3dsCpuPattern, 
-                    sizeof(configN3dsCpuPattern), 0, 
-                    configN3dsCpuPatch, 
-                    sizeof(configN3dsCpuPatch), 1
                 );
             }
 
