@@ -206,7 +206,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(loadConfig()) && ((config >> 5) & 1))
+            if(R_SUCCEEDED(loadConfig()) && ((config >> 6) & 1))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = ((config >> 16) & 3);
@@ -241,6 +241,22 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 stopCartUpdatesPatch,
                 sizeof(stopCartUpdatesPatch), 2
             );
+
+            if(R_SUCCEEDED(loadConfig()) && ((config >> 4) & 1))
+            {
+                static const u8 cfgN3dsCpuPattern[] = {
+                    0x40, 0xA0, 0xE1, 0x07, 0x00
+                };
+
+                u8 *cfgN3dsCpuLoc = memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
+
+                //Patch N3DS CPU Clock and L2 cache setting
+                if(cfgN3dsCpuLoc != NULL)
+                {
+                    *(u32 *)(cfgN3dsCpuLoc + 3) = 0xE1A00000;
+                    *(u32 *)(cfgN3dsCpuLoc + 0x1F) = 0xE3A00003;
+                }
+            }
 
             break;
         }
