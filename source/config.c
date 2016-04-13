@@ -32,9 +32,9 @@ void configureCFW(const char *configPath)
                                         "( ) Enable splash screen with no screen-init" };
 
     struct multiOption {
+        int posXs[4];
         int posY;
         u32 enabled;
-        int posXs[4];
     } multiOptions[] = {
         { .posXs = {26, 31, 36, 41} },
         { .posXs = {17, 26, 32, 44} }
@@ -43,7 +43,7 @@ void configureCFW(const char *configPath)
     //Calculate the amount of the various kinds of options and pre-select the first single one
     u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
         singleOptionsAmount = sizeof(singleOptionsText) / sizeof(char *),
-        totalOptions = multiOptionsAmount + singleOptionsAmount,
+        totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
         selectedOption = multiOptionsAmount;
 
     struct singleOption {
@@ -70,16 +70,16 @@ void configureCFW(const char *configPath)
         drawCharacter(selected, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
     }
 
-    //Display the first normal option in red
-    singleOptions[0].posY = endPos + SPACING_Y + SPACING_Y / 2;
-    endPos = drawString(singleOptionsText[0], 10, singleOptions[0].posY, COLOR_RED);
+    endPos += SPACING_Y / 2;
+    u32 color = COLOR_RED;
 
     //Display all the normal options in white except for the first one
-    for(u32 i = 1; i < singleOptionsAmount; i++)
+    for(u32 i = 0; i < singleOptionsAmount; i++)
     {
         singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], 10, singleOptions[i].posY, COLOR_WHITE);
-        if(singleOptions[i].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[i].posY, COLOR_WHITE);
+        endPos = drawString(singleOptionsText[i], 10, singleOptions[i].posY, color);
+        if(singleOptions[i].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[i].posY, color);
+        color = COLOR_WHITE;
     }
 
     u32 pressed = 0;
@@ -87,41 +87,36 @@ void configureCFW(const char *configPath)
     //Boring configuration menu
     while(pressed != BUTTON_START)
     {
-        do {
-            //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-            if(selectedOption < multiOptionsAmount)
-                drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-            else if(singleOptions[selectedOption - multiOptionsAmount].enabled)
-                drawCharacter(selected, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_RED);
-
+        do
+        {
             pressed = waitInput();
         }
         while(!(pressed & MENU_BUTTONS));
 
-        //Remember the previously selected option
-        u32 oldSelectedOption = selectedOption;
-
         if(pressed != BUTTON_A)
         {
+            //Remember the previously selected option
+            u32 oldSelectedOption = selectedOption;
+
             switch(pressed)
             {
                 case BUTTON_UP:
-                    selectedOption = !selectedOption ? totalOptions - 1 : selectedOption - 1;
+                    selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
                     break;
                 case BUTTON_DOWN:
-                    selectedOption = selectedOption == (totalOptions - 1) ? 0 : selectedOption + 1;
+                    selectedOption = selectedOption == totalIndexes ? 0 : selectedOption + 1;
                     break;
                 case BUTTON_LEFT:
-                    if(!selectedOption) continue;
                     selectedOption = 0;
                     break;
                 case BUTTON_RIGHT:
-                    if(selectedOption == totalOptions - 1) continue;
-                    selectedOption = totalOptions - 1;
+                    selectedOption = totalIndexes;
                     break;
                 default:
                     continue;
             }
+
+            if(selectedOption == oldSelectedOption) continue;
 
             //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
@@ -146,7 +141,7 @@ void configureCFW(const char *configPath)
         }
         else
         {
-            //The selected option's status changed, print the 'x's accordingly.
+            //The selected option's status changed, print the 'x's accordingly
             if(selectedOption < multiOptionsAmount)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
@@ -159,6 +154,15 @@ void configureCFW(const char *configPath)
                 singleOptions[selectedOption - multiOptionsAmount].enabled = !oldEnabled;
                 if(oldEnabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
             }
+        }
+
+        //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
+        if(selectedOption < multiOptionsAmount)
+            drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
+        else
+        {
+            u32 singleSelected = selectedOption - multiOptionsAmount;
+            if(singleOptions[singleSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
         }
     }
 
