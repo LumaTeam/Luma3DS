@@ -17,11 +17,12 @@ dir_source := source
 dir_build := build
 
 ASFLAGS := -mlittle-endian -mcpu=mpcore
-CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math -mthumb -mthumb-interwork
+CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math -mthumb -mthumb-interwork
+LDFLAGS := -nostdlib
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
-		      $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
-		      $(call rwildcard, $(dir_source), *.s *.c)))
+          $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
+          $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
 all: $(name).bin
@@ -34,7 +35,7 @@ $(name).bin: $(dir_build)/$(name).elf
 	$(OC) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
-	$(CC) -nostartfiles -T linker.ld $(OUTPUT_OPTION) $^
+	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"

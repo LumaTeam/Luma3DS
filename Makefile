@@ -26,11 +26,12 @@ dir_out := out
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
+LDFLAGS := -nostartfiles
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
 
-objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
-			  $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
-			  $(call rwildcard, $(dir_source), *.s *.c)))
+objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
+          $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
+          $(call rwildcard, $(dir_source), *.s *.c)))
 
 
 .PHONY: all
@@ -55,10 +56,10 @@ pathchanger: $(dir_out)/pathchanger
 clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
-	@rm -rf $(dir_out) $(dir_build)
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_screeninit) clean
 	@$(MAKE) -C $(dir_injector) clean
+	@rm -rf $(dir_out) $(dir_build)
 
 $(dir_out):
 	@mkdir -p "$(dir_out)/aurei/payloads"
@@ -74,38 +75,36 @@ $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
 $(dir_out)/3ds/$(name): $(dir_out)
-	@mkdir -p "$(dir_out)/3ds/$(name)"
+	@mkdir -p "$@"
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
-	@mv $(dir_out)/$(name).3dsx $@
-	@mv $(dir_out)/$(name).smdh $@
+	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
 $(dir_out)/$(name).zip: launcher a9lh ninjhax
-	@cd $(dir_out) && zip -9 -r $(name) *
+	@cd "$(@D)" && zip -9 -r $(name) *
 
 $(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
-	@mkdir -p "$(dir_build)"
+	@mkdir -p "$(@D)"
 	@armips $<
 	@armips $(word 2,$^)
 	@$(MAKE) -C $(dir_injector)
-	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(dir_build)
-	@bin2c -o $@ -n emunand $(dir_build)/emunand.bin -n reboot $(dir_build)/reboot.bin -n injector $(dir_build)/injector.cxi
+	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(@D)
+	@bin2c -o $@ -n emunand $(@D)/emunand.bin -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
 
 $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
-	@mv $(dir_loader)/loader.bin $(dir_build)
-	@bin2c -o $@ -n loader $(dir_build)/loader.bin
+	@mv $(dir_loader)/loader.bin $(@D)
+	@bin2c -o $@ -n loader $(@D)/loader.bin
 
 $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@$(MAKE) -C $(dir_screeninit)
-	@mv $(dir_screeninit)/screeninit.bin $(dir_build)
-	@bin2c -o $@ -n screeninit $(dir_build)/screeninit.bin
+	@mv $(dir_screeninit)/screeninit.bin $(@D)
+	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
 
-$(dir_build)/main.elf: $(objects_cfw)
-	# FatFs requires libgcc for __aeabi_uidiv
-	$(CC) -nostartfiles $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
+$(dir_build)/main.elf: $(objects)
+	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/memory.o : CFLAGS += -O3
 $(dir_build)/config.o : CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
