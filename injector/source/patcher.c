@@ -11,7 +11,7 @@
 #endif
 
 static u32 config = 0;
-static u8 secureinfo[0x111] = {0};
+static u8 secureInfo[0x111] = {0};
 
 //Quick Search algorithm, adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
 static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
@@ -79,45 +79,184 @@ static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
     return IFile_Open(file, archive, ppath, flags);
 }
 
-static int loadSecureinfo()
+static int loadSecureInfo(void)
 {
-    IFile file;
-    Result ret;
-    u64 total;
-
-    if(secureinfo[0] == 0xFF)
+    if(secureInfo[0] == 0xFF)
         return 0;
 
-    ret = fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ);
+    IFile file;
+    Result ret = fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ);
     if(R_SUCCEEDED(ret))
     {
-        ret = IFile_Read(&file, &total, secureinfo, sizeof(secureinfo));
+        u64 total;
+
+        ret = IFile_Read(&file, &total, secureInfo, 0x111);
         IFile_Close(&file);
-        if(R_SUCCEEDED(ret) && total == sizeof(secureinfo))
-            secureinfo[0] = 0xFF;
+        if(R_SUCCEEDED(ret) && total == 0x111)
+            secureInfo[0] = 0xFF;
     }
 
     return ret;
 }
 
-static int loadConfig()
+static int loadConfig(void)
 {
-    IFile file;
-    Result ret;
-    u64 total;
-
     if(config)
         return 0;
 
-    ret = fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
+    IFile file;
+    Result ret = fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
     if(R_SUCCEEDED(ret))
     {
-        ret = IFile_Read(&file, &total, &config, 3);
+        u64 total;
+
+        ret = IFile_Read(&file, &total, &config, 4);
         IFile_Close(&file);
         if(R_SUCCEEDED(ret)) config |= 1 << 4;
     }
 
     return ret;
+}
+
+static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
+{
+    /* Here we look for "/aurei/locales/[u64 titleID in hex, uppercase].txt"
+       If it exists it should contain, for example, "EUR IT" */
+
+    char path[] = "/aurei/locales/0000000000000000.txt";
+
+    u32 i = 30;
+
+    while(progId > 0)
+    {
+        static const char hexDigits[] = "0123456789ABCDEF";
+        path[i--] = hexDigits[(u32)(progId & 0xF)];
+        progId >>= 4;
+    }
+
+    IFile file;
+    Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+    if(R_SUCCEEDED(ret))
+    {
+        char buf[6];
+        u64 total;
+
+        ret = IFile_Read(&file, &total, buf, 6);
+        IFile_Close(&file);
+
+        if(!R_SUCCEEDED(ret) || total < 6) return -1;
+
+        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
+        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
+    
+        for(u32 i = 0; i < 7; ++i)
+            if(memcmp(buf, regions[i], 3) == 0)
+            {
+                *regionId = (u8)i;
+                break;
+            }
+		
+        for(u32 i = 0; i < 12; ++i)
+            if(memcmp(buf + 4, languages[i], 2) == 0)
+            {
+                *languageId = (u8)i;
+                break;
+            }
+    }
+
+    return ret;
+}
+
+static u8 *getCfgOffsets(u8* code, u32 size, u32 *CFGUHandleOffset)
+{
+    static const u8 CFGU_GetConfigInfoBlk2_endPattern[] = {
+        0x10, 0x80, 0xBD, 0xE8, 0x82, 0x00, 0x01, 0x00
+    };
+
+    u8 *CFGU_GetConfigInfoBlk2_endPos = code;
+
+    while((CFGU_GetConfigInfoBlk2_endPos + sizeof(CFGU_GetConfigInfoBlk2_endPattern)) < (code + size) 
+          && (*CFGUHandleOffset > 0x10000000UL || ((u32)CFGU_GetConfigInfoBlk2_endPos % 4) != 0)) 
+    {
+        //There might be multiple implementations of GetConfigInfoBlk2 but let's search for the one we want
+        CFGU_GetConfigInfoBlk2_endPos += sizeof(CFGU_GetConfigInfoBlk2_endPattern);
+        CFGU_GetConfigInfoBlk2_endPos = memsearch(CFGU_GetConfigInfoBlk2_endPos, CFGU_GetConfigInfoBlk2_endPattern, 
+                                                  size - (u32)(CFGU_GetConfigInfoBlk2_endPos - code), sizeof(CFGU_GetConfigInfoBlk2_endPattern));
+
+        if(CFGU_GetConfigInfoBlk2_endPos == NULL) break;
+
+        *CFGUHandleOffset = *(u32 *)(CFGU_GetConfigInfoBlk2_endPos + 8);
+    }
+
+    return CFGU_GetConfigInfoBlk2_endPos;
+}
+
+static void patchCfgGetLanguage(u8* code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
+{
+    u8 *CFGU_GetConfigInfoBlk2_startPos = CFGU_GetConfigInfoBlk2_endPos; //Let's find STMFD SP (there might be a NOP before, but nevermind)
+    while(*(u16 *)CFGU_GetConfigInfoBlk2_startPos != 0xE92D) CFGU_GetConfigInfoBlk2_startPos -= 2;
+    CFGU_GetConfigInfoBlk2_startPos -= 2;
+
+    u8 *languageBlkIdPos = code;
+    u32 patched = 0;
+
+    while((languageBlkIdPos + 4) < (code + size) && !patched)
+    {
+        static const u32 languageBlkId = 0xA0002;
+
+        languageBlkIdPos += 4;
+        languageBlkIdPos = memsearch(languageBlkIdPos, &languageBlkId, size - (u32)(languageBlkIdPos - code), 4);
+
+        if(languageBlkIdPos == NULL) break;
+        if(((u32)languageBlkIdPos % 4) != 0) continue;
+
+        for(u8 *instr = languageBlkIdPos - 8; instr >= languageBlkIdPos - 0x1008; instr -= 4) //Should be enough
+        {
+            if(*(instr + 3) != 0xEB) continue; //We're looking for BL
+            u32 low24 = (*(u32 *)instr & 0x00FFFFFF) << 2;
+            s32 offset = (((low24 >> 25) != 0) ? -low24 : low24) + 8; //Branch offset + 8 for prefetch
+
+            if((instr + offset) >= (CFGU_GetConfigInfoBlk2_startPos - 4) && (instr + offset) <= CFGU_GetConfigInfoBlk2_endPos) 
+            {
+                *(u32 *)(instr - 4)  = 0xE3A00000 | languageId; // mov    r0, sp                 => mov r0, =languageID
+                *(u32 *)instr        = 0xE5CD0000;              // bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
+                *(u32 *)(instr + 4)  = 0xE3A00000;              // mov    r1, pc                 => mov r0, 0             (result code)
+
+                //We're done
+                patched = 1;
+                break;
+            }
+        }
+    }
+}
+
+static void patchCfgGetRegion(u8* code, u32 size, u8 regionID, u32 *CFGUHandleOffset)
+{
+    static const u8 cfgSecureInfoGetRegionCmdPattern[] = {
+        0x70, 0x4F, 0x1D, 0xEE, 0x02, 0x08, 0xA0, 0xE3, 0x80, 0x00, 0xA4, 0xE5 
+    };
+
+    u8 *cmdPos = code;
+
+    while((cmdPos + sizeof(cfgSecureInfoGetRegionCmdPattern)) < (code + size))
+    {
+        cmdPos += sizeof(cfgSecureInfoGetRegionCmdPattern);
+        cmdPos = memsearch(cmdPos, cfgSecureInfoGetRegionCmdPattern, size - (u32)(cmdPos - code), sizeof(cfgSecureInfoGetRegionCmdPattern));
+
+        if(cmdPos == NULL) break;
+        if(*(u16 *)(cmdPos + 12 + 2) != 0xE59F) continue; // ldr r0, [pc, X]
+
+        if(*(u32 *)(cmdPos + 12 + 8 + *(u16 *)(cmdPos + 12)) == *CFGUHandleOffset)
+        {
+            *(u32 *)(cmdPos + 16) = 0xE3A00000 | regionID; // mov    r0, =regionID
+            *(u32 *)(cmdPos + 20) = 0xE5C40008;            // strb   r0, [r4, 8]
+            *(u32 *)(cmdPos + 24) = 0xE3A00000;            // mov    r0, 0            (result code)
+            *(u32 *)(cmdPos + 28) = 0xE5840004;            // str    r0, [r4, 4]
+
+            //The remaining, not patched, function code will do the rest for us
+            break;
+        }
+    }
 }
 
 void patchCode(u64 progId, u8 *code, u32 size)
@@ -257,7 +396,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 if(cfgN3dsCpuLoc != NULL)
                 {
                     *(u32 *)(cfgN3dsCpuLoc + 3) = 0xE1A00000;
-                    *(u32 *)(cfgN3dsCpuLoc + 0x1F) = 0xE3A00000 + MULTICONFIG(1);
+                    *(u32 *)(cfgN3dsCpuLoc + 0x1F) = 0xE3A00000 | MULTICONFIG(1);
                 }
             }
 
@@ -281,7 +420,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(secureinfoSigCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(loadSecureinfo()))
+            if(R_SUCCEEDED(loadSecureInfo()))
             {
                 static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
                 static const u16 secureinfoFilenamePatch[] = u"C";
@@ -298,5 +437,29 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             break;
         }
+
+        default:
+            if((progId & 0xFFFFFFFF00000000LL) == 0x0004000000000000LL && R_SUCCEEDED(loadConfig()) && CONFIG(4))
+            {
+                //Language emulation
+                u8 regionId = 0xFF,
+                   languageId = 0xFF;
+
+                int ret = loadTitleLocaleConfig(progId, &regionId, &languageId);
+
+                if(R_SUCCEEDED(ret))
+                {
+                    u32 CFGUHandleOffset = 0xFFFFFFFF;
+                    u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
+
+                    if(CFGU_GetConfigInfoBlk2_endPos != NULL)
+                    {
+                        if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
+                        if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, &CFGUHandleOffset);
+                    }
+                }
+            }
+
+            break;
     }
 }
