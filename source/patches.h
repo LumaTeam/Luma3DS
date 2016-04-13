@@ -26,4 +26,4 @@ void *getReboot(u8 *pos, u32 size);
 u32 getfOpen(u8 *proc9Offset, void *rebootOffset);
 u16 *getFirmWrite(u8 *pos, u32 size);
 u8 *getUnitInfoValueSet(u8 *pos, u32 size);
-void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize);
+void *getLoader(u8 *pos, u32 size, u32 *loaderSize);

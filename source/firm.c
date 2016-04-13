@@ -339,16 +339,14 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
 
 static inline void injectLoader(void)
 {
-    u32 loaderOffset,
-        loaderSize;
+    u32 loaderSize;
 
-    getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderOffset, &loaderSize);
+    void *loaderOffset = getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderSize);
 
     //Check that the injector CXI isn't larger than the original
-    if(injector_size <= (int)loaderSize)
+    if((u32)injector_size <= loaderSize)
     {
-        memset32((void *)loaderOffset, 0, loaderSize);
-        memcpy((void *)loaderOffset, injector, injector_size);
+        memcpy(loaderOffset, injector, injector_size);
 
         //Patch content size and ExeFS size to match the repaced loader's ones
         *((u32 *)loaderOffset + 0x41) = loaderSize / 0x200;

@@ -87,8 +87,6 @@ void configureCFW(const char *configPath)
     //Boring configuration menu
     while(pressed != BUTTON_START)
     {
-        pressed = 0;
-
         do {
             //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
             if(selectedOption < multiOptionsAmount)
