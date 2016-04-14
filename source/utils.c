@@ -18,7 +18,8 @@ u32 waitInput(void)
     //Wait for no keys to be pressed
     while(HID_PAD);
 
-    do {
+    do
+    {
         //Wait for a key to be pressed
         while(!HID_PAD);
 

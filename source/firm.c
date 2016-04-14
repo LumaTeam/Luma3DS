@@ -21,13 +21,10 @@
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-static const char *firmFolders[3][2] = {{ "00000002", "20000002" },
-                                        { "00000102", "20000102" },
-                                        { "00000202", "20000202" }};
 u32 config,
     console,
-    emuOffset,
-    firmSource;
+    firmSource,
+    emuOffset;
 
 void main(void)
 {
@@ -175,7 +172,7 @@ void main(void)
            Just the no-forcing flag being set is not enough */
         if((newConfig & 0x2F) != (config & 0x3F))
         {
-            //Preserve user settings (first 2 bytes)
+            //Preserve user settings (last 26 bits)
             newConfig |= config & 0xFFFFFFC0;
 
             fileWrite(&newConfig, configPath, 4);
@@ -215,6 +212,10 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     if(!firmSize)
     {
+        const char *firmFolders[3][2] = {{ "00000002", "20000002" },
+                                         { "00000102", "20000102" },
+                                         { "00000202", "20000202" }};
+
         firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);
     }
@@ -363,7 +364,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
-    static const patchData twlPatches[] = {
+    const patchData twlPatches[] = {
         {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
         {{0x173A0E, 0x17474A}, { .type1 = 0x2001 }, 1},
         {{0x174802, 0x17553E}, { .type1 = 0x2000 }, 2},

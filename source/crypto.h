@@ -85,6 +85,5 @@ extern u32 emuOffset, console, firmSource;
 
 void ctrNandInit(void);
 u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
-u32 ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf);
 void decryptExeFs(u8 *inbuf);
 void arm9Loader(u8 *arm9Section, u32 mode);

@@ -125,10 +125,9 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
     char path[] = "/aurei/locales/0000000000000000.txt";
 
-    u32 i = 30;
-
     while(progId > 0)
     {
+        static u32 i = 30;
         static const char hexDigits[] = "0123456789ABCDEF";
         path[i--] = hexDigits[(u32)(progId & 0xF)];
         progId >>= 4;
@@ -146,22 +145,27 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
         if(!R_SUCCEEDED(ret) || total < 6) return -1;
 
-        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
-        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
-    
         for(u32 i = 0; i < 7; ++i)
+        {
+            static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
+
             if(memcmp(buf, regions[i], 3) == 0)
             {
                 *regionId = (u8)i;
                 break;
             }
+        }
 		
         for(u32 i = 0; i < 12; ++i)
+        {
+            static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
+
             if(memcmp(buf + 4, languages[i], 2) == 0)
             {
                 *languageId = (u8)i;
                 break;
             }
+        }
     }
 
     return ret;

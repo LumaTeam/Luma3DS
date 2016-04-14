@@ -33,6 +33,8 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
+bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -82,6 +84,12 @@ $(dir_out)/3ds/$(name): $(dir_out)
 $(dir_out)/$(name).zip: launcher a9lh ninjhax
 	@cd "$(@D)" && zip -9 -r $(name) *
 
+$(dir_build)/main.bin: $(dir_build)/main.elf
+	$(OC) -S -O binary $< $@
+
+$(dir_build)/main.elf: $(objects)
+	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
+
 $(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
 	@armips $<
@@ -100,16 +108,10 @@ $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@mv $(dir_screeninit)/screeninit.bin $(@D)
 	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
-$(dir_build)/main.bin: $(dir_build)/main.elf
-	$(OC) -S -O binary $< $@
-
-$(dir_build)/main.elf: $(objects)
-	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
-
 $(dir_build)/memory.o : CFLAGS += -O3
 $(dir_build)/config.o : CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
 
-$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+$(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 

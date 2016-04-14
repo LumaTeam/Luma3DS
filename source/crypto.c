@@ -284,11 +284,11 @@ static u32 fatStart;
 //Initialize the CTRNAND crypto
 void ctrNandInit(void)
 {
-    u8 nandCid[0x10];
+    u8 cid[0x10];
     u8 shaSum[0x20];
 
-    sdmmc_get_cid(1, (u32 *)nandCid);
-    sha(shaSum, nandCid, 0x10, SHA_256_MODE);
+    sdmmc_get_cid(1, (u32 *)cid);
+    sha(shaSum, cid, 0x10, SHA_256_MODE);
     memcpy(nandCTR, shaSum, 0x10);
 
     if(console)
@@ -329,33 +329,13 @@ u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
     return result;
 }
 
-//Encrypt and write to the selected CTRNAND
-u32 ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf)
-{
-    u8 tmpCTR[0x10];
-    memcpy(tmpCTR, nandCTR, 0x10);
-    aes_advctr(tmpCTR, (sector + fatStart) * 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-    //Encrypt
-    aes_use_keyslot(nandSlot);
-    aes(inbuf, inbuf, sectorCount * 0x200 / AES_BLOCK_SIZE, tmpCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-    //Write
-    if(!firmSource)
-        return sdmmc_nand_writesectors(sector + fatStart, sectorCount, inbuf);
-
-    sector += emuOffset;
-    return sdmmc_sdcard_writesectors(sector + fatStart, sectorCount, inbuf);
-}
-
 //Decrypt a FIRM ExeFS
 void decryptExeFs(u8 *inbuf)
 {
     u8 *exeFsOffset = inbuf + *(u32 *)(inbuf + 0x1A0) * 0x200;
     u32 exeFsSize = *(u32 *)(inbuf + 0x1A4) * 0x200;
-    u8 ncchCTR[0x10];
+    u8 ncchCTR[0x10] = {0};
 
-    memset32(ncchCTR, 0, 0x10);
     for(u32 i = 0; i < 8; i++)
         ncchCTR[7 - i] = *(inbuf + 0x108 + i);
     ncchCTR[8] = 2;
