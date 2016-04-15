@@ -35,7 +35,6 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
 
-
 .PHONY: all
 all: launcher a9lh ninjhax
 

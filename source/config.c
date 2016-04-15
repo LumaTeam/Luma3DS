@@ -72,11 +72,11 @@ void configureCFW(const char *configPath)
     }
 
     endPos += SPACING_Y / 2;
+    u32 color = COLOR_RED;
 
     //Display all the normal options in white except for the first one
     for(u32 i = 0; i < singleOptionsAmount; i++)
     {
-        static u32 color = COLOR_RED;
         singleOptions[i].posY = endPos + SPACING_Y;
         endPos = drawString(singleOptionsText[i], 10, singleOptions[i].posY, color);
         if(singleOptions[i].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[i].posY, color);
