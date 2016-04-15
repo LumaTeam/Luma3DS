@@ -9,7 +9,6 @@
 #include "screeninit.h"
 #include "draw.h"
 #include "fs.h"
-#include "i2c.h"
 #include "buttons.h"
 
 void configureCFW(const char *configPath)
@@ -181,7 +180,5 @@ void configureCFW(const char *configPath)
     //Zero the last booted FIRM flag
     CFG_BOOTENV = 0;
 
-    //Reboot
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
-    while(1);
+    mcuReboot();
 }

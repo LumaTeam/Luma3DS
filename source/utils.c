@@ -37,9 +37,15 @@ u32 waitInput(void)
     return key;
 }
 
-void shutDown(void)
+void mcuShutDown(void)
 {
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
+    while(1);
+}
+
+void mcuReboot(void)
+{
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(1);
 }
 
@@ -53,5 +59,5 @@ void error(const char *message)
 
     waitInput();
 
-    shutDown();
+    mcuShutDown();
 }

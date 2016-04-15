@@ -55,7 +55,7 @@ void main(void)
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
     {
-        if(needConfig == 2) shutDown();
+        if(needConfig == 2) mcuReboot();
 
         bootType = 1;
 
