@@ -226,13 +226,26 @@ static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetC
         {
             for(u8 *instr = languageBlkIdPos - 8; instr >= languageBlkIdPos - 0x1008 && instr >= code + 4; instr -= 4) //Should be enough
             {
-                if(*(instr + 3) == 0xEB) //We're looking for BL
+                if(instr[3] == 0xEB) //We're looking for BL
                 {
-                    u32 low24 = (*(u32 *)instr & 0x00FFFFFF) << 2;
-                    u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension
-                    s32 offset = (s32)(low24 | signMask) + 8; //Branch offset + 8 for prefetch
+                    u8 *calledFunction = instr;
+                    u32 i = 0,
+                        found;
 
-                    if(instr + offset >= CFGU_GetConfigInfoBlk2_startPos - 4 && instr + offset <= CFGU_GetConfigInfoBlk2_endPos) 
+                    do
+                    {
+                        u32 low24 = (*(u32 *)calledFunction & 0x00FFFFFF) << 2;
+                        u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension
+                        s32 offset = (s32)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch
+
+                        calledFunction += offset;
+
+                        found = calledFunction >= CFGU_GetConfigInfoBlk2_startPos - 4 && calledFunction <= CFGU_GetConfigInfoBlk2_endPos;
+                        i++;
+                    }
+                    while(i < 2 && !found && calledFunction[3] == 0xEA);
+
+                    if(found) 
                     {
                         *((u32 *)instr - 1)  = 0xE3A00000 | languageId; // mov    r0, sp                 => mov r0, =languageId
                         *(u32 *)instr        = 0xE5CD0000;              // bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
