@@ -23,7 +23,7 @@ void configureCFW(const char *configPath)
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
-                                        "( ) Updated SysNAND mode (A9LH-only)",
+                                        "( ) Use SysNAND FIRM as default (A9LH-only)",
                                         "( ) Force A9LH detection",
                                         "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emulation",

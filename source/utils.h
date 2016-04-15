@@ -9,4 +9,5 @@
 #include "types.h"
 
 u32 waitInput(void);
+void shutDown(void);
 void error(const char *message);

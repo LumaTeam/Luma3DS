@@ -37,6 +37,12 @@ u32 waitInput(void)
     return key;
 }
 
+void shutDown(void)
+{
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
+    while(1);
+}
+
 void error(const char *message)
 {
     initScreens();
@@ -47,7 +53,5 @@ void error(const char *message)
 
     waitInput();
 
-    //Shutdown
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
-    while(1);
+    shutDown();
 }

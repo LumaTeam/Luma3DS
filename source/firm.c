@@ -55,6 +55,8 @@ void main(void)
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
     {
+        if(needConfig == 2) shutDown();
+
         bootType = 1;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
@@ -204,8 +206,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
             fileRead(firm, path, firmSize);
 
             //Check that the loaded FIRM matches the console
-            if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
-                error("aurei/firmware.bin doesn't match this console,\nor it's encrypted");
+            if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) firmSize = 0;
         }
     }
     else firmSize = 0;
