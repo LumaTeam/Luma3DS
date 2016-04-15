@@ -76,14 +76,14 @@ int main(int argc, char **argv)
         error(payload, "Pattern not found");
     }
 
-    u8 input[37] = {0};
-    u8 payloadname[2 * sizeof(input)] = {0};
+    u8 input[38] = {0};
+    u8 payloadname[2 * (sizeof(input) - 1)] = {0};
 
     printf("Enter the payload's path (37 characters max): ");
     scanf("%37s", input);
 
     unsigned int i;
-    for (i = 0; i < sizeof(input); i++)
+    for (i = 0; i < sizeof(input) - 1; i++)
         payloadname[2 * i] = input[i];
 
     memcpy(found + 12, payloadname, sizeof(payloadname));
