@@ -3,9 +3,8 @@
 #include "fatfs/ff.h"
 
 #define PAYLOAD_ADDRESS	0x23F00000
-
-#define BASE_PATH "/aurei/payloads/"
-#define PAYLOAD_PATH(x) BASE_PATH x ".bin"
+#define PAYLOADS_FOLDER "/aurei/payloads/"
+#define PAYLOAD_PATH(a) PAYLOADS_FOLDER a ".bin"
 
 static u32 loadPayload(const char *path)
 {

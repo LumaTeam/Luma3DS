@@ -111,7 +111,7 @@ void main(void)
             if(previousFirm == 7)
             {
                 nandType = 0;
-                firmSource = updatedSys ? 0 : BOOTCONFIG(0, 3);
+                firmSource = updatedSys ? 0 : BOOTCONFIG(2, 1);
                 needConfig = 0;
 
                 //Flag to prevent multiple boot options-forcing
@@ -198,7 +198,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     if(externalFirm)
     {
-        const char *path = "/aurei/firmware.bin";
+        const char path[] = "/aurei/firmware.bin";
         firmSize = fileSize(path);
 
         if(firmSize)
