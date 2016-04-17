@@ -14,7 +14,7 @@
 
 void loadPayload(void)
 {
-    if(fileExists("aurei/payloads/default.bin"))
+    if(payloadFileExists("default.bin", "def_*.bin"))
     {
         initScreens();
         memcpy((void *)PAYLOAD_ADDRESS, loader, loader_size);
