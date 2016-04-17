@@ -29,7 +29,8 @@ void configureCFW(const char *configPath)
                                         "( ) Use developer UNITINFO",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Enable splash screen with no screen-init" };
+                                        "( ) Enable splash screen with no screen-init",
+                                        "( ) Disable payloads and config menu"};
 
     struct multiOption {
         int posXs[4];

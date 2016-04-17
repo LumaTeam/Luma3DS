@@ -133,12 +133,13 @@ void main(void)
             /* If L and R/Select or one of the single payload buttons are pressed and, if not using A9LH,
                the Safe Mode combo is not pressed, chainload an external payload */
             if(((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
-               && pressed != SAFE_MODE)
+               && pressed != SAFE_MODE && !(CONFIG(9)))
                 loadPayload();
 
             //If no configuration file exists or SELECT is held, load configuration menu
             if(needConfig == 2 || (pressed & BUTTON_SELECT))
-                configureCFW(configPath);
+                if(!(CONFIG(9)))
+                    configureCFW(configPath);
 
             //If screens are inited or the corresponding option is set, load splash screen
             if(PDN_GPU_CNT != 1 || CONFIG(8)) loadSplash();
