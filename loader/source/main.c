@@ -51,6 +51,7 @@ void main(void)
        ((pressed & BUTTON_X) && LOAD_PAYLOAD("x")) ||
        ((pressed & BUTTON_Y) && LOAD_PAYLOAD("y")) ||
        ((pressed & BUTTON_R1) && LOAD_PAYLOAD("r")) ||
+       ((pressed & BUTTON_SELECT) && LOAD_PAYLOAD("select")) ||
        LOAD_PAYLOAD("def"))
         ((void (*)())PAYLOAD_ADDRESS)();
 }
