@@ -8,6 +8,8 @@
 #include "memory.h"
 #include "fatfs/ff.h"
 
+#define PAYLOAD_FOLDER "/aurei/payloads"
+
 static FATFS sdFs,
              nandFs;
 
@@ -75,6 +77,20 @@ u32 fileExists(const char *path)
 
     return exists;
 }
+
+u32 payloadFileExistsPattern(const char *folder, const char *pattern) {
+    static FILINFO fno;
+    DIR dp;
+    u32 result = f_findfirst(&dp, &fno, folder, pattern) == FR_OK && fno.fname[0];
+    f_closedir(&dp);
+    return result;
+}
+
+u32 payloadFileExists(const char *shortPattern, const char *longPattern)
+{
+    return payloadFileExistsPattern(PAYLOAD_FOLDER, shortPattern) || payloadFileExistsPattern(PAYLOAD_FOLDER, longPattern);
+}
+
 
 void firmRead(void *dest, const char *firmFolder)
 {

@@ -14,3 +14,4 @@ u32 fileWrite(const void *buffer, const char *path, u32 size);
 u32 fileSize(const char *path);
 u32 fileExists(const char *path);
 void firmRead(void *dest, const char *firmFolder);
+u32 payloadFileExists(const char *shortPattern, const char *longPattern);
