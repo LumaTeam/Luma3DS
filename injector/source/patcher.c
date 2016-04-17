@@ -382,8 +382,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 patchMemory(code, size,
                     verPattern,
                     sizeof(verPattern) - sizeof(u16), 0,
-                    !currentNand ? ((matchingFirm) ? u" Sys" : u"SysA") :
-                                   ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuA") : ((matchingFirm) ? u"Emu2" : u"Em2A")),
+                    !currentNand ? ((matchingFirm) ? u" Sys" : u"SysE") :
+                                   ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuS") : ((matchingFirm) ? u"Emu2" : u"Em2S")),
                     sizeof(verPattern) - sizeof(u16), 1
                 );
             }

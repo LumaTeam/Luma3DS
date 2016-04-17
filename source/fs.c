@@ -64,16 +64,16 @@ u32 fileSize(const char *path)
     return size;
 }
 
-u32 fileExists(const char *path)
+u32 defPayloadExists(void)
 {
-    FIL fp;
-    u32 exists = 0;
+    DIR dir;
+    FILINFO info = { .lfname = NULL };
 
-    if(f_open(&fp, path, FA_READ) == FR_OK) exists = 1;
+    FRESULT result = f_findfirst(&dir, &info, "/aurei/payloads", "def_*.bin");
 
-    f_close(&fp);
+    f_closedir(&dir);
 
-    return exists;
+    return (result == FR_OK && info.fname[0]);
 }
 
 void firmRead(void *dest, const char *firmFolder)
