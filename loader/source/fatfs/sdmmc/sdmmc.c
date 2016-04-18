@@ -401,4 +401,3 @@ int sdmmc_sdcard_init()
     int result = Nand_Init();
     return result | SD_Init();
 }
-

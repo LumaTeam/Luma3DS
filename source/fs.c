@@ -67,7 +67,7 @@ u32 fileSize(const char *path)
 u32 defPayloadExists(void)
 {
     DIR dir;
-    FILINFO info = { .lfname = NULL };
+    FILINFO info;
 
     FRESULT result = f_findfirst(&dir, &info, "/aurei/payloads", "def_*.bin");
 
@@ -82,7 +82,7 @@ void firmRead(void *dest, const char *firmFolder)
     memcpy(&path[18], firmFolder, 8);
 
     DIR dir;
-    FILINFO info = { .lfname = NULL };
+    FILINFO info;
 
     f_opendir(&dir, path);
 
@@ -95,11 +95,11 @@ void firmRead(void *dest, const char *firmFolder)
         if(!info.fname[0]) break;
 
         //Not a cxi
-        if(info.fname[9] != 'a' && info.fname[9] != 'A') continue;
+        if(info.altname[9] != 'A') continue;
 
         //Convert the .app name to an integer
         u32 tempId = 0;
-        for(char *tmp = info.fname; *tmp != '.'; tmp++)
+        for(char *tmp = info.altname; *tmp != '.'; tmp++)
         {
             tempId <<= 4;
             tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';

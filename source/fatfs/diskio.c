@@ -33,7 +33,6 @@ DSTATUS disk_status (
 /*-----------------------------------------------------------------------*/
 
 DSTATUS disk_initialize (
-	__attribute__((unused))
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
@@ -57,7 +56,6 @@ DSTATUS disk_initialize (
 /*-----------------------------------------------------------------------*/
 
 DRESULT disk_read (
-	__attribute__((unused))
 	BYTE pdrv,		/* Physical drive nmuber to identify the drive */
 	BYTE *buff,		/* Data buffer to store read data */
 	DWORD sector,	/* Sector address in LBA */
@@ -87,7 +85,6 @@ DRESULT disk_read (
 
 #if _USE_WRITE
 DRESULT disk_write (
-	__attribute__((unused))
 	BYTE pdrv,			/* Physical drive nmuber to identify the drive */
 	const BYTE *buff,       	/* Data to be written */
 	DWORD sector,		/* Sector address in LBA */

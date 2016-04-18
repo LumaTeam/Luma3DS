@@ -10,7 +10,6 @@
 #include "diskio.h"		/* FatFs lower layer API */
 #include "sdmmc/sdmmc.h"
 
-
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
 /*-----------------------------------------------------------------------*/
@@ -69,14 +68,14 @@ DRESULT disk_read (
 DRESULT disk_write (
 	__attribute__((unused))
 	BYTE pdrv,			/* Physical drive nmuber to identify the drive */
+	__attribute__((unused))
 	const BYTE *buff,       	/* Data to be written */
+	__attribute__((unused))
 	DWORD sector,		/* Sector address in LBA */
+	__attribute__((unused))
 	UINT count			/* Number of sectors to write */
 )
 {
-	if(sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff))
-            return RES_PARERR;
-
 	return RES_OK;
 }
 #endif
