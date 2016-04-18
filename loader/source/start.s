@@ -2,10 +2,6 @@
 .align 4
 .global _start
 _start:
-    @ Fix payloads like Decrypt9
-    mov r0, #0x5
-    mcr p15, 0, r0, c3, c0, 0  @ data bufferable
-
     @ Flush caches
     mov r0, #0
     mcr p15, 0, r0, c7, c5, 0  @ flush I-cache
