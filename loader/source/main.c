@@ -10,7 +10,7 @@ static u32 loadPayload(const char *pattern)
     char path[30] = "/aurei/payloads";
 
     DIR dir;
-    FILINFO info = { .lfname = NULL };
+    FILINFO info;
 
     FRESULT result = f_findfirst(&dir, &info, path, pattern);
 

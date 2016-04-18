@@ -61,7 +61,7 @@
 / Locale and Namespace Configurations
 /---------------------------------------------------------------------------*/
 
-#define _CODE_PAGE	437
+#define _CODE_PAGE	1
 /* This option specifies the OEM code page to be used on the target system.
 /  Incorrect setting of the code page can cause a file open failure.
 /
@@ -90,7 +90,7 @@
 */
 
 
-#define	_USE_LFN	2
+#define	_USE_LFN	0
 #define	_MAX_LFN	255
 /* The _USE_LFN option switches the LFN feature.
 /
