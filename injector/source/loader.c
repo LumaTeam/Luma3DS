@@ -1,6 +1,5 @@
 #include <3ds.h>
-#include <string.h>
-#include <sys/iosupport.h>
+#include "memory.h"
 #include "patcher.h"
 #include "exheader.h"
 #include "ifile.h"

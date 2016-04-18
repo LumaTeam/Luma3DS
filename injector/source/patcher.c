@@ -1,17 +1,28 @@
 #include <3ds.h>
-#include <string.h>
+#include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 255
-#define CONFIG(a) ((config >> (a + 16)) & 1)
-#define MULTICONFIG(a) ((config >> (a * 2 + 6)) & 3)
-#define BOOTCONFIG(a, b) ((config >> a) & b)
+#define CONFIG(a) ((loadConfig() >> (a + 16)) & 1)
+#define MULTICONFIG(a) ((loadConfig() >> (a * 2 + 6)) & 3)
+#define BOOTCONFIG(a, b) ((loadConfig() >> a) & b)
 #endif
 
-static u32 config = 0;
-static u8 secureInfo[0x111] = {0};
+static int memcmp(const void *buf1, const void *buf2, u32 size)
+{
+    const u8 *buf1c = (const u8 *)buf1;
+    const u8 *buf2c = (const u8 *)buf2;
+
+    for(u32 i = 0; i < size; i++)
+    {
+        int cmp = buf1c[i] - buf2c[i];
+        if(cmp) return cmp;
+    }
+
+    return 0;
+}
 
 //Quick Search algorithm, adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
 static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
@@ -62,6 +73,15 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
     return i;
 }
 
+static inline size_t strnlen (const char *string, size_t maxlen)
+{
+    size_t size;
+
+    for(size = 0; *string && size < maxlen; string++, size++);
+
+    return size;
+}
+
 static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
 {
     FS_Archive archive;
@@ -79,43 +99,39 @@ static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
     return IFile_Open(file, archive, ppath, flags);
 }
 
-static int loadSecureInfo(void)
+static u32 secureInfoExists(void)
 {
-    if(secureInfo[0] == 0xFF)
-        return 0;
+    static u32 secureInfoExists = 0;
 
-    IFile file;
-    Result ret = fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ);
-    if(R_SUCCEEDED(ret))
+    if(!secureInfoExists)
     {
-        u64 total;
-
-        ret = IFile_Read(&file, &total, secureInfo, 0x111);
-        IFile_Close(&file);
-        if(R_SUCCEEDED(ret) && total == 0x111)
-            secureInfo[0] = 0xFF;
+        IFile file;
+        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ)))
+        {
+            secureInfoExists = 1;
+            IFile_Close(&file);
+        }
     }
 
-    return ret;
+    return secureInfoExists;
 }
 
-static int loadConfig(void)
+static u32 loadConfig(void)
 {
-    if(config)
-        return 0;
+    static u32 config = 0;
 
-    IFile file;
-    Result ret = fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ);
-    if(R_SUCCEEDED(ret))
+    if(!config)
     {
-        u64 total;
-
-        ret = IFile_Read(&file, &total, &config, 4);
-        IFile_Close(&file);
-        if(R_SUCCEEDED(ret)) config |= 1 << 4;
+        IFile file;
+        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ)))
+        {
+            u64 total;
+            if(R_SUCCEEDED(IFile_Read(&file, &total, &config, 4))) config |= 1 << 4;
+            IFile_Close(&file);
+        }
     }
 
-    return ret;
+    return config;
 }
 
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
@@ -372,7 +388,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(R_SUCCEEDED(loadConfig()) && CONFIG(6))
+            if(CONFIG(6))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = BOOTCONFIG(0, 3);
@@ -408,7 +424,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPatch), 2
             );
 
-            if(R_SUCCEEDED(loadConfig()) && MULTICONFIG(1))
+            if(MULTICONFIG(1))
             {
                 static const u8 cfgN3dsCpuPattern[] = {
                     0x40, 0xA0, 0xE1, 0x07, 0x00
@@ -444,7 +460,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(secureinfoSigCheckPatch), 1
             );
 
-            if(R_SUCCEEDED(loadSecureInfo()))
+            if(secureInfoExists())
             {
                 static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
                 static const u16 secureinfoFilenamePatch[] = u"C";
@@ -463,7 +479,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         }
 
         default:
-            if(R_SUCCEEDED(loadConfig()) && CONFIG(4))
+            if(CONFIG(4))
             {
                 u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
 
@@ -473,9 +489,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     u8 regionId = 0xFF,
                        languageId = 0xFF;
 
-                    int ret = loadTitleLocaleConfig(progId, &regionId, &languageId);
-
-                    if(R_SUCCEEDED(ret))
+                    if(R_SUCCEEDED(loadTitleLocaleConfig(progId, &regionId, &languageId)))
                     {
                         u32 CFGUHandleOffset;
 
