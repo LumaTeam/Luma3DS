@@ -5,8 +5,7 @@
 #include "sdmmc.h"
 #include "delay.h"
 
-struct mmcdevice handleNAND;
-struct mmcdevice handleSD;
+static struct mmcdevice handleSD;
 
 static inline u16 sdmmc_read16(u16 reg) {
     return *(vu16*)(SDMMC_BASE + reg);
@@ -36,13 +35,6 @@ static inline void setckl(u32 data)
     sdmmc_mask16(REG_SDCLKCTL, 0x100, 0);
     sdmmc_mask16(REG_SDCLKCTL, 0x2FF, data & 0x2FF);
     sdmmc_mask16(REG_SDCLKCTL, 0x0, 0x100);
-}
-
-
-mmcdevice *getMMCDevice(int drive)
-{
-    if(drive==0) return &handleNAND;
-    return &handleSD;
 }
 
 static u32 __attribute__((noinline)) geterror(struct mmcdevice *ctx)
@@ -150,20 +142,6 @@ static void __attribute__((noinline)) sdmmc_send_command(struct mmcdevice *ctx, 
     }
 }
 
-u32 __attribute__((noinline)) sdmmc_sdcard_writesectors(u32 sector_no, u32 numsectors, vu8 *in)
-{
-    if (handleSD.isSDHC == 0)
-        sector_no <<= 9;
-    inittarget(&handleSD);
-    sdmmc_write16(REG_SDSTOP,0x100);
-
-    sdmmc_write16(REG_SDBLKCOUNT,numsectors);
-    handleSD.data = in;
-    handleSD.size = numsectors << 9;
-    sdmmc_send_command(&handleSD,0x52C19,sector_no);
-    return geterror(&handleSD);
-}
-
 u32 __attribute__((noinline)) sdmmc_sdcard_readsectors(u32 sector_no, u32 numsectors, vu8 *out)
 {
     if (handleSD.isSDHC == 0)
@@ -176,38 +154,6 @@ u32 __attribute__((noinline)) sdmmc_sdcard_readsectors(u32 sector_no, u32 numsec
     handleSD.size = numsectors << 9;
     sdmmc_send_command(&handleSD,0x33C12,sector_no);
     return geterror(&handleSD);
-}
-
-u32 __attribute__((noinline)) sdmmc_nand_readsectors(u32 sector_no, u32 numsectors, vu8 *out)
-{
-    if (handleNAND.isSDHC == 0)
-        sector_no <<= 9;
-    inittarget(&handleNAND);
-    sdmmc_write16(REG_SDSTOP,0x100);
-
-    sdmmc_write16(REG_SDBLKCOUNT,numsectors);
-
-    handleNAND.data = out;
-    handleNAND.size = numsectors << 9;
-    sdmmc_send_command(&handleNAND,0x33C12,sector_no);
-    inittarget(&handleSD);
-    return geterror(&handleNAND);
-}
-
-u32 __attribute__((noinline)) sdmmc_nand_writesectors(u32 sector_no, u32 numsectors, vu8 *in) //experimental
-{
-    if (handleNAND.isSDHC == 0)
-        sector_no <<= 9;
-    inittarget(&handleNAND);
-    sdmmc_write16(REG_SDSTOP,0x100);
-
-    sdmmc_write16(REG_SDBLKCOUNT,numsectors);
-
-    handleNAND.data = in;
-    handleNAND.size = numsectors << 9;
-    sdmmc_send_command(&handleNAND,0x52C19,sector_no);
-    inittarget(&handleSD);
-    return geterror(&handleNAND);
 }
 
 static u32 calcSDSize(u8* csd, int type)
@@ -241,14 +187,6 @@ static u32 calcSDSize(u8* csd, int type)
 
 static void InitSD()
 {
-    //NAND
-    handleNAND.isSDHC = 0;
-    handleNAND.SDOPT = 0;
-    handleNAND.res = 0;
-    handleNAND.initarg = 1;
-    handleNAND.clk = 0x80;
-    handleNAND.devicenumber = 1;
-
     //SD
     handleSD.isSDHC = 0;
     handleSD.SDOPT = 0;
@@ -279,56 +217,6 @@ static void InitSD()
     *(vu16*)0x10006008 = 0; //SDSTOP
 
     inittarget(&handleSD);
-}
-
-static int Nand_Init()
-{
-    inittarget(&handleNAND);
-    ioDelay(0xF000);
-
-    sdmmc_send_command(&handleNAND,0,0);
-
-    do {
-        do {
-            sdmmc_send_command(&handleNAND,0x10701,0x100000);
-        } while ( !(handleNAND.error & 1) );
-    } while((handleNAND.ret[0] & 0x80000000) == 0);
-
-    sdmmc_send_command(&handleNAND,0x10602,0x0);
-    if (handleNAND.error & 0x4) return -1;
-
-    sdmmc_send_command(&handleNAND,0x10403,handleNAND.initarg << 0x10);
-    if (handleNAND.error & 0x4) return -1;
-
-    sdmmc_send_command(&handleNAND,0x10609,handleNAND.initarg << 0x10);
-    if (handleNAND.error & 0x4) return -1;
-
-    handleNAND.total_size = calcSDSize((u8*)&handleNAND.ret[0],0);
-    handleNAND.clk = 1;
-    setckl(1);
-
-    sdmmc_send_command(&handleNAND,0x10407,handleNAND.initarg << 0x10);
-    if (handleNAND.error & 0x4) return -1;
-
-    handleNAND.SDOPT = 1;
-
-    sdmmc_send_command(&handleNAND,0x10506,0x3B70100);
-    if (handleNAND.error & 0x4) return -1;
-
-    sdmmc_send_command(&handleNAND,0x10506,0x3B90100);
-    if (handleNAND.error & 0x4) return -1;
-
-    sdmmc_send_command(&handleNAND,0x1040D,handleNAND.initarg << 0x10);
-    if (handleNAND.error & 0x4) return -1;
-
-    sdmmc_send_command(&handleNAND,0x10410,0x200);
-    if (handleNAND.error & 0x4) return -1;
-
-    handleNAND.clk |= 0x200;
-
-    inittarget(&handleSD);
-
-    return 0;
 }
 
 static int SD_Init()
@@ -395,9 +283,8 @@ static int SD_Init()
     return 0;
 }
 
-int sdmmc_sdcard_init()
+void sdmmc_sdcard_init()
 {
     InitSD();
-    int result = Nand_Init();
-    return result | SD_Init();
+    SD_Init();
 }

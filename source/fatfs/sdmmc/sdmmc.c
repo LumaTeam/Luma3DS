@@ -194,22 +194,6 @@ u32 __attribute__((noinline)) sdmmc_nand_readsectors(u32 sector_no, u32 numsecto
     return geterror(&handleNAND);
 }
 
-u32 __attribute__((noinline)) sdmmc_nand_writesectors(u32 sector_no, u32 numsectors, vu8 *in) //experimental
-{
-    if (handleNAND.isSDHC == 0)
-        sector_no <<= 9;
-    inittarget(&handleNAND);
-    sdmmc_write16(REG_SDSTOP,0x100);
-
-    sdmmc_write16(REG_SDBLKCOUNT,numsectors);
-
-    handleNAND.data = in;
-    handleNAND.size = numsectors << 9;
-    sdmmc_send_command(&handleNAND,0x52C19,sector_no);
-    inittarget(&handleSD);
-    return geterror(&handleNAND);
-}
-
 static u32 calcSDSize(u8* csd, int type)
 {
     u32 result = 0;
@@ -395,11 +379,11 @@ static int SD_Init()
     return 0;
 }
 
-int sdmmc_sdcard_init()
+void sdmmc_sdcard_init()
 {
     InitSD();
-    int result = Nand_Init();
-    return result | SD_Init();
+    Nand_Init();
+    SD_Init();
 }
 
 int sdmmc_get_cid(int isNand, uint32_t *info)
