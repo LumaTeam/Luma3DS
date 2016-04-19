@@ -16,8 +16,8 @@ name := $(shell basename $(CURDIR))
 dir_source := source
 dir_build := build
 
-ASFLAGS := -mlittle-endian -mcpu=mpcore
-CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math -mthumb -mthumb-interwork
+ASFLAGS := -mcpu=mpcore -mfloat-abi=hard
+CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostdlib
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -35,7 +35,7 @@ $(name).bin: $(dir_build)/$(name).elf
 	$(OC) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
-	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
+	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"
