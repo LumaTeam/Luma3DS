@@ -461,14 +461,14 @@ void __sync_init();
 void __sync_fini();
 void __system_initSyscalls();
  
-void __ctru_exit(int rc)
+void __ctru_exit()
 {
   __appExit();
   __sync_fini();
   svcExitProcess();
 }
  
-void initSystem(void (*retAddr)(void))
+void initSystem()
 {
   __sync_init();
   __system_initSyscalls();
@@ -520,7 +520,7 @@ int main()
     if (R_FAILED(ret))
     {
       // check if any handle has been closed
-      if (ret == 0xC920181A)
+      if (ret == (int)0xC920181A)
       {
         if (index == -1)
         {

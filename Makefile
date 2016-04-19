@@ -24,7 +24,7 @@ dir_ninjhax := CakeBrah
 dir_build := build
 dir_out := out
 
-ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
+ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
@@ -87,7 +87,7 @@ $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
 
 $(dir_build)/main.elf: $(objects)
-	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
+	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"

@@ -1,102 +1,51 @@
-#---------------------------------------------------------------------------------
-.SUFFIXES:
-#---------------------------------------------------------------------------------
+rwildcard = $(foreach d, $(wildcard $1*), $(filter $(subst *, %, $2), $d) $(call rwildcard, $d/, $2))
 
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
-#---------------------------------------------------------------------------------
-# TARGET is the name of the output
-# BUILD is the directory where object files & intermediate files will be placed
-# SOURCES is a list of directories containing source code
-# DATA is a list of directories containing data files
-# INCLUDES is a list of directories containing header files
-#---------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
-BUILD		:=	build
-SOURCES		:=	source
+CC := arm-none-eabi-gcc
+AS := arm-none-eabi-as
+LD := arm-none-eabi-ld
+OC := arm-none-eabi-objcopy
 
-#---------------------------------------------------------------------------------
-# options for code generation
-#---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+name := $(shell basename $(CURDIR))
 
-CFLAGS	:=	-flto -Wall -O2 -mword-relocations \
-			-ffast-math -fno-builtin -ffunction-sections -fdata-sections \
-			$(ARCH) $(INCLUDE) -DARM11 -D_3DS
+dir_source := source
+dir_build := build
 
-LDFLAGS	=	-flto -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ARCH) -Wl,-Map,$(notdir $*.map)
-
-LIBS	:= -lctru
-
-#---------------------------------------------------------------------------------
-# list of directories containing libraries, this must be the top level containing
-# include and lib
-#---------------------------------------------------------------------------------
+LIBS := -lctru
 LIBDIRS	:= $(CTRULIB)
+LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
+INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
-#---------------------------------------------------------------------------------
-# no real need to edit anything past this point unless you need to add additional
-# rules for different file extensions
-#---------------------------------------------------------------------------------
-ifneq ($(BUILD),$(notdir $(CURDIR)))
-#---------------------------------------------------------------------------------
+ARCH := -mcpu=mpcore -mfloat-abi=hard -mtp=soft
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ARCH) -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
+	  -ffunction-sections -fdata-sections $(INCLUDE) -DARM11 -D_3DS
+LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ARCH)
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
-export TOPDIR	:=	$(CURDIR)
+objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
+          $(call rwildcard, $(dir_source), *.c))
 
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+.PHONY: all
+all: $(name).cxi
 
-export DEPSDIR	:=	$(CURDIR)/$(BUILD)
-
-CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-
-export LD	:=	$(CC)
-
-export OFILES	:=	$(CFILES:.c=.o)
-
-export INCLUDE	:=	$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-			-I$(CURDIR)/$(BUILD)
-
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
-
-.PHONY: $(BUILD) clean all
-
-#---------------------------------------------------------------------------------
-all: $(BUILD)
-
-$(BUILD):
-	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-
-#---------------------------------------------------------------------------------
+.PHONY: clean
 clean:
-	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).elf
+	@rm -rf $(dir_build)
 
+$(name).cxi: $(dir_build)/$(name).elf
+	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
 
-#---------------------------------------------------------------------------------
-else
+$(dir_build)/$(name).elf: $(objects)
+	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
 
-DEPENDS	:=	$(OFILES:.o=.d)
+$(dir_build)/memory.o : CFLAGS += -O3
 
-#---------------------------------------------------------------------------------
-# main targets
-#---------------------------------------------------------------------------------
-$(OUTPUT).cxi	: $(OUTPUT).elf
-	@makerom -f ncch -rsf ../loader.rsf -nocodepadding -o $@ -elf $<
-
-memory.o : CFLAGS += -O3
-
-$(OUTPUT).elf	:	$(OFILES)
-
--include $(DEPENDS)
-
-#---------------------------------------------------------------------------------------
-endif
-#---------------------------------------------------------------------------------------
+$(dir_build)/%.o: $(dir_source)/%.c
+	@mkdir -p "$(@D)"
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+include $(call rwildcard, $(dir_build), *.d)
