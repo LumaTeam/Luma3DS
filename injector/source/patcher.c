@@ -73,7 +73,7 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
     return i;
 }
 
-static inline size_t strnlen (const char *string, size_t maxlen)
+static inline size_t strnlen(const char *string, size_t maxlen)
 {
     size_t size;
 
@@ -368,15 +368,15 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01
             };
 
-            u8 *fdpVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
+            static const u8 fpdVerPatch = 0x05;
 
-            if(fdpVer != NULL)
-            {
-                fdpVer += sizeof(fpdVerPattern) + 1;
-
-                //Allow online access to work with old friends modules
-                if(*fdpVer < 5) *fdpVer = 5;
-            }
+            //Allow online access to work with old friends modules
+            patchMemory(code, size, 
+                fpdVerPattern, 
+                sizeof(fpdVerPattern), 9, 
+                &fpdVerPatch, 
+                sizeof(fpdVerPatch), 1
+            );
 
             break;
         }
@@ -424,19 +424,21 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPatch), 2
             );
 
-            if(MULTICONFIG(1))
+            u32 cpuSetting = MULTICONFIG(1);
+
+            if(cpuSetting)
             {
                 static const u8 cfgN3dsCpuPattern[] = {
-                    0x40, 0xA0, 0xE1, 0x07, 0x00
+                    0x00, 0x40, 0xA0, 0xE1, 0x07, 0x00
                 };
 
-                u8 *cfgN3dsCpuLoc = memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
+                u32 *cfgN3dsCpuLoc = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
 
                 //Patch N3DS CPU Clock and L2 cache setting
                 if(cfgN3dsCpuLoc != NULL)
                 {
-                    *(u32 *)(cfgN3dsCpuLoc + 3) = 0xE1A00000;
-                    *(u32 *)(cfgN3dsCpuLoc + 0x1F) = 0xE3A00000 | MULTICONFIG(1);
+                    *(cfgN3dsCpuLoc + 1) = 0xE1A00000;
+                    *(cfgN3dsCpuLoc + 8) = 0xE3A00000 | cpuSetting;
                 }
             }
 

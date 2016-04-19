@@ -181,7 +181,7 @@ void main(void)
         }
     }
 
-    loadFirm(firmType, !firmType && (nandType == 2 || updatedSys == !firmSource));
+    loadFirm(firmType, !firmType && updatedSys == !firmSource);
 
     if(!firmType) patchNativeFirm(nandType, emuHeader, a9lhInstalled);
     else patchTwlAgbFirm(firmType);
