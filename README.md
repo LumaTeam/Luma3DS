@@ -1,6 +1,7 @@
 # ShadowFW
 
-Even more minimalist custom firmware for 3DS.
+Super minimalist and super simple CFW for 3DS!
+It's so light and minimalist, you won't even notice it's there.
 
 ### Features: 
 - No payload support.
@@ -32,3 +33,13 @@ Even more minimalist custom firmware for 3DS.
 You'll need armips, [bin2c](https://sourceforge.net/projects/bin2c/), and a recent build of [makerom](https://github.com/profi200/Project_CTR) added to your PATH. [HERE](http://www91.zippyshare.com/v/ePGpjk9r/file.html) is a pre-compiled version of armips for Windows.  
 Then, just run "make" and everything should work!  
 You can find the compiled files in the 'out' folder.
+
+
+### Credits
+AuroraWright for her great coding.
+Rei for his great ReiNand.
+And everyone they mentioned in their credits sections.
+Thanks, all of you.
+
+### License
+See `LICENSE.md`
