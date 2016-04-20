@@ -36,7 +36,10 @@ You can find the compiled files in the 'out' folder.
 
 
 ### Credits
-todo: add credits
+AuroraWright for her great coding.
+Rei for his great ReiNand.
+And everyone they mentioned in their credits sections.
+Thanks, all of you.
 
 ### License
 See `LICENSE.md`
