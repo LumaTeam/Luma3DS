@@ -80,8 +80,8 @@ fopen: .ascii "OPEN"
 .pool
 bin_fname:     .dcw "sdmc:/ShadowFW.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname:     .dcw "sdmc:/AuReiNand.dat"
-	       .word 0
+dat_fname:     .dcw "sdmc:/arm9loaderhax.bin"
+	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 .align 4
     kernelcode_start:
