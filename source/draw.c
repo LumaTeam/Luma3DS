@@ -41,8 +41,8 @@ void loadSplash(void)
     initScreens();
 
     //Don't delay boot if no splash image is on the SD
-    if(fileRead(fb->top_left, "/aurei/splash.bin", 0x46500) +
-       fileRead(fb->bottom, "/aurei/splashbottom.bin", 0x38400))
+    if(fileRead(fb->top_left, "/ShadowFW/splash.bin", 0x46500) +
+       fileRead(fb->bottom, "/ShadowFW/splashbottom.bin", 0x38400))
     {
         u64 i = 0x1400000;
         while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func

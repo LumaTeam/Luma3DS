@@ -313,14 +313,7 @@ u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
     aes_advctr(tmpCTR, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     //Read
-    u32 result;
-    if(!firmSource)
-        result = sdmmc_nand_readsectors(sector + fatStart, sectorCount, outbuf);
-    else
-    {
-        sector += emuOffset;
-        result = sdmmc_sdcard_readsectors(sector + fatStart, sectorCount, outbuf);
-    }
+    u32 result = sdmmc_nand_readsectors(sector + fatStart, sectorCount, outbuf);
 
     //Decrypt
     aes_use_keyslot(nandSlot);
