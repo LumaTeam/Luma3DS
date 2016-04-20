@@ -11,7 +11,7 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := AuReiNand
+name := ShadowFW
 version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
@@ -26,7 +26,7 @@ dir_out := out
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
+FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Super lightweight CFW." APP_AUTHOR="Reisyukaku/Aurora Wright/Shadowhand" --no-print-directory
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -35,16 +35,13 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 bundled = $(dir_build)/patches.h $(dir_build)/screeninit.h
 
 .PHONY: all
-all: a9lh pathchanger
+all: a9lh
 
 .PHONY: a9lh
 a9lh: $(dir_out)/ShadowFW.bin
 
 .PHONY: release
 release: $(dir_out)/$(name).zip
-
-.PHONY: pathchanger
-pathchanger: $(dir_out)/pathchanger
 
 .PHONY: clean
 clean:
@@ -55,13 +52,10 @@ clean:
 $(dir_out):
 	@mkdir -p "$(dir_out)"
 
-$(dir_out)/pathchanger: $(dir_out)
-	@cc pathchanger/pathchanger.c -o out/pathchanger
-
 $(dir_out)/ShadowFW.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
-$(dir_out)/$(name).zip: launcher a9lh
+$(dir_out)/$(name).zip: a9lh
 	@cd "$(@D)" && zip -9 -r $(name) *
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
@@ -70,13 +64,13 @@ $(dir_build)/main.bin: $(dir_build)/main.elf
 $(dir_build)/main.elf: $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
+$(dir_build)/patches.h: $(dir_patches)/reboot.s $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
 	@armips $<
-	@armips $(word 2,$^)
+	@armips $(word 1,$^)
 	@$(MAKE) -C $(dir_injector)
-	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(@D)
-	@bin2c -o $@ -n emunand $(@D)/emunand.bin -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
+	@mv reboot.bin $(dir_injector)/injector.cxi $(@D)
+	@bin2c -o $@ -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
 
 # $(dir_build)/loader.h: $(dir_loader)/Makefile
 # 	@$(MAKE) -C $(dir_loader)

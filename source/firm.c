@@ -18,27 +18,17 @@
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-u32 config,
-    console,
-    firmSource,
-    emuOffset;
+u32 console;
 
 void main(void)
 {
-    u32 bootType,
-        firmType,
-        nandType,
-        a9lhInstalled;
+    u32 bootType, firmType;
 
     //Detect the console being used
     console = (PDN_MPCORE_CFG == 1) ? 0 : 1;
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
-
-    a9lhInstalled = 1;
-    firmSource = 0;
-    nandType = 0;
 
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
@@ -63,7 +53,7 @@ void main(void)
 
     loadFirm(firmType, !firmType);
 
-    if(!firmType) patchNativeFirm(nandType, a9lhInstalled);
+    if(!firmType) patchNativeFirm();
     else patchTwlAgbFirm(firmType);
 
     launchFirm(bootType);
@@ -102,7 +92,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
     }
 }
 
-static inline void patchNativeFirm(u32 nandType, u32 a9lhInstalled)
+static inline void patchNativeFirm()
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
@@ -124,7 +114,7 @@ static inline void patchNativeFirm(u32 nandType, u32 a9lhInstalled)
         nativeFirmType = (memcmp(section[2].hash, firm90Hash, 0x10) == 0) ? 0 : 1;
     }
 
-    if(nativeFirmType || nandType)
+    if(nativeFirmType)
     {
         //Find the Process9 NCCH location
         u8 *proc9Offset = getProc9(arm9Section, section[2].size);
@@ -134,12 +124,9 @@ static inline void patchNativeFirm(u32 nandType, u32 a9lhInstalled)
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    if(a9lhInstalled && !nandType)
-    {
-        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-        *writeOffset = writeBlock[0];
-        *(writeOffset + 1) = writeBlock[1];
-    }
+    u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
+    *writeOffset = writeBlock[0];
+    *(writeOffset + 1) = writeBlock[1];
 
     //Apply signature checks patches
     u32 sigOffset,
@@ -149,13 +136,6 @@ static inline void patchNativeFirm(u32 nandType, u32 a9lhInstalled)
     *(u16 *)sigOffset = sigPatch[0];
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
-
-    // if(CONFIG(5))
-    // {
-    //     //Apply UNITINFO patch
-    //     u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
-    //     *unitInfoOffset = unitInfoPatch;
-    // }
 
     //Replace the FIRM loader with the injector
     injectLoader();
@@ -221,7 +201,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - 1);
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) -1);
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch
