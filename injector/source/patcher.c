@@ -328,39 +328,39 @@ void patchCode(u64 progId, u8 *code, u32 size)
             break;
         }
 
-        case 0x0004013000002C02LL: // NIM
-        {
-            static const u8 blockAutoUpdatesPattern[] = {
-                0x25, 0x79, 0x0B, 0x99
-            };
-            static const u8 blockAutoUpdatesPatch[] = {
-                0xE3, 0xA0
-            };
-            static const u8 skipEshopUpdateCheckPattern[] = {
-                0x30, 0xB5, 0xF1, 0xB0
-            };
-            static const u8 skipEshopUpdateCheckPatch[] = {
-                0x00, 0x20, 0x08, 0x60, 0x70, 0x47
-            };
+        // case 0x0004013000002C02LL: // NIM
+        // {
+        //     static const u8 blockAutoUpdatesPattern[] = {
+        //         0x25, 0x79, 0x0B, 0x99
+        //     };
+        //     static const u8 blockAutoUpdatesPatch[] = {
+        //         0xE3, 0xA0
+        //     };
+        //     static const u8 skipEshopUpdateCheckPattern[] = {
+        //         0x30, 0xB5, 0xF1, 0xB0
+        //     };
+        //     static const u8 skipEshopUpdateCheckPatch[] = {
+        //         0x00, 0x20, 0x08, 0x60, 0x70, 0x47
+        //     };
 
-            //Block silent auto-updates
-            patchMemory(code, size, 
-                blockAutoUpdatesPattern, 
-                sizeof(blockAutoUpdatesPattern), 0, 
-                blockAutoUpdatesPatch, 
-                sizeof(blockAutoUpdatesPatch), 1
-            );
+        //     //Block silent auto-updates
+        //     patchMemory(code, size, 
+        //         blockAutoUpdatesPattern, 
+        //         sizeof(blockAutoUpdatesPattern), 0, 
+        //         blockAutoUpdatesPatch, 
+        //         sizeof(blockAutoUpdatesPatch), 1
+        //     );
 
-            //Skip update checks to access the EShop
-            patchMemory(code, size, 
-                skipEshopUpdateCheckPattern, 
-                sizeof(skipEshopUpdateCheckPattern), 0, 
-                skipEshopUpdateCheckPatch, 
-                sizeof(skipEshopUpdateCheckPatch), 1
-            );
+        //     //Skip update checks to access the EShop
+        //     patchMemory(code, size, 
+        //         skipEshopUpdateCheckPattern, 
+        //         sizeof(skipEshopUpdateCheckPattern), 0, 
+        //         skipEshopUpdateCheckPatch, 
+        //         sizeof(skipEshopUpdateCheckPatch), 1
+        //     );
 
-            break;
-        }
+        //     break;
+        // }
 
         case 0x0004013000003202LL: // FRIENDS
         {
