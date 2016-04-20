@@ -16,7 +16,6 @@ version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
 dir_patches := patches
-dir_loader := loader
 dir_screeninit := screeninit
 dir_injector := injector
 dir_mset := CakeHax
@@ -33,19 +32,13 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+bundled = $(dir_build)/patches.h $(dir_build)/screeninit.h
 
 .PHONY: all
-all: launcher a9lh ninjhax
-
-.PHONY: launcher
-launcher: $(dir_out)/$(name).dat
+all: a9lh pathchanger
 
 .PHONY: a9lh
-a9lh: $(dir_out)/arm9loaderhax.bin
-
-.PHONY: ninjhax
-ninjhax: $(dir_out)/3ds/$(name)
+a9lh: $(dir_out)/ShadowFW.bin
 
 .PHONY: release
 release: $(dir_out)/$(name).zip
@@ -55,32 +48,20 @@ pathchanger: $(dir_out)/pathchanger
 
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
-	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_screeninit) clean
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
 $(dir_out):
-	@mkdir -p "$(dir_out)/aurei/payloads"
+	@mkdir -p "$(dir_out)"
 
 $(dir_out)/pathchanger: $(dir_out)
 	@cc pathchanger/pathchanger.c -o out/pathchanger
 
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
-	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
-	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
-
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
+$(dir_out)/ShadowFW.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
-$(dir_out)/3ds/$(name): $(dir_out)
-	@mkdir -p "$@"
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
-	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
-
-$(dir_out)/$(name).zip: launcher a9lh ninjhax
+$(dir_out)/$(name).zip: launcher a9lh
 	@cd "$(@D)" && zip -9 -r $(name) *
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
@@ -97,10 +78,10 @@ $(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_i
 	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(@D)
 	@bin2c -o $@ -n emunand $(@D)/emunand.bin -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
 
-$(dir_build)/loader.h: $(dir_loader)/Makefile
-	@$(MAKE) -C $(dir_loader)
-	@mv $(dir_loader)/loader.bin $(@D)
-	@bin2c -o $@ -n loader $(@D)/loader.bin
+# $(dir_build)/loader.h: $(dir_loader)/Makefile
+# 	@$(MAKE) -C $(dir_loader)
+# 	@mv $(dir_loader)/loader.bin $(@D)
+# 	@bin2c -o $@ -n loader $(@D)/loader.bin
 
 $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@$(MAKE) -C $(dir_screeninit)

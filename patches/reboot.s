@@ -78,7 +78,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
+bin_fname:     .dcw "sdmc:/ShadowFW.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 dat_fname:     .dcw "sdmc:/AuReiNand.dat"
 	       .word 0
