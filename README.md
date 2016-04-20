@@ -1,6 +1,7 @@
 # ShadowFW
 
-Even more minimalist custom firmware for 3DS.
+Super minimalist and super simple CFW for 3DS!
+It's so light and minimalist, you won't even notice it's there.
 
 ### Features: 
 - No payload support.
