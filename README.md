@@ -12,6 +12,7 @@ It's so light and minimalist, you won't even notice it's there.
 - Automatic TWL/AGB patching.
 - Reboot patches.
 - Optional splash screen.
+- Optional region/language patching.
 
 ### How to install:
 1. Drop `SaltFW.bin` to the root of your SD.
@@ -28,6 +29,13 @@ It's so light and minimalist, you won't even notice it's there.
 2. Put `firmware.bin` from the folder for your device, to the root of SD.
 3. Install NTR CFW like regular.
 4. DONE!
+
+### How to use Region/Language emulation
+1. Create `SaltFW` folder in the root of your SD.
+2. Create `locales` folder in `SaltFW`.
+3. Create a `txt` file titleID of the game you want to edit. (e.g. `0004000000055E00.txt`)
+4. Inside the file, put `RGN LN` where RGN is the region code, and LN is the language code. (e.g. `JPN JP`)
+5. DONE!
 
 ### Compiling
 You'll need armips, [bin2c](https://sourceforge.net/projects/bin2c/), and a recent build of [makerom](https://github.com/profi200/Project_CTR) added to your PATH. [HERE](http://www91.zippyshare.com/v/ePGpjk9r/file.html) is a pre-compiled version of armips for Windows.  
