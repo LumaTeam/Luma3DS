@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Requires Python >= 3.2 or >= 2.7
 
-# This is part of AuReiNAND
+# This is part of AuReiNand
 
 __author__    = "TuxSH"
 __copyright__ = "Copyright (c) 2016 TuxSH" 
