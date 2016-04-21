@@ -50,4 +50,4 @@ And everyone they mentioned in their credits sections.
 Thanks, all of you.
 
 ### License
-See `LICENSE.md`
+See `LICENSE.txt`
