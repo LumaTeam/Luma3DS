@@ -1,4 +1,4 @@
-# Slim Alternative Firmware (SALTFW)
+# Slim Alternative Firmware (SaltFW)
 
 Super minimalist and super simple CFW for 3DS!
 It's so light and minimalist, you won't even notice it's there.
@@ -14,13 +14,13 @@ It's so light and minimalist, you won't even notice it's there.
 - Optional splash screen.
 
 ### How to install:
-1. Drop `ShadowFW.bin` to the root of your SD.
-2. Set your choice of bootmanager to load `/ShadowFW.bin` **OR** Rename `ShadowFW.bin` to `arm9loaderhax.bin`
+1. Drop `SaltFW.bin` to the root of your SD.
+2. Set your choice of bootmanager to load `/SaltFW.bin` **OR** Rename `SaltFW.bin` to `arm9loaderhax.bin`
 3. DONE!
 
 ### How to use splash/bootlogo
-1. Create `ShadowFW` folder to the root of your SD.
-2. Put `splash.bin` **OR** `splashbottom.bin` **OR** both in `ShadowFW` folder
+1. Create `SaltFW` folder to the root of your SD.
+2. Put `splash.bin` **OR** `splashbottom.bin` **OR** both in `SaltFW` folder
 3. DONE!
 
 ### How to use NTR CFW

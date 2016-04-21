@@ -11,7 +11,7 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := ShadowFW
+name := SaltFW
 version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
@@ -38,7 +38,7 @@ bundled = $(dir_build)/patches.h $(dir_build)/screeninit.h
 all: a9lh
 
 .PHONY: a9lh
-a9lh: $(dir_out)/ShadowFW.bin
+a9lh: $(dir_out)/SaltFW.bin
 
 .PHONY: release
 release: $(dir_out)/$(name).zip
@@ -52,7 +52,7 @@ clean:
 $(dir_out):
 	@mkdir -p "$(dir_out)"
 
-$(dir_out)/ShadowFW.bin: $(dir_build)/main.bin $(dir_out)
+$(dir_out)/SaltFW.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
 $(dir_out)/$(name).zip: a9lh
