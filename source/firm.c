@@ -80,9 +80,6 @@ void main(void)
 
         //Get pressed buttons
         u32 pressed = HID_PAD;
- 
-        //Determine if we need to autoboot sysNAND
-        u32 autoBootSys = CONFIG(0);
 
         //Determine if A9LH is installed and the user has an updated sysNAND
         if(a9lhBoot || CONFIG(2))
@@ -142,6 +139,9 @@ void main(void)
 
             //If screens are inited or the corresponding option is set, load splash screen
             if(PDN_GPU_CNT != 1 || CONFIG(8)) loadSplash();
+
+            //Determine if we need to autoboot sysNAND
+            u32 autoBootSys = CONFIG(0);
 
             //Determine if we need to boot an emuNAND or sysNAND
             nandType = (pressed & BUTTON_L1) ? autoBootSys : ((pressed & BUTTON_R1) ? updatedSys : !autoBootSys);

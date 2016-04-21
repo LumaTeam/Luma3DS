@@ -76,11 +76,8 @@ void firmRead(void *dest, const char *firmFolder)
     u32 id = 0;
 
     //Parse the target directory
-    while(f_readdir(&dir, &info) == FR_OK)
+    while(f_readdir(&dir, &info) == FR_OK && info.fname[0])
     {
-        //We've parsed the whole folder
-        if(!info.fname[0]) break;
-
         //Not a cxi
         if(info.altname[9] != 'A') continue;
 
