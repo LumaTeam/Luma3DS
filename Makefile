@@ -48,10 +48,7 @@ a9lh: $(dir_out)/arm9loaderhax.bin
 ninjhax: $(dir_out)/3ds/$(name)
 
 .PHONY: release
-release: $(dir_out)/$(name).zip
-
-.PHONY: pathchanger
-pathchanger: $(dir_out)/pathchanger
+release: $(dir_out)/$(name)$(version).7z
 
 .PHONY: clean
 clean:
@@ -65,9 +62,6 @@ clean:
 $(dir_out):
 	@mkdir -p "$(dir_out)/aurei/payloads"
 
-$(dir_out)/pathchanger: $(dir_out)
-	@cc pathchanger/pathchanger.c -o out/pathchanger
-
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
@@ -80,8 +74,8 @@ $(dir_out)/3ds/$(name): $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
-$(dir_out)/$(name).zip: launcher a9lh ninjhax
-	@cd "$(@D)" && zip -9 -r $(name) *
+$(dir_out)/$(name)$(version).7z: launcher a9lh ninjhax
+	@7z a -mx $@ ./$(@D)/*
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@

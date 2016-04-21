@@ -194,24 +194,10 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
 
-    u32 firmSize;
-
-    if(externalFirm)
-    {
-        const char path[] = "/aurei/firmware.bin";
-        firmSize = fileSize(path);
-
-        if(firmSize)
-        {
-            fileRead(firm, path, firmSize);
-
-            //Check that the loaded FIRM matches the console
-            if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) firmSize = 0;
-        }
-    }
-    else firmSize = 0;
-
-    if(!firmSize)
+    /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
+       doesn't match the console, load it from CTRNAND */
+    if(!externalFirm || !fileRead(firm, "/aurei/firmware.bin", 0) ||
+       (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
     {
         const char *firmFolders[3][2] = {{ "00000002", "20000002" },
                                          { "00000102", "20000102" },
@@ -383,7 +369,8 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(7));
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) :
+                                     (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(7));
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch

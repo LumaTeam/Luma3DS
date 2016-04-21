@@ -51,19 +51,6 @@ u32 fileWrite(const void *buffer, const char *path, u32 size)
     return fr ? 0 : 1;
 }
 
-u32 fileSize(const char *path)
-{
-    FIL fp;
-    u32 size = 0;
-
-    if(f_open(&fp, path, FA_READ) == FR_OK)
-        size = f_size(&fp);
-
-    f_close(&fp);
-
-    return size;
-}
-
 u32 defPayloadExists(void)
 {
     DIR dir;
