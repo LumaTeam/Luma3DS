@@ -64,18 +64,6 @@ u32 fileSize(const char *path)
     return size;
 }
 
-u32 defPayloadExists(void)
-{
-    DIR dir;
-    FILINFO info;
-
-    FRESULT result = f_findfirst(&dir, &info, "/aurei/payloads", "def_*.bin");
-
-    f_closedir(&dir);
-
-    return (result == FR_OK && info.fname[0]);
-}
-
 void firmRead(void *dest, const char *firmFolder)
 {
     char path[48] = "1:/title/00040138/00000000/content";
