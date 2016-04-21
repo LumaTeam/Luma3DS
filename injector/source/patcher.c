@@ -119,7 +119,7 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
 	char path[] = "/SaltFW/locales/0000000000000000.txt";
 
-	u32 i = 30;
+	u32 i = 31;
 
 	while(progId > 0)
 	{
@@ -406,7 +406,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
         	if(tidHigh == 0x0004000)
         	{
-                    //Language emulation
+				//Language emulation
         		u8 regionId = 0xFF,
         		languageId = 0xFF;
 

@@ -35,10 +35,13 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 bundled = $(dir_build)/patches.h $(dir_build)/screeninit.h
 
 .PHONY: all
-all: a9lh
+all: a9lh saltfw
 
 .PHONY: a9lh
-a9lh: $(dir_out)/SaltFW.bin
+saltfw: $(dir_out)/SaltFW.bin
+
+.PHONY: a9lh
+a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: release
 release: $(dir_out)/$(name).zip
@@ -51,6 +54,9 @@ clean:
 
 $(dir_out):
 	@mkdir -p "$(dir_out)"
+
+$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
+	@cp -a $(dir_build)/main.bin $@
 
 $(dir_out)/SaltFW.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
@@ -71,11 +77,6 @@ $(dir_build)/patches.h: $(dir_patches)/reboot.s $(dir_injector)/Makefile
 	@$(MAKE) -C $(dir_injector)
 	@mv reboot.bin $(dir_injector)/injector.cxi $(@D)
 	@bin2c -o $@ -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
-
-# $(dir_build)/loader.h: $(dir_loader)/Makefile
-# 	@$(MAKE) -C $(dir_loader)
-# 	@mv $(dir_loader)/loader.bin $(@D)
-# 	@bin2c -o $@ -n loader $(@D)/loader.bin
 
 $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@$(MAKE) -C $(dir_screeninit)
