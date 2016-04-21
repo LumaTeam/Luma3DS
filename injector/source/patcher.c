@@ -137,6 +137,7 @@ static u32 loadConfig(void)
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/aurei/locales/[u64 titleID in hex, uppercase].txt"
+       If not exists it looks for "globalLocaleConfig.txt"
        If it exists it should contain, for example, "EUR IT" */
 
     char path[] = "/aurei/locales/0000000000000000.txt";
@@ -152,40 +153,53 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
     IFile file;
     Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+    //If it got the file from the title ID. Loads it instead of globalLocaleConfig
     if(R_SUCCEEDED(ret))
     {
-        char buf[6];
-        u64 total;
-
-        ret = IFile_Read(&file, &total, buf, 6);
-        IFile_Close(&file);
-
-        if(!R_SUCCEEDED(ret) || total < 6) return -1;
-
-        for(u32 i = 0; i < 7; ++i)
-        {
-            static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
-
-            if(memcmp(buf, regions[i], 3) == 0)
-            {
-                *regionId = (u8)i;
-                break;
-            }
-        }
-		
-        for(u32 i = 0; i < 12; ++i)
-        {
-            static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
-
-            if(memcmp(buf + 4, languages[i], 2) == 0)
-            {
-                *languageId = (u8)i;
-                break;
-            }
+        getLocaleFromFile(&file, &ret, &regionId, &languageId);
+    } else {
+        //If didn't find the file from a title. Tries to get "globalLocaleConfig.txt"
+        path[] = "/aurei/locales/globalLocaleConfig.txt";
+        ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+        if(R_SUCCEEDED(ret)){
+            getLocaleFromFile(&file, &ret, &regionId, &languageId);
         }
     }
 
     return ret;
+}
+
+static void getLocaleFromFile(IFile *file, Result *ret, u8 *regionId, u8 *languageId){
+    //Common function that reads a file that's supposed to be a language emulation file
+    char buf[6];
+    u64 total;
+
+    *ret = IFile_Read(&file, &total, buf, 6);
+    IFile_Close(&file);
+
+    if(!R_SUCCEEDED(ret) || total < 6) return -1;
+
+    for(u32 i = 0; i < 7; ++i)
+    {
+        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
+
+        if(memcmp(buf, regions[i], 3) == 0)
+        {
+            *regionId = (u8)i;
+            break;
+        }
+    }
+		
+    for(u32 i = 0; i < 12; ++i)
+    {
+        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
+
+        if(memcmp(buf + 4, languages[i], 2) == 0)
+        {
+            *languageId = (u8)i;
+            break;
+        }
+    }
 }
 
 static u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
