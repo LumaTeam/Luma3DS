@@ -15,6 +15,7 @@
 #include "draw.h"
 #include "screeninit.h"
 #include "loader.h"
+#include "exceptions.h"
 #include "buttons.h"
 #include "../build/patches.h"
 
@@ -42,11 +43,17 @@ void main(void)
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
+    
+    //Save crash dump if it exists
+    detectAndProcessExceptionDumps();
 
     //Attempt to read the configuration file
     const char configPath[] = "/aurei/config.bin";
-    if(fileRead(&config, configPath, 4)) needConfig = 1;
-    else
+    if(fileRead(&config, configPath, 4))
+    {
+        needConfig = 1;
+        if(CONFIG(5)) installARM9Handlers(); // dev options
+    }    else
     {
         config = 0;
         needConfig = 2;
