@@ -1,10 +1,8 @@
 /*
 *   screeninit.c
-*       by Aurora Wright
+*
 *   Screen init code by dark_samus, bil1s, Normmatt, delebile and others.
 *   Screen deinit code by tiniVi.
-*
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "screeninit.h"

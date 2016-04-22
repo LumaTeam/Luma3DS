@@ -1,7 +1,5 @@
 /*
 *   firm.c
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "firm.h"
@@ -44,7 +42,7 @@ void main(void)
     mountFs();
 
     //Attempt to read the configuration file
-    const char configPath[] = "/aurei/config.bin";
+    const char configPath[] = "/luma/config.bin";
     if(fileRead(&config, configPath, 4)) needConfig = 1;
     else
     {
@@ -196,7 +194,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
        doesn't match the console, load it from CTRNAND */
-    if(!externalFirm || !fileRead(firm, "/aurei/firmware.bin", 0) ||
+    if(!externalFirm || !fileRead(firm, "/luma/firmware.bin", 0) ||
        (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
     {
         const char *firmFolders[3][2] = {{ "00000002", "20000002" },

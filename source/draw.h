@@ -1,9 +1,7 @@
 /*
 *   draw.h
-*       by Reisyukaku / Aurora Wright
-*   Code to print to the screen by mid-kid @CakesFW
 *
-*   Copyright (c) 2016 All Rights Reserved
+*   Code to print to the screen by mid-kid @CakesFW
 */
 
 #pragma once

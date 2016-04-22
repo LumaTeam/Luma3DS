@@ -1,7 +1,5 @@
 /*
 *   loader.h
-*       by Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #pragma once

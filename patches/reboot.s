@@ -80,7 +80,7 @@ fopen: .ascii "OPEN"
 .pool
 bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname:     .dcw "sdmc:/AuReiNand.dat"
+dat_fname:     .dcw "sdmc:/Luma3DS.dat"
 	       .word 0
 
 .align 4

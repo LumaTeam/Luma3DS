@@ -7,7 +7,7 @@
 
 static u32 loadPayload(const char *pattern)
 {
-    char path[30] = "/aurei/payloads";
+    char path[30] = "/luma/payloads";
 
     DIR dir;
     FILINFO info;
@@ -19,11 +19,11 @@ static u32 loadPayload(const char *pattern)
     if(result != FR_OK || !info.fname[0])
         return 0;
 
-    path[15] = '/';
+    path[14] = '/';
     u32 i;
     for(i = 0; info.fname[i]; i++)
-        path[16 + i] = info.fname[i];
-    path[16 + i] = '\0';
+        path[15 + i] = info.fname[i];
+    path[15 + i] = '\0';
 
     FIL payload;
     unsigned int br;

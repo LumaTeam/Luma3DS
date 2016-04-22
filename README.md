@@ -1,5 +1,5 @@
-# AuReiNand
-*A modification of the ReiNand custom firmware*
+# Luma3DS
+*Noob-proof (N)3DS "Custom Firmware"*
 
 **Compiling:**
 
@@ -9,8 +9,8 @@ You can find the compiled files in the 'out' folder.
 
 **Setup / Usage / Features:**
 
-See https://github.com/AuroraWright/AuReiNand/wiki
+See https://github.com/AuroraWright/Luma3DS/wiki
 
 **Credits:**
  
-See https://github.com/AuroraWright/AuReiNand/wiki/Credits
+See https://github.com/AuroraWright/Luma3DS/wiki/Credits

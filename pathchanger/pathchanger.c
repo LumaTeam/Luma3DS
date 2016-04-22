@@ -43,7 +43,7 @@ static int fsize(FILE *fp)
 static void error(FILE *payload, const char *message)
 {
     fclose(payload);
-    printf("%s, are you sure you're using an AuReiNand payload?\n", message);
+    printf("%s, are you sure you're using a Luma3DS payload?\n", message);
     exit(0);
 }
 
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 {
     if(argc == 1)
     {
-        printf("Usage: %s <AuReiNand payload path>\n", argv[0]);
+        printf("Usage: %s <Luma3DS payload path>\n", argv[0]);
         exit(0);
     }
 

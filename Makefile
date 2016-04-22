@@ -11,7 +11,7 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := AuReiNand
+name := Luma
 version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
@@ -60,7 +60,7 @@ clean:
 	@rm -rf $(dir_out) $(dir_build)
 
 $(dir_out):
-	@mkdir -p "$(dir_out)/aurei/payloads"
+	@mkdir -p "$(dir_out)/luma/payloads"
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher

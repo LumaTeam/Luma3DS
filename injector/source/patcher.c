@@ -123,7 +123,7 @@ static u32 loadConfig(void)
     if(!config)
     {
         IFile file;
-        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/aurei/config.bin", FS_OPEN_READ)))
+        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/luma/config.bin", FS_OPEN_READ)))
         {
             u64 total;
             if(R_SUCCEEDED(IFile_Read(&file, &total, &config, 4))) config |= 1 << 4;
@@ -136,12 +136,12 @@ static u32 loadConfig(void)
 
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
-    /* Here we look for "/aurei/locales/[u64 titleID in hex, uppercase].txt"
+    /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
 
-    char path[] = "/aurei/locales/0000000000000000.txt";
+    char path[] = "/luma/locales/0000000000000000.txt";
 
-    u32 i = 30;
+    u32 i = 29;
 
     while(progId > 0)
     {

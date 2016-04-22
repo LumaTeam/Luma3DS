@@ -1,7 +1,5 @@
 /*
 *   fs.c
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "fs.h"
@@ -56,7 +54,7 @@ u32 defPayloadExists(void)
     DIR dir;
     FILINFO info;
 
-    FRESULT result = f_findfirst(&dir, &info, "/aurei/payloads", "def_*.bin");
+    FRESULT result = f_findfirst(&dir, &info, "/luma/payloads", "def_*.bin");
 
     f_closedir(&dir);
 

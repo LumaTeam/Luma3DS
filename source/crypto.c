@@ -1,9 +1,7 @@
 /*
 *   crypto.c
-*       by Reisyukaku / Aurora Wright
-*   Crypto libs from http://github.com/b1l1s/ctr
 *
-*   Copyright (c) 2016 All Rights Reserved
+*   Crypto libs from http://github.com/b1l1s/ctr
 */
 
 #include "crypto.h"
