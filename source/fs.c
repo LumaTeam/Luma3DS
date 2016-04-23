@@ -37,20 +37,6 @@ u32 fileRead(void *dest, const char *path, u32 size)
     return fr ? 0 : 1;
 }
 
-u32 fileWrite(const void *buffer, const char *path, u32 size)
-{
-    FRESULT fr;
-    FIL fp;
-    unsigned int br = 0;
-
-    fr = f_open(&fp, path, FA_WRITE | FA_OPEN_ALWAYS);
-    if(fr == FR_OK) fr = f_write(&fp, buffer, size, &br);
-
-    f_close(&fp);
-
-    return fr ? 0 : 1;
-}
-
 u32 fileSize(const char *path)
 {
     FIL fp;

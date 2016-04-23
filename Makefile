@@ -35,9 +35,9 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 bundled = $(dir_build)/patches.h $(dir_build)/screeninit.h
 
 .PHONY: all
-all: a9lh saltfw
+all: saltfw a9lh
 
-.PHONY: a9lh
+.PHONY: saltfw
 saltfw: $(dir_out)/SaltFW.bin
 
 .PHONY: a9lh
@@ -61,7 +61,7 @@ $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 $(dir_out)/SaltFW.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
-$(dir_out)/$(name).zip: a9lh
+$(dir_out)/$(name).zip: a9lh saltfw
 	@cd "$(@D)" && zip -9 -r $(name) *
 
 $(dir_build)/main.bin: $(dir_build)/main.elf

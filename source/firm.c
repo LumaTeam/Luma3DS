@@ -25,7 +25,7 @@ void main(void)
     u32 bootType, firmType;
 
     //Detect the console being used
-    console = (PDN_MPCORE_CFG == 1) ? 0 : 1;
+    console = (PDN_MPCORE_CFG == 1) ? 0 : 1; //3rd core exists ? n3ds : o3ds
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
@@ -44,7 +44,7 @@ void main(void)
         //Get pressed buttons
         u32 pressed = HID_PAD;
 
-        //Determine if A9LH is installed and the user has an updated sysNAND
+        //Prevent safe mode, as that can wipe a9lh or brick the device on N3DS.
         if(pressed == SAFE_MODE)
             error("Using Safe Mode would brick you, or remove A9LH!");
 
@@ -96,32 +96,18 @@ static inline void patchNativeFirm()
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
-    u32 nativeFirmType;
-
     if(console)
     {
-        //Determine if we're booting the 9.0 FIRM
-        nativeFirmType = (arm9Section[0x51] == 0xFF) ? 0 : 1;
-
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, nativeFirmType);
+        arm9Loader(arm9Section, 1);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
-    else
-    {
-        //Determine if we're booting the 9.0 FIRM
-        u8 firm90Hash[0x10] = {0x27, 0x2D, 0xFE, 0xEB, 0xAF, 0x3F, 0x6B, 0x3B, 0xF5, 0xDE, 0x4C, 0x41, 0xDE, 0x95, 0x27, 0x6A};
-        nativeFirmType = (memcmp(section[2].hash, firm90Hash, 0x10) == 0) ? 0 : 1;
-    }
 
-    if(nativeFirmType)
-    {
-        //Find the Process9 NCCH location
-        u8 *proc9Offset = getProc9(arm9Section, section[2].size);
+    //Find the Process9 NCCH location
+    u8 *proc9Offset = getProc9(arm9Section, section[2].size);
 
-        //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
-        if(nativeFirmType) patchReboots(arm9Section, proc9Offset);
-    }
+    //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
+    patchReboots(arm9Section, proc9Offset);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
     u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
@@ -201,7 +187,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) -1);
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - 1);
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch

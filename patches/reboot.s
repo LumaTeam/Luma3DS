@@ -22,12 +22,12 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         bne pxi_wait_recv
 
         mov r4, #0
-        adr r1, bin_fname
+        adr r1, saltfw_fname
         b open_payload
 
     fallback:
         mov r4, #1
-        adr r1, dat_fname
+        adr r1, a9lh_fname
 
     open_payload:
         ; Open file
@@ -37,7 +37,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         orr r6, 1
         blx r6
         cmp r0, #0
-        bne fallback ; If the .bin is not found, try the .dat.
+        bne fallback ; If  SaltFW.bin is not found, try the arm9loaderhax.bin.
 
     read_payload:
         ; Read file
@@ -78,9 +78,9 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-bin_fname:     .dcw "sdmc:/SaltFW.bin"
+saltfw_fname:     .dcw "sdmc:/SaltFW.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname:     .dcw "sdmc:/arm9loaderhax.bin"
+a9lh_fname:     .dcw "sdmc:/arm9loaderhax.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 .align 4
