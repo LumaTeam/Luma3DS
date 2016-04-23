@@ -19,5 +19,3 @@
 
 void loadSplash(void);
 void clearScreens(void);
-void drawCharacter(char character, int posX, int posY, u32 color);
-int drawString(const char *string, int posX, int posY, u32 color);

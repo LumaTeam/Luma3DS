@@ -46,7 +46,7 @@ void main(void)
 
         //Prevent safe mode, as that can wipe a9lh or brick the device on N3DS.
         if(pressed == SAFE_MODE)
-            error("Using Safe Mode would brick you, or remove A9LH!");
+            mcuShutDown();
 
         if(PDN_GPU_CNT != 1) loadSplash();
     }
