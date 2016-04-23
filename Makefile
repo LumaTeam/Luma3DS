@@ -11,7 +11,7 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := Luma
+name := Luma3DS
 version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
