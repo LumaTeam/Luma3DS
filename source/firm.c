@@ -406,6 +406,6 @@ static inline void launchFirm(u32 bootType)
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
 
-    //Final jump to arm9 kernel
+    //Final jump to ARM9 kernel
     ((void (*)())firm->arm9Entry)();
 }

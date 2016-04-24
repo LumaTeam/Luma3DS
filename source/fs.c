@@ -96,12 +96,12 @@ void firmRead(void *dest, const char *firmFolder)
     //Complete the string with the .app name
     memcpy(&path[34], "/00000000.app", 14);
 
+    //Last digit of the .app
     u32 i = 42;
 
     //Convert back the .app name from integer to array
     while(id > 0)
     {
-        //Last digit of the .app
         static const char hexDigits[] = "0123456789ABCDEF";
         path[i--] = hexDigits[id & 0xF];
         id >>= 4;
