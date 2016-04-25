@@ -100,7 +100,7 @@ void firmRead(void *dest, const char *firmFolder)
     u32 i = 42;
 
     //Convert back the .app name from integer to array
-    while(id > 0)
+    while(id)
     {
         static const char hexDigits[] = "0123456789ABCDEF";
         path[i--] = hexDigits[id & 0xF];

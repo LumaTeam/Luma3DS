@@ -143,7 +143,7 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
     u32 i = 29;
 
-    while(progId > 0)
+    while(progId)
     {
         static const char hexDigits[] = "0123456789ABCDEF";
         path[i--] = hexDigits[(u32)(progId & 0xF)];
