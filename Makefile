@@ -17,6 +17,7 @@ version := $(shell git describe --abbrev=0 --tags)
 dir_source := source
 dir_patches := patches
 dir_loader := loader
+dir_arm9_exceptions := exceptions/arm9
 dir_screeninit := screeninit
 dir_injector := injector
 dir_mset := CakeHax
@@ -33,7 +34,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/arm9_exceptions.h $(dir_build)/screeninit.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -55,12 +56,14 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
+	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_screeninit) clean
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
 $(dir_out):
 	@mkdir -p "$(dir_out)/luma/payloads"
+	@mkdir -p "$(dir_out)/luma/dumps/arm9"
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
@@ -95,6 +98,11 @@ $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
 	@mv $(dir_loader)/loader.bin $(@D)
 	@bin2c -o $@ -n loader $(@D)/loader.bin
+
+$(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
+	@$(MAKE) -C $(dir_arm9_exceptions)
+	@mv $(dir_arm9_exceptions)/arm9_exceptions.bin $(@D)
+	@bin2c -o $@ -n arm9_exceptions $(@D)/arm9_exceptions.bin
 
 $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@$(MAKE) -C $(dir_screeninit)

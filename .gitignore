@@ -3,6 +3,7 @@ build
 loader/build
 screeninit/build
 injector/build
+exceptions/arm9/build
 *.bin
 *.3dsx
 *.smdh

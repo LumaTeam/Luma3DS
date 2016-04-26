@@ -61,6 +61,27 @@ u32 defPayloadExists(void)
     return (result == FR_OK && info.fname[0]);
 }
 
+void findDumpFile(const char *path, char *fileName)
+{
+    DIR dir;
+    FILINFO info;
+    u32 n = 0;
+
+    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0])
+    {
+        u32 i = 18,
+            tmp = ++n;
+
+        while(tmp)
+        {
+            fileName[i--] = '0' + (tmp % 10);
+            tmp /= 10;
+        }
+    }
+
+    f_closedir(&dir);
+}
+
 void firmRead(void *dest, const char *firmFolder)
 {
     char path[48] = "1:/title/00040138/00000000/content";

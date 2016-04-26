@@ -13,6 +13,7 @@
 #include "draw.h"
 #include "screeninit.h"
 #include "loader.h"
+#include "exceptions.h"
 #include "buttons.h"
 #include "../build/patches.h"
 
@@ -67,6 +68,13 @@ void main(void)
     }
     else
     {
+        //Only when "Enable developer features" is set
+        if(CONFIG(5))
+        {
+            detectAndProcessExceptionDumps();
+            installArm9Handlers();
+        }
+
         bootType = 0;
         firmType = 0;
 
