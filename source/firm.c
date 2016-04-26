@@ -136,7 +136,7 @@ void main(void)
                 configureCFW(configPath);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if(PDN_GPU_CNT != 1 || CONFIG(7)) loadSplash();
+            if(PDN_GPU_CNT != 1 || CONFIG(8)) loadSplash();
 
             u32 autoBootSys = CONFIG(0);
 
@@ -255,6 +255,13 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
+    if(CONFIG(5))
+    {
+        //Apply UNITINFO patch
+        u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
+        *unitInfoOffset = unitInfoPatch;
+    }
+
     //Replace the FIRM loader with the injector
     injectLoader();
 }
@@ -359,7 +366,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                     (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
+                                     (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(7));
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch
