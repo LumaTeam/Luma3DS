@@ -13,7 +13,6 @@ const u32 mpuPatch[3];
 const u16 nandRedir[2],
           sigPatch[2],
           writeBlock[2];
-const u8 unitInfoPatch;
 
 /**************************************************
 *                   Functions
@@ -23,5 +22,4 @@ void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2);
 void *getReboot(u8 *pos, u32 size);
 u32 getfOpen(u8 *proc9Offset, void *rebootOffset);
 u16 *getFirmWrite(u8 *pos, u32 size);
-u8 *getUnitInfoValueSet(u8 *pos, u32 size);
 void *getLoader(u8 *pos, u32 size, u32 *loaderSize);

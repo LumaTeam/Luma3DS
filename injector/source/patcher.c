@@ -393,7 +393,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(CONFIG(6))
+            if(CONFIG(5))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = BOOTCONFIG(0, 3);

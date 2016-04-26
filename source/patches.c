@@ -15,8 +15,6 @@ const u16 nandRedir[2] = {0x4C00, 0x47A0},
           sigPatch[2] = {0x2000, 0x4770},
           writeBlock[2] = {0x2000, 0x46C0};
 
-const u8 unitInfoPatch = 0xE3;
-
 /**************************************************
 *                   Functions
 **************************************************/
@@ -63,14 +61,6 @@ u16 *getFirmWrite(u8 *pos, u32 size)
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
-}
-
-u8 *getUnitInfoValueSet(u8 *pos, u32 size)
-{
-    //Look for UNITINFO value being set
-    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
-
-    return memsearch(pos, pattern, size, 4) + 3;
 }
 
 void *getLoader(u8 *pos, u32 size, u32 *loaderSize)
