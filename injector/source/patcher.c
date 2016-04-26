@@ -336,12 +336,6 @@ void patchCode(u64 progId, u8 *code, u32 size)
             static const u8 blockAutoUpdatesPatch[] = {
                 0xE3, 0xA0
             };
-            static const u8 skipEshopUpdateCheckPattern[] = {
-                0x30, 0xB5, 0xF1, 0xB0
-            };
-            static const u8 skipEshopUpdateCheckPatch[] = {
-                0x00, 0x20, 0x08, 0x60, 0x70, 0x47
-            };
 
             //Block silent auto-updates
             patchMemory(code, size, 
@@ -351,13 +345,24 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(blockAutoUpdatesPatch), 1
             );
 
-            //Skip update checks to access the EShop
-            patchMemory(code, size, 
-                skipEshopUpdateCheckPattern, 
-                sizeof(skipEshopUpdateCheckPattern), 0, 
-                skipEshopUpdateCheckPatch, 
-                sizeof(skipEshopUpdateCheckPatch), 1
-            );
+            //Apply only if the updated NAND hasn't been booted
+            if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(3, 1) && CONFIG(1)))
+            {
+                static const u8 skipEshopUpdateCheckPattern[] = {
+                    0x30, 0xB5, 0xF1, 0xB0
+                };
+                static const u8 skipEshopUpdateCheckPatch[] = {
+                    0x00, 0x20, 0x08, 0x60, 0x70, 0x47
+                };
+
+                //Skip update checks to access the EShop
+                patchMemory(code, size, 
+                    skipEshopUpdateCheckPattern, 
+                    sizeof(skipEshopUpdateCheckPattern), 0, 
+                    skipEshopUpdateCheckPatch, 
+                    sizeof(skipEshopUpdateCheckPatch), 1
+                );
+            }
 
             break;
         }
