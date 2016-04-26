@@ -12,6 +12,6 @@
 #define MULTICONFIG(a) ((config >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((config >> a) & b)
 
-extern u32 config; 
+extern u32 config;
 
 void configureCFW(const char *configPath);

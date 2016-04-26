@@ -6,7 +6,7 @@
 
 #include "types.h"
 
-#define NCSD_MAGIC (0x4453434E)
+#define NCSD_MAGIC 0x4453434E
 
 void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND);
 u32 getSDMMC(u8 *pos, u32 size);

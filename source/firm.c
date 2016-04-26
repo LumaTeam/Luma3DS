@@ -138,7 +138,6 @@ void main(void)
             //If screens are inited or the corresponding option is set, load splash screen
             if(PDN_GPU_CNT != 1 || CONFIG(8)) loadSplash();
 
-            //Determine if we need to autoboot sysNAND
             u32 autoBootSys = CONFIG(0);
 
             //Determine if we need to boot an emuNAND or sysNAND
@@ -187,7 +186,6 @@ void main(void)
     launchFirm(bootType);
 }
 
-//Load FIRM into FCRAM
 static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
@@ -390,7 +388,7 @@ static inline void patchTwlAgbFirm(u32 firmType)
 
 static inline void launchFirm(u32 bootType)
 {
-    //Copy firm partitions to respective memory locations
+    //Copy FIRM sections to respective memory locations
     for(u32 i = 0; i < 4 && section[i].size; i++)
         memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
 

@@ -9,7 +9,7 @@
 #include "fatfs/sdmmc/sdmmc.h"
 
 /****************************************************************
-*                   Crypto Libs
+*                   Crypto libs
 ****************************************************************/
 
 /* original version by megazig */
@@ -271,7 +271,7 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 }
 
 /****************************************************************
-*                   Nand/FIRM Crypto stuff
+*                   NAND/FIRM crypto
 ****************************************************************/
 
 static u8 nandCTR[0x10],

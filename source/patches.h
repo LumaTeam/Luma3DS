@@ -10,9 +10,9 @@
 *                   Patches
 **************************************************/
 const u32 mpuPatch[3];       
-const u16 nandRedir[2];
-const u16 sigPatch[2];
-const u16 writeBlock[2];
+const u16 nandRedir[2],
+          sigPatch[2],
+          writeBlock[2];
 const u8 unitInfoPatch;
 
 /**************************************************
