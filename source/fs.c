@@ -108,8 +108,8 @@ void firmRead(void *dest, const char *firmFolder)
             tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
         }
 
-        //Found a newer cxi
-        if(tempId > id) id = tempId;
+        //Found an older cxi
+        if(tempId < id) id = tempId;
     }
 
     f_closedir(&dir);
