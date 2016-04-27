@@ -71,7 +71,7 @@ void firmRead(void *dest, const char *firmFolder)
 
     f_opendir(&dir, path);
 
-    u32 id = 0;
+    u32 id = 0xFFFFFFFF;
 
     //Parse the target directory
     while(f_readdir(&dir, &info) == FR_OK && info.fname[0])
