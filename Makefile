@@ -109,8 +109,8 @@ $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@mv $(dir_screeninit)/screeninit.bin $(@D)
 	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
-$(dir_build)/memory.o : CFLAGS += -O3
-$(dir_build)/config.o : CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
+$(dir_build)/memory.o: CFLAGS += -O3
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 	@mkdir -p "$(@D)"
