@@ -111,12 +111,4 @@ $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-
-$(dir_build)/fatfs/%.o: $(dir_source)/fatfs/%.c
-	@mkdir -p "$(@D)"
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-
-$(dir_build)/fatfs/%.o: $(dir_source)/fatfs/%.s
-	@mkdir -p "$(@D)"
-	$(COMPILE.s) $(OUTPUT_OPTION) $<
 include $(call rwildcard, $(dir_build), *.d)
