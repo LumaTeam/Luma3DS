@@ -68,8 +68,10 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
        doesn't match the console, load it from CTRNAND */
-    if(!externalFirm || !fileRead(firm, "/aurei/firmware.bin", 0) ||
-       (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
+
+    u32 externalFirmLoaded = externalFirm && fileRead(firm, "/firmware.bin", 0) && (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68);
+
+    if(!externalFirmLoaded)
     {
         const char *firmFolders[3][2] = {{ "00000002", "20000002" },
                                          { "00000102", "20000102" },
