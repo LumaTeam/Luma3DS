@@ -7,7 +7,7 @@
 
 static u32 loadPayload(const char *pattern)
 {
-    char path[30] = "/luma/payloads";
+    char path[29] = "/luma/payloads";
 
     DIR dir;
     FILINFO info;
@@ -26,10 +26,10 @@ static u32 loadPayload(const char *pattern)
     path[15 + i] = '\0';
 
     FIL payload;
-    unsigned int br;
+    unsigned int read;
 
     f_open(&payload, path, FA_READ);
-    f_read(&payload, (void *)PAYLOAD_ADDRESS, f_size(&payload), &br);
+    f_read(&payload, (void *)PAYLOAD_ADDRESS, f_size(&payload), &read);
     f_close(&payload);
 
     return 1;

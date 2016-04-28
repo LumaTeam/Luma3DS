@@ -43,7 +43,7 @@ void main(void)
 
     //Attempt to read the configuration file
     const char configPath[] = "/luma/config.bin";
-    if(fileRead(&config, configPath, 4)) needConfig = 1;
+    if(!fileRead(&config, configPath, 4)) needConfig = 1;
     else
     {
         config = 0;
@@ -190,10 +190,12 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
 
+    u32 externalFirmLoaded = externalFirm && !fileRead(firm, "/luma/firmware.bin", 0) &&
+                             (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68);
+
     /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
-       doesn't match the console, load it from CTRNAND */
-    if(!externalFirm || !fileRead(firm, "/luma/firmware.bin", 0) ||
-       (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
+       doesn't match the console, load FIRM from CTRNAND */
+    if(!externalFirmLoaded)
     {
         const char *firmFolders[3][2] = {{ "00000002", "20000002" },
                                          { "00000102", "20000102" },
