@@ -37,19 +37,6 @@ u32 fileRead(void *dest, const char *path, u32 size)
     return fr ? 0 : 1;
 }
 
-u32 fileSize(const char *path)
-{
-    FIL fp;
-    u32 size = 0;
-
-    if(f_open(&fp, path, FA_READ) == FR_OK)
-        size = f_size(&fp);
-
-    f_close(&fp);
-
-    return size;
-}
-
 void firmRead(void *dest, const char *firmFolder)
 {
     char path[48] = "1:/title/00040138/00000000/content";
@@ -79,7 +66,7 @@ void firmRead(void *dest, const char *firmFolder)
             tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
         }
 
-        //Found a newer cxi
+        //Found an older cxi
         if(tempId > id) id = tempId;
     }
 
@@ -91,7 +78,7 @@ void firmRead(void *dest, const char *firmFolder)
     u32 i = 42;
 
     //Convert back the .app name from integer to array
-    while(id > 0)
+    while(id)
     {
         //Last digit of the .app
         static const char hexDigits[] = "0123456789ABCDEF";

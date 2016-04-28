@@ -13,11 +13,9 @@
 
 const u32 mpuPatch[3] = {0x00360003, 0x00200603, 0x001C0603};
 
-const u16 nandRedir[2] = {0x4C00, 0x47A0};
-
-const u16 sigPatch[2] = {0x2000, 0x4770};
-
-const u16 writeBlock[2] = {0x2000, 0x46C0};
+const u16 nandRedir[2] = {0x4C00, 0x47A0},
+          sigPatch[2] = {0x2000, 0x4770},
+          writeBlock[2] = {0x2000, 0x46C0};
 
 const u8 unitInfoPatch = 0xE3;
 

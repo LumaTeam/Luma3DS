@@ -10,6 +10,5 @@
 
 u32 mountFs(void);
 u32 fileRead(void *dest, const char *path, u32 size);
-u32 fileSize(const char *path);
 u32 defPayloadExists(void);
 void firmRead(void *dest, const char *firmFolder);

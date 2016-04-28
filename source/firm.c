@@ -61,32 +61,19 @@ void main(void)
     launchFirm(bootType);
 }
 
-//Load FIRM into FCRAM
+// Load FIRM into FCRAM
 static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
 
-    u32 firmSize = 0;
-
-    if(externalFirm)
-    {
-        const char path[] = "/firmware.bin";
-        firmSize = fileSize(path);
-
-        if(firmSize)
-        {
-            fileRead(firm, path, firmSize);
-
-            //Check that the loaded FIRM matches the console
-            if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) firmSize = 0;
-        }
-    }
-
-    if(!firmSize)
+    /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
+       doesn't match the console, load it from CTRNAND */
+    if(!externalFirm || !fileRead(firm, "/aurei/firmware.bin", 0) ||
+       (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
     {
         const char *firmFolders[3][2] = {{ "00000002", "20000002" },
-        { "00000102", "20000102" },
-        { "00000202", "20000202" }};
+                                         { "00000102", "20000102" },
+                                         { "00000202", "20000202" }};
 
         firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);

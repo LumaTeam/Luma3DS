@@ -36,6 +36,6 @@ void loadSplash(void)
        fileRead(fb->bottom, "/SaltFW/splashbottom.bin", 0x38400))
     {
         u64 i = 0x1400000;
-        while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
+        while(i--) __asm("mov r0, r0"); //Less Ghetto sleep func
     }
 }
