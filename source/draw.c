@@ -10,7 +10,6 @@
 #include "screeninit.h"
 #include "fs.h"
 #include "memory.h"
-#include "font.h"
 
 #define SCREEN_TOP_WIDTH 400
 #define SCREEN_TOP_HEIGHT 240
@@ -20,14 +19,6 @@ static const struct fb {
     u8 *top_right;
     u8 *bottom;
 } *const fb = (struct fb *)0x23FFFE00;
-
-static inline int strlen(const char *string)
-{
-    char *stringEnd = (char *)string;
-    while(*stringEnd) stringEnd++;
-
-    return stringEnd - string;
-}
 
 void clearScreens(void)
 {

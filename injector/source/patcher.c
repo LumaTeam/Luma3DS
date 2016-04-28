@@ -96,22 +96,6 @@ static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
 	return IFile_Open(file, archive, ppath, flags);
 }
 
-static u32 secureInfoExists(void)
-{
-	static u32 secureInfoExists = 0;
-
-	if(!secureInfoExists)
-	{
-		IFile file;
-		if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ)))
-		{
-			secureInfoExists = 1;
-			IFile_Close(&file);
-		}
-	}
-
-	return secureInfoExists;
-}
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/SaltFW/locales/[u64 titleID in hex, uppercase].txt"
@@ -296,10 +280,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
         	};
 
             //Patch SMDH region checks
-        	patchMemory(code, size, 
-        		regionFreePattern, 
-        		sizeof(regionFreePattern), -16, 
-        		regionFreePatch, 
+        	patchMemory(code, size,
+        		regionFreePattern,
+        		sizeof(regionFreePattern), -16,
+        		regionFreePatch,
         		sizeof(regionFreePatch), 1
         		);
 
@@ -316,30 +300,11 @@ void patchCode(u64 progId, u8 *code, u32 size)
         	};
 
             //Block silent auto-updates
-        	patchMemory(code, size, 
-        		blockAutoUpdatesPattern, 
-        		sizeof(blockAutoUpdatesPattern), 0, 
-        		blockAutoUpdatesPatch, 
+        	patchMemory(code, size,
+        		blockAutoUpdatesPattern,
+        		sizeof(blockAutoUpdatesPattern), 0,
+        		blockAutoUpdatesPatch,
         		sizeof(blockAutoUpdatesPatch), 1
-        		);
-
-        	break;
-        }
-
-        case 0x0004013000003202LL: // FRIENDS
-        {
-        	static const u8 fpdVerPattern[] = {
-        		0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01
-        	};
-
-        	static const u8 fpdVerPatch = 0x05;
-
-            //Allow online access to work with old friends modules
-        	patchMemory(code, size, 
-        		fpdVerPattern, 
-        		sizeof(fpdVerPattern), 9, 
-        		&fpdVerPatch, 
-        		sizeof(fpdVerPatch), 1
         		);
 
         	break;
@@ -361,41 +326,6 @@ void patchCode(u64 progId, u8 *code, u32 size)
         		stopCartUpdatesPatch,
         		sizeof(stopCartUpdatesPatch), 2
         		);
-
-        	break;
-        }
-
-        case 0x0004013000001702LL: // CFG
-        {
-        	static const u8 secureinfoSigCheckPattern[] = {
-        		0x06, 0x46, 0x10, 0x48, 0xFC
-        	};
-        	static const u8 secureinfoSigCheckPatch[] = {
-        		0x00, 0x26
-        	};
-
-            //Disable SecureInfo signature check
-        	patchMemory(code, size, 
-        		secureinfoSigCheckPattern, 
-        		sizeof(secureinfoSigCheckPattern), 0, 
-        		secureinfoSigCheckPatch, 
-        		sizeof(secureinfoSigCheckPatch), 1
-        		);
-
-        	if(secureInfoExists())
-        	{
-        		static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
-        		static const u16 secureinfoFilenamePatch[] = u"C";
-
-                //Use SecureInfo_C
-        		patchMemory(code, size, 
-        			secureinfoFilenamePattern, 
-        			sizeof(secureinfoFilenamePattern) - sizeof(u16),
-        			sizeof(secureinfoFilenamePattern) - sizeof(u16), 
-        			secureinfoFilenamePatch, 
-        			sizeof(secureinfoFilenamePatch) - sizeof(u16), 2
-        			);
-        	}
 
         	break;
         }

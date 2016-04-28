@@ -5,7 +5,6 @@
 */
 
 #include "firm.h"
-#include "utils.h"
 #include "fs.h"
 #include "patches.h"
 #include "memory.h"
@@ -14,6 +13,7 @@
 #include "screeninit.h"
 #include "buttons.h"
 #include "../build/patches.h"
+#include "i2c.h"
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
@@ -45,8 +45,10 @@ void main(void)
         u32 pressed = HID_PAD;
 
         //Prevent safe mode, as that can wipe a9lh or brick the device on N3DS.
-        if(pressed == SAFE_MODE)
-            mcuShutDown();
+        if(pressed == SAFE_MODE){
+            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown the device
+            while(1);
+        }
 
         if(PDN_GPU_CNT != 1) loadSplash();
     }
@@ -64,7 +66,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
 
-    u32 firmSize;
+    u32 firmSize = 0;
 
     if(externalFirm)
     {
@@ -79,13 +81,12 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
             if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68)) firmSize = 0;
         }
     }
-    else firmSize = 0;
 
     if(!firmSize)
     {
         const char *firmFolders[3][2] = {{ "00000002", "20000002" },
-                                         { "00000102", "20000102" },
-                                         { "00000202", "20000202" }};
+        { "00000102", "20000102" },
+        { "00000202", "20000202" }};
 
         firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);
@@ -116,7 +117,7 @@ static inline void patchNativeFirm()
 
     //Apply signature checks patches
     u32 sigOffset,
-        sigOffset2;
+    sigOffset2;
 
     getSigChecks(arm9Section, section[2].size, &sigOffset, &sigOffset2);
     *(u16 *)sigOffset = sigPatch[0];
@@ -196,13 +197,13 @@ static inline void patchTwlAgbFirm(u32 firmType)
         switch(patches[i].type)
         {
             case 0:
-                memcpy((u8 *)firm + patches[i].offset[console], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
-                break;
+            memcpy((u8 *)firm + patches[i].offset[console], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
+            break;
             case 2:
-                *(u16 *)((u8 *)firm + patches[i].offset[console] + 2) = 0;
+            *(u16 *)((u8 *)firm + patches[i].offset[console] + 2) = 0;
             case 1:
-                *(u16 *)((u8 *)firm + patches[i].offset[console]) = patches[i].patch.type1;
-                break;
+            *(u16 *)((u8 *)firm + patches[i].offset[console]) = patches[i].patch.type1;
+            break;
         }
     }
 }
