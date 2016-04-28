@@ -19,34 +19,37 @@ u32 mountFs(void)
 
 u32 fileRead(void *dest, const char *path, u32 size)
 {
-    FRESULT fr;
-    FIL fp;
-    unsigned int br = 0;
+    FRESULT result;
+    FIL file;
 
-    fr = f_open(&fp, path, FA_READ);
-    if(fr == FR_OK)
+    result = f_open(&file, path, FA_READ);
+    if(result == FR_OK)
     {
-        if(!size) size = f_size(&fp);
-        fr = f_read(&fp, dest, size, &br);
+        unsigned int read;
+        if(!size) size = f_size(&file);
+        result = f_read(&file, dest, size, &read);
     }
 
-    f_close(&fp);
+    f_close(&file);
 
-    return fr ? 0 : 1;
+    return result;
 }
 
 u32 fileWrite(const void *buffer, const char *path, u32 size)
 {
-    FRESULT fr;
-    FIL fp;
-    unsigned int br = 0;
+    FRESULT result;
+    FIL file;
 
-    fr = f_open(&fp, path, FA_WRITE | FA_OPEN_ALWAYS);
-    if(fr == FR_OK) fr = f_write(&fp, buffer, size, &br);
+    result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
+    if(result == FR_OK)
+    {
+        unsigned int read;
+        result = f_write(&file, buffer, size, &read);
+    }
 
-    f_close(&fp);
+    f_close(&file);
 
-    return fr ? 0 : 1;
+    return result;
 }
 
 u32 defPayloadExists(void)
