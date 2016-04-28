@@ -21,20 +21,20 @@ u32 mountFs(void)
 
 u32 fileRead(void *dest, const char *path, u32 size)
 {
-    FRESULT fr;
-    FIL fp;
-    unsigned int br = 0;
+    FRESULT result;
+    FIL file;
 
-    fr = f_open(&fp, path, FA_READ);
-    if(fr == FR_OK)
+    result = f_open(&file, path, FA_READ);
+    if(result == FR_OK)
     {
-        if(!size) size = f_size(&fp);
-        fr = f_read(&fp, dest, size, &br);
+        unsigned int read;
+        if(!size) size = f_size(&file);
+        result = f_read(&file, dest, size, &read);
     }
 
-    f_close(&fp);
+    f_close(&file);
 
-    return fr ? 0 : 1;
+    return result ? 0 : 1;
 }
 
 void firmRead(void *dest, const char *firmFolder)
