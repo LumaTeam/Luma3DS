@@ -4,7 +4,10 @@
 
 #include "fs.h"
 #include "memory.h"
+#include "buttons.h"
 #include "fatfs/ff.h"
+
+#define PATTERN(a) a "_*.bin"
 
 static FATFS sdFs,
              nandFs;
@@ -52,16 +55,39 @@ u32 fileWrite(const void *buffer, const char *path, u32 size)
     return result;
 }
 
-u32 defPayloadExists(void)
+u32 payloadExists(u32 pressed)
 {
+    const char *pattern;
+
+    if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
+    else if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
+    else if(pressed & BUTTON_UP) pattern = PATTERN("up");
+    else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
+    else if(pressed & BUTTON_X) pattern = PATTERN("x");
+    else if(pressed & BUTTON_Y) pattern = PATTERN("y");
+    else if(pressed & BUTTON_R1) pattern = PATTERN("r");
+    else if(pressed & BUTTON_A) pattern = PATTERN("a");
+    else if(pressed & BUTTON_START) pattern = PATTERN("start");
+    else pattern = PATTERN("select");
+
     DIR dir;
     FILINFO info;
+    char path[] = "/luma/payloads";
 
-    FRESULT result = f_findfirst(&dir, &info, "/luma/payloads", "def_*.bin");
+    FRESULT result = f_findfirst(&dir, &info, path, pattern);
 
     f_closedir(&dir);
 
-    return (result == FR_OK && info.fname[0]);
+    if(result == FR_OK && info.fname[0])
+    {
+        path[sizeof(path) - 1] = '/';
+        memcpy((void *)0x24F02000, path, sizeof(path));
+        memcpy((void *)(0x24F02000 + sizeof(path)), info.altname, 13);
+
+        return 1;
+    }
+
+    return 0;
 }
 
 void firmRead(void *dest, const char *firmFolder)

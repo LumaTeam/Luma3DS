@@ -10,9 +10,9 @@
 
 #define PAYLOAD_ADDRESS	0x24F00000
 
-void loadPayload(void)
+void loadPayload(u32 pressed)
 {
-    if(defPayloadExists())
+    if(payloadExists(pressed))
     {
         initScreens();
         memcpy((void *)PAYLOAD_ADDRESS, loader, loader_size);

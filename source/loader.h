@@ -6,4 +6,4 @@
 
 #include "types.h"
 
-void loadPayload(void);
+void loadPayload(u32 pressed);

@@ -129,7 +129,7 @@ void main(void)
                the Safe Mode combo is not pressed, chainload an external payload */
             if(((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
                && pressed != SAFE_MODE)
-                loadPayload();
+                loadPayload(pressed);
 
             //If no configuration file exists or SELECT is held, load configuration menu
             if(needConfig == 2 || (pressed & BUTTON_SELECT))
