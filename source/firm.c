@@ -12,7 +12,6 @@
 #include "crypto.h"
 #include "draw.h"
 #include "screeninit.h"
-#include "loader.h"
 #include "buttons.h"
 #include "../build/patches.h"
 

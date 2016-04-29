@@ -2,6 +2,11 @@
 .align 4
 .global _start
 _start:
+    b start
+
+    .word 0, 0, 0, 0, 0, 0, 0
+
+start:
     @ Flush caches
     mov r0, #0
     mcr p15, 0, r0, c7, c5, 0  @ flush I-cache

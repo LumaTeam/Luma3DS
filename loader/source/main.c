@@ -11,7 +11,7 @@ void main(void)
     FIL payload;
     unsigned int read;
 
-    f_open(&payload, (char *)0x24F02000, FA_READ);
+    f_open(&payload, (char *)0x24F00004, FA_READ);
     f_read(&payload, (void *)PAYLOAD_ADDRESS, f_size(&payload), &read);
     f_close(&payload);
 

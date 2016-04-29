@@ -4,9 +4,12 @@
 
 #include "fs.h"
 #include "memory.h"
-#include "buttons.h"
+#include "screeninit.h"
+#include "../build/loader.h"
 #include "fatfs/ff.h"
+#include "buttons.h"
 
+#define PAYLOAD_ADDRESS	0x24F00000
 #define PATTERN(a) a "_*.bin"
 
 static FATFS sdFs,
@@ -55,7 +58,7 @@ u32 fileWrite(const void *buffer, const char *path, u32 size)
     return result;
 }
 
-u32 payloadExists(u32 pressed)
+void loadPayload(u32 pressed)
 {
     const char *pattern;
 
@@ -80,14 +83,15 @@ u32 payloadExists(u32 pressed)
 
     if(result == FR_OK && info.fname[0])
     {
+        initScreens();
+        memcpy((void *)PAYLOAD_ADDRESS, loader, loader_size);
+
         path[sizeof(path) - 1] = '/';
-        memcpy((void *)0x24F02000, path, sizeof(path));
-        memcpy((void *)(0x24F02000 + sizeof(path)), info.altname, 13);
+        memcpy((void *)(PAYLOAD_ADDRESS + 4), path, sizeof(path));
+        memcpy((void *)(PAYLOAD_ADDRESS + 4 + sizeof(path)), info.altname, 13);
 
-        return 1;
+        ((void (*)())PAYLOAD_ADDRESS)();
     }
-
-    return 0;
 }
 
 void firmRead(void *dest, const char *firmFolder)
