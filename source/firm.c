@@ -71,7 +71,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     u32 externalFirmLoaded = externalFirm &&
                              fileRead(firm, "/firmware.bin", 0) &&
-                             (((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68);
+                             (((u32)section[2].address >> 8) & 0xFF) == (console ? 0x60 : 0x68);
 
     if(!externalFirmLoaded)
     {
