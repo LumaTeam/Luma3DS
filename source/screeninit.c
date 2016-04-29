@@ -12,7 +12,7 @@
 #include "i2c.h"
 #include "../build/screeninit.h"
 
-#define SCREENINIT_ADDRESS 0x24F03000
+#define SCREENINIT_ADDRESS 0x24F02000
 
 vu32 *arm11Entry = (u32 *)0x1FFFFFF8;
 
