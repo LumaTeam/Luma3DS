@@ -5,9 +5,9 @@
 #include "fs.h"
 #include "memory.h"
 #include "screeninit.h"
-#include "../build/loader.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
+#include "../build/loader.h"
 
 #define PAYLOAD_ADDRESS	0x24F00000
 #define PATTERN(a) a "_*.bin"
