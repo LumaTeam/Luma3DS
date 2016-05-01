@@ -137,17 +137,24 @@ void main(void)
             //If screens are inited or the corresponding option is set, load splash screen
             if(PDN_GPU_CNT != 1 || CONFIG(7)) loadSplash();
 
-            u32 autoBootSys = CONFIG(0);
+            //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
+            if(pressed & BUTTON_R1)
+            {
+                nandType = updatedSys;
+                firmSource = !nandType;
+            }
 
-            //Determine if we need to boot an emuNAND or sysNAND
-            nandType = (pressed & BUTTON_L1) ? autoBootSys : ((pressed & BUTTON_R1) ? updatedSys : !autoBootSys);
+            /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
+               with their own FIRM */
+            else
+            {
+                nandType = CONFIG(0) != !(pressed & BUTTON_L1);
+                firmSource = nandType;
+            }
 
             /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
                or vice-versa, boot the second emuNAND */
-            if(nandType && ((!(pressed & BUTTON_B)) == CONFIG(3))) nandType++;
-
-            //Determine the NAND we should take the FIRM from
-            firmSource = (pressed & BUTTON_R1) ? !nandType : (nandType != 0);
+            if(nandType && (CONFIG(3) == !(pressed & BUTTON_B))) nandType++;
         }
     }
 
