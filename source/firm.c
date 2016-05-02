@@ -28,26 +28,22 @@ void main(void)
     u32 bootType,
         firmType,
         nandType,
-        a9lhInstalled,
+        a9lhMode,
         updatedSys,
         needConfig,
         newConfig,
         emuHeader;
 
     //Detect the console being used
-    console = (PDN_MPCORE_CFG == 1) ? 0 : 1;
+    console = PDN_MPCORE_CFG == 7;
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
 
-    //Attempt to read the configuration file
     const char configPath[] = "/luma/config.bin";
-    if(!fileRead(&config, configPath, 4)) needConfig = 1;
-    else
-    {
-        config = 0;
-        needConfig = 2;
-    }
+
+    //Attempt to read the configuration file
+    needConfig = !fileRead(&config, configPath, 4) ? 1 : 2;
 
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
@@ -57,82 +53,88 @@ void main(void)
         bootType = 1;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = *(vu8 *)0x23F00005 - '0';
+        firmType = *(vu8 *)0x23F00009 == '3' ? 3 : *(vu8 *)0x23F00005 - '0';
 
         nandType = BOOTCONFIG(0, 3);
         firmSource = BOOTCONFIG(2, 1);
-        a9lhInstalled = BOOTCONFIG(3, 1);
-        updatedSys = (a9lhInstalled && CONFIG(1)) ? 1 : 0;
+        a9lhMode = BOOTCONFIG(3, 1);
+        updatedSys = (a9lhMode && CONFIG(1)) ? 1 : 0;
     }
     else
     {
+        //Get pressed buttons
+        u32 pressed = HID_PAD;
+
+        //If no configuration file exists or SELECT is held, load configuration menu
+        if(needConfig == 2 || (pressed & BUTTON_SELECT))
+            configureCFW(configPath);
+
         bootType = 0;
         firmType = 0;
 
         //Determine if booting with A9LH
-        u32 a9lhBoot = !PDN_SPI_CNT ? 1 : 0;
-
-        //Retrieve the last booted FIRM
-        u32 previousFirm = CFG_BOOTENV;
-
-        //Get pressed buttons
-        u32 pressed = HID_PAD;
+        u32 a9lhBoot = !PDN_SPI_CNT;
 
         //Determine if A9LH is installed and the user has an updated sysNAND
         if(a9lhBoot || CONFIG(2))
         {
-            if(pressed == SAFE_MODE)
-                error("Using Safe Mode would brick you, or remove A9LH!");
-
-            a9lhInstalled = 1;
-
-            //Check setting for > 9.2 sysNAND
+            a9lhMode = 1;
             updatedSys = CONFIG(1);
         }
         else
         {
-            a9lhInstalled = 0;
+            a9lhMode = 0;
             updatedSys = 0;
         }
 
-        newConfig = a9lhInstalled << 3;
+        newConfig = a9lhMode << 3;
 
-        /* If booting with A9LH, it's a MCU reboot and a previous configuration exists,
-           try to force boot options */
-        if(a9lhBoot && previousFirm && needConfig == 1)
+        if(a9lhBoot)
         {
-            //Always force a sysNAND boot when quitting AGB_FIRM
-            if(previousFirm == 7)
-            {
-                nandType = 0;
-                firmSource = updatedSys ? 0 : BOOTCONFIG(2, 1);
-                needConfig = 0;
+            //Retrieve the last booted FIRM
+            u32 previousFirm = CFG_BOOTENV;
 
-                //Flag to prevent multiple boot options-forcing
-                newConfig |= 1 << 4;
-            }
-            /* Else, force the last used boot options unless a payload button or A/L/R are pressed
-               or the no-forcing flag is set */
-            else if(!(pressed & OVERRIDE_BUTTONS) && !BOOTCONFIG(4, 1))
+            //If it's a MCU reboot, try to force boot options
+            if(previousFirm)
             {
-                nandType = BOOTCONFIG(0, 3);
-                firmSource = BOOTCONFIG(2, 1);
-                needConfig = 0;
+                //Always force a sysNAND boot when quitting AGB_FIRM
+                if(previousFirm == 7)
+                {
+                    nandType = 0;
+                    firmSource = updatedSys ? 0 : BOOTCONFIG(2, 1);
+                    needConfig--;
+
+                    //Flag to prevent multiple boot options-forcing
+                    newConfig |= 1 << 4;
+                }
+
+                /* Else, force the last used boot options unless a payload button or A/L/R are pressed
+                    or the no-forcing flag is set */
+                else if(!(pressed & OVERRIDE_BUTTONS) && !BOOTCONFIG(4, 1))
+                {
+                    nandType = BOOTCONFIG(0, 3);
+                    firmSource = BOOTCONFIG(2, 1);
+                    needConfig--;
+                }
+            }
+
+            //If the SAFE MODE combo is held, force a sysNAND boot
+            else if(pressed == SAFE_MODE)
+            {
+                a9lhMode++;
+                nandType = 0;
+                firmSource = 0;
+                needConfig--;
             }
         }
 
         //Boot options aren't being forced
         if(needConfig)
         {
-            /* If L and R/Select or one of the single payload buttons are pressed and, if not using A9LH,
-               the Safe Mode combo is not pressed, chainload an external payload */
-            if(((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
-               && pressed != SAFE_MODE)
+            /* If L and R/A/Select or one of the single payload buttons are pressed,
+               chainload an external payload */
+            if((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
                 loadPayload(pressed);
-
-            //If no configuration file exists or SELECT is held, load configuration menu
-            if(needConfig == 2 || (pressed & BUTTON_SELECT))
-                configureCFW(configPath);
 
             //If screens are inited or the corresponding option is set, load splash screen
             if(PDN_GPU_CNT != 1 || CONFIG(7)) loadSplash();
@@ -186,8 +188,18 @@ void main(void)
 
     loadFirm(firmType, !firmType && updatedSys == !firmSource);
 
-    if(!firmType) patchNativeFirm(nandType, emuHeader, a9lhInstalled);
-    else patchTwlAgbFirm(firmType);
+    switch(firmType)
+    {
+        case 0:
+            patchNativeFirm(nandType, emuHeader, a9lhMode);
+            break;
+        case 3:
+            patchSafeFirm();
+            break;
+        default:
+            patchLegacyFirm(firmType);
+            break;
+    }
 
     launchFirm(bootType);
 }
@@ -204,16 +216,17 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
        doesn't match the console, load FIRM from CTRNAND */
     if(!externalFirmLoaded)
     {
-        const char *firmFolders[3][2] = {{ "00000002", "20000002" },
+        const char *firmFolders[4][2] = {{ "00000002", "20000002" },
                                          { "00000102", "20000102" },
-                                         { "00000202", "20000202" }};
+                                         { "00000202", "20000202" },
+                                         { "00000003", "20000003" }};
 
         firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);
     }
 }
 
-static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalled)
+static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
@@ -235,7 +248,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
         nativeFirmType = (memcmp(section[2].hash, firm90Hash, 0x10) == 0) ? 0 : 1;
     }
 
-    if(nativeFirmType || nandType)
+    if(nativeFirmType || nandType || a9lhMode == 2)
     {
         //Find the Process9 NCCH location
         u8 *proc9Offset = getProc9(arm9Section, section[2].size);
@@ -244,16 +257,11 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhInstalle
         if(nandType) patchEmuNAND(arm9Section, proc9Offset, emuHeader);
 
         //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
-        if(nativeFirmType) patchReboots(arm9Section, proc9Offset);
+        if(nativeFirmType || a9lhMode == 2) patchReboots(arm9Section, proc9Offset);
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    if(a9lhInstalled && !nandType)
-    {
-        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-        *writeOffset = writeBlock[0];
-        *(writeOffset + 1) = writeBlock[1];
-    }
+    if(a9lhMode && !nandType) patchFirmWrites(arm9Section, 1);
 
     //Apply signature checks patches
     u32 sigOffset,
@@ -340,7 +348,7 @@ static inline void injectLoader(void)
     }
 }
 
-static inline void patchTwlAgbFirm(u32 firmType)
+static inline void patchLegacyFirm(u32 firmType)
 {
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
     if(console)
@@ -385,6 +393,37 @@ static inline void patchTwlAgbFirm(u32 firmType)
                 *(u16 *)((u8 *)firm + patches[i].offset[console]) = patches[i].patch.type1;
                 break;
         }
+    }
+}
+
+static inline void patchSafeFirm(void)
+{
+    u8 *arm9Section = (u8 *)firm + section[2].offset;
+
+    if(console)
+    {
+        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
+        arm9Loader(arm9Section, 0);
+        firm->arm9Entry = (u8 *)0x801B01C;
+    }
+
+    //Apply FIRM0/1 writes patches to protect A9LH
+    patchFirmWrites(arm9Section, console);
+}
+
+static void patchFirmWrites(u8 *arm9Section, u32 mode)
+{
+    if(mode)
+    {
+        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
+        *writeOffset = writeBlock[0];
+        *(writeOffset + 1) = writeBlock[1];
+    }
+    else
+    {
+        u16 *writeOffset = getFirmWriteSafe(arm9Section, section[2].size);
+        *writeOffset = writeBlockSafe[0];
+        *(writeOffset + 1) = writeBlockSafe[1];
     }
 }
 
