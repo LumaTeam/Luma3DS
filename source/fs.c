@@ -9,9 +9,6 @@
 #include "buttons.h"
 #include "../build/loader.h"
 
-#define PAYLOAD_ADDRESS	0x24F00000
-#define PATTERN(a) a "_*.bin"
-
 static FATFS sdFs,
              nandFs;
 

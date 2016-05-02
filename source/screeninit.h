@@ -9,7 +9,8 @@
 
 #include "types.h"
 
-#define PDN_GPU_CNT (*(vu8 *)0x10141200)
+#define PDN_GPU_CNT        (*(vu8 *)0x10141200)
+#define SCREENINIT_ADDRESS 0x24F02000
 
 void deinitScreens(void);
 void initScreens(void);
