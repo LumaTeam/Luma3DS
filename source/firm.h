@@ -42,7 +42,5 @@ static inline void loadFirm(u32 firmType, u32 externalFirm);
 static inline void patchNativeFirm();
 static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset);
 static inline void injectLoader(void);
-static inline void patchLegacyFirm(u32 firmType);
-static inline void patchSafeFirm(void);
-static void patchFirmWrites(u8 *arm9Section, u32 mode);
+static inline void patchTwlAgbFirm(u32 firmType);
 static inline void launchFirm(u32 bootType);

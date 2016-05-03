@@ -25,7 +25,7 @@ void main(void)
     u32 bootType, firmType;
 
     //Detect the console being used
-    console = (PDN_MPCORE_CFG == 7); //if the result is 0111 (have 4 cores)
+    console = (PDN_MPCORE_CFG == 1) ? 0 : 1; //3rd core exists ? n3ds : o3ds
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
@@ -34,42 +34,29 @@ void main(void)
     if(*(vu8 *)0x23F00005)
     {
         bootType = 1;
-        //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = *(vu8 *)0x23F00009 == '3' ? 3 : *(vu8 *)0x23F00005 - '0';
+        firmType = *(vu8 *)0x23F00005 - '0'; //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
     }
     else
     {
         bootType = 0;
         firmType = 0;
 
+        //Get pressed buttons
+        u32 pressed = HID_PAD;
+
+        //Prevent safe mode, as that can wipe a9lh or brick the device on N3DS.
+        if(pressed == SAFE_MODE){
+            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown the device
+            while(1);
+        }
+
         if(PDN_GPU_CNT != 1) loadSplash();
     }
-    // if(pressed == SAFE_MODE)
-    // {
-    //     a9lhMode++;
-    //     nandType = 0;
-    //     firmSource = 0;
-    //     needConfig--;
-    // }
 
     loadFirm(firmType, !firmType);
 
-    switch(firmType)
-    {
-        case 0:
-            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown the device
-            while(1);
-            patchNativeFirm();
-            break;
-        case 3:
-            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown the device
-            while(1);
-            patchSafeFirm();
-            break;
-        default:
-            patchLegacyFirm(firmType);
-            break;
-    }
+    if(!firmType) patchNativeFirm();
+    else patchTwlAgbFirm(firmType);
 
     launchFirm(bootType);
 }
@@ -88,10 +75,9 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
     if(!externalFirmLoaded)
     {
-        const char *firmFolders[4][2] = {{ "00000002", "20000002" },
+        const char *firmFolders[3][2] = {{ "00000002", "20000002" },
                                          { "00000102", "20000102" },
-                                         { "00000202", "20000202" },
-                                         { "00000003", "20000003" }};
+                                         { "00000202", "20000202" }};
 
         firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);
@@ -116,10 +102,9 @@ static inline void patchNativeFirm()
     patchReboots(arm9Section, proc9Offset);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    // u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-    // *writeOffset = writeBlock[0];
-    // *(writeOffset + 1) = writeBlock[1];
-    patchFirmWrites(arm9Section, 1);
+    u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
+    *writeOffset = writeBlock[0];
+    *(writeOffset + 1) = writeBlock[1];
 
     //Apply signature checks patches
     u32 sigOffset,
@@ -167,7 +152,7 @@ static inline void injectLoader(void)
     }
 }
 
-static inline void patchLegacyFirm(u32 firmType)
+static inline void patchTwlAgbFirm(u32 firmType)
 {
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
     if(console)
@@ -211,37 +196,6 @@ static inline void patchLegacyFirm(u32 firmType)
             *(u16 *)((u8 *)firm + patches[i].offset[console]) = patches[i].patch.type1;
             break;
         }
-    }
-}
-
-static inline void patchSafeFirm(void)
-{
-    u8 *arm9Section = (u8 *)firm + section[2].offset;
-
-    if(console)
-    {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, 0);
-        firm->arm9Entry = (u8 *)0x801B01C;
-    }
-
-    //Apply FIRM0/1 writes patches to protect A9LH
-    patchFirmWrites(arm9Section, console);
-}
-
-static void patchFirmWrites(u8 *arm9Section, u32 mode)
-{
-    if(mode)
-    {
-        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-        *writeOffset = writeBlock[0];
-        *(writeOffset + 1) = writeBlock[1];
-    }
-    else
-    {
-        u16 *writeOffset = getFirmWriteSafe(arm9Section, section[2].size);
-        *writeOffset = writeBlockSafe[0];
-        *(writeOffset + 1) = writeBlockSafe[1];
     }
 }
 
