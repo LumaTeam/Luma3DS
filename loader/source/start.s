@@ -4,7 +4,7 @@
 _start:
     b start
 
-    .word 0, 0, 0, 0, 0, 0, 0
+    .word 0
 
 start:
     @ Flush caches

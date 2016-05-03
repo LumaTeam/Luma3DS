@@ -12,8 +12,6 @@
 #include "i2c.h"
 #include "../build/screeninit.h"
 
-#define SCREENINIT_ADDRESS 0x24F02000
-
 vu32 *arm11Entry = (u32 *)0x1FFFFFF8;
 
 void deinitScreens(void)
@@ -49,12 +47,14 @@ void initScreens(void)
 {
     if(PDN_GPU_CNT == 1)
     {
-        memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
+        u32 *const screenInitAddress = (u32 *)0x24FFFC00;
+
+        memcpy(screenInitAddress, screeninit, screeninit_size);
 
         //Write brightness level for the stub to pick up
-        *(vu32 *)(SCREENINIT_ADDRESS + 8) = MULTICONFIG(0);
+        screenInitAddress[2] = MULTICONFIG(0);
 
-        *arm11Entry = SCREENINIT_ADDRESS;
+        *arm11Entry = (u32)screenInitAddress;
         while(*arm11Entry);
 
         //Turn on backlight

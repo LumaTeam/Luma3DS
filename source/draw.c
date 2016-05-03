@@ -10,9 +10,6 @@
 #include "memory.h"
 #include "font.h"
 
-#define SCREEN_TOP_WIDTH 400
-#define SCREEN_TOP_HEIGHT 240
-
 static const struct fb {
     u8 *top_left;
     u8 *top_right;

@@ -15,31 +15,27 @@ void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND)
                                   (nandSize > 0x200000 ? 0x400000 : 0x200000);
 
     //Check for RedNAND
-    if(sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) == 0)
+    if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) &&
+       *(u32 *)(temp + 0x100) == NCSD_MAGIC)
     {
-        if(*(u32 *)(temp + 0x100) == NCSD_MAGIC)
-        {
-            *off = nandOffset + 1;
-            *head = nandOffset + 1;
-        }
+        *off = nandOffset + 1;
+        *head = nandOffset + 1;
+    }
 
-        //Check for Gateway emuNAND
-        else if(sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) == 0)
-        {
-            if(*(u32 *)(temp + 0x100) == NCSD_MAGIC)
-            {
-                *off = nandOffset;
-                *head = nandOffset + nandSize;
-            }
+    //Check for Gateway emuNAND
+    else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) &&
+            *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+    {
+        *off = nandOffset;
+        *head = nandOffset + nandSize;
+    }
 
-            /* Fallback to the first emuNAND if there's no second one,
-               or to SysNAND if there isn't any */
-            else
-            {
-                (*emuNAND)--;
-                if(*emuNAND) getEmunandSect(off, head, emuNAND);
-            }
-        }
+    /* Fallback to the first emuNAND if there's no second one,
+       or to SysNAND if there isn't any */
+    else
+    {
+        (*emuNAND)--;
+        if(*emuNAND) getEmunandSect(off, head, emuNAND);
     }
 }
 

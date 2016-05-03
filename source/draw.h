@@ -8,8 +8,12 @@
 
 #include "types.h"
 
-#define SPACING_Y   10
-#define SPACING_X   8
+#define SCREEN_TOP_WIDTH  400
+#define SCREEN_TOP_HEIGHT 240
+
+#define SPACING_Y 10
+#define SPACING_X 8
+
 #define COLOR_TITLE 0xFF9900
 #define COLOR_WHITE 0xFFFFFF
 #define COLOR_RED   0x0000FF

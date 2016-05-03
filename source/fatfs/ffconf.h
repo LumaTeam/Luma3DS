@@ -15,7 +15,7 @@
 /  and optional writing functions as well. */
 
 
-#define _FS_MINIMIZE	1
+#define _FS_MINIMIZE	0
 /* This option defines minimization level to remove some basic API functions.
 /
 /   0: All basic functions are enabled.

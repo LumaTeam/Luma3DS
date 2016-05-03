@@ -3,9 +3,9 @@
 */
 
 #include "utils.h"
+#include "i2c.h"
 #include "screeninit.h"
 #include "draw.h"
-#include "i2c.h"
 #include "buttons.h"
 
 u32 waitInput(void)
@@ -35,12 +35,6 @@ u32 waitInput(void)
     return key;
 }
 
-void mcuShutDown(void)
-{
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
-    while(1);
-}
-
 void mcuReboot(void)
 {
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
@@ -57,5 +51,6 @@ void error(const char *message)
 
     waitInput();
 
-    mcuShutDown();
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
+    while(1);
 }

@@ -7,6 +7,7 @@
 #include "types.h"
 
 #define HID_PAD                (*(vu32 *)0x10146000 ^ 0xFFF)
+
 #define BUTTON_R1              (1 << 8)
 #define BUTTON_L1              (1 << 9)
 #define BUTTON_A               1
@@ -19,6 +20,7 @@
 #define BUTTON_LEFT            (1 << 5)
 #define BUTTON_UP              (1 << 6)
 #define BUTTON_DOWN            (1 << 7)
+
 #define SAFE_MODE              (BUTTON_R1 | BUTTON_L1 | BUTTON_A | BUTTON_UP)
 #define OVERRIDE_BUTTONS       (BUTTON_B ^ 0xFFF)
 #define SINGLE_PAYLOAD_BUTTONS (BUTTON_LEFT | BUTTON_RIGHT | BUTTON_UP | BUTTON_DOWN | BUTTON_START | BUTTON_X | BUTTON_Y)

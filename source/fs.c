@@ -5,12 +5,10 @@
 #include "fs.h"
 #include "memory.h"
 #include "screeninit.h"
+#include "exceptions.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
 #include "../build/loader.h"
-
-#define PAYLOAD_ADDRESS	0x24F00000
-#define PATTERN(a) a "_*.bin"
 
 static FATFS sdFs,
              nandFs;
@@ -58,7 +56,7 @@ u32 fileWrite(const void *buffer, const char *path, u32 size)
     return result;
 }
 
-void loadPayload(u32 pressed)
+void loadPayload(u32 pressed, u32 devMode)
 {
     const char *pattern;
 
@@ -71,11 +69,12 @@ void loadPayload(u32 pressed)
     else if(pressed & BUTTON_R1) pattern = PATTERN("r");
     else if(pressed & BUTTON_A) pattern = PATTERN("a");
     else if(pressed & BUTTON_START) pattern = PATTERN("start");
-    else pattern = PATTERN("select");
+    else if(pressed & BUTTON_SELECT) pattern = PATTERN("select");
+    else pattern = "nlc.bin";
 
     DIR dir;
     FILINFO info;
-    char path[] = "/luma/payloads";
+    char path[28] = "/luma/payloads";
 
     FRESULT result = f_findfirst(&dir, &info, path, pattern);
 
@@ -83,14 +82,31 @@ void loadPayload(u32 pressed)
 
     if(result == FR_OK && info.fname[0])
     {
+        //Only when "Enable developer features" is set
+        if(devMode) installArm9Handlers();
+
         initScreens();
-        memcpy((void *)PAYLOAD_ADDRESS, loader, loader_size);
 
-        path[sizeof(path) - 1] = '/';
-        memcpy((void *)(PAYLOAD_ADDRESS + 4), path, sizeof(path));
-        memcpy((void *)(PAYLOAD_ADDRESS + 4 + sizeof(path)), info.altname, 13);
+        u32 *const loaderAddress = (u32 *)0x24FFFB00;
 
-        ((void (*)())PAYLOAD_ADDRESS)();
+        memcpy(loaderAddress, loader, loader_size);
+
+        path[14] = '/';
+        memcpy(&path[15], info.altname, 13);
+
+        FIL payload;
+        unsigned int read;
+
+        f_open(&payload, path, FA_READ);
+        u32 size = f_size(&payload);
+        f_read(&payload, (void *)0x24F00000, size, &read);
+        f_close(&payload);
+
+        if(pattern[0] == 'n') f_unlink(path);
+
+        loaderAddress[1] = size;
+
+        ((void (*)())loaderAddress)();
     }
 }
 

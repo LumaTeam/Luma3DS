@@ -1,19 +1,10 @@
-#include "fatfs/ff.h"
-
-#define PAYLOAD_ADDRESS	0x23F00000
+#include "memory.h"
 
 void main(void)
 {
-    FATFS fs;
+    void *payloadAddress = (void *)0x23F00000;
 
-    f_mount(&fs, "0:", 1);
+    memcpy(payloadAddress, (void*)0x24F00000, *(u32 *)0x24FFFB04);
 
-    FIL payload;
-    unsigned int read;
-
-    f_open(&payload, (char *)0x24F00004, FA_READ);
-    f_read(&payload, (void *)PAYLOAD_ADDRESS, f_size(&payload), &read);
-    f_close(&payload);
-
-    ((void (*)())PAYLOAD_ADDRESS)();
+    ((void (*)())payloadAddress)();
 }
