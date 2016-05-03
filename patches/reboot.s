@@ -54,10 +54,13 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         movne r4, #0
         bne read_payload ; Go read the real payload.
 
-    add r0, sp, #0x3A8 - 0x70
-    ldr r0, [r0, #0x27]
+    ; Copy the last digits of the wanted firm to the 5th byte of the payload
+    add r2, sp, #0x3A8 - 0x70
+    ldr r0, [r2, #0x27]
     ldr r1, =payload_addr + 4
-    str r0, [r1] ; Copy the last digits of the wanted firm to the 5th byte of the payload.
+    str r0, [r1]
+    ldr r0, [r2, #0x2B]
+    str r0, [r1, #4]
 
     ; Set kernel state
     mov r0, #0

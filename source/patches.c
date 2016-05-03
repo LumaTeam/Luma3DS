@@ -15,7 +15,8 @@ const u32 mpuPatch[3] = {0x00360003, 0x00200603, 0x001C0603};
 
 const u16 nandRedir[2] = {0x4C00, 0x47A0},
           sigPatch[2] = {0x2000, 0x4770},
-          writeBlock[2] = {0x2000, 0x46C0};
+          writeBlock[2] = {0x2000, 0x46C0},
+          writeBlockSafe[2] = {0x2400, 0xE01D};
 
 const u8 unitInfoPatch = 0xE3;
 
@@ -65,6 +66,14 @@ u16 *getFirmWrite(u8 *pos, u32 size)
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
+}
+
+u16 *getFirmWriteSafe(u8 *pos, u32 size)
+{
+    //Look for FIRM writing code
+    const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
+
+    return (u16 *)memsearch(pos, pattern, size, 4);
 }
 
 u8 *getUnitInfoValueSet(u8 *pos, u32 size)
