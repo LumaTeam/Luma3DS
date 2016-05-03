@@ -37,7 +37,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         orr r6, 1
         blx r6
         cmp r0, #0
-        bne fallback ; If  SaltFW.bin is not found, try the arm9loaderhax.bin.
+        bne fallback ; If SaltFW.bin is not found, try the arm9loaderhax.bin.
 
     read_payload:
         ; Read file
@@ -45,7 +45,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         adr r1, bytes_read
         ldr r2, =payload_addr
         cmp r4, #0
-        movne r3, #0x12000 ; Skip the first 0x12000 bytes.
+        movne r3, #0x0 ; Skip the first 0 bytes, because why not.
         moveq r3, payload_maxsize
 	ldr r6, [sp, #0x3A8-0x198]
 	ldr r6, [r6, #0x28]

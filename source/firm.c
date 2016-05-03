@@ -44,26 +44,15 @@ void main(void)
 
         if(PDN_GPU_CNT != 1) loadSplash();
     }
-    // if(pressed == SAFE_MODE)
-    // {
-    //     a9lhMode++;
-    //     nandType = 0;
-    //     firmSource = 0;
-    //     needConfig--;
-    // }
 
     loadFirm(firmType, !firmType);
 
     switch(firmType)
     {
         case 0:
-            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown the device
-            while(1);
             patchNativeFirm();
             break;
         case 3:
-            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown the device
-            while(1);
             patchSafeFirm();
             break;
         default:
@@ -116,9 +105,6 @@ static inline void patchNativeFirm()
     patchReboots(arm9Section, proc9Offset);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    // u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-    // *writeOffset = writeBlock[0];
-    // *(writeOffset + 1) = writeBlock[1];
     patchFirmWrites(arm9Section, 1);
 
     //Apply signature checks patches
