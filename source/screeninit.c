@@ -50,12 +50,13 @@ void initScreens(void)
 {
     if(PDN_GPU_CNT == 1)
     {
-        memcpy((void *)SCREENINIT_ADDRESS, screeninit, screeninit_size);
+        u32 *const screenInitAddress = (u32 *)0x24FFFC00;
+        memcpy(screenInitAddress, screeninit, screeninit_size);
 
         //Write brightness level for the stub to pick up
-        *(vu32 *)(SCREENINIT_ADDRESS + 8) = 0;
+        screenInitAddress[2] = 2; // equal to 3 in home menu, and useless if you use a9lh with screeninit
 
-        *arm11Entry = SCREENINIT_ADDRESS;
+        *arm11Entry = (u32)screenInitAddress;
         while(*arm11Entry);
 
         //Turn on backlight
