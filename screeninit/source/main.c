@@ -3,7 +3,7 @@
 void main(void)
 {
    const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
-   u32 brightnessLevel = *(vu32 *)0x24F02008;
+   u32 brightnessLevel = *(vu32 *)0x24FFFC08;
    vu32 *const arm11 = (u32 *)0x1FFFFFF8;
 
    *(vu32 *)0x10141200 = 0x1007F;

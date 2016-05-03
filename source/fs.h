@@ -6,7 +6,6 @@
 
 #include "types.h"
 
-#define PAYLOAD_ADDRESS	0x24F00000
 #define PATTERN(a)      a "_*.bin"
 
 u32 mountFs(void);
