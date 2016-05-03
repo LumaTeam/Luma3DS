@@ -4,8 +4,6 @@
 
 #include "utils.h"
 #include "i2c.h"
-#include "screeninit.h"
-#include "draw.h"
 #include "buttons.h"
 
 u32 waitInput(void)
@@ -38,19 +36,5 @@ u32 waitInput(void)
 void mcuReboot(void)
 {
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
-    while(1);
-}
-
-void error(const char *message)
-{
-    initScreens();
-
-    drawString("An error has occurred:", 10, 10, COLOR_RED);
-    int posY = drawString(message, 10, 30, COLOR_WHITE);
-    drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
-
-    waitInput();
-
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
     while(1);
 }

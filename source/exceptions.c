@@ -6,15 +6,18 @@
 #include "exceptions.h"
 #include "fs.h"
 #include "memory.h"
+#include "screeninit.h"
+#include "draw.h"
+#include "i2c.h"
 #include "utils.h"
 #include "../build/arm9_exceptions.h"
 
-#define PAYLOAD_ADDRESS 0x01FF8000
-
 void installArm9Handlers(void)
 {
-    memcpy((void *)PAYLOAD_ADDRESS, arm9_exceptions, arm9_exceptions_size);
-    ((void (*)())PAYLOAD_ADDRESS)();
+    void *payloadAddress = (void *)0x01FF8000;
+
+    memcpy(payloadAddress, arm9_exceptions, arm9_exceptions_size);
+    ((void (*)())payloadAddress)();
 }
 
 void detectAndProcessExceptionDumps(void)
@@ -33,6 +36,16 @@ void detectAndProcessExceptionDumps(void)
 
         fileWrite((void *)dump, path, dump[5]);
 
-        error("An ARM9 exception occured.\nPlease check your /luma/dumps/arm9 folder.");
+        initScreens();
+
+        drawString("An ARM9 exception occured", 10, 10, COLOR_RED);
+        int posY = drawString("You can find a dump in the following file:", 10, 30, COLOR_WHITE);
+        posY = drawString(path, posY + SPACING_Y, 30, COLOR_WHITE);
+        drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+
+        waitInput();
+
+        i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
+        while(1);
     }
 }
