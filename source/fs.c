@@ -20,39 +20,33 @@ u32 mountFs(void)
     return 1;
 }
 
-u32 fileRead(void *dest, const char *path, u32 size)
+u32 fileRead(void *dest, const char *path)
 {
-    FRESULT result;
     FIL file;
+    u32 size;
 
-    result = f_open(&file, path, FA_READ);
-    if(result == FR_OK)
+    if(f_open(&file, path, FA_READ) == FR_OK)
     {
         unsigned int read;
-        if(!size) size = f_size(&file);
-        result = f_read(&file, dest, size, &read);
+        size = f_size(&file);
+        f_read(&file, dest, size, &read);
+        f_close(&file);
     }
+    else size = 0;
 
-    f_close(&file);
-
-    return result;
+    return size;
 }
 
-u32 fileWrite(const void *buffer, const char *path, u32 size)
+void fileWrite(const void *buffer, const char *path, u32 size)
 {
-    FRESULT result;
     FIL file;
 
-    result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
-    if(result == FR_OK)
+    if(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS) == FR_OK)
     {
-        unsigned int read;
-        result = f_write(&file, buffer, size, &read);
+        unsigned int written;
+        f_write(&file, buffer, size, &written);
+        f_close(&file);
     }
-
-    f_close(&file);
-
-    return result;
 }
 
 void loadPayload(u32 pressed)
@@ -89,15 +83,7 @@ void loadPayload(u32 pressed)
         path[14] = '/';
         memcpy(&path[15], info.altname, 13);
 
-        FIL payload;
-        unsigned int read;
-
-        f_open(&payload, path, FA_READ);
-        u32 size = f_size(&payload);
-        f_read(&payload, (void *)0x24F00000, size, &read);
-        f_close(&payload);
-
-        loaderAddress[1] = size;
+        loaderAddress[1] = fileRead((void *)0x24F00000, path);
 
         ((void (*)())loaderAddress)();
     }
@@ -149,5 +135,5 @@ void firmRead(void *dest, const char *firmFolder)
         id >>= 4;
     }
 
-    fileRead(dest, path, 0);
+    fileRead(dest, path);
 }
