@@ -44,7 +44,7 @@ void main(void)
     const char configPath[] = "/luma/config.bin";
 
     //Attempt to read the configuration file
-    needConfig = !fileRead(&config, configPath, 4) ? 1 : 2;
+    needConfig = fileRead(&config, configPath) ? 1 : 2;
 
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
@@ -59,7 +59,7 @@ void main(void)
         nandType = BOOTCONFIG(0, 3);
         firmSource = BOOTCONFIG(2, 1);
         a9lhMode = BOOTCONFIG(3, 1);
-        updatedSys = (a9lhMode && CONFIG(1)) ? 1 : 0;
+        updatedSys = a9lhMode && CONFIG(1);
     }
     else
     {
@@ -214,7 +214,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
     section = firm->section;
 
     u32 externalFirmLoaded = externalFirm &&
-                             !fileRead(firm, "/luma/firmware.bin", 0) &&
+                             fileRead(firm, "/luma/firmware.bin") &&
                              (((u32)section[2].address >> 8) & 0xFF) == (console ? 0x60 : 0x68);
 
     /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
@@ -240,7 +240,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     if(console)
     {
         //Determine if we're booting the 9.0 FIRM
-        nativeFirmType = (arm9Section[0x51] == 0xFF) ? 0 : 1;
+        nativeFirmType = arm9Section[0x51] != 0xFF;
 
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
         arm9Loader(arm9Section, nativeFirmType);
@@ -250,7 +250,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     {
         //Determine if we're booting the 9.0 FIRM
         u8 firm90Hash[0x10] = {0x27, 0x2D, 0xFE, 0xEB, 0xAF, 0x3F, 0x6B, 0x3B, 0xF5, 0xDE, 0x4C, 0x41, 0xDE, 0x95, 0x27, 0x6A};
-        nativeFirmType = (memcmp(section[2].hash, firm90Hash, 0x10) == 0) ? 0 : 1;
+        nativeFirmType = memcmp(section[2].hash, firm90Hash, 0x10) != 0;
     }
 
     if(nativeFirmType || nandType || a9lhMode == 2)

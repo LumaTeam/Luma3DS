@@ -38,9 +38,9 @@ void detectAndProcessExceptionDumps(void)
 
         initScreens();
 
-        drawString("An ARM9 exception occured", 10, 10, COLOR_RED);
+        drawString("An ARM9 exception occurred", 10, 10, COLOR_RED);
         int posY = drawString("You can find a dump in the following file:", 10, 30, COLOR_WHITE);
-        posY = drawString(path, posY + SPACING_Y, 30, COLOR_WHITE);
+        posY = drawString(path, 10, posY + SPACING_Y, COLOR_WHITE);
         drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
 
         waitInput();
