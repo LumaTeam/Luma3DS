@@ -234,8 +234,19 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 
     if(console)
     {
-        //Determine if we're booting the 9.0 FIRM
-        nativeFirmType = arm9Section[0x51] != 0xFF;
+        //Determine the NATIVE_FIRM version
+        switch(arm9Section[0x53])
+        {
+            case 0xFF:
+                nativeFirmType = 0;
+                break;
+            case '1':
+                nativeFirmType = 1;
+                break;
+            default:
+                nativeFirmType = 2;
+                break;
+        }
 
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
         arm9Loader(arm9Section, nativeFirmType);

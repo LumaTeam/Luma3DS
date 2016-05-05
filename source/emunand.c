@@ -43,9 +43,9 @@ u32 getSDMMC(u8 *pos, u32 size)
 {
     //Look for struct code
     const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
-    const u8 *off = memsearch(pos, pattern, size, 4) - 1;
+    const u8 *off = memsearch(pos, pattern, size, 4);
 
-    return *(u32 *)(off + 0x0A) + *(u32 *)(off + 0x0E);
+    return *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
 }
 
 void getEmuRW(u8 *pos, u32 size, u32 *readOff, u32 *writeOff)
