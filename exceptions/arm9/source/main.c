@@ -73,12 +73,14 @@ void main(void)
     setupStack(7, SP);  //Abort
     setupStack(11, SP); //Undefined
 
-    *(vu32 *)0x08000004 = 0xE51FF004;   
-    *(vu32 *)0x08000008 = (u32)FIQHandler;
-    *(vu32 *)0x08000014 = 0xE51FF004;   
-    *(vu32 *)0x08000018 = (u32)undefinedInstructionHandler;
-    *(vu32 *)0x0800001C = 0xE51FF004;   
-    *(vu32 *)0x08000020 = (u32)prefetchAbortHandler;
+	//IRQHandler is at 0x08000000, but we won't handle it for obvious reasons
+    *(vu32 *)0x08000008 = 0xE51FF004;   
+    *(vu32 *)0x0800000C = (u32)FIQHandler;
+    //svcHandler is at 0x08000010, but we won't handle svc either
+	*(vu32 *)0x08000018 = 0xE51FF004;   
+    *(vu32 *)0x0800001C = (u32)undefinedInstructionHandler;
+    *(vu32 *)0x08000020 = 0xE51FF004;   
+    *(vu32 *)0x08000024 = (u32)prefetchAbortHandler;
     *(vu32 *)0x08000028 = 0xE51FF004;
     *(vu32 *)0x0800002C = (u32)dataAbortHandler;
 }
