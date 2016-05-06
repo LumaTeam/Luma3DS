@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Requires Python >= 3.2 or >= 2.7
 
-# This is part of AuReiNand
+# This is part of Luma3DS, see LICENSE.txt for details
 
 __author__    = "TuxSH"
 __copyright__ = "Copyright (c) 2016 TuxSH" 
@@ -9,7 +9,7 @@ __license__   = "GPLv3"
 __version__   = "v1.0"
 
 """
-Parses AuReiNand exception dumps
+Parses Luma3DS exception dumps
 """
 
 import argparse
@@ -70,7 +70,7 @@ handledExceptionNames = ("FIQ", "undefined instruction", "prefetch abort", "data
 registerNames = tuple("r{0}".format(i) for i in range(13)) + ("sp", "lr", "pc", "cpsr")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Parse AuReiNand exception dumps")
+    parser = argparse.ArgumentParser(description="Parse Luma3DS exception dumps")
     parser.add_argument("filename")
     args = parser.parse_args()
     data = b""
