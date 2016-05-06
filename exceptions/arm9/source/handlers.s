@@ -23,17 +23,16 @@
 .global _commonHandler
 .type   _commonHandler, %function
 _commonHandler:
-    sub r0, lr, r0          @ address of instruction that triggered the exception; we will handle the undef+Thumb case later
     mrs r2, spsr
-    
     mov r6, sp
     mrs r3, cpsr
+    orr r3, #0x1c0          @ disable Imprecise Aborts, IRQ and FIQ (AIF)
     ands r4, r2, #0xf       @ get the mode that triggered the exception
     moveq r4, #0xf          @ usr => sys
     bic r5, r3, #0xf
     orr r5, r4
     msr cpsr_c, r5          @ change processor mode
-    stmfd r6!, {r8-r14}
+    stmfd r6!, {r8-lr}
     msr cpsr_c, r3          @ restore processor mode
     mov sp, r6
     
