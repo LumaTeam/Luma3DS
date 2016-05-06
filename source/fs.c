@@ -5,7 +5,6 @@
 #include "fs.h"
 #include "memory.h"
 #include "screeninit.h"
-#include "exceptions.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
 #include "../build/loader.h"
@@ -50,7 +49,7 @@ void fileWrite(const void *buffer, const char *path, u32 size)
     }
 }
 
-void loadPayload(u32 pressed, u32 devMode)
+void loadPayload(u32 pressed)
 {
     const char *pattern;
 
@@ -76,9 +75,6 @@ void loadPayload(u32 pressed, u32 devMode)
 
     if(result == FR_OK && info.fname[0])
     {
-        //Only when "Enable developer features" is set
-        if(devMode) installArm9Handlers();
-
         initScreens();
 
         u32 *const loaderAddress = (u32 *)0x24FFFB00;
