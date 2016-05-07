@@ -272,10 +272,24 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
     }
 }
 
+static inline void patchKernelFCRAMAndVRAMMappingPermissions(u8* arm11Section1)
+{
+    static const u8 MMUConfigPattern[] = {
+        0xC4, 0xDD, 0xFA, 0x1F,
+        0x16, 0x64, 0x01, 0x00,
+        0xBC, 0xDD, 0xFA, 0x1F,
+        0x00, 0x50, 0xFF, 0x1F
+    };
+    
+    u32* off = (u32 *)memsearch(arm11Section1, MMUConfigPattern, section[1].size, sizeof(MMUConfigPattern));
+    if(off != NULL) off[1] &= ~(1 << 4); //clear XN bit 
+}
+
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
-
+    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
+    
     u32 nativeFirmType;
 
     if(console)
@@ -334,6 +348,9 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         //Apply UNITINFO patch
         u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
         *unitInfoOffset = unitInfoPatch;
+        
+        //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
+        patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1);
     }
 
     //Replace the FIRM loader with the injector while copying section0
