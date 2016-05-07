@@ -280,8 +280,19 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 
     if(console)
     {
-        //Determine if we're booting the 9.0 FIRM
-        nativeFirmType = arm9Section[0x51] != 0xFF;
+        //Determine the NATIVE_FIRM version
+        switch(arm9Section[0x53])
+        {
+            case 0xFF:
+                nativeFirmType = 0;
+                break;
+            case '1':
+                nativeFirmType = 1;
+                break;
+            default:
+                nativeFirmType = 2;
+                break;
+        }
 
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
         arm9Loader(arm9Section, nativeFirmType);
@@ -325,8 +336,8 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         *unitInfoOffset = unitInfoPatch;
     }
 
-    //Replace the FIRM loader with the injector
-    injectLoader();
+    //Replace the FIRM loader with the injector while copying section0
+    copySection0AndInjectLoader();
 }
 
 static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
@@ -384,21 +395,16 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
     *pos_fopen = fOpenOffset;
 }
 
-static inline void injectLoader(void)
+static inline void copySection0AndInjectLoader(void)
 {
     u32 loaderSize;
-
-    void *loaderOffset = getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderSize);
-
-    //Check that the injector CXI isn't larger than the original
-    if((u32)injector_size <= loaderSize)
-    {
-        memcpy(loaderOffset, injector, injector_size);
-
-        //Patch content size and ExeFS size to match the repaced loader's ones
-        *((u32 *)loaderOffset + 0x41) = loaderSize / 0x200;
-        *((u32 *)loaderOffset + 0x69) = loaderSize / 0x200 - 5;
-    }
+    u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+    u32 injectorOffset = (u8 *)getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderSize) - arm11Section0;
+    u32 remaining = section[0].size - (injectorOffset + loaderSize);
+    
+    memcpy(section[0].address, arm11Section0, injectorOffset);
+    memcpy(section[0].address + injectorOffset, injector, injector_size);
+    memcpy(section[0].address + injectorOffset + injector_size, arm11Section0 + section[0].size - remaining, remaining);
 }
 
 static inline void patchLegacyFirm(u32 firmType)
@@ -483,7 +489,7 @@ static void patchFirmWrites(u8 *arm9Section, u32 mode)
 static inline void launchFirm(u32 bootType)
 {
     //Copy FIRM sections to respective memory locations
-    for(u32 i = 0; i < 4 && section[i].size; i++)
+    for(u32 i = 1; i < 4 && section[i].size; i++)
         memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
 
     //Determine the ARM11 entry to use

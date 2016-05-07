@@ -84,9 +84,16 @@ u8 *getUnitInfoValueSet(u8 *pos, u32 size)
 
 void *getLoader(u8 *pos, u32 size, u32 *loaderSize)
 {
-    u8 *const off = memsearch(pos, "loade", size, 5);
-
-    *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
-
-    return off - 0x200;
+    u8 *off = pos;
+    do
+    {
+        if(*(u32 *)(off + 0x200) == 0x64616F6C) break; //"load"
+        off += *(u32 *)(off + 0x104) * 0x200; //size of the CXI
+    }
+    while(off < pos + size);
+    
+    if(off >= pos + size) return NULL;
+    
+    *loaderSize = *(u32 *)(off + 0x104) * 0x200;
+    return off;
 }
