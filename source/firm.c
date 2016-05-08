@@ -201,7 +201,7 @@ void main(void)
             break;
     }
 
-    launchFirm(bootType);
+    launchFirm(bootType, (firmType == 0) ? 1 : 0);
 }
 
 static inline void loadFirm(u32 firmType, u32 externalFirm)
@@ -433,10 +433,10 @@ static void patchFirmWrites(u8 *arm9Section, u32 mode)
     }
 }
 
-static inline void launchFirm(u32 bootType)
+static inline void launchFirm(u32 bootType, u32 firstSectionToCopy)
 {
     //Copy FIRM sections to respective memory locations
-    for(u32 i = 1; i < 4 && section[i].size; i++)
+    for(u32 i = firstSectionToCopy; i < 4 && section[i].size; i++)
         memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
 
     //Determine the ARM11 entry to use
