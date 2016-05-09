@@ -6,8 +6,6 @@
 
 #include "types.h"
 
-#define CFG_BOOTENV (*(vu32 *)0x10010000)
-
 #define CONFIG(a) ((config >> (a + 16)) & 1)
 #define MULTICONFIG(a) ((config >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((config >> a) & b)

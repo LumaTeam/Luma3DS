@@ -82,18 +82,19 @@ u8 *getUnitInfoValueSet(u8 *pos, u32 size)
     return memsearch(pos, pattern, size, 4) + 3;
 }
 
-void *getLoader(u8 *pos, u32 size, u32 *loaderSize)
+u32 getLoader(u8 *pos, u32 *loaderSize)
 {
     u8 *off = pos;
-    do
+    u32 size;
+
+    while(1)
     {
-        if(*(u32 *)(off + 0x200) == 0x64616F6C) break; //"load"
-        off += *(u32 *)(off + 0x104) * 0x200; //size of the CXI
+        size = *(u32 *)(off + 0x104) * 0x200;
+        if(*(u32 *)(off + 0x200) == 0x64616F6C) break;
+        off += size;
     }
-    while(off < pos + size);
-    
-    if(off >= pos + size) return NULL;
-    
-    *loaderSize = *(u32 *)(off + 0x104) * 0x200;
-    return off;
+
+    *loaderSize = size;
+
+    return (u32)(off - pos);
 }

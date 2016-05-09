@@ -43,9 +43,11 @@ void deinitScreens(void)
     }
 }
 
-void initScreens(void)
+u32 initScreens(void)
 {
-    if(PDN_GPU_CNT == 1)
+    u32 needToInit = PDN_GPU_CNT == 1;
+
+    if(needToInit)
     {
         u32 *const screenInitAddress = (u32 *)0x24FFFC00;
 
@@ -62,4 +64,6 @@ void initScreens(void)
     }
 
     clearScreens();
+
+    return needToInit;
 }

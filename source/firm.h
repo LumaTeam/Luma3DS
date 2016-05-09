@@ -8,6 +8,7 @@
 
 #define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
 #define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
+#define CFG_BOOTENV    (*(vu32 *)0x10010000)
 
 //FIRM Header layout
 typedef struct firmSectionHeader {
@@ -44,4 +45,4 @@ static inline void copySection0AndInjectLoader(void);
 static inline void patchLegacyFirm(u32 firmType);
 static inline void patchSafeFirm(void);
 static void patchFirmWrites(u8 *arm9Section, u32 mode);
-static inline void launchFirm(u32 bootType);
+static inline void launchFirm(u32 firstSectionToCopy, u32 bootType);

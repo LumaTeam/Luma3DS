@@ -6,6 +6,7 @@
 
 #include "draw.h"
 #include "screeninit.h"
+#include "utils.h"
 #include "fs.h"
 #include "memory.h"
 #include "font.h"
@@ -39,10 +40,7 @@ void loadSplash(void)
     //Don't delay boot if no splash image is on the SD
     if(fileRead(fb->top_left, "/luma/splash.bin") +
        fileRead(fb->bottom, "/luma/splashbottom.bin"))
-    {
-        u64 i = 0x1400000;
-        while(i--) __asm("mov r0, r0"); //Less Ghetto sleep func
-    }
+        delay(0x1400000);
 }
 
 void drawCharacter(char character, int posX, int posY, u32 color)

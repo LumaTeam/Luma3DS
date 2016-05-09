@@ -7,14 +7,15 @@
 #include "screeninit.h"
 #include "draw.h"
 #include "fs.h"
+#include "i2c.h"
 #include "buttons.h"
 
 void configureCFW(const char *configPath)
 {
-    initScreens();
+    u32 needToDeinit = initScreens();
 
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save and reboot", 10, 30, COLOR_WHITE);
+    drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
     const char *multiOptionsText[]  = { "Screen-init brightness: 4( ) 3( ) 2( ) 1( )",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
@@ -175,8 +176,16 @@ void configureCFW(const char *configPath)
 
     fileWrite(&config, configPath, 4);
 
-    //Zero the last booted FIRM flag
-    CFG_BOOTENV = 0;
+    //Wait for the pressed buttons to change
+    while(HID_PAD == BUTTON_START);
 
-    mcuReboot();
+    if(needToDeinit)
+    {
+        //Turn off backlight
+        i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
+        deinitScreens();
+        PDN_GPU_CNT = 1;
+    }
+
+    delay(0x1400000);
 }

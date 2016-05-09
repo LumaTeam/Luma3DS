@@ -33,6 +33,11 @@ u32 waitInput(void)
     return key;
 }
 
+void delay(u64 length)
+{
+    while(length--) __asm("mov r0, r0");
+}
+
 void mcuReboot(void)
 {
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
