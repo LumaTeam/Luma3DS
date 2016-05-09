@@ -187,5 +187,5 @@ void configureCFW(const char *configPath)
     }
     
     u64 t0 = chrono();
-    while(chrono() - t0 < 2 * TICKS_PER_SEC); //wait for 1.5s
+    while(chrono() - t0 < 2 * TICKS_PER_SEC); //wait for 2s
 }
