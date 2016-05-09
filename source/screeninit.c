@@ -40,12 +40,16 @@ void deinitScreens(void)
     {
         *arm11Entry = (u32)ARM11;
         while(*arm11Entry);
+
+        PDN_GPU_CNT = 1;
     }
 }
 
-void initScreens(void)
+u32 initScreens(void)
 {
-    if(PDN_GPU_CNT == 1)
+    u32 needToInit = PDN_GPU_CNT == 1;
+
+    if(needToInit)
     {
         u32 *const screenInitAddress = (u32 *)0x24FFFC00;
 
@@ -62,4 +66,6 @@ void initScreens(void)
     }
 
     clearScreens();
+
+    return needToInit;
 }

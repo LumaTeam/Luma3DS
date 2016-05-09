@@ -67,7 +67,15 @@ void main(void)
 
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
+        {
             configureCFW(configPath);
+
+            //Zero the last booted FIRM flag
+            CFG_BOOTENV = 0;
+
+            //Update pressed buttons
+            pressed = HID_PAD;
+        }
 
         bootType = 0;
         firmType = 0;
@@ -201,7 +209,7 @@ void main(void)
             break;
     }
 
-    launchFirm(bootType, (firmType == 0) ? 1 : 0);
+    launchFirm(!firmType, bootType);
 }
 
 static inline void loadFirm(u32 firmType, u32 externalFirm)
@@ -344,14 +352,13 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
 
 static inline void copySection0AndInjectLoader(void)
 {
-    u32 loaderSize;
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
-    u32 injectorOffset = (u8 *)getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderSize) - arm11Section0;
-    u32 remaining = section[0].size - (injectorOffset + loaderSize);
-    
-    memcpy(section[0].address, arm11Section0, injectorOffset);
-    memcpy(section[0].address + injectorOffset, injector, injector_size);
-    memcpy(section[0].address + injectorOffset + injector_size, arm11Section0 + section[0].size - remaining, remaining);
+    u32 loaderSize;
+    u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
+
+    memcpy(section[0].address, arm11Section0, loaderOffset);
+    memcpy(section[0].address + loaderOffset, injector, injector_size);
+    memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
 }
 
 static inline void patchLegacyFirm(u32 firmType)
@@ -433,7 +440,7 @@ static void patchFirmWrites(u8 *arm9Section, u32 mode)
     }
 }
 
-static inline void launchFirm(u32 bootType, u32 firstSectionToCopy)
+static inline void launchFirm(u32 firstSectionToCopy, u32 bootType)
 {
     //Copy FIRM sections to respective memory locations
     for(u32 i = firstSectionToCopy; i < 4 && section[i].size; i++)

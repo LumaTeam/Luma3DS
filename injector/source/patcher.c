@@ -82,21 +82,12 @@ static inline size_t strnlen(const char *string, size_t maxlen)
     return size;
 }
 
-static int fileOpen(IFile *file, FS_ArchiveID id, const char *path, int flags)
+static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
 {
-    FS_Archive archive;
-    FS_Path ppath;
+    FS_Path filePath = {PATH_ASCII, strnlen(path, PATH_MAX) + 1, path},
+            archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
-    size_t len = strnlen(path, PATH_MAX);
-    archive.id = id;
-    archive.lowPath.type = PATH_EMPTY;
-    archive.lowPath.size = 1;
-    archive.lowPath.data = (u8 *)"";
-    ppath.type = PATH_ASCII;
-    ppath.data = path;
-    ppath.size = len + 1;
-
-    return IFile_Open(file, archive, ppath, flags);
+    return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
 static u32 secureInfoExists(void)
