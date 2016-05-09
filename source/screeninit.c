@@ -40,8 +40,6 @@ void deinitScreens(void)
     {
         *arm11Entry = (u32)ARM11;
         while(*arm11Entry);
-
-        PDN_GPU_CNT = 1;
     }
 }
 

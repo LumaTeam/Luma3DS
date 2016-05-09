@@ -183,6 +183,7 @@ void configureCFW(const char *configPath)
         //Turn off backlight
         i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
         deinitScreens();
+        PDN_GPU_CNT = 1;
     }
 
     delay(0x1400000);
