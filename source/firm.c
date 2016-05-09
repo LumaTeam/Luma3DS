@@ -23,6 +23,8 @@ u32 config,
     firmSource,
     emuOffset;
 
+u64 chronoWhenSplashLoaded = 0;
+
 void main(void)
 {
     u32 bootType,
@@ -33,6 +35,8 @@ void main(void)
         needConfig,
         newConfig,
         emuHeader;
+    
+    startChrono(0); //Start the chronometer. It shouldn't be reset.
 
     //Detect the console being used
     console = PDN_MPCORE_CFG == 7;
@@ -145,8 +149,9 @@ void main(void)
                 loadPayload(pressed);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if(PDN_GPU_CNT != 1 || CONFIG(7)) loadSplash();
-
+            if(PDN_GPU_CNT != 1 || CONFIG(7)) chronoWhenSplashLoaded = (u64) loadSplash();
+            if(chronoWhenSplashLoaded) chronoWhenSplashLoaded = chrono(); 
+            
             //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
             if(pressed & BUTTON_R1)
             {
@@ -446,6 +451,9 @@ static inline void launchFirm(u32 firstSectionToCopy, u32 bootType)
     for(u32 i = firstSectionToCopy; i < 4 && section[i].size; i++)
         memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
 
+    while(chronoWhenSplashLoaded && chrono() - chronoWhenSplashLoaded < 3 * TICKS_PER_SEC);
+    stopChrono();
+    
     //Determine the ARM11 entry to use
     vu32 *arm11;
     if(bootType) arm11 = (u32 *)0x1FFFFFFC;

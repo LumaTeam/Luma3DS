@@ -33,13 +33,34 @@ u32 waitInput(void)
     return key;
 }
 
-void delay(u64 length)
-{
-    while(length--) __asm("mov r0, r0");
-}
-
 void mcuReboot(void)
 {
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(1);
+}
+
+//TODO: add support for TIMER IRQ
+void startChrono(u64 initialTicks)
+{
+    //Based on a NATIVE_FIRM disassembly
+    
+    *(vu16 *)(0x10003002 + 4 * 0) = 0; //67MHz
+    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) = 4; //Count-up
+    
+    for(u32 i = 0; i < 4; i++) *(vu16 *)(0x10003000 + 4 * i) = (u16)(initialTicks >> (16 * i)); 
+    
+    *(vu16 *)(0x10003002 + 4 * 0) = 0x80; //67MHz; enabled
+    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) = 0x84; //Count-up; enabled
+}
+
+u64 chrono(void)
+{
+    u64 res = 0;
+    for(u32 i = 0; i < 4; i++) res |= *(vu16 *)(0x10003000 + 4 * i) << (16 * i);
+    return res;
+}
+
+void stopChrono(void)
+{
+    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) &= ~0x80;
 }
