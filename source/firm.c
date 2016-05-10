@@ -378,16 +378,16 @@ static inline void reimplementSvcBackdoor(u8 *arm11Section1)
     if(freeSpace >= exceptionsPage + 0x400) return;
     
     //Official implementation of svcBackdoor
-    freeSpace[0] = 0xE3CD10FF;
-    freeSpace[1] = 0xE3811C0F;
-    freeSpace[2] = 0xE2811028;
-    freeSpace[3] = 0xE5912000;
-    freeSpace[4] = 0xE9226000;
-    freeSpace[5] = 0xE1A0D002;
-    freeSpace[6] = 0xE12FFF30;
-    freeSpace[7] = 0xE8BD0003;
-    freeSpace[8] = 0xE1A0D000;
-    freeSpace[9] = 0xE12FFF11;
+    freeSpace[0] = 0xE3CD10FF; //bic   r1, sp, #0xff
+    freeSpace[1] = 0xE3811C0F; //orr   r1, r1, #0xf00
+    freeSpace[2] = 0xE2811028; //add   r1, r1, #0x28
+    freeSpace[3] = 0xE5912000; //ldr   r2, [r1]
+    freeSpace[4] = 0xE9226000; //stmdb r2!, {sp, lr}
+    freeSpace[5] = 0xE1A0D002; //mov   sp, r2
+    freeSpace[6] = 0xE12FFF30; //blx   r0
+    freeSpace[7] = 0xE8BD0003; //pop   {r0, r1}
+    freeSpace[8] = 0xE1A0D000; //mov   sp, r0
+    freeSpace[9] = 0xE12FFF11; //bx    r1
     
     svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *) exceptionsPage);
 }
