@@ -24,6 +24,8 @@ u32 config,
     firmSource,
     emuOffset;
 
+u64 chronoWhenSplashLoaded = 0;
+
 static inline void patchExceptionHandlersInstall(u8 *arm9Section)
 {
     static const u8 pattern[] = {
@@ -69,6 +71,8 @@ void main(void)
         needConfig,
         newConfig,
         emuHeader;
+    
+    startChrono(0); //Start the chronometer. It shouldn't be reset.
 
     //Detect the console being used
     console = PDN_MPCORE_CFG == 7;
@@ -189,8 +193,9 @@ void main(void)
                 loadPayload(pressed);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if(PDN_GPU_CNT != 1 || CONFIG(8)) loadSplash();
-
+            if(PDN_GPU_CNT != 1 || CONFIG(8)) chronoWhenSplashLoaded = (u64) loadSplash();
+            if(chronoWhenSplashLoaded) chronoWhenSplashLoaded = chrono(); 
+            
             //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
             if(pressed & BUTTON_R1)
             {
@@ -361,6 +366,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1);
     }
 
+    reimplementSvcBackdoor(arm11Section1); //Does nothing if svcBackdoor is still there
     //Replace the FIRM loader with the injector while copying section0
     copySection0AndInjectLoader();
 }
@@ -418,6 +424,41 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
     //Put the fOpen offset in the right location
     u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
     *pos_fopen = fOpenOffset;
+}
+
+static inline void reimplementSvcBackdoor(u8 *arm11Section1)
+{
+    u32 *exceptionsPage = getExceptionVectorsPage(arm11Section1, section[1].size);
+    if(exceptionsPage == NULL) return;
+    
+    u32 low24 = (exceptionsPage[2] & 0x00FFFFFF) << 2;  
+    u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension     
+    int offset = (int)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch     
+    
+    u32* svcTable = (u32 *)(arm11Section1 + *(u32 *)(arm11Section1 + 0xFFFF0008 + offset - 0xFFF00000 + 8) - 0xFFF00000); //svc handler address
+    while(*svcTable != 0) svcTable++; //svc0 = NULL
+    
+    if(svcTable[0x7B] != 0) return;
+       
+    u32 *freeSpace = exceptionsPage;
+    while(freeSpace < exceptionsPage + 0x400 - 0xA && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF))
+        freeSpace++;
+    
+    if(freeSpace >= exceptionsPage + 0x400 - 0xA) return;
+    
+    //Official implementation of svcBackdoor
+    freeSpace[0] = 0xE3CD10FF; //bic   r1, sp, #0xff
+    freeSpace[1] = 0xE3811C0F; //orr   r1, r1, #0xf00
+    freeSpace[2] = 0xE2811028; //add   r1, r1, #0x28
+    freeSpace[3] = 0xE5912000; //ldr   r2, [r1]
+    freeSpace[4] = 0xE9226000; //stmdb r2!, {sp, lr}
+    freeSpace[5] = 0xE1A0D002; //mov   sp, r2
+    freeSpace[6] = 0xE12FFF30; //blx   r0
+    freeSpace[7] = 0xE8BD0003; //pop   {r0, r1}
+    freeSpace[8] = 0xE1A0D000; //mov   sp, r0
+    freeSpace[9] = 0xE12FFF11; //bx    r1
+    
+    svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *) exceptionsPage);
 }
 
 static inline void copySection0AndInjectLoader(void)
@@ -516,6 +557,9 @@ static inline void launchFirm(u32 firstSectionToCopy, u32 bootType)
     for(u32 i = firstSectionToCopy; i < 4 && section[i].size; i++)
         memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
 
+    while(chronoWhenSplashLoaded && chrono() - chronoWhenSplashLoaded < 3 * TICKS_PER_SEC);
+    stopChrono();
+    
     //Determine the ARM11 entry to use
     vu32 *arm11;
     if(bootType) arm11 = (u32 *)0x1FFFFFFC;

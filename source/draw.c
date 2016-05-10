@@ -33,14 +33,15 @@ void clearScreens(void)
     memset32(fb->bottom, 0, 0x38400);
 }
 
-void loadSplash(void)
+u32 loadSplash(void)
 {
     initScreens();
 
     //Don't delay boot if no splash image is on the SD
     if(fileRead(fb->top_left, "/luma/splash.bin") +
        fileRead(fb->bottom, "/luma/splashbottom.bin"))
-        delay(0x1400000);
+        return 1;
+    return 0;
 }
 
 void drawCharacter(char character, int posX, int posY, u32 color)

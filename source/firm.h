@@ -41,6 +41,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm);
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode);
 static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader);
 static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset);
+static inline void reimplementSvcBackdoor(u8 *arm11Section1);
 static inline void copySection0AndInjectLoader(void);
 static inline void patchLegacyFirm(u32 firmType);
 static inline void patchSafeFirm(void);

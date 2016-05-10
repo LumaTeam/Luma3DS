@@ -186,6 +186,7 @@ void configureCFW(const char *configPath)
         deinitScreens();
         PDN_GPU_CNT = 1;
     }
-
-    delay(0x1400000);
+    
+    u64 t0 = chrono();
+    while(chrono() - t0 < 2 * TICKS_PER_SEC); //wait for 2s
 }
