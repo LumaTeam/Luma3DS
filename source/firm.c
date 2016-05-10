@@ -372,10 +372,10 @@ static inline void reimplementSvcBackdoor(u8 *arm11Section1)
     if(svcTable[0x7B] != 0) return;
        
     u32 *freeSpace = exceptionsPage;
-    while(freeSpace < exceptionsPage + 0x400 && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF))
+    while(freeSpace < exceptionsPage + 0x400 - 0xA && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF))
         freeSpace++;
     
-    if(freeSpace >= exceptionsPage + 0x400) return;
+    if(freeSpace >= exceptionsPage + 0x400 - 0xA) return;
     
     //Official implementation of svcBackdoor
     freeSpace[0] = 0xE3CD10FF; //bic   r1, sp, #0xff
