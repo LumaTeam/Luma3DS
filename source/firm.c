@@ -242,7 +242,8 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
-
+    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
+    
     u32 nativeFirmType;
 
     if(console)
@@ -296,6 +297,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
+    reimplementSvcBackdoor(arm11Section1); //Does nothing if svcBackdoor is still there
     //Replace the FIRM loader with the injector while copying section0
     copySection0AndInjectLoader();
 }
@@ -353,6 +355,41 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
     //Put the fOpen offset in the right location
     u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
     *pos_fopen = fOpenOffset;
+}
+
+static inline void reimplementSvcBackdoor(u8 *arm11Section1)
+{
+    u32 *exceptionsPage = getExceptionVectorsPage(arm11Section1, section[1].size);
+    if(exceptionsPage == NULL) return;
+    
+    u32 low24 = (exceptionsPage[2] & 0x00FFFFFF) << 2;  
+    u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension     
+    int offset = (int)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch     
+    
+    u32* svcTable = (u32 *)(arm11Section1 + *(u32 *)(arm11Section1 + 0xFFFF0008 + offset - 0xFFF00000 + 8) - 0xFFF00000); //svc handler address
+    while(*svcTable != 0) svcTable++; //svc0 = NULL
+    
+    if(svcTable[0x7B] != 0) return;
+       
+    u32 *freeSpace = exceptionsPage;
+    while(freeSpace < exceptionsPage + 0x400 && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF))
+        freeSpace++;
+    
+    if(freeSpace >= exceptionsPage + 0x400) return;
+    
+    //Official implementation of svcBackdoor
+    freeSpace[0] = 0xE3CD10FF;
+    freeSpace[1] = 0xE3811C0F;
+    freeSpace[2] = 0xE2811028;
+    freeSpace[3] = 0xE5912000;
+    freeSpace[4] = 0xE9226000;
+    freeSpace[5] = 0xE1A0D002;
+    freeSpace[6] = 0xE12FFF30;
+    freeSpace[7] = 0xE8BD0003;
+    freeSpace[8] = 0xE1A0D000;
+    freeSpace[9] = 0xE12FFF11;
+    
+    svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *) exceptionsPage);
 }
 
 static inline void copySection0AndInjectLoader(void)
