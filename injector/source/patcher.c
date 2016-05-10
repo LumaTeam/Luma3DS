@@ -364,7 +364,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01
             };
 
-            static const u8 fpdVerPatch = 0x05;
+            static const u8 fpdVerPatch = 0x06;
 
             //Allow online access to work with old friends modules
             patchMemory(code, size, 
