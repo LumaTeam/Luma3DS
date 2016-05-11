@@ -65,10 +65,10 @@ u32 *getMPU(u8 *pos, u32 size)
     return (u32 *)memsearch(pos, pattern, size, 4);
 }
 
-void *getEmuCode(u8 *proc9Offset)
+void *getEmuCode(u8 *pos)
 {
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
     //Looking for the last free space before Process9
-    return memsearch(proc9Offset - 0x3000, pattern, 0x3000, 6) + 0x455;
+    return memsearch(pos + 0x13500, pattern, 0x1000, 6) + 0x455;
 }

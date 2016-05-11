@@ -20,9 +20,15 @@ const u16 nandRedir[2] = {0x4C00, 0x47A0},
 *                   Functions
 **************************************************/
 
-u8 *getProc9(u8 *pos, u32 size)
+u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
-    return memsearch(pos, "ess9", size, 4);
+    u8 *off = memsearch(pos, "ess9", size, 4);
+
+    *process9Size = *(u32 *)(off - 0x100) * 0x200;
+    *process9MemAddr = *(u32 *)(off + 0xC);
+
+    //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
+    return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
 void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2)
@@ -35,24 +41,17 @@ void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2)
     *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
 }
 
-void *getReboot(u8 *pos, u32 size)
+void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset)
 {
     //Look for FIRM reboot code
     const u8 pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
 
-    return memsearch(pos, pattern, size, 4) - 0x10;
-}
-
-u32 getfOpen(u8 *proc9Offset, void *rebootOffset)
-{
-    //Offset Process9 code gets loaded to in memory (defined in ExHeader)
-    u32 p9MemAddr = *(u32 *)(proc9Offset + 0xC);
-
-    //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
-    u32 p9CodeOff = (u32)(proc9Offset - 0x204) + (*(u32 *)(proc9Offset - 0x64) * 0x200) + 0x200;
+    u8 *off = memsearch(pos, pattern, size, 4) - 0x10;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
-    return (u32)rebootOffset + 9 - (-((*(u32 *)rebootOffset & 0x00FFFFFF) << 2) & 0xFFFFF) - p9CodeOff + p9MemAddr;
+    *fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & 0xFFFFF) - pos + process9MemAddr);
+
+    return off;
 }
 
 u16 *getFirmWrite(u8 *pos, u32 size)
@@ -89,9 +88,9 @@ u32 getLoader(u8 *pos, u32 *loaderSize)
     return (u32)(off - pos);
 }
 
-u32* getExceptionVectorsPage(u8 *pos, u32 size)
+u32 *getExceptionVectorsPage(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x00,0xB0,0x9C,0xE5,0x0A,0xB0,0x0B,0xE0,0x0A,0x00,0x5B,0xE1,0xFB,0xFF,0xFF,0x1A};
+    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
     
-    return (u32 *)(memsearch(pos, pattern, size, 16) - 0x2C);
+    return (u32 *)(memsearch(pos, pattern, size, 4) - 0x2C);
 }

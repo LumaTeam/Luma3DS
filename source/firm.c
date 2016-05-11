@@ -23,8 +23,6 @@ u32 config,
     firmSource,
     emuOffset;
 
-u64 chronoWhenSplashLoaded = 0;
-
 void main(void)
 {
     u32 bootType,
@@ -35,8 +33,8 @@ void main(void)
         needConfig,
         newConfig,
         emuHeader;
-    
-    startChrono(0); //Start the chronometer. It shouldn't be reset.
+
+    u64 chronoStarted = 0;
 
     //Detect the console being used
     console = PDN_MPCORE_CFG == 7;
@@ -70,12 +68,16 @@ void main(void)
         u32 pressed = HID_PAD;
 
         //If no configuration file exists or SELECT is held, load configuration menu
-        if(needConfig == 2 || (pressed & BUTTON_SELECT))
+        if(needConfig == 2 || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)))
         {
             configureCFW(configPath);
 
             //Zero the last booted FIRM flag
             CFG_BOOTENV = 0;
+
+            chronoStarted = chrono();
+            while(chrono() - chronoStarted < 2 * TICKS_PER_SEC); //Wait for 2s
+            chronoStarted = 1;
 
             //Update pressed buttons
             pressed = HID_PAD;
@@ -149,9 +151,9 @@ void main(void)
                 loadPayload(pressed);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if(PDN_GPU_CNT != 1 || CONFIG(7)) chronoWhenSplashLoaded = (u64) loadSplash();
-            if(chronoWhenSplashLoaded) chronoWhenSplashLoaded = chrono(); 
-            
+            if((PDN_GPU_CNT != 1 || CONFIG(7)) && loadSplash())
+                chronoStarted = chrono();
+
             //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
             if(pressed & BUTTON_R1)
             {
@@ -214,6 +216,12 @@ void main(void)
             break;
     }
 
+    if(chronoStarted)
+    {
+        while(chronoStarted > 1 && chrono() - chronoStarted < 3 * TICKS_PER_SEC);
+        stopChrono();
+    }
+
     launchFirm(!firmType, bootType);
 }
 
@@ -242,7 +250,6 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
-    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
     
     u32 nativeFirmType;
 
@@ -273,39 +280,41 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         nativeFirmType = memcmp(section[2].hash, firm90Hash, 0x10) != 0;
     }
 
-    if(nativeFirmType || nandType || a9lhMode == 2)
-    {
-        //Find the Process9 NCCH location
-        u8 *proc9Offset = getProc9(arm9Section, section[2].size);
+    u32 process9Size,
+        process9MemAddr;
 
-        //Apply emuNAND patches
-        if(nandType) patchEmuNAND(arm9Section, proc9Offset, emuHeader);
+    //Find the Process9 NCCH location
+    u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
-        //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
-        if(nativeFirmType || a9lhMode == 2) patchReboots(arm9Section, proc9Offset);
-    }
+    //Apply emuNAND patches
+    if(nandType) patchEmuNAND(arm9Section, process9Offset, process9Size, emuHeader);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    if(a9lhMode && !nandType) patchFirmWrites(arm9Section, 1);
+    else if(a9lhMode) patchFirmWrites(process9Offset, process9Size, 1);
+
+    //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
+    if(nativeFirmType || a9lhMode == 2) patchReboots(process9Offset, process9Size, process9MemAddr);
 
     //Apply signature checks patches
     u32 sigOffset,
         sigOffset2;
 
-    getSigChecks(arm9Section, section[2].size, &sigOffset, &sigOffset2);
+    getSigChecks(process9Offset, process9Size, &sigOffset, &sigOffset2);
     *(u16 *)sigOffset = sigPatch[0];
     *(u16 *)sigOffset2 = sigPatch[0];
     *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
-    reimplementSvcBackdoor(arm11Section1); //Does nothing if svcBackdoor is still there
+    //Does nothing if svcBackdoor is still there
+    reimplementSvcBackdoor();
+
     //Replace the FIRM loader with the injector while copying section0
     copySection0AndInjectLoader();
 }
 
-static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
+static inline void patchEmuNAND(u8 *arm9Section, u8 *process9Offset, u32 process9Size, u32 emuHeader)
 {
     //Copy emuNAND code
-    void *emuCodeOffset = getEmuCode(proc9Offset);
+    void *emuCodeOffset = getEmuCode(arm9Section);
     memcpy(emuCodeOffset, emunand, emunand_size);
 
     //Add the data of the found emuNAND
@@ -316,7 +325,7 @@ static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
 
     //Find and add the SDMMC struct
     u32 *pos_sdmmc = (u32 *)memsearch(emuCodeOffset, "SDMC", emunand_size, 4);
-    *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
+    *pos_sdmmc = getSDMMC(process9Offset, process9Size);
 
     //Calculate offset for the hooks
     u32 branchOffset = (u32)emuCodeOffset - (u32)firm -
@@ -326,7 +335,7 @@ static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
     u32 emuRead,
         emuWrite;
 
-    getEmuRW(arm9Section, section[2].size, &emuRead, &emuWrite);
+    getEmuRW(process9Offset, process9Size, &emuRead, &emuWrite);
     *(u16 *)emuRead = nandRedir[0];
     *((u16 *)emuRead + 1) = nandRedir[1];
     *((u32 *)emuRead + 1) = branchOffset;
@@ -341,13 +350,12 @@ static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader)
     *(mpuOffset + 9) = mpuPatch[2];
 }
 
-static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
+static inline void patchReboots(u8 *process9Offset, u32 process9Size, u32 process9MemAddr)
 {
-    //Calculate offset for the firmlaunch code
-    void *rebootOffset = getReboot(arm9Section, section[2].size);
+    u32 fOpenOffset;
 
-    //Calculate offset for the fOpen function
-    u32 fOpenOffset = getfOpen(proc9Offset, rebootOffset);
+    //Calculate offset for the firmlaunch code
+    void *rebootOffset = getReboot(process9Offset, process9Size, process9MemAddr, &fOpenOffset);
 
     //Copy firmlaunch code
     memcpy(rebootOffset, reboot, reboot_size);
@@ -357,39 +365,36 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
     *pos_fopen = fOpenOffset;
 }
 
-static inline void reimplementSvcBackdoor(u8 *arm11Section1)
+static inline void reimplementSvcBackdoor(void)
 {
+    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
+
     u32 *exceptionsPage = getExceptionVectorsPage(arm11Section1, section[1].size);
-    if(exceptionsPage == NULL) return;
-    
-    u32 low24 = (exceptionsPage[2] & 0x00FFFFFF) << 2;  
-    u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension     
-    int offset = (int)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch     
-    
-    u32* svcTable = (u32 *)(arm11Section1 + *(u32 *)(arm11Section1 + 0xFFFF0008 + offset - 0xFFF00000 + 8) - 0xFFF00000); //svc handler address
-    while(*svcTable != 0) svcTable++; //svc0 = NULL
-    
-    if(svcTable[0x7B] != 0) return;
-       
-    u32 *freeSpace = exceptionsPage;
-    while(freeSpace < exceptionsPage + 0x400 - 0xA && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF))
-        freeSpace++;
-    
-    if(freeSpace >= exceptionsPage + 0x400 - 0xA) return;
-    
-    //Official implementation of svcBackdoor
-    freeSpace[0] = 0xE3CD10FF; //bic   r1, sp, #0xff
-    freeSpace[1] = 0xE3811C0F; //orr   r1, r1, #0xf00
-    freeSpace[2] = 0xE2811028; //add   r1, r1, #0x28
-    freeSpace[3] = 0xE5912000; //ldr   r2, [r1]
-    freeSpace[4] = 0xE9226000; //stmdb r2!, {sp, lr}
-    freeSpace[5] = 0xE1A0D002; //mov   sp, r2
-    freeSpace[6] = 0xE12FFF30; //blx   r0
-    freeSpace[7] = 0xE8BD0003; //pop   {r0, r1}
-    freeSpace[8] = 0xE1A0D000; //mov   sp, r0
-    freeSpace[9] = 0xE12FFF11; //bx    r1
-    
-    svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *) exceptionsPage);
+
+    u32 offset = (-((exceptionsPage[2] & 0xFFFFFF) << 2) & 0xFFFFF) + 8; //Branch offset + 8 for prefetch
+    u32 *svcTable = (u32 *)(arm11Section1 + *(u32 *)(arm11Section1 + 0xFFFF0008 - offset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+    while(*svcTable != 0) svcTable++; //SVC0 = NULL
+
+    if(!svcTable[0x7B])
+    {
+        u32 *freeSpace;
+
+        for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
+
+        //Official implementation of svcBackdoor
+        freeSpace[0] = 0xE3CD10FF; //bic   r1, sp, #0xff
+        freeSpace[1] = 0xE3811C0F; //orr   r1, r1, #0xf00
+        freeSpace[2] = 0xE2811028; //add   r1, r1, #0x28
+        freeSpace[3] = 0xE5912000; //ldr   r2, [r1]
+        freeSpace[4] = 0xE9226000; //stmdb r2!, {sp, lr}
+        freeSpace[5] = 0xE1A0D002; //mov   sp, r2
+        freeSpace[6] = 0xE12FFF30; //blx   r0
+        freeSpace[7] = 0xE8BD0003; //pop   {r0, r1}
+        freeSpace[8] = 0xE1A0D000; //mov   sp, r0
+        freeSpace[9] = 0xE12FFF11; //bx    r1
+
+        svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
+    }
 }
 
 static inline void copySection0AndInjectLoader(void)
@@ -401,6 +406,37 @@ static inline void copySection0AndInjectLoader(void)
     memcpy(section[0].address, arm11Section0, loaderOffset);
     memcpy(section[0].address + loaderOffset, injector, injector_size);
     memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+}
+
+static inline void patchSafeFirm(void)
+{
+    u8 *arm9Section = (u8 *)firm + section[2].offset;
+
+    if(console)
+    {
+        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
+        arm9Loader(arm9Section, 0);
+        firm->arm9Entry = (u8 *)0x801B01C;
+    }
+
+    //Apply FIRM0/1 writes patches to protect A9LH
+    patchFirmWrites(arm9Section, section[2].size, console);
+}
+
+static void patchFirmWrites(u8 *offset, u32 size, u32 mode)
+{
+    if(mode)
+    {
+        u16 *writeOffset = getFirmWrite(offset, size);
+        *writeOffset = writeBlock[0];
+        *(writeOffset + 1) = writeBlock[1];
+    }
+    else
+    {
+        u16 *writeOffset = getFirmWriteSafe(offset, size);
+        *writeOffset = writeBlockSafe[0];
+        *(writeOffset + 1) = writeBlockSafe[1];
+    }
 }
 
 static inline void patchLegacyFirm(u32 firmType)
@@ -451,46 +487,12 @@ static inline void patchLegacyFirm(u32 firmType)
     }
 }
 
-static inline void patchSafeFirm(void)
-{
-    u8 *arm9Section = (u8 *)firm + section[2].offset;
-
-    if(console)
-    {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, 0);
-        firm->arm9Entry = (u8 *)0x801B01C;
-    }
-
-    //Apply FIRM0/1 writes patches to protect A9LH
-    patchFirmWrites(arm9Section, console);
-}
-
-static void patchFirmWrites(u8 *arm9Section, u32 mode)
-{
-    if(mode)
-    {
-        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-        *writeOffset = writeBlock[0];
-        *(writeOffset + 1) = writeBlock[1];
-    }
-    else
-    {
-        u16 *writeOffset = getFirmWriteSafe(arm9Section, section[2].size);
-        *writeOffset = writeBlockSafe[0];
-        *(writeOffset + 1) = writeBlockSafe[1];
-    }
-}
-
 static inline void launchFirm(u32 firstSectionToCopy, u32 bootType)
 {
     //Copy FIRM sections to respective memory locations
     for(u32 i = firstSectionToCopy; i < 4 && section[i].size; i++)
         memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
 
-    while(chronoWhenSplashLoaded && chrono() - chronoWhenSplashLoaded < 3 * TICKS_PER_SEC);
-    stopChrono();
-    
     //Determine the ARM11 entry to use
     vu32 *arm11;
     if(bootType) arm11 = (u32 *)0x1FFFFFFC;
