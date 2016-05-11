@@ -363,16 +363,13 @@ void patchCode(u64 progId, u8 *code, u32 size)
             static const u8 fpdVerPattern[] = {
                 0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01
             };
+            
+            static const u8 mostRecentFpdVer = 0x06;
+            
+            u8 *fpdVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
 
-            static const u8 fpdVerPatch = 0x06;
-
-            //Allow online access to work with old friends modules
-            patchMemory(code, size, 
-                fpdVerPattern, 
-                sizeof(fpdVerPattern), 9, 
-                &fpdVerPatch, 
-                sizeof(fpdVerPatch), 1
-            );
+            //Allow online access to work with old friends modules, without breaking newer firmwares
+            if(fpdVer != NULL && fpdVer[9] < mostRecentFpdVer) fpdVer[9] = mostRecentFpdVer;
 
             break;
         }
