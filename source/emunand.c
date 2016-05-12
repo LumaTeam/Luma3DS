@@ -48,13 +48,13 @@ u32 getSDMMC(u8 *pos, u32 size)
     return *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
 }
 
-void getEmuRW(u8 *pos, u32 size, u32 *readOff, u32 *writeOff)
+void getEmuRW(u8 *pos, u32 size, u32 *readOffset, u32 *writeOffset)
 {
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
-    *readOff = (u32)memsearch(pos, pattern, size, 4) - 6;
-    *writeOff = (u32)memsearch((u8 *)(*readOff + 0xA), pattern, 0x100, 4) - 6;
+    *readOffset = (u32)memsearch(pos, pattern, size, 4) - 6;
+    *writeOffset = (u32)memsearch((u8 *)(*readOffset + 0xA), pattern, 0x100, 4) - 6;
 }
 
 u32 *getMPU(u8 *pos, u32 size)
@@ -65,10 +65,10 @@ u32 *getMPU(u8 *pos, u32 size)
     return (u32 *)memsearch(pos, pattern, size, 4);
 }
 
-void *getEmuCode(u8 *proc9Offset)
+void *getEmuCode(u8 *pos)
 {
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
     //Looking for the last free space before Process9
-    return memsearch(proc9Offset - 0x3000, pattern, 0x3000, 6) + 0x455;
+    return memsearch(pos + 0x13500, pattern, 0x1000, 6) + 0x455;
 }

@@ -15,17 +15,16 @@ const u16 nandRedir[2],
           writeBlock[2],
           writeBlockSafe[2];
 const u8  unitInfoPatch;
+const u8  svcBackdoor[40];
 
 /**************************************************
 *                   Functions
 **************************************************/
-u8 *getProc9(u8 *pos, u32 size);
-void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2);
-void *getReboot(u8 *pos, u32 size);
-u32 getfOpen(u8 *proc9Offset, void *rebootOffset);
+u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
+void getSigChecks(u8 *pos, u32 size, u16 **off, u16 **off2);
+void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset);
 u16 *getFirmWrite(u8 *pos, u32 size);
 u16 *getFirmWriteSafe(u8 *pos, u32 size);
 u8 *getUnitInfoValueSet(u8 *pos, u32 size);
-
 u32 getLoader(u8 *pos, u32 *loaderSize);
-u32* getExceptionVectorsPage(u8 *pos, u32 size); //Multi-purpose, don't change
+u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 **exceptionsPage);
