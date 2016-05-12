@@ -48,13 +48,13 @@ u32 getSDMMC(u8 *pos, u32 size)
     return *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
 }
 
-void getEmuRW(u8 *pos, u32 size, u32 *readOffset, u32 *writeOffset)
+void getEmuRW(u8 *pos, u32 size, u16 **readOffset, u16 **writeOffset)
 {
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
-    *readOffset = (u32)memsearch(pos, pattern, size, 4) - 6;
-    *writeOffset = (u32)memsearch((u8 *)(*readOffset + 0xA), pattern, 0x100, 4) - 6;
+    *readOffset = (u16 *)memsearch(pos, pattern, size, 4) - 3;
+    *writeOffset = (u16 *)memsearch((u8 *)(*readOffset + 5), pattern, 0x100, 4) - 3;
 }
 
 u32 *getMPU(u8 *pos, u32 size)

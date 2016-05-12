@@ -332,29 +332,27 @@ static inline void patchEmuNAND(u8 *arm9Section, u8 *process9Offset, u32 process
                        section[2].offset + (u32)section[2].address;
 
     //Add emuNAND hooks
-    u32 emuRead,
-        emuWrite;
-
+    u16 *emuRead,
+        *emuWrite;
     getEmuRW(process9Offset, process9Size, &emuRead, &emuWrite);
-    *(u16 *)emuRead = nandRedir[0];
-    *((u16 *)emuRead + 1) = nandRedir[1];
-    *((u32 *)emuRead + 1) = branchOffset;
-    *(u16 *)emuWrite = nandRedir[0];
-    *((u16 *)emuWrite + 1) = nandRedir[1];
-    *((u32 *)emuWrite + 1) = branchOffset;
+    *emuRead = nandRedir[0];
+    emuRead[1] = nandRedir[1];
+    ((u32 *)emuRead)[1] = branchOffset;
+    *emuWrite = nandRedir[0];
+    emuWrite[1] = nandRedir[1];
+    ((u32 *)emuWrite)[1] = branchOffset;
 
     //Set MPU for emu code region
     u32 *mpuOffset = getMPU(arm9Section, section[2].size);
     *mpuOffset = mpuPatch[0];
-    *(mpuOffset + 6) = mpuPatch[1];
-    *(mpuOffset + 9) = mpuPatch[2];
+    mpuOffset[6] = mpuPatch[1];
+    mpuOffset[9] = mpuPatch[2];
 }
 
 static inline void patchReboots(u8 *process9Offset, u32 process9Size, u32 process9MemAddr)
 {
+    //Calculate offset for the firmlaunch code and fOpen
     u32 fOpenOffset;
-
-    //Calculate offset for the firmlaunch code
     void *rebootOffset = getReboot(process9Offset, process9Size, process9MemAddr, &fOpenOffset);
 
     //Copy firmlaunch code
@@ -370,7 +368,6 @@ static inline void reimplementSvcBackdoor(void)
     u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
     u32 *exceptionsPage;
-
     u32 *svcTable = getSvcAndExceptions(arm11Section1, section[1].size, &exceptionsPage);
 
     if(!svcTable[0x7B])
@@ -381,13 +378,14 @@ static inline void reimplementSvcBackdoor(void)
 
         memcpy(freeSpace, svcBackdoor, 40);
 
-        svcTable[0x7B] = 0xFFFF0000 + (u32)((u8 *)freeSpace - (u8 *)exceptionsPage);
+        svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
     }
 }
 
 static inline void copySection0AndInjectLoader(void)
 {
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+
     u32 loaderSize;
     u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
 
