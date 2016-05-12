@@ -6,8 +6,6 @@
 #include "i2c.h"
 #include "buttons.h"
 
-u32 chronoStarted = 0;
-
 u32 waitInput(void)
 {
     u32 pressedKey = 0,
@@ -42,7 +40,7 @@ void mcuReboot(void)
 }
 
 //TODO: add support for TIMER IRQ
-void startChrono(u64 initialTicks)
+static void startChrono(u64 initialTicks)
 {
     //Based on a NATIVE_FIRM disassembly
 
@@ -57,7 +55,13 @@ void startChrono(u64 initialTicks)
 
 u64 chrono(void)
 {
-    if(!chronoStarted) startChrono(0);
+    static u32 chronoStarted = 0;
+
+    if(!chronoStarted)
+    {
+        startChrono(0);
+        chronoStarted++;
+    }
 
     u64 res = 0;
 
@@ -68,5 +72,5 @@ u64 chrono(void)
 
 void stopChrono(void)
 {
-    if(chronoStarted) for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) &= ~0x80;
+    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) &= ~0x80;
 }

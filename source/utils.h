@@ -11,6 +11,5 @@ void mcuReboot(void);
 
 #define TICKS_PER_SEC   67027964ULL
 
-void startChrono(u64 initialTicks);
 u64 chrono(void);
 void stopChrono(void);

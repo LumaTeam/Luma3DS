@@ -46,4 +46,4 @@ static inline void copySection0AndInjectLoader(void);
 static inline void patchSafeFirm(void);
 static void patchFirmWrites(u8 *offset, u32 size, u32 mode);
 static inline void patchLegacyFirm(u32 firmType);
-static inline void launchFirm(u32 firstSectionToCopy, u32 bootType);
+static inline void launchFirm(u32 sectionNum, u32 bootType);

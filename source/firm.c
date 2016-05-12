@@ -369,31 +369,19 @@ static inline void reimplementSvcBackdoor(void)
 {
     u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
-    u32 *exceptionsPage = getExceptionVectorsPage(arm11Section1, section[1].size);
+    u32 exceptionsPage;
 
-    u32 offset = (-((exceptionsPage[2] & 0xFFFFFF) << 2) & 0xFFFFF) + 8; //Branch offset + 8 for prefetch
-    u32 *svcTable = (u32 *)(arm11Section1 + *(u32 *)(arm11Section1 + 0xFFFF0008 - offset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
-    while(*svcTable != 0) svcTable++; //SVC0 = NULL
+    u32 *svcTable = getSvcAndExceptions(arm11Section1, section[1].size, &exceptionsPage);
 
     if(!svcTable[0x7B])
     {
         u32 *freeSpace;
 
-        for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
+        for(freeSpace = (u32 *)exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
 
-        //Official implementation of svcBackdoor
-        freeSpace[0] = 0xE3CD10FF; //bic   r1, sp, #0xff
-        freeSpace[1] = 0xE3811C0F; //orr   r1, r1, #0xf00
-        freeSpace[2] = 0xE2811028; //add   r1, r1, #0x28
-        freeSpace[3] = 0xE5912000; //ldr   r2, [r1]
-        freeSpace[4] = 0xE9226000; //stmdb r2!, {sp, lr}
-        freeSpace[5] = 0xE1A0D002; //mov   sp, r2
-        freeSpace[6] = 0xE12FFF30; //blx   r0
-        freeSpace[7] = 0xE8BD0003; //pop   {r0, r1}
-        freeSpace[8] = 0xE1A0D000; //mov   sp, r0
-        freeSpace[9] = 0xE12FFF11; //bx    r1
+        memcpy(freeSpace, svcBackdoor, 40);
 
-        svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
+        svcTable[0x7B] = 0xFFFF0000 + (u32)((u8 *)freeSpace - exceptionsPage);
     }
 }
 
@@ -487,11 +475,11 @@ static inline void patchLegacyFirm(u32 firmType)
     }
 }
 
-static inline void launchFirm(u32 firstSectionToCopy, u32 bootType)
+static inline void launchFirm(u32 sectionNum, u32 bootType)
 {
     //Copy FIRM sections to respective memory locations
-    for(u32 i = firstSectionToCopy; i < 4 && section[i].size; i++)
-        memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
+    for(; sectionNum < 4 && section[sectionNum].size; sectionNum++)
+        memcpy(section[sectionNum].address, (u8 *)firm + section[sectionNum].offset, section[sectionNum].size);
 
     //Determine the ARM11 entry to use
     vu32 *arm11;

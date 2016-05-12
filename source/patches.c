@@ -16,6 +16,18 @@ const u16 nandRedir[2] = {0x4C00, 0x47A0},
           writeBlock[2] = {0x2000, 0x46C0},
           writeBlockSafe[2] = {0x2400, 0xE01D};
 
+//Official implementation of svcBackdoor
+const u8  svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
+                             0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
+                             0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
+                             0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
+                             0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
+                             0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
+                             0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
+                             0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
+                             0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
+                             0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
+
 /**************************************************
 *                   Functions
 **************************************************/
@@ -24,7 +36,7 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *off = memsearch(pos, "ess9", size, 4);
 
-    *process9Size = *(u32 *)(off - 0x100) * 0x200;
+    *process9Size = *(u32 *)(off - 0x60) * 0x200;
     *process9MemAddr = *(u32 *)(off + 0xC);
 
     //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
@@ -88,9 +100,15 @@ u32 getLoader(u8 *pos, u32 *loaderSize)
     return (u32)(off - pos);
 }
 
-u32 *getExceptionVectorsPage(u8 *pos, u32 size)
+u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 *exceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
     
-    return (u32 *)(memsearch(pos, pattern, size, 4) - 0x2C);
+    *exceptionsPage = (u32)memsearch(pos, pattern, size, 4) - 0x2C;
+
+    u32 svcOffset = (-((*(u32 *)(*exceptionsPage + 8) & 0xFFFFFF) << 2) & 0xFFFFF) - 8; //Branch offset + 8 for prefetch
+    u32 *svcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+    while(*svcTable) svcTable++; //Look for SVC0 (NULL)
+
+    return svcTable;
 }

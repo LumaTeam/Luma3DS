@@ -14,6 +14,7 @@ const u16 nandRedir[2],
           sigPatch[2],
           writeBlock[2],
           writeBlockSafe[2];
+const u8  svcBackdoor[40];
 
 /**************************************************
 *                   Functions
@@ -24,4 +25,4 @@ void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset);
 u16 *getFirmWrite(u8 *pos, u32 size);
 u16 *getFirmWriteSafe(u8 *pos, u32 size);
 u32 getLoader(u8 *pos, u32 *loaderSize);
-u32 *getExceptionVectorsPage(u8 *pos, u32 size);
+u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 *exceptionsPage);
