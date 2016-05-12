@@ -25,4 +25,4 @@ void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset);
 u16 *getFirmWrite(u8 *pos, u32 size);
 u16 *getFirmWriteSafe(u8 *pos, u32 size);
 u32 getLoader(u8 *pos, u32 *loaderSize);
-u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 *exceptionsPage);
+u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 **exceptionsPage);

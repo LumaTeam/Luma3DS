@@ -100,13 +100,13 @@ u32 getLoader(u8 *pos, u32 *loaderSize)
     return (u32)(off - pos);
 }
 
-u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 *exceptionsPage)
+u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 **exceptionsPage)
 {
-    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
+    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5}; //cpsid aif
     
-    *exceptionsPage = (u32)memsearch(pos, pattern, size, 4) - 0x2C;
+    *exceptionsPage = (u32 *)(memsearch(pos, pattern, size, 4) - 0x2C);
 
-    u32 svcOffset = (-((*(u32 *)(*exceptionsPage + 8) & 0xFFFFFF) << 2) & 0xFFFFF) - 8; //Branch offset + 8 for prefetch
+    u32 svcOffset = (-(((*exceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
     u32 *svcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
     while(*svcTable) svcTable++; //Look for SVC0 (NULL)
 

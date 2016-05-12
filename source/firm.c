@@ -369,7 +369,7 @@ static inline void reimplementSvcBackdoor(void)
 {
     u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
-    u32 exceptionsPage;
+    u32 *exceptionsPage;
 
     u32 *svcTable = getSvcAndExceptions(arm11Section1, section[1].size, &exceptionsPage);
 
@@ -377,11 +377,11 @@ static inline void reimplementSvcBackdoor(void)
     {
         u32 *freeSpace;
 
-        for(freeSpace = (u32 *)exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
+        for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
 
         memcpy(freeSpace, svcBackdoor, 40);
 
-        svcTable[0x7B] = 0xFFFF0000 + (u32)((u8 *)freeSpace - exceptionsPage);
+        svcTable[0x7B] = 0xFFFF0000 + (u32)((u8 *)freeSpace - (u8 *)exceptionsPage);
     }
 }
 
