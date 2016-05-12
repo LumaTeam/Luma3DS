@@ -43,14 +43,14 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2)
+void getSigChecks(u8 *pos, u32 size, u16 **off, u16 **off2)
 {
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
-    *off = (u32)memsearch(pos, pattern, size, 4);
-    *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
+    *off = (u16 *)memsearch(pos, pattern, size, 4);
+    *off2 = (u16 *)(memsearch(pos, pattern2, size, 4) - 1);
 }
 
 void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset)
@@ -61,7 +61,7 @@ void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset)
     u8 *off = memsearch(pos, pattern, size, 4) - 0x10;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
-    *fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & 0xFFFFF) - pos + process9MemAddr);
+    *fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
 
     return off;
 }

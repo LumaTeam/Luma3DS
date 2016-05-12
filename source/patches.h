@@ -20,7 +20,7 @@ const u8  svcBackdoor[40];
 *                   Functions
 **************************************************/
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
-void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2);
+void getSigChecks(u8 *pos, u32 size, u16 **off, u16 **off2);
 void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset);
 u16 *getFirmWrite(u8 *pos, u32 size);
 u16 *getFirmWriteSafe(u8 *pos, u32 size);

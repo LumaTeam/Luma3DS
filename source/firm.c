@@ -296,13 +296,13 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     if(nativeFirmType || a9lhMode == 2) patchReboots(process9Offset, process9Size, process9MemAddr);
 
     //Apply signature checks patches
-    u32 sigOffset,
-        sigOffset2;
+    u16 *sigOffset,
+        *sigOffset2;
 
     getSigChecks(process9Offset, process9Size, &sigOffset, &sigOffset2);
-    *(u16 *)sigOffset = sigPatch[0];
-    *(u16 *)sigOffset2 = sigPatch[0];
-    *((u16 *)sigOffset2 + 1) = sigPatch[1];
+    *sigOffset = sigPatch[0];
+    sigOffset2[0] = sigPatch[0];
+    sigOffset2[1] = sigPatch[1];
 
     //Does nothing if svcBackdoor is still there
     reimplementSvcBackdoor();
