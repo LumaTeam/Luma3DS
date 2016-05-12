@@ -38,6 +38,7 @@ typedef struct patchData {
 } patchData;
 
 static inline void loadFirm(u32 firmType, u32 externalFirm);
+static inline void patchKernelFCRAMAndVRAMMappingPermissions(void);
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode);
 static inline void patchEmuNAND(u8 *arm9Section, u8 *process9Offset, u32 process9Size, u32 emuHeader);
 static inline void patchReboots(u8 *process9Offset, u32 process9Size, u32 process9MemAddr);
