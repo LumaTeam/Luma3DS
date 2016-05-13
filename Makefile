@@ -12,7 +12,7 @@ LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
 name := Luma3DS
-version := $(shell git describe --abbrev=0 --tags)
+revision := $(shell git describe --tags --match v[0-9]*)
 
 dir_source := source
 dir_patches := patches
@@ -102,7 +102,7 @@ $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
 $(dir_build)/memory.o: CFLAGS += -O3
-$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 	@mkdir -p "$(@D)"
