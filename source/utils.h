@@ -11,5 +11,5 @@ void mcuReboot(void);
 
 #define TICKS_PER_SEC   67027964ULL
 
-u64 chrono(void);
+void chrono(u32 seconds);
 void stopChrono(void);

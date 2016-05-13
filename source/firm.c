@@ -32,9 +32,8 @@ void main(void)
         updatedSys,
         needConfig,
         newConfig,
-        emuHeader;
-
-    u64 chronoStarted = 0;
+        emuHeader,
+        chronoStarted = 0;
 
     //Detect the console being used
     console = PDN_MPCORE_CFG == 7;
@@ -75,9 +74,9 @@ void main(void)
             //Zero the last booted FIRM flag
             CFG_BOOTENV = 0;
 
-            chronoStarted = chrono();
-            while(chrono() - chronoStarted < 2 * TICKS_PER_SEC); //Wait for 2s
             chronoStarted = 1;
+            chrono(0);
+            chrono(2);
 
             //Update pressed buttons
             pressed = HID_PAD;
@@ -152,7 +151,10 @@ void main(void)
 
             //If screens are inited or the corresponding option is set, load splash screen
             if((PDN_GPU_CNT != 1 || CONFIG(7)) && loadSplash())
-                chronoStarted = chrono();
+            {
+                chronoStarted = 2;
+                chrono(0);
+            }
 
             //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
             if(pressed & BUTTON_R1)
@@ -218,7 +220,7 @@ void main(void)
 
     if(chronoStarted)
     {
-        while(chronoStarted > 1 && chrono() - chronoStarted < 3 * TICKS_PER_SEC);
+        if(chronoStarted == 2) chrono(3);
         stopChrono();
     }
 
