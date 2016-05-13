@@ -118,9 +118,7 @@ void main(void)
             pressed = HID_PAD;
         }
 
-        u32 devMode = CONFIG(5);
-
-        if(devMode) 
+        if(DEVMODE) 
         { 
             detectAndProcessExceptionDumps();
             installArm9Handlers(); 
@@ -190,11 +188,11 @@ void main(void)
         {
             /* If L and R/A/Select or one of the single payload buttons are pressed,
                chainload an external payload */
-            if(devMode || (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
+            if(DEVMODE || (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
                 loadPayload(pressed);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if((PDN_GPU_CNT != 1 || CONFIG(8)) && loadSplash())
+            if((PDN_GPU_CNT != 1 || CONFIG(7)) && loadSplash())
             {
                 chronoStarted = 2;
                 chrono(0);
@@ -368,7 +366,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     //Does nothing if svcBackdoor is still there
     if(nativeFirmType == 1) reimplementSvcBackdoor();
 
-    if(CONFIG(5))
+    if(DEVMODE)
     {
         //Apply UNITINFO patch
         u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
@@ -523,7 +521,7 @@ static inline void patchLegacyFirm(u32 firmType)
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                     (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(7));
+                                     (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch

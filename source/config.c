@@ -25,10 +25,10 @@ void configureCFW(const char *configPath)
                                         "( ) Force A9LH detection",
                                         "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emulation",
-                                        "( ) Enable developer features",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Enable splash screen with no screen-init" };
+                                        "( ) Enable splash screen with no screen-init", 
+                                        "( ) Enable developer features" };
 
     struct multiOption {
         int posXs[4];
