@@ -68,9 +68,8 @@ void main(void)
         updatedSys,
         needConfig,
         newConfig,
-        emuHeader;
-
-    u64 chronoStarted = 0;
+        emuHeader,
+        chronoStarted = 0;
 
     //Detect the console being used
     console = PDN_MPCORE_CFG == 7;
@@ -111,9 +110,9 @@ void main(void)
             //Zero the last booted FIRM flag
             CFG_BOOTENV = 0;
 
-            chronoStarted = chrono();
-            while(chrono() - chronoStarted < 2 * TICKS_PER_SEC); //Wait for 2s
             chronoStarted = 1;
+            chrono(0);
+            chrono(2);
 
             //Update pressed buttons
             pressed = HID_PAD;
@@ -196,7 +195,10 @@ void main(void)
 
             //If screens are inited or the corresponding option is set, load splash screen
             if((PDN_GPU_CNT != 1 || CONFIG(8)) && loadSplash())
-                chronoStarted = chrono();
+            {
+                chronoStarted = 2;
+                chrono(0);
+            }
 
             //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
             if(pressed & BUTTON_R1)
@@ -264,7 +266,7 @@ void main(void)
 
     if(chronoStarted)
     {
-        while(chronoStarted > 1 && chrono() - chronoStarted < 3 * TICKS_PER_SEC);
+        if(chronoStarted == 2) chrono(3);
         stopChrono();
     }
 
@@ -323,10 +325,10 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
                 nativeFirmType = 0;
                 break;
             case '1':
-                nativeFirmType = 1;
+                nativeFirmType = 2;
                 break;
             default:
-                nativeFirmType = 2;
+                nativeFirmType = 1;
                 break;
         }
 
@@ -341,10 +343,9 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         nativeFirmType = memcmp(section[2].hash, firm90Hash, 0x10) != 0;
     }
 
+    //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;
-
-    //Find the Process9 NCCH location
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
     //Apply emuNAND patches
@@ -359,14 +360,13 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     //Apply signature checks patches
     u16 *sigOffset,
         *sigOffset2;
-
     getSigChecks(process9Offset, process9Size, &sigOffset, &sigOffset2);
     *sigOffset = sigPatch[0];
     sigOffset2[0] = sigPatch[0];
     sigOffset2[1] = sigPatch[1];
 
     //Does nothing if svcBackdoor is still there
-    reimplementSvcBackdoor();
+    if(nativeFirmType == 1) reimplementSvcBackdoor();
 
     if(CONFIG(5))
     {
@@ -422,9 +422,8 @@ static inline void patchEmuNAND(u8 *arm9Section, u8 *process9Offset, u32 process
 
 static inline void patchReboots(u8 *process9Offset, u32 process9Size, u32 process9MemAddr)
 {
+    //Calculate offset for the firmlaunch code and fOpen
     u32 fOpenOffset;
-
-    //Calculate offset for the firmlaunch code
     void *rebootOffset = getReboot(process9Offset, process9Size, process9MemAddr, &fOpenOffset);
 
     //Copy firmlaunch code
@@ -440,13 +439,11 @@ static inline void reimplementSvcBackdoor(void)
     u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
     u32 *exceptionsPage;
-
     u32 *svcTable = getSvcAndExceptions(arm11Section1, section[1].size, &exceptionsPage);
 
     if(!svcTable[0x7B])
     {
         u32 *freeSpace;
-
         for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
 
         memcpy(freeSpace, svcBackdoor, 40);
@@ -458,6 +455,7 @@ static inline void reimplementSvcBackdoor(void)
 static inline void copySection0AndInjectLoader(void)
 {
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+
     u32 loaderSize;
     u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
 

@@ -40,7 +40,7 @@ void mcuReboot(void)
 }
 
 //TODO: add support for TIMER IRQ
-static void startChrono(u64 initialTicks)
+static inline void startChrono(u64 initialTicks)
 {
     //Based on a NATIVE_FIRM disassembly
 
@@ -53,21 +53,22 @@ static void startChrono(u64 initialTicks)
     for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) = 0x84; //Count-up; enabled
 }
 
-u64 chrono(void)
+void chrono(u32 seconds)
 {
-    static u32 chronoStarted = 0;
+    static u64 startingTicks = 0;
 
-    if(!chronoStarted)
+    if(!startingTicks) startChrono(0);
+
+    u64 res;
+
+    do
     {
-        startChrono(0);
-        chronoStarted++;
+        res = 0;
+        for(u32 i = 0; i < 4; i++) res |= *(vu16 *)(0x10003000 + 4 * i) << (16 * i);
     }
+    while(res - startingTicks < seconds * TICKS_PER_SEC);
 
-    u64 res = 0;
-
-    for(u32 i = 0; i < 4; i++) res |= *(vu16 *)(0x10003000 + 4 * i) << (16 * i);
-
-    return res;
+    if(!seconds) startingTicks = res;
 }
 
 void stopChrono(void)

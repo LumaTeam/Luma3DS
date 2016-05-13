@@ -368,7 +368,7 @@ void arm9Loader(u8 *arm9Section, u32 mode)
                  key2[0x10] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
         u8 keyX[0x10];
 
-        aes_setkey(0x11, mode == 1 ? key1 : key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x11, mode == 1 ? key2 : key1, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x11);
         aes(keyX, arm9Section + 0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
@@ -382,7 +382,7 @@ void arm9Loader(u8 *arm9Section, u32 mode)
     aes(arm9Section + 0x800, arm9Section + 0x800, arm9BinSize / AES_BLOCK_SIZE, arm9BinCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     //Set >=9.6 KeyXs
-    if(mode == 2)
+    if(mode == 1)
     {
         u8 keyData[0x10] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
            decKey[0x10];
