@@ -163,7 +163,7 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
                 break;
             }
         }
-		
+        
         for(u32 i = 0; i < 12; ++i)
         {
             static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
@@ -470,6 +470,43 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 );
             }
 
+            break;
+        }
+        
+        case 0x0004013000003702LL: // RO
+        {
+            static const u8 sigCheckPattern[] = {
+                0x30, 0x40, 0x2D, 0xE9, 0x02, 0x50, 0xA0, 0xE1
+            };
+            
+            static const u8 sha256ChecksPattern[] = {
+                0x02, 0x11, 0x10, 0xE2, 0x1F, 0x00, 0x00, 0x4A
+            };
+            
+            static const u8 sigCheckPatch[] = {
+                0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
+            };
+            
+            static const u8 sha256ChecksPatch[] = {
+                0x00, 0x00, 0xA0, 0xE3, 0x00, 0x10, 0xF0, 0xE3 // mov r0, #0; mnvs r1, #0
+            };
+            
+            //Disable CRR0 signature (RSA2048 with SHA256) check
+            patchMemory(code, size, 
+                sigCheckPattern, 
+                sizeof(sigCheckPattern), 0, 
+                sigCheckPatch,
+                sizeof(sigCheckPatch), 1
+            );
+            
+            //Disable CRO0/CRR0 SHA256 hash checks
+            patchMemory(code, size, 
+                sha256ChecksPattern, 
+                sizeof(sha256ChecksPattern), -4, 
+                sha256ChecksPatch,
+                sizeof(sigCheckPatch), 1
+            );
+            
             break;
         }
 
