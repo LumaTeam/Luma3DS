@@ -45,7 +45,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         adr r1, bytes_read
         ldr r2, =payload_addr
         cmp r4, #0
-        movne r3, #0 ; Skip 0 bytes.
+        movne r3, #0x12000 ; Skip the first 0x12000 bytes.
         moveq r3, payload_maxsize
 	ldr r6, [sp, #0x3A8-0x198]
 	ldr r6, [r6, #0x28]
@@ -83,8 +83,8 @@ fopen: .ascii "OPEN"
 .pool
 bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname:     .dcw "sdmc:/SaltFW.bin"
-	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+dat_fname:     .dcw "sdmc:/Luma3DS.dat"
+	       .word 0
 
 .align 4
     kernelcode_start:

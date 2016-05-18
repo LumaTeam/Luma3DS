@@ -5,9 +5,9 @@
 
 #ifndef PATH_MAX
 #define PATH_MAX 255
-// #define CONFIG(a) ((loadConfig() >> (a + 16)) & 1)
-// #define MULTICONFIG(a) ((loadConfig() >> (a * 2 + 6)) & 3)
-// #define BOOTCONFIG(a, b) ((loadConfig() >> a) & b)
+#define CONFIG(a) ((loadConfig() >> (a + 16)) & 1)
+#define MULTICONFIG(a) ((loadConfig() >> (a * 2 + 6)) & 3)
+#define BOOTCONFIG(a, b) ((loadConfig() >> a) & b)
 #endif
 
 static int memcmp(const void *buf1, const void *buf2, u32 size)
@@ -107,30 +107,30 @@ static u32 secureInfoExists(void)
     return secureInfoExists;
 }
 
-// static u32 loadConfig(void)
-// {
-//     static u32 config = 0;
+static u32 loadConfig(void)
+{
+    static u32 config = 0;
 
-//     if(!config)
-//     {
-//         IFile file;
-//         if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/luma/config.bin", FS_OPEN_READ)))
-//         {
-//             u64 total;
-//             if(R_SUCCEEDED(IFile_Read(&file, &total, &config, 4))) config |= 1 << 4;
-//             IFile_Close(&file);
-//         }
-//     }
+    if(!config)
+    {
+        IFile file;
+        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/luma/config.bin", FS_OPEN_READ)))
+        {
+            u64 total;
+            if(R_SUCCEEDED(IFile_Read(&file, &total, &config, 4))) config |= 1 << 4;
+            IFile_Close(&file);
+        }
+    }
 
-//     return config;
-// }
+    return config;
+}
 
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
 
-    char path[] = "/SaltFW/locales/0000000000000000.txt";
+    char path[] = "/luma/locales/0000000000000000.txt";
 
     u32 i = 29;
 
@@ -336,24 +336,24 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(blockAutoUpdatesPatch), 1
             );
 
-            // //Apply only if the updated NAND hasn't been booted
-            // if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(3, 1) && CONFIG(1)))
-            // {
-            //     static const u8 skipEshopUpdateCheckPattern[] = {
-            //         0x30, 0xB5, 0xF1, 0xB0
-            //     };
-            //     static const u8 skipEshopUpdateCheckPatch[] = {
-            //         0x00, 0x20, 0x08, 0x60, 0x70, 0x47
-            //     };
+            //Apply only if the updated NAND hasn't been booted
+            if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(3, 1) && CONFIG(1)))
+            {
+                static const u8 skipEshopUpdateCheckPattern[] = {
+                    0x30, 0xB5, 0xF1, 0xB0
+                };
+                static const u8 skipEshopUpdateCheckPatch[] = {
+                    0x00, 0x20, 0x08, 0x60, 0x70, 0x47
+                };
 
-            //     //Skip update checks to access the EShop
-            //     patchMemory(code, size, 
-            //         skipEshopUpdateCheckPattern, 
-            //         sizeof(skipEshopUpdateCheckPattern), 0, 
-            //         skipEshopUpdateCheckPatch, 
-            //         sizeof(skipEshopUpdateCheckPatch), 1
-            //     );
-            // }
+                //Skip update checks to access the EShop
+                patchMemory(code, size, 
+                    skipEshopUpdateCheckPattern, 
+                    sizeof(skipEshopUpdateCheckPattern), 0, 
+                    skipEshopUpdateCheckPatch, 
+                    sizeof(skipEshopUpdateCheckPatch), 1
+                );
+            }
 
             break;
         }
@@ -374,31 +374,31 @@ void patchCode(u64 progId, u8 *code, u32 size)
             break;
         }
         
-        // case 0x0004001000021000LL: // USA MSET
-        // case 0x0004001000020000LL: // JPN MSET
-        // case 0x0004001000022000LL: // EUR MSET
-        // case 0x0004001000026000LL: // CHN MSET
-        // case 0x0004001000027000LL: // KOR MSET
-        // case 0x0004001000028000LL: // TWN MSET
-        // {
-        //     if(CONFIG(5))
-        //     {
-        //         static const u16 verPattern[] = u"Ver.";
-        //         const u32 currentNand = BOOTCONFIG(0, 3);
-        //         const u32 matchingFirm = BOOTCONFIG(2, 1) == (currentNand != 0);
+        case 0x0004001000021000LL: // USA MSET
+        case 0x0004001000020000LL: // JPN MSET
+        case 0x0004001000022000LL: // EUR MSET
+        case 0x0004001000026000LL: // CHN MSET
+        case 0x0004001000027000LL: // KOR MSET
+        case 0x0004001000028000LL: // TWN MSET
+        {
+            if(CONFIG(5))
+            {
+                static const u16 verPattern[] = u"Ver.";
+                const u32 currentNand = BOOTCONFIG(0, 3);
+                const u32 matchingFirm = BOOTCONFIG(2, 1) == (currentNand != 0);
 
-        //         //Patch Ver. string
-        //         patchMemory(code, size,
-        //             verPattern,
-        //             sizeof(verPattern) - sizeof(u16), 0,
-        //             !currentNand ? ((matchingFirm) ? u" Sys" : u"SysE") :
-        //                            ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuS") : ((matchingFirm) ? u"Emu2" : u"Em2S")),
-        //             sizeof(verPattern) - sizeof(u16), 1
-        //         );
-        //     }
+                //Patch Ver. string
+                patchMemory(code, size,
+                    verPattern,
+                    sizeof(verPattern) - sizeof(u16), 0,
+                    !currentNand ? ((matchingFirm) ? u" Sys" : u"SysE") :
+                                   ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuS") : ((matchingFirm) ? u"Emu2" : u"Em2S")),
+                    sizeof(verPattern) - sizeof(u16), 1
+                );
+            }
 
-        //     break;
-        // }
+            break;
+        }
 
         case 0x0004013000008002LL: // NS
         {
@@ -417,23 +417,23 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPatch), 2
             );
 
-            // u32 cpuSetting = MULTICONFIG(1);
+            u32 cpuSetting = MULTICONFIG(1);
 
-            // if(cpuSetting)
-            // {
-            //     static const u8 cfgN3dsCpuPattern[] = {
-            //         0x00, 0x40, 0xA0, 0xE1, 0x07, 0x00
-            //     };
+            if(cpuSetting)
+            {
+                static const u8 cfgN3dsCpuPattern[] = {
+                    0x00, 0x40, 0xA0, 0xE1, 0x07, 0x00
+                };
 
-            //     u32 *cfgN3dsCpuLoc = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
+                u32 *cfgN3dsCpuLoc = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
 
-            //     //Patch N3DS CPU Clock and L2 cache setting
-            //     if(cfgN3dsCpuLoc != NULL)
-            //     {
-            //         *(cfgN3dsCpuLoc + 1) = 0xE1A00000;
-            //         *(cfgN3dsCpuLoc + 8) = 0xE3A00000 | cpuSetting;
-            //     }
-            // }
+                //Patch N3DS CPU Clock and L2 cache setting
+                if(cfgN3dsCpuLoc != NULL)
+                {
+                    *(cfgN3dsCpuLoc + 1) = 0xE1A00000;
+                    *(cfgN3dsCpuLoc + 8) = 0xE3A00000 | cpuSetting;
+                }
+            }
 
             break;
         }
@@ -516,30 +516,30 @@ void patchCode(u64 progId, u8 *code, u32 size)
         }
 
         default:
-            // if(CONFIG(4))
-            // {
-            //     u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
+            if(CONFIG(4))
+            {
+                u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
 
-            //     if(tidHigh == 0x0004000)
-            //     {
-            //         //Language emulation
-            //         u8 regionId = 0xFF,
-            //            languageId = 0xFF;
+                if(tidHigh == 0x0004000)
+                {
+                    //Language emulation
+                    u8 regionId = 0xFF,
+                       languageId = 0xFF;
 
-            //         if(R_SUCCEEDED(loadTitleLocaleConfig(progId, &regionId, &languageId)))
-            //         {
-            //             u32 CFGUHandleOffset;
+                    if(R_SUCCEEDED(loadTitleLocaleConfig(progId, &regionId, &languageId)))
+                    {
+                        u32 CFGUHandleOffset;
 
-            //             u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
+                        u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
 
-            //             if(CFGU_GetConfigInfoBlk2_endPos != NULL)
-            //             {
-            //                 if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
-            //                 if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
-            //             }
-            //         }
-            //     }
-            // }
+                        if(CFGU_GetConfigInfoBlk2_endPos != NULL)
+                        {
+                            if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
+                            if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
+                        }
+                    }
+                }
+            }
 
         break;
     }
