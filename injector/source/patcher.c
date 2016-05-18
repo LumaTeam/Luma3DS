@@ -79,13 +79,13 @@ static inline size_t strnlen(const char *string, size_t maxlen)
 
     for(size = 0; *string && size < maxlen; string++, size++);
 
-    return size;
+        return size;
 }
 
 static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
 {
     FS_Path filePath = {PATH_ASCII, strnlen(path, PATH_MAX) + 1, path},
-            archivePath = {PATH_EMPTY, 1, (u8 *)""};
+    archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
@@ -114,7 +114,9 @@ static u32 loadConfig(void)
     if(!config)
     {
         IFile file;
-        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/luma/config.bin", FS_OPEN_READ)))
+        // Not planning to have a config.
+        // This is here just to fix some weird memory address issue.
+        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/SaltFW/config.bin", FS_OPEN_READ)))
         {
             u64 total;
             if(R_SUCCEEDED(IFile_Read(&file, &total, &config, 4))) config |= 1 << 4;
@@ -127,12 +129,12 @@ static u32 loadConfig(void)
 
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
-    /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
+    /* Here we look for "/SaltFW/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
 
-    char path[] = "/luma/locales/0000000000000000.txt";
+    char path[] = "/SaltFW/locales/0000000000000000.txt";
 
-    u32 i = 29;
+    u32 i = 31;
 
     while(progId)
     {
@@ -163,7 +165,7 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
                 break;
             }
         }
-        
+
         for(u32 i = 0; i < 12; ++i)
         {
             static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
@@ -186,11 +188,11 @@ static u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
        this way we can find the right candidate
        (handle should also be stored right after end of candidate function) */
 
-    u32 n = 0,
-        possible[24];
+       u32 n = 0,
+       possible[24];
 
-    for(u8 *pos = code + 4; n < 24 && pos < code + size - 4; pos += 4)
-    {
+       for(u8 *pos = code + 4; n < 24 && pos < code + size - 4; pos += 4)
+       {
         if(*(u32 *)pos == 0xD8A103F9)
         {
             for(u32 *l = (u32 *)pos - 4; n < 24 && l < (u32 *)pos + 4; l++)
@@ -227,17 +229,17 @@ static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetC
         CFGU_GetConfigInfoBlk2_startPos >= code && *((u16 *)CFGU_GetConfigInfoBlk2_startPos + 1) != 0xE92D;
         CFGU_GetConfigInfoBlk2_startPos -= 2);
 
-    for(u8 *languageBlkIdPos = code; languageBlkIdPos < code + size; languageBlkIdPos += 4)
-    {
-        if(*(u32 *)languageBlkIdPos == 0xA0002)
+        for(u8 *languageBlkIdPos = code; languageBlkIdPos < code + size; languageBlkIdPos += 4)
         {
+            if(*(u32 *)languageBlkIdPos == 0xA0002)
+            {
             for(u8 *instr = languageBlkIdPos - 8; instr >= languageBlkIdPos - 0x1008 && instr >= code + 4; instr -= 4) //Should be enough
             {
                 if(instr[3] == 0xEB) //We're looking for BL
                 {
                     u8 *calledFunction = instr;
                     u32 i = 0,
-                        found;
+                    found;
 
                     do
                     {
@@ -276,8 +278,8 @@ static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOff
         u32 *cmp = (u32 *)cmdPos;
 
         if(cmp[0] == cfgSecureInfoGetRegionCmdPattern[0] && cmp[1] == cfgSecureInfoGetRegionCmdPattern[1] &&
-           cmp[2] == cfgSecureInfoGetRegionCmdPattern[2] && *((u16 *)cmdPos + 7) == 0xE59F &&
-           *(u32 *)(cmdPos + 20 + *((u16 *)cmdPos + 6)) == CFGUHandleOffset)
+         cmp[2] == cfgSecureInfoGetRegionCmdPattern[2] && *((u16 *)cmdPos + 7) == 0xE59F &&
+         *(u32 *)(cmdPos + 20 + *((u16 *)cmdPos + 6)) == CFGUHandleOffset)
         {
             *((u32 *)cmdPos + 4) = 0xE3A00000 | regionId; // mov    r0, =regionId
             *((u32 *)cmdPos + 5) = 0xE5C40008;            // strb   r0, [r4, 8]
@@ -314,7 +316,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(regionFreePattern), -16, 
                 regionFreePatch, 
                 sizeof(regionFreePatch), 1
-            );
+                );
 
             break;
         }
@@ -334,7 +336,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(blockAutoUpdatesPattern), 0, 
                 blockAutoUpdatesPatch, 
                 sizeof(blockAutoUpdatesPatch), 1
-            );
+                );
 
             //Apply only if the updated NAND hasn't been booted
             if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(3, 1) && CONFIG(1)))
@@ -352,7 +354,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     sizeof(skipEshopUpdateCheckPattern), 0, 
                     skipEshopUpdateCheckPatch, 
                     sizeof(skipEshopUpdateCheckPatch), 1
-                );
+                    );
             }
 
             break;
@@ -392,9 +394,9 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     verPattern,
                     sizeof(verPattern) - sizeof(u16), 0,
                     !currentNand ? ((matchingFirm) ? u" Sys" : u"SysE") :
-                                   ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuS") : ((matchingFirm) ? u"Emu2" : u"Em2S")),
+                    ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuS") : ((matchingFirm) ? u"Emu2" : u"Em2S")),
                     sizeof(verPattern) - sizeof(u16), 1
-                );
+                    );
             }
 
             break;
@@ -415,7 +417,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPattern), 0, 
                 stopCartUpdatesPatch,
                 sizeof(stopCartUpdatesPatch), 2
-            );
+                );
 
             u32 cpuSetting = MULTICONFIG(1);
 
@@ -453,7 +455,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(secureinfoSigCheckPattern), 0, 
                 secureinfoSigCheckPatch, 
                 sizeof(secureinfoSigCheckPatch), 1
-            );
+                );
 
             if(secureInfoExists())
             {
@@ -467,7 +469,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     sizeof(secureinfoFilenamePattern) - sizeof(u16), 
                     secureinfoFilenamePatch, 
                     sizeof(secureinfoFilenamePatch) - sizeof(u16), 2
-                );
+                    );
             }
 
             break;
@@ -484,62 +486,62 @@ void patchCode(u64 progId, u8 *code, u32 size)
             static const u8 sha256ChecksPattern2[] = {
                 0xF8, 0x4F, 0x2D, 0xE9, 0x01, 0x70, 0xA0, 0xE1
             };
-            
+
             static const u8 stub[] = {
                 0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
             };
-            
+
             //Disable CRR0 signature (RSA2048 with SHA256) check
             patchMemory(code, size, 
                 sigCheckPattern, 
                 sizeof(sigCheckPattern), 0, 
                 stub,
                 sizeof(stub), 1
-            );
-            
+                );
+
             //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
             patchMemory(code, size, 
                 sha256ChecksPattern1, 
                 sizeof(sha256ChecksPattern1), 0, 
                 stub,
                 sizeof(stub), 1
-            );
-            
+                );
+
             patchMemory(code, size, 
                 sha256ChecksPattern2, 
                 sizeof(sha256ChecksPattern2), 0, 
                 stub,
                 sizeof(stub), 1
-            );
-            
+                );
+
             break;
         }
 
         default:
-            if(CONFIG(4))
+        if(true)
+        {
+            u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
+
+            if(tidHigh == 0x0004000)
             {
-                u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
-
-                if(tidHigh == 0x0004000)
-                {
                     //Language emulation
-                    u8 regionId = 0xFF,
-                       languageId = 0xFF;
+                u8 regionId = 0xFF,
+                languageId = 0xFF;
 
-                    if(R_SUCCEEDED(loadTitleLocaleConfig(progId, &regionId, &languageId)))
+                if(R_SUCCEEDED(loadTitleLocaleConfig(progId, &regionId, &languageId)))
+                {
+                    u32 CFGUHandleOffset;
+
+                    u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
+
+                    if(CFGU_GetConfigInfoBlk2_endPos != NULL)
                     {
-                        u32 CFGUHandleOffset;
-
-                        u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
-
-                        if(CFGU_GetConfigInfoBlk2_endPos != NULL)
-                        {
-                            if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
-                            if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
-                        }
+                        if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
+                        if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
                     }
                 }
             }
+        }
 
         break;
     }
