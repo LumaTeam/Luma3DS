@@ -10,34 +10,28 @@ Slim Alternative Firmware for 3DS!
 - Automatic TWL/AGB patching.
 - Automatic region-free patching.
 - Automatic reboot patching.
-- Optional splash screen. _(Not available in SaltLite.)_
-- Optional region/language patching. _(Not available in SaltLite.)_
-- Optional firmware.bin for NTR. _(Not available in SaltLite.)_
+- Optional splash screen.
+- Optional region/language patching.
+- Optional firmware.bin for NTR.
 - **Install and forget.**
 
 ### How to install:
-1. Drop `SaltFW.bin` or `SaltLite.bin` to the root of your SD.
-2. Set your choice of bootmanager to load `/SaltFW.bin`/`/SaltLite.bin` **OR** use `arm9loaderhax.bin`.
+1. Drop `SaltFW.bin` to the root of your SD.
+2. Set your choice of bootmanager to load `/SaltFW.bin`/ **OR** use `arm9loaderhax.bin`.
 3. DONE!
 
 ### How to use splash/bootlogo
-_(Not available in SaltLite.)_  
-
 1. Create `SaltFW` folder to the root of your SD.
 2. Put `splash.bin` **OR** `splashbottom.bin` **OR** both in `SaltFW` folder
 3. DONE!
 
 ### How to use NTR CFW
-_(Not available in SaltLite.)_  
-
 1. Download [this](http://www70.zippyshare.com/v/Fbj6n1vB/file.html).
 2. Put `firmware.bin` from the folder for your device, to the root of SD.
 3. Install NTR CFW like regular.
 4. DONE!
 
 ### How to use Region/Language emulation
-_(Not available in SaltLite.)_  
-
 1. Create `SaltFW` folder in the root of your SD.
 2. Create `locales` folder in `SaltFW`.
 3. Create a `txt` file titleID of the game you want to edit. (e.g. `0004000000055E00.txt`)
