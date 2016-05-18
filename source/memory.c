@@ -1,7 +1,5 @@
 /*
 *   memory.c
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 *
 *   Quick Search algorithm adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
 */

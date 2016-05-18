@@ -22,26 +22,26 @@ static inline u8 i2cGetDeviceRegAddr(u8 device_id)
 
 //-----------------------------------------------------------------------------
 
-static vu8 * reg_data_addrs[] = {
+static vu8 *reg_data_addrs[] = {
     (vu8 *)(I2C1_REG_OFF + I2C_REG_DATA),
     (vu8 *)(I2C2_REG_OFF + I2C_REG_DATA),
     (vu8 *)(I2C3_REG_OFF + I2C_REG_DATA),
 };
 
-static inline vu8 * i2cGetDataReg(u8 bus_id)
+static inline vu8 *i2cGetDataReg(u8 bus_id)
 {
     return reg_data_addrs[bus_id];
 }
 
 //-----------------------------------------------------------------------------
 
-static vu8 * reg_cnt_addrs[] = {
+static vu8 *reg_cnt_addrs[] = {
     (vu8 *)(I2C1_REG_OFF + I2C_REG_CNT),
     (vu8 *)(I2C2_REG_OFF + I2C_REG_CNT),
     (vu8 *)(I2C3_REG_OFF + I2C_REG_CNT),
 };
 
-static inline vu8 * i2cGetCntReg(u8 bus_id)
+static inline vu8 *i2cGetCntReg(u8 bus_id)
 {
     return reg_cnt_addrs[bus_id];
 }
@@ -50,7 +50,7 @@ static inline vu8 * i2cGetCntReg(u8 bus_id)
 
 static inline void i2cWaitBusy(u8 bus_id)
 {
-    while(*i2cGetCntReg(bus_id) & 0x80);
+    while (*i2cGetCntReg(bus_id) & 0x80);
 }
 
 static inline u32 i2cGetResult(u8 bus_id)

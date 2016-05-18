@@ -82,23 +82,23 @@ Result FSLDR_SetPriority(u32 priority)
   return cmdbuf[1];
 }
 
-Result FSLDR_OpenFileDirectly(Handle* out, FS_Archive archive, FS_Path path, u32 openFlags, u32 attributes)
+Result FSLDR_OpenFileDirectly(Handle* out, FS_ArchiveID archiveId, FS_Path archivePath, FS_Path filePath, u32 openFlags, u32 attributes)
 {
   u32 *cmdbuf = getThreadCommandBuffer();
 
   cmdbuf[0] = IPC_MakeHeader(0x803,8,4); // 0x8030204
   cmdbuf[1] = 0;
-  cmdbuf[2] = archive.id;
-  cmdbuf[3] = archive.lowPath.type;
-  cmdbuf[4] = archive.lowPath.size;
-  cmdbuf[5] = path.type;
-  cmdbuf[6] = path.size;
+  cmdbuf[2] = archiveId;
+  cmdbuf[3] = archivePath.type;
+  cmdbuf[4] = archivePath.size;
+  cmdbuf[5] = filePath.type;
+  cmdbuf[6] = filePath.size;
   cmdbuf[7] = openFlags;
   cmdbuf[8] = attributes;
-  cmdbuf[9] = IPC_Desc_StaticBuffer(archive.lowPath.size, 2);
-  cmdbuf[10] = (u32) archive.lowPath.data;
-  cmdbuf[11] = IPC_Desc_StaticBuffer(path.size, 0);
-  cmdbuf[12] = (u32) path.data;
+  cmdbuf[9] = IPC_Desc_StaticBuffer(archivePath.size, 2);
+  cmdbuf[10] = (u32)archivePath.data;
+  cmdbuf[11] = IPC_Desc_StaticBuffer(filePath.size, 0);
+  cmdbuf[12] = (u32)filePath.data;
 
   Result ret = 0;
   if(R_FAILED(ret = svcSendSyncRequest(fsldrHandle))) return ret;

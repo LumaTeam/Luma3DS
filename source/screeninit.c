@@ -1,10 +1,8 @@
 /*
 *   screeninit.c
-*       by Aurora Wright
+*
 *   Screen init code by dark_samus, bil1s, Normmatt, delebile and others.
 *   Screen deinit code by tiniVi.
-*
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "screeninit.h"
@@ -12,8 +10,6 @@
 #include "draw.h"
 #include "i2c.h"
 #include "../build/screeninit.h"
-
-#define SCREENINIT_ADDRESS 0x24F03000
 
 vu32 *arm11Entry = (u32 *)0x1FFFFFF8;
 
@@ -46,15 +42,18 @@ void deinitScreens(void)
     }
 }
 
-void initScreens(void)
+u32 initScreens(void)
 {
-    if(PDN_GPU_CNT == 1)
+    u32 needToInit = PDN_GPU_CNT == 1;
+
+    if(needToInit)
     {
         u32 *const screenInitAddress = (u32 *)0x24FFFC00;
+
         memcpy(screenInitAddress, screeninit, screeninit_size);
 
         //Write brightness level for the stub to pick up
-        screenInitAddress[2] = 2; // equal to 3 in home menu, and useless if you use a9lh with screeninit
+        screenInitAddress[2] = 0;
 
         *arm11Entry = (u32)screenInitAddress;
         while(*arm11Entry);
@@ -64,4 +63,6 @@ void initScreens(void)
     }
 
     clearScreens();
+
+    return needToInit;
 }

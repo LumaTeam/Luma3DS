@@ -1,9 +1,7 @@
 /*
 *   crypto.h
-*       by Reisyukaku / Aurora Wright
-*   Crypto libs from http://github.com/b1l1s/ctr
 *
-*   Copyright (c) 2016 All Rights Reserved
+*   Crypto libs from http://github.com/b1l1s/ctr
 */
 
 #pragma once
@@ -81,7 +79,7 @@
 #define SHA_224_HASH_SIZE	(224 / 8)
 #define SHA_1_HASH_SIZE		(160 / 8)
 
-extern u32 console;
+extern u32 emuOffset, console, firmSource;
 
 void ctrNandInit(void);
 u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);

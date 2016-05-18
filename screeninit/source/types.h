@@ -1,9 +1,3 @@
-/*
-*   types.h
-*       by Reisyukaku
-*   Copyright (c) 2015 All Rights Reserved
-*/
-
 #pragma once
 
 #include <stdint.h>

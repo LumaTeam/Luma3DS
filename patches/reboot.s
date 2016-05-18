@@ -22,12 +22,12 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         bne pxi_wait_recv
 
         mov r4, #0
-        adr r1, saltfw_fname
+        adr r1, bin_fname
         b open_payload
 
     fallback:
         mov r4, #1
-        adr r1, a9lh_fname
+        adr r1, dat_fname
 
     open_payload:
         ; Open file
@@ -37,7 +37,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         orr r6, 1
         blx r6
         cmp r0, #0
-        bne fallback ; If SaltFW.bin is not found, try the arm9loaderhax.bin.
+        bne fallback ; If the .bin is not found, try the .dat.
 
     read_payload:
         ; Read file
@@ -45,7 +45,7 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         adr r1, bytes_read
         ldr r2, =payload_addr
         cmp r4, #0
-        movne r3, #0x0 ; Skip the first 0 bytes, because why not.
+        movne r3, #0x12000 ; Skip the first 0x12000 bytes.
         moveq r3, payload_maxsize
 	ldr r6, [sp, #0x3A8-0x198]
 	ldr r6, [r6, #0x28]
@@ -81,10 +81,10 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-saltfw_fname:     .dcw "sdmc:/SaltFW.bin"
+bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
 	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-a9lh_fname:     .dcw "sdmc:/arm9loaderhax.bin"
-	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+dat_fname:     .dcw "sdmc:/Luma3DS.dat"
+	       .word 0
 
 .align 4
     kernelcode_start:

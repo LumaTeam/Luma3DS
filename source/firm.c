@@ -1,10 +1,9 @@
 /*
 *   firm.c
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "firm.h"
+#include "utils.h"
 #include "fs.h"
 #include "patches.h"
 #include "memory.h"
@@ -13,19 +12,26 @@
 #include "screeninit.h"
 #include "buttons.h"
 #include "../build/patches.h"
-#include "i2c.h"
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-u32 console;
+u32 config,
+    console,
+    firmSource,
+    emuOffset;
 
 void main(void)
 {
-    u32 bootType, firmType;
+    u32 bootType,
+        firmType,
+        a9lhMode,
+        updatedSys,
+        needConfig,
+        chronoStarted = 0;
 
     //Detect the console being used
-    console = (PDN_MPCORE_CFG == 7); //if the result is 0111 (have 4 cores)
+    console = PDN_MPCORE_CFG == 7;
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
@@ -33,24 +39,46 @@ void main(void)
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
     {
+        if(needConfig == 2) mcuReboot();
+
         bootType = 1;
+
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = *(vu8 *)0x23F00009 == '3' ? 3 : *(vu8 *)0x23F00005 - '0';
+
+        firmSource = 0;
+        a9lhMode = 1;
+        updatedSys = 1;
     }
     else
     {
+        //Get pressed buttons
+        u32 pressed = HID_PAD;
+
         bootType = 0;
         firmType = 0;
 
-        if(PDN_GPU_CNT != 1) loadSplash();
+        //If the SAFE MODE combo is held, force a sysNAND boot
+        if(pressed == SAFE_MODE)
+        {
+            a9lhMode++;
+            firmSource = 0;
+        }
+
+        //If screens are inited or the corresponding option is set, load splash screen
+        if(PDN_GPU_CNT != 1 && loadSplash())
+        {
+            chronoStarted = 2;
+            chrono(0);
+        }
     }
 
-    loadFirm(firmType, !firmType);
+    loadFirm(firmType, !firmType && updatedSys == !firmSource);
 
     switch(firmType)
     {
         case 0:
-            patchNativeFirm();
+            patchNativeFirm(a9lhMode);
             break;
         case 3:
             patchSafeFirm();
@@ -60,21 +88,25 @@ void main(void)
             break;
     }
 
-    launchFirm(bootType);
+    if(chronoStarted)
+    {
+        if(chronoStarted == 2) chrono(3);
+        stopChrono();
+    }
+
+    launchFirm(!firmType, bootType);
 }
 
-// Load FIRM into FCRAM
 static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
 
-    /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
-       doesn't match the console, load it from CTRNAND */
-
     u32 externalFirmLoaded = externalFirm &&
-                             fileRead(firm, "/firmware.bin", 0) &&
+                             fileRead(firm, "/firmware.bin") &&
                              (((u32)section[2].address >> 8) & 0xFF) == (console ? 0x60 : 0x68);
 
+    /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
+       doesn't match the console, load FIRM from CTRNAND */
     if(!externalFirmLoaded)
     {
         const char *firmFolders[4][2] = {{ "00000002", "20000002" },
@@ -87,46 +119,70 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
     }
 }
 
-static inline void patchNativeFirm()
+static inline void patchNativeFirm(u32 a9lhMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
+    u32 nativeFirmType;
+
     if(console)
     {
+        //Determine the NATIVE_FIRM version
+        switch(arm9Section[0x53])
+        {
+            case 0xFF:
+                nativeFirmType = 0;
+                break;
+            case '1':
+                nativeFirmType = 2;
+                break;
+            default:
+                nativeFirmType = 1;
+                break;
+        }
+
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, 1);
+        arm9Loader(arm9Section, nativeFirmType);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
+    else
+    {
+        //Determine if we're booting the 9.0 FIRM
+        u8 firm90Hash[0x10] = {0x27, 0x2D, 0xFE, 0xEB, 0xAF, 0x3F, 0x6B, 0x3B, 0xF5, 0xDE, 0x4C, 0x41, 0xDE, 0x95, 0x27, 0x6A};
+        nativeFirmType = memcmp(section[2].hash, firm90Hash, 0x10) != 0;
+    }
 
-    //Find the Process9 NCCH location
-    u8 *proc9Offset = getProc9(arm9Section, section[2].size);
-
-    //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
-    patchReboots(arm9Section, proc9Offset);
+    //Find the Process9 .code location, size and memory address
+    u32 process9Size,
+        process9MemAddr;
+    u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    patchFirmWrites(arm9Section, 1);
+    if(a9lhMode) patchFirmWrites(process9Offset, process9Size, 1);
+
+    //Apply FIRM reboot patches, not on 9.0 FIRM as it breaks firmlaunchhax
+    if(nativeFirmType || a9lhMode == 2) patchReboots(process9Offset, process9Size, process9MemAddr);
 
     //Apply signature checks patches
-    u32 sigOffset,
-    sigOffset2;
+    u16 *sigOffset,
+        *sigOffset2;
+    getSigChecks(process9Offset, process9Size, &sigOffset, &sigOffset2);
+    *sigOffset = sigPatch[0];
+    sigOffset2[0] = sigPatch[0];
+    sigOffset2[1] = sigPatch[1];
 
-    getSigChecks(arm9Section, section[2].size, &sigOffset, &sigOffset2);
-    *(u16 *)sigOffset = sigPatch[0];
-    *(u16 *)sigOffset2 = sigPatch[0];
-    *((u16 *)sigOffset2 + 1) = sigPatch[1];
+    //Does nothing if svcBackdoor is still there
+    if(nativeFirmType == 1) reimplementSvcBackdoor();
 
-    //Replace the FIRM loader with the injector
-    injectLoader();
+    //Replace the FIRM loader with the injector while copying section0
+    copySection0AndInjectLoader();
 }
 
-static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
+static inline void patchReboots(u8 *process9Offset, u32 process9Size, u32 process9MemAddr)
 {
-    //Calculate offset for the firmlaunch code
-    void *rebootOffset = getReboot(arm9Section, section[2].size);
-
-    //Calculate offset for the fOpen function
-    u32 fOpenOffset = getfOpen(proc9Offset, rebootOffset);
+    //Calculate offset for the firmlaunch code and fOpen
+    u32 fOpenOffset;
+    void *rebootOffset = getReboot(process9Offset, process9Size, process9MemAddr, &fOpenOffset);
 
     //Copy firmlaunch code
     memcpy(rebootOffset, reboot, reboot_size);
@@ -136,20 +192,64 @@ static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset)
     *pos_fopen = fOpenOffset;
 }
 
-static inline void injectLoader(void)
+static inline void reimplementSvcBackdoor(void)
 {
-    u32 loaderSize;
+    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
-    void *loaderOffset = getLoader((u8 *)firm + section[0].offset, section[0].size, &loaderSize);
+    u32 *exceptionsPage;
+    u32 *svcTable = getSvcAndExceptions(arm11Section1, section[1].size, &exceptionsPage);
 
-    //Check that the injector CXI isn't larger than the original
-    if((u32)injector_size <= loaderSize)
+    if(!svcTable[0x7B])
     {
-        memcpy(loaderOffset, injector, injector_size);
+        u32 *freeSpace;
+        for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
 
-        //Patch content size and ExeFS size to match the repaced loader's ones
-        *((u32 *)loaderOffset + 0x41) = loaderSize / 0x200;
-        *((u32 *)loaderOffset + 0x69) = loaderSize / 0x200 - 5;
+        memcpy(freeSpace, svcBackdoor, 40);
+
+        svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
+    }
+}
+
+static inline void copySection0AndInjectLoader(void)
+{
+    u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+
+    u32 loaderSize;
+    u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
+
+    memcpy(section[0].address, arm11Section0, loaderOffset);
+    memcpy(section[0].address + loaderOffset, injector, injector_size);
+    memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+}
+
+static inline void patchSafeFirm(void)
+{
+    u8 *arm9Section = (u8 *)firm + section[2].offset;
+
+    if(console)
+    {
+        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
+        arm9Loader(arm9Section, 0);
+        firm->arm9Entry = (u8 *)0x801B01C;
+    }
+
+    //Apply FIRM0/1 writes patches to protect A9LH
+    patchFirmWrites(arm9Section, section[2].size, console);
+}
+
+static void patchFirmWrites(u8 *offset, u32 size, u32 mode)
+{
+    if(mode)
+    {
+        u16 *writeOffset = getFirmWrite(offset, size);
+        *writeOffset = writeBlock[0];
+        *(writeOffset + 1) = writeBlock[1];
+    }
+    else
+    {
+        u16 *writeOffset = getFirmWriteSafe(offset, size);
+        *writeOffset = writeBlockSafe[0];
+        *(writeOffset + 1) = writeBlockSafe[1];
     }
 }
 
@@ -180,7 +280,8 @@ static inline void patchLegacyFirm(u32 firmType)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) : (sizeof(agbPatches) / sizeof(patchData) - 1);
+    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) :
+                                     (sizeof(agbPatches) / sizeof(patchData));
     const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
 
     //Patch
@@ -189,53 +290,22 @@ static inline void patchLegacyFirm(u32 firmType)
         switch(patches[i].type)
         {
             case 0:
-            memcpy((u8 *)firm + patches[i].offset[console], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
-            break;
+                memcpy((u8 *)firm + patches[i].offset[console], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
+                break;
             case 2:
-            *(u16 *)((u8 *)firm + patches[i].offset[console] + 2) = 0;
+                *(u16 *)((u8 *)firm + patches[i].offset[console] + 2) = 0;
             case 1:
-            *(u16 *)((u8 *)firm + patches[i].offset[console]) = patches[i].patch.type1;
-            break;
+                *(u16 *)((u8 *)firm + patches[i].offset[console]) = patches[i].patch.type1;
+                break;
         }
     }
 }
 
-static inline void patchSafeFirm(void)
+static inline void launchFirm(u32 sectionNum, u32 bootType)
 {
-    u8 *arm9Section = (u8 *)firm + section[2].offset;
-
-    if(console)
-    {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, 0);
-        firm->arm9Entry = (u8 *)0x801B01C;
-    }
-
-    //Apply FIRM0/1 writes patches to protect A9LH
-    patchFirmWrites(arm9Section, console);
-}
-
-static void patchFirmWrites(u8 *arm9Section, u32 mode)
-{
-    if(mode)
-    {
-        u16 *writeOffset = getFirmWrite(arm9Section, section[2].size);
-        *writeOffset = writeBlock[0];
-        *(writeOffset + 1) = writeBlock[1];
-    }
-    else
-    {
-        u16 *writeOffset = getFirmWriteSafe(arm9Section, section[2].size);
-        *writeOffset = writeBlockSafe[0];
-        *(writeOffset + 1) = writeBlockSafe[1];
-    }
-}
-
-static inline void launchFirm(u32 bootType)
-{
-    //Copy firm partitions to respective memory locations
-    for(u32 i = 0; i < 4 && section[i].size; i++)
-        memcpy(section[i].address, (u8 *)firm + section[i].offset, section[i].size);
+    //Copy FIRM sections to respective memory locations
+    for(; sectionNum < 4 && section[sectionNum].size; sectionNum++)
+        memcpy(section[sectionNum].address, (u8 *)firm + section[sectionNum].offset, section[sectionNum].size);
 
     //Determine the ARM11 entry to use
     vu32 *arm11;
@@ -249,6 +319,6 @@ static inline void launchFirm(u32 bootType)
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
 
-    //Final jump to arm9 kernel
+    //Final jump to ARM9 kernel
     ((void (*)())firm->arm9Entry)();
 }

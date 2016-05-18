@@ -1,7 +1,5 @@
 /*
 *   patches.c
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "patches.h"
@@ -18,45 +16,54 @@ const u16 nandRedir[2] = {0x4C00, 0x47A0},
           writeBlock[2] = {0x2000, 0x46C0},
           writeBlockSafe[2] = {0x2400, 0xE01D};
 
-const u8 unitInfoPatch = 0xE3;
+//Official implementation of svcBackdoor
+const u8  svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
+                             0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
+                             0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
+                             0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
+                             0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
+                             0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
+                             0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
+                             0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
+                             0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
+                             0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
 
 /**************************************************
 *                   Functions
 **************************************************/
 
-u8 *getProc9(u8 *pos, u32 size)
+u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
-    return memsearch(pos, "ess9", size, 4);
+    u8 *off = memsearch(pos, "ess9", size, 4);
+
+    *process9Size = *(u32 *)(off - 0x60) * 0x200;
+    *process9MemAddr = *(u32 *)(off + 0xC);
+
+    //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
+    return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2)
+void getSigChecks(u8 *pos, u32 size, u16 **off, u16 **off2)
 {
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
-    *off = (u32)memsearch(pos, pattern, size, 4);
-    *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
+    *off = (u16 *)memsearch(pos, pattern, size, 4);
+    *off2 = (u16 *)(memsearch(pos, pattern2, size, 4) - 1);
 }
 
-void *getReboot(u8 *pos, u32 size)
+void *getReboot(u8 *pos, u32 size, u32 process9MemAddr, u32 *fOpenOffset)
 {
     //Look for FIRM reboot code
     const u8 pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
 
-    return memsearch(pos, pattern, size, 4) - 0x10;
-}
-
-u32 getfOpen(u8 *proc9Offset, void *rebootOffset)
-{
-    //Offset Process9 code gets loaded to in memory (defined in ExHeader)
-    u32 p9MemAddr = *(u32 *)(proc9Offset + 0xC);
-
-    //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
-    u32 p9CodeOff = (u32)(proc9Offset - 0x204) + (*(u32 *)(proc9Offset - 0x64) * 0x200) + 0x200;
+    u8 *off = memsearch(pos, pattern, size, 4) - 0x10;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
-    return (u32)rebootOffset + 9 - (-((*(u32 *)rebootOffset & 0x00FFFFFF) << 2) & 0xFFFFF) - p9CodeOff + p9MemAddr;
+    *fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
+
+    return off;
 }
 
 u16 *getFirmWrite(u8 *pos, u32 size)
@@ -76,19 +83,32 @@ u16 *getFirmWriteSafe(u8 *pos, u32 size)
     return (u16 *)memsearch(pos, pattern, size, 4);
 }
 
-u8 *getUnitInfoValueSet(u8 *pos, u32 size)
+u32 getLoader(u8 *pos, u32 *loaderSize)
 {
-    //Look for UNITINFO value being set
-    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
+    u8 *off = pos;
+    u32 size;
 
-    return memsearch(pos, pattern, size, 4) + 3;
+    while(1)
+    {
+        size = *(u32 *)(off + 0x104) * 0x200;
+        if(*(u32 *)(off + 0x200) == 0x64616F6C) break;
+        off += size;
+    }
+
+    *loaderSize = size;
+
+    return (u32)(off - pos);
 }
 
-void *getLoader(u8 *pos, u32 size, u32 *loaderSize)
+u32 *getSvcAndExceptions(u8 *pos, u32 size, u32 **exceptionsPage)
 {
-    u8 *const off = memsearch(pos, "loade", size, 5);
+    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5}; //cpsid aif
+    
+    *exceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
 
-    *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
+    u32 svcOffset = (-(((*exceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
+    u32 *svcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+    while(*svcTable) svcTable++; //Look for SVC0 (NULL)
 
-    return off - 0x200;
+    return svcTable;
 }

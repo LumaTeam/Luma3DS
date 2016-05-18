@@ -1,12 +1,12 @@
 /*
 *   fs.c
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #include "fs.h"
 #include "memory.h"
+#include "screeninit.h"
 #include "fatfs/ff.h"
+#include "buttons.h"
 
 static FATFS sdFs,
              nandFs;
@@ -19,22 +19,21 @@ u32 mountFs(void)
     return 1;
 }
 
-u32 fileRead(void *dest, const char *path, u32 size)
+u32 fileRead(void *dest, const char *path)
 {
-    FRESULT result;
     FIL file;
+    u32 size;
 
-    result = f_open(&file, path, FA_READ);
-    if(result == FR_OK)
+    if(f_open(&file, path, FA_READ) == FR_OK)
     {
         unsigned int read;
-        if(!size) size = f_size(&file);
-        result = f_read(&file, dest, size, &read);
+        size = f_size(&file);
+        f_read(&file, dest, size, &read);
+        f_close(&file);
     }
+    else size = 0;
 
-    f_close(&file);
-
-    return result ? 0 : 1;
+    return size;
 }
 
 void firmRead(void *dest, const char *firmFolder)
@@ -47,14 +46,11 @@ void firmRead(void *dest, const char *firmFolder)
 
     f_opendir(&dir, path);
 
-    u32 id = 0;
+    u32 id = 0xFFFFFFFF;
 
     //Parse the target directory
-    while(f_readdir(&dir, &info) == FR_OK)
+    while(f_readdir(&dir, &info) == FR_OK && info.fname[0])
     {
-        //We've parsed the whole folder
-        if(!info.fname[0]) break;
-
         //Not a cxi
         if(info.altname[9] != 'A') continue;
 
@@ -66,8 +62,8 @@ void firmRead(void *dest, const char *firmFolder)
             tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
         }
 
-        //Found a newer cxi
-        if(tempId > id) id = tempId;
+        //Found an older cxi
+        if(tempId < id) id = tempId;
     }
 
     f_closedir(&dir);
@@ -75,16 +71,16 @@ void firmRead(void *dest, const char *firmFolder)
     //Complete the string with the .app name
     memcpy(&path[34], "/00000000.app", 14);
 
+    //Last digit of the .app
     u32 i = 42;
 
     //Convert back the .app name from integer to array
     while(id)
     {
-        //Last digit of the .app
         static const char hexDigits[] = "0123456789ABCDEF";
         path[i--] = hexDigits[id & 0xF];
         id >>= 4;
     }
 
-    fileRead(dest, path, 0);
+    fileRead(dest, path);
 }

@@ -1,7 +1,5 @@
 /*
 *   firm.h
-*       by Reisyukaku / Aurora Wright
-*   Copyright (c) 2016 All Rights Reserved
 */
 
 #pragma once
@@ -10,6 +8,7 @@
 
 #define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
 #define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
+#define CFG_BOOTENV    (*(vu32 *)0x10010000)
 
 //FIRM Header layout
 typedef struct firmSectionHeader {
@@ -39,10 +38,11 @@ typedef struct patchData {
 } patchData;
 
 static inline void loadFirm(u32 firmType, u32 externalFirm);
-static inline void patchNativeFirm();
-static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset);
-static inline void injectLoader(void);
-static inline void patchLegacyFirm(u32 firmType);
+static inline void patchNativeFirm(u32 a9lhMode);
+static inline void patchReboots(u8 *process9Offset, u32 process9Size, u32 process9MemAddr);
+static inline void reimplementSvcBackdoor(void);
+static inline void copySection0AndInjectLoader(void);
 static inline void patchSafeFirm(void);
-static void patchFirmWrites(u8 *arm9Section, u32 mode);
-static inline void launchFirm(u32 bootType);
+static void patchFirmWrites(u8 *offset, u32 size, u32 mode);
+static inline void patchLegacyFirm(u32 firmType);
+static inline void launchFirm(u32 sectionNum, u32 bootType);
