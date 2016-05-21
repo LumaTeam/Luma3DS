@@ -79,7 +79,7 @@
 #define SHA_224_HASH_SIZE	(224 / 8)
 #define SHA_1_HASH_SIZE		(160 / 8)
 
-extern u32 emuOffset, console, firmSource;
+extern u32 console;
 
 void ctrNandInit(void);
 u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);

@@ -312,13 +312,7 @@ u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 
     //Read
     u32 result;
-    if(!firmSource)
-        result = sdmmc_nand_readsectors(sector + fatStart, sectorCount, outbuf);
-    else
-    {
-        sector += emuOffset;
-        result = sdmmc_sdcard_readsectors(sector + fatStart, sectorCount, outbuf);
-    }
+    result = sdmmc_nand_readsectors(sector + fatStart, sectorCount, outbuf);
 
     //Decrypt
     aes_use_keyslot(nandSlot);

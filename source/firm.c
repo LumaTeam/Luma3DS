@@ -16,21 +16,22 @@
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-u32 config,
-    console,
-    firmSource,
-    emuOffset;
+u32 console;
+
+void error(const char *t){
+    clearScreens();
+    drawString(t, 0, 0, COLOR_RED);
+    waitInput();
+}
 
 void main(void)
 {
-    u32 bootType,
-        firmType,
-        a9lhMode,
-        updatedSys,
-        needConfig,
+    u32 bootType = 0,
+        firmType = 0,
+        a9lhMode = 1,
         chronoStarted = 0;
 
-    //Detect the console being used
+    //Detect the console being used, 7 means New 3DS
     console = PDN_MPCORE_CFG == 7;
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
@@ -39,30 +40,20 @@ void main(void)
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
     {
-        if(needConfig == 2) mcuReboot();
-
         bootType = 1;
-
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = *(vu8 *)0x23F00009 == '3' ? 3 : *(vu8 *)0x23F00005 - '0';
-
-        firmSource = 0;
-        a9lhMode = 1;
-        updatedSys = 1;
     }
     else
     {
         //Get pressed buttons
         u32 pressed = HID_PAD;
 
-        bootType = 0;
-        firmType = 0;
-
         //If the SAFE MODE combo is held, force a sysNAND boot
         if(pressed == SAFE_MODE)
         {
             a9lhMode++;
-            firmSource = 0;
+            firmType = 3; // Gotta set this for proper patching.
         }
 
         //If screens are inited or the corresponding option is set, load splash screen
@@ -73,7 +64,7 @@ void main(void)
         }
     }
 
-    loadFirm(firmType, !firmType && updatedSys == !firmSource);
+    loadFirm(firmType, !firmType);
 
     switch(firmType)
     {

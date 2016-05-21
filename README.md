@@ -6,18 +6,22 @@ Slim Alternative Firmware for 3DS!
 - No config, perfect for minimalists and children.
 - No EmuNAND.
 - Arm9loaderhax only.
-- Automatic firmware patching.
+- Automatic **firmware protection** patching for all FIRMs.
 - Automatic TWL/AGB patching.
 - Automatic region-free patching.
 - Automatic reboot patching.
 - Optional splash screen.
 - Optional region/language patching.
-- Optional firmware.bin for NTR.
+- Optional firmware.bin loading for NTR.
 - **Install and forget.**
 
-### How to install:
+### How to install standalone:
+1. Drop `arm9loaderhax.bin` to the root of your SD.
+2. DONE!
+
+### How to install and use with a bootmanager:
 1. Drop `SaltFW.bin` to the root of your SD.
-2. Set your choice of bootmanager to load `/SaltFW.bin`/ **OR** use `arm9loaderhax.bin`.
+2. Set your choice of bootmanager to load `/SaltFW.bin` as default.
 3. DONE!
 
 ### How to use splash/bootlogo
@@ -43,12 +47,11 @@ You'll need armips, [bin2c](https://sourceforge.net/projects/bin2c/), and a rece
 Then, just run "make" and everything should work!  
 You can find the compiled files in the 'out' folder.
 
-
 ### Credits
 AuroraWright for her great coding.  
-Rei for his great ReiNand.  
-And everyone they mentioned in their credits sections.  
-Thanks, all of you.
+TuxSH for helping with Luma3DS.  
+Rei for his initial ground work.  
+And everyone else they mentioned in their credits sections.  
 
 ### License
 See `LICENSE.txt`
