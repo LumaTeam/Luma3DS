@@ -7,6 +7,7 @@ Slim Alternative Firmware for 3DS!
 - No EmuNAND.
 - Arm9loaderhax only.
 - Automatic **firmware protection** patching for all FIRMs.
+- Automatic signature check patching.
 - Automatic TWL/AGB patching.
 - Automatic region-free patching.
 - Automatic reboot patching.
