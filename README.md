@@ -2,10 +2,10 @@
 
 Slim Alternative Firmware for 3DS!  
 ### Features: 
-- No payload support.
-- No config, perfect for minimalists and children.
-- No EmuNAND.
-- Arm9loaderhax only.
+- **Arm9loaderhax only.**
+- **No EmuNAND Support.**
+- **No payload chainloading.**
+- **No config, perfect for minimalists and children.**
 - Automatic **firmware protection** patching for all FIRMs.
 - Automatic signature check patching.
 - Automatic TWL/AGB patching.
