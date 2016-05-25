@@ -57,7 +57,7 @@ void main(void)
         }
 
         //If screens are inited or the corresponding option is set, load splash screen
-        if(PDN_GPU_CNT != 1 && loadSplash())
+        if(loadSplash())
         {
             chronoStarted = 2;
             chrono(0);
