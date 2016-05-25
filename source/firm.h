@@ -29,7 +29,6 @@ typedef struct firmHeader {
 } firmHeader;
 
 static inline void loadFirm(u32 firmType, u32 externalFirm);
-static inline void patchKernelFCRAMAndVRAMMappingPermissions(void);
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode);
 static inline void patchLegacyFirm(u32 firmType);
 static inline void patchSafeFirm(void);

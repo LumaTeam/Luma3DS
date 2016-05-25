@@ -24,41 +24,6 @@ u32 config,
     firmSource,
     emuOffset;
 
-static inline void patchExceptionHandlersInstall(u8 *arm9Section)
-{
-    static const u8 pattern[] = {
-        0x18, 0x10, 0x80, 0xE5, 
-        0x10, 0x10, 0x80, 0xE5, 
-        0x20, 0x10, 0x80, 0xE5, 
-        0x28, 0x10, 0x80, 0xE5,
-    }; //i.e when it stores ldr pc, [pc, #-4]
-    
-    u32* off = (u32 *)(memsearch(arm9Section, pattern, section[2].size, sizeof(pattern)));
-    if(off == NULL) return;
-    off += sizeof(pattern)/4;
-    
-    u32 r0 = 0x08000000;
-    
-    for(; *off != 0xE3A01040; off++) //until mov r1, #0x40
-    {
-        if((*off >> 26) != 0x39 || ((*off >> 16) & 0xf) != 0 || ((*off >> 25) & 1) != 0 || ((*off >> 20) & 5) != 0)
-            continue; //discard everything that's not str rX, [r0, #imm](!)
-        
-        int rD = (*off >> 12) & 0xf;
-        int offset = (*off & 0xfff) * ((((*off >> 23) & 1) == 0) ? -1 : 1);
-        int writeback = (*off >> 21) & 1, pre = (*off >> 24) & 1;
-        
-        u32 addr = r0 + ((pre || !writeback) ? offset : 0);
-        if(addr != 0x08000014 && addr != 0x08000004)
-            *off = 0xE1A00000; //nop
-        else
-            *off = 0xE5800000 | (rD << 12) | (addr & 0xfff); //preserve IRQ and svc handlers
-        
-        if(!pre) addr += offset;
-        if(writeback) r0 = addr;
-    }
-}
-
 void main(void)
 {
     u32 bootType,
@@ -247,7 +212,7 @@ void main(void)
 
     loadFirm(firmType, !firmType && updatedSys == !firmSource);
 
-    patchExceptionHandlersInstall((u8 *)firm + section[2].offset);
+    patchExceptionHandlersInstall((u8 *)firm + section[2].offset, section[2].size);
     
     switch(firmType)
     {
@@ -291,21 +256,6 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
         firmRead(firm, firmFolders[firmType][console]);
         decryptExeFs((u8 *)firm);
     }
-}
-
-static inline void patchKernelFCRAMAndVRAMMappingPermissions(void)
-{
-    static const u8 MMUConfigPattern[] = {
-        0xC4, 0xDD, 0xFA, 0x1F,
-        0x16, 0x64, 0x01, 0x00,
-        0xBC, 0xDD, 0xFA, 0x1F,
-        0x00, 0x50, 0xFF, 0x1F
-    };
-    
-    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
-
-    u32* off = (u32 *)memsearch(arm11Section1, MMUConfigPattern, section[1].size, sizeof(MMUConfigPattern));
-    if(off != NULL) off[1] &= ~(1 << 4); //clear XN bit 
 }
 
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
@@ -367,16 +317,14 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 
     //Does nothing if svcBackdoor is still there
     if(nativeFirmType == 1) reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
-    if(nativeFirmType == 1) reimplementSvcBackdoor();
 
     if(DEVMODE)
     {
         //Apply UNITINFO patch
-        u8 *unitInfoOffset = getUnitInfoValueSet(arm9Section, section[2].size);
-        *unitInfoOffset = unitInfoPatch;
+        patchUnitInfoValueSet(arm9Section, section[2].size);
         
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
-        patchKernelFCRAMAndVRAMMappingPermissions();
+        patchKernelFCRAMAndVRAMMappingPermissions(arm9Section, section[2].size);
     }
 }
 

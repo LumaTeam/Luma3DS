@@ -106,7 +106,6 @@ $(dir_build)/loader.h: $(dir_loader)/Makefile
 
 $(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
 	@$(MAKE) -C $(dir_arm9_exceptions)
-	@mv $(dir_arm9_exceptions)/arm9_exceptions.bin $(@D)
 	@bin2c -o $@ -n arm9_exceptions $(@D)/arm9_exceptions.bin
 
 $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
@@ -114,7 +113,7 @@ $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
 $(dir_build)/memory.o: CFLAGS += -O3
-$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) (dev) configuration\""
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 	@mkdir -p "$(@D)"

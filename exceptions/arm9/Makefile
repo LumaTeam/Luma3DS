@@ -25,13 +25,13 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: $(name).bin
+all: ../../$(dir_build)/$(name).bin
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-$(name).bin: $(dir_build)/$(name).elf
+../../$(dir_build)/$(name).bin: $(dir_build)/$(name).elf
 	$(OC) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
