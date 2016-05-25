@@ -1,6 +1,6 @@
 .arm.little
 
-.create "emunand.bin", 0
+.create "build/emunand.bin", 0
 .arm
 nand_sd:
     ; Original code that still needs to be executed.

@@ -9,6 +9,7 @@
 
 #include "diskio.h"		/* FatFs lower layer API */
 #include "sdmmc/sdmmc.h"
+#include "../crypto.h"
 
 /* Definitions of physical drive number for each media */
 #define SDCARD        0

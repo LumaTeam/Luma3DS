@@ -3,7 +3,7 @@
 payload_addr equ 0x23F00000   ; Brahma payload address.
 payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
 
-.create "reboot.bin", 0
+.create "build/reboot.bin", 0
 .arm
     ; Interesting registers and locations to keep in mind, set before this code is ran:
     ; - sp + 0x3A8 - 0x70: FIRM path in exefs.
