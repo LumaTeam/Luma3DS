@@ -26,8 +26,8 @@ Slim Alternative Firmware for 3DS!
 3. DONE!
 
 ### How to use splash/bootlogo
-1. Create `SaltFW` folder to the root of your SD.
-2. Put `splash.bin` **OR** `splashbottom.bin` **OR** both in `SaltFW` folder
+1. Create `SaltFW/` folder in the root of your SD.
+2. Put `splash.bin` **OR** `splashbottom.bin` **OR** **BOTH** in `SaltFW/` folder
 3. DONE!
 
 ### How to use NTR CFW
