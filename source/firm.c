@@ -290,6 +290,9 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
     
+    //Apply anti-anti-DG patches for >= 11.0 firmwares
+    if(nativeFirmType == 1) patchTitleInstallMinVersionCheck(process9Offset, process9Size);
+    
     //Apply emuNAND patches
     if(nandType)
     {
