@@ -291,7 +291,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     if(nandType)
     {
         u32 branchAdditive = (u32)firm - section[2].offset + (u32)section[2].address;
-        patchEmuNAND(arm9Section, section[2].size, process9Offset, process9Size, emuHeader, branchAdditive);
+        patchEmuNAND(arm9Section, section[2].size, process9Offset, process9Size, emuOffset, emuHeader, branchAdditive);
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
