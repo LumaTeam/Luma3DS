@@ -33,7 +33,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/injector.h $(dir_build)/loader.h $(dir_build)/screeninit.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -83,22 +83,27 @@ $(dir_build)/main.bin: $(dir_build)/main.elf
 $(dir_build)/main.elf: $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
+$(dir_build)/emunandpatch.h: $(dir_patches)/emunand.s $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
 	@armips $<
-	@armips $(word 2,$^)
+	@bin2c -o $@ -n emunand $(@D)/emunand.bin
+
+$(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n reboot $(@D)/reboot.bin
+
+$(dir_build)/injector.h: $(dir_injector)/Makefile
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $(dir_injector)
-	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(@D)
-	@bin2c -o $@ -n emunand $(@D)/emunand.bin -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
+	@bin2c -o $@ -n injector $(@D)/injector.cxi
 
 $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
-	@mv $(dir_loader)/loader.bin $(@D)
 	@bin2c -o $@ -n loader $(@D)/loader.bin
 
 $(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
 	@$(MAKE) -C $(dir_screeninit)
-	@mv $(dir_screeninit)/screeninit.bin $(@D)
 	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
 $(dir_build)/memory.o: CFLAGS += -O3

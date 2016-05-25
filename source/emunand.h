@@ -8,8 +8,5 @@
 
 #define NCSD_MAGIC 0x4453434E
 
-void getEmunandSect(u32 *off, u32 *head, u32 *emuNAND);
-u32 getSDMMC(u8 *pos, u32 size);
-void getEmuRW(u8 *pos, u32 size, u16 **readOffset, u16 **writeOffset);
-u32 *getMPU(u8 *pos, u32 size);
-void *getEmuCode(u8 *pos);
+void locateEmuNAND(u32 *off, u32 *head, u32 *emuNAND);
+void patchEmuNAND(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive);

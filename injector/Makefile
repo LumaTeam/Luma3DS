@@ -31,13 +31,13 @@ objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.c))
 
 .PHONY: all
-all: $(name).cxi
+all: ../$(dir_build)/$(name).cxi
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-$(name).cxi: $(dir_build)/$(name).elf
+../$(dir_build)/$(name).cxi: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
 
 $(dir_build)/$(name).elf: $(objects)
