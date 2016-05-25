@@ -287,10 +287,13 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
+    //Apply signature patches
+    patchSignatureChecks(process9Offset, process9Size);
+    
     //Apply emuNAND patches
     if(nandType)
     {
-        u32 branchAdditive = (u32)firm - section[2].offset + (u32)section[2].address;
+        u32 branchAdditive = (u32)firm + section[2].offset - (u32)section[2].address;
         patchEmuNAND(arm9Section, section[2].size, process9Offset, process9Size, emuOffset, emuHeader, branchAdditive);
     }
 
