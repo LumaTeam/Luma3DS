@@ -48,7 +48,7 @@ a9lh: $(dir_out)/arm9loaderhax.bin
 ninjhax: $(dir_out)/3ds/$(name)
 
 .PHONY: release
-release: $(dir_out)/$(name)$(version).7z
+release: $(dir_out)/$(name)$(revision).7z
 
 .PHONY: clean
 clean:
@@ -76,7 +76,7 @@ $(dir_out)/3ds/$(name): $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
-$(dir_out)/$(name)$(version).7z: launcher a9lh ninjhax
+$(dir_out)/$(name)$(revision).7z: launcher a9lh ninjhax
 	@7z a -mx $@ ./$(@D)/*
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
