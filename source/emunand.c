@@ -64,8 +64,8 @@ static inline void patchNANDRW(u8 *pos, u32 size, u32 branchOffset)
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
-    u16 *readOffset = (u16 *)memsearch(pos, pattern, size, 4) - 3;
-    u16 *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, 4) - 3;
+    u16 *readOffset = (u16 *)memsearch(pos, pattern, size, 4) - 3,
+        *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, 4) - 3;
 
     *readOffset = nandRedir[0];
     readOffset[1] = nandRedir[1];
@@ -96,8 +96,8 @@ void patchEmuNAND(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 
     memcpy(emuCodeOffset, emunand, emunand_size);
 
     //Add the data of the found emuNAND
-    u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", emunand_size, 4);
-    u32 *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", emunand_size, 4);
+    u32 *pos_offset = (u32 *)memsearch(emuCodeOffset, "NAND", emunand_size, 4),
+        *pos_header = (u32 *)memsearch(emuCodeOffset, "NCSD", emunand_size, 4);
     *pos_offset = emuOffset;
     *pos_header = emuHeader;
 

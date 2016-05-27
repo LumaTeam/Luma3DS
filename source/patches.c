@@ -34,18 +34,9 @@ void patchSignatureChecks(u8 *pos, u32 size)
     off2[1] = sigPatch[1];
 }
 
-void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {0x89, 0x0A, 0x81, 0x42, 0x02, 0xD2};
-    
-    u8 *off = memsearch(pos, pattern, size, 6);
-    
-    if(off != NULL) off[5] = 0xE0;
-}
-
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 {
-    //Look for FIRM reboot code
+    //Look for firmlaunch code
     const u8 pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
 
     u8 *off = memsearch(pos, pattern, size, 4) - 0x10;
@@ -119,6 +110,15 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
 
         svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
     }
+}
+
+void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
+    
+    u8 *off = memsearch(pos, pattern, size, 4);
+    
+    if(off != NULL) off[4] = 0xE0;
 }
 
 void applyLegacyFirmPatches(u8 *pos, u32 firmType, u32 console)
