@@ -212,7 +212,12 @@ void main(void)
 
     loadFirm(firmType, !firmType && updatedSys == !firmSource);
 
-    patchExceptionHandlersInstall((u8 *)firm + section[2].offset, section[2].size);
+    if(DEVMODE)
+    {
+        u32 arm9SectionNum = 0;
+        for(; (u32)(section[arm9SectionNum].address) >> 24 != 0x08 && arm9SectionNum < 4; arm9SectionNum++);
+        patchExceptionHandlersInstall((u8 *)firm + section[arm9SectionNum].offset, section[arm9SectionNum].size);
+    }
     
     switch(firmType)
     {
