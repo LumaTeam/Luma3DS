@@ -252,7 +252,7 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
-    
+
     u32 nativeFirmType;
 
     if(console)
@@ -289,7 +289,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
-    
+
     //Apply emuNAND patches
     if(nandType)
     {
