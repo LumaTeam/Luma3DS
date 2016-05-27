@@ -122,29 +122,29 @@ void main(void)
                 {
                     nandType = 0;
                     firmSource = updatedSys ? 0 : BOOTCONFIG(2, 1);
-                    needConfig--;
+                    needConfig = 0;
 
                     //Flag to prevent multiple boot options-forcing
                     newConfig |= 1 << 4;
                 }
 
-                /* Else, force the last used boot options unless a payload button or A/L/R are pressed
+                /* Else, force the last used boot options unless a button is pressed
                     or the no-forcing flag is set */
-                else if(!(pressed & OVERRIDE_BUTTONS) && !BOOTCONFIG(4, 1))
+                else if(!pressed && !BOOTCONFIG(4, 1))
                 {
                     nandType = BOOTCONFIG(0, 3);
                     firmSource = BOOTCONFIG(2, 1);
-                    needConfig--;
+                    needConfig = 0;
                 }
             }
 
             //If the SAFE MODE combo is held, force a sysNAND boot
             else if(pressed == SAFE_MODE)
             {
-                a9lhMode++;
+                a9lhMode = 2;
                 nandType = 0;
                 firmSource = 0;
-                needConfig--;
+                needConfig = 0;
             }
         }
 
@@ -180,7 +180,7 @@ void main(void)
 
             /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
                or vice-versa, boot the second emuNAND */
-            if(nandType && (CONFIG(3) == !(pressed & BUTTON_B))) nandType++;
+            if(nandType && (CONFIG(3) == !(pressed & BUTTON_B))) nandType = 2;
         }
     }
 
@@ -260,8 +260,9 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 
 static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 {
-    u8 *arm9Section = (u8 *)firm + section[2].offset;
-    
+    u8 *arm9Section = (u8 *)firm + section[2].offset,
+       *arm11Section1 = (u8 *)firm + section[1].offset;
+
     u32 nativeFirmType;
 
     if(console)
@@ -298,10 +299,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
-    
-    //Apply anti-anti-DG patches for >= 11.0 firmwares
-    if(nativeFirmType == 1) patchTitleInstallMinVersionCheck(process9Offset, process9Size);
-    
+
     //Apply emuNAND patches
     if(nandType)
     {
@@ -315,16 +313,22 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     //Apply firmlaunch patches, not on 9.0 FIRM as it breaks firmlaunchhax
     if(nativeFirmType || a9lhMode == 2) patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
-    //Does nothing if svcBackdoor is still there
-    if(nativeFirmType == 1) reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
+    if(nativeFirmType == 1)
+    {
+        //Apply anti-anti-DG patches for >= 11.0 firmwares
+        patchTitleInstallMinVersionCheck(process9Offset, process9Size);
+
+        //Does nothing if svcBackdoor is still there
+        reimplementSvcBackdoor(arm11Section1, section[1].size);
+    }
 
     if(DEVMODE)
     {
         //Apply UNITINFO patch
         patchUnitInfoValueSet(arm9Section, section[2].size);
-        
+
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
-        patchKernelFCRAMAndVRAMMappingPermissions(arm9Section, section[2].size);
+        patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);
     }
 }
 
