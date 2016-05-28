@@ -330,7 +330,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     if(DEVMODE)
     {
         //Apply UNITINFO patch
-        patchUnitInfoValueSet(arm9Section, section[2].size);
+        if(DEVMODE == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
 
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);

@@ -18,7 +18,8 @@ void configureCFW(const char *configPath)
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
     const char *multiOptionsText[]  = { "Screen-init brightness: 4( ) 3( ) 2( ) 1( )",
-                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
+                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
+                                        "Dev. features: None( ) ErrDisp( ) UNITINFO( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) SysNAND is updated (A9LH-only)",
@@ -27,8 +28,7 @@ void configureCFW(const char *configPath)
                                         "( ) Enable region/language emulation",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Enable splash screen with no screen-init", 
-                                        "( ) Enable developer features" };
+                                        "( ) Enable splash screen with no screen-init" };
 
     struct multiOption {
         int posXs[4];
@@ -36,7 +36,8 @@ void configureCFW(const char *configPath)
         u32 enabled;
     } multiOptions[] = {
         { .posXs = {26, 31, 36, 41} },
-        { .posXs = {17, 26, 32, 44} }
+        { .posXs = {17, 26, 32, 44} },
+        { .posXs = {20, 31, 43, 0} }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
@@ -145,7 +146,7 @@ void configureCFW(const char *configPath)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
-                multiOptions[selectedOption].enabled = oldEnabled == 3 ? 0 : oldEnabled + 1;
+                multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
             }
             else
             {
