@@ -7,7 +7,6 @@
 
 #pragma once
 
-void setupStack(u32 mode, void *stack);
 void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void dataAbortHandler(void);

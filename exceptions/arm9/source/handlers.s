@@ -45,16 +45,3 @@ GEN_HANDLER FIQHandler
 GEN_HANDLER undefinedInstructionHandler
 GEN_HANDLER prefetchAbortHandler
 GEN_HANDLER dataAbortHandler
-
-.global setupStack
-.type   setupStack, %function
-setupStack:
-    cmp r0, #0
-    moveq r0, #0xf          @ usr => sys
-    mrs r2, cpsr
-    bic r3, r2, #0xf
-    orr r3, r0              @ processor mode
-    msr cpsr_c, r3          @ change processor mode
-    mov sp, r1
-    msr cpsr_c, r2          @ restore processor mode
-    bx lr

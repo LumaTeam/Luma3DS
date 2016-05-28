@@ -1,5 +1,5 @@
 /*
-*   main.c
+*   mainHandler.c
 *       by TuxSH
 *
 *   This is part of Luma3DS, see LICENSE.txt for details
@@ -10,8 +10,6 @@
 #include "handlers.h"
 
 #define FINAL_BUFFER    0x25000000
-#define SP              ((void *)0x02000000)    //We make the (full descending) stack point to the end of ITCM for our exception handlers. 
-                                                //It doesn't matter if we're overwriting stuff, since we're going to reboot.
 
 #define REG_DUMP_SIZE   (4*17)
 #define CODE_DUMP_SIZE  48
@@ -70,22 +68,4 @@ void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
 
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot
     while(1);
-}
-
-void main(void)
-{
-    setupStack(1, SP);  //FIQ
-    setupStack(7, SP);  //Abort
-    setupStack(11, SP); //Undefined
-
-    //IRQHandler is at 0x08000000, but we won't handle it for obvious reasons
-    *(vu32 *)0x08000008 = 0xE51FF004;   
-    *(vu32 *)0x0800000C = (u32)FIQHandler;
-    //svcHandler is at 0x08000010, but we won't handle svc either
-    *(vu32 *)0x08000018 = 0xE51FF004;   
-    *(vu32 *)0x0800001C = (u32)undefinedInstructionHandler;
-    *(vu32 *)0x08000020 = 0xE51FF004;   
-    *(vu32 *)0x08000024 = (u32)prefetchAbortHandler;
-    *(vu32 *)0x08000028 = 0xE51FF004;
-    *(vu32 *)0x0800002C = (u32)dataAbortHandler;
 }

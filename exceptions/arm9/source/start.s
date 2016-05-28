@@ -2,4 +2,11 @@
 .align 4
 .global _start
 _start:
-    b main
+    add pc, r0, #(handlers - .) @ Dummy instruction to prevent compiler optimizations
+    
+handlers:
+    .word FIQHandler
+    .word undefinedInstructionHandler
+    .word prefetchAbortHandler
+    .word dataAbortHandler
+    

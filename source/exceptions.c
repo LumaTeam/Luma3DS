@@ -12,12 +12,47 @@
 #include "utils.h"
 #include "../build/arm9_exceptions.h"
 
+#define _U __attribute__((unused)) //Silence "unused parameter" warnings
+static void __attribute__((naked)) setupStack(_U u32 mode, _U void* SP)
+{
+    __asm__ volatile(
+            "cmp r0, #0                                         \n"
+            "moveq r0, #0xf          @ usr => sys               \n"
+            "mrs r2, cpsr                                       \n"
+            "bic r3, r2, #0xf                                   \n"
+            "orr r3, r0              @ processor mode           \n"
+            "msr cpsr_c, r3          @ change processor mode    \n"
+            "mov sp, r1                                         \n"
+            "msr cpsr_c, r2          @ restore processor mode   \n"
+            "bx lr                                              \n"
+    );
+}
+#undef _U
+
 void installArm9Handlers(void)
 {
     void *payloadAddress = (void *)0x01FF8000;
-
+    u32 *handlers = (u32 *)payloadAddress + 1;
+    
+    void* SP = (void *)0x02000000; //We make the (full descending) stack point to the end of ITCM for our exception handlers. 
+                                   //It doesn't matter if we're overwriting stuff, since we're going to reboot.
+    
     memcpy(payloadAddress, arm9_exceptions, arm9_exceptions_size);
-    ((void (*)())payloadAddress)();
+    
+    setupStack(1, SP);  //FIQ
+    setupStack(7, SP);  //Abort
+    setupStack(11, SP); //Undefined
+
+    const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
+    
+    //IRQHandler is at 0x08000000, but we won't handle it for some reasons
+    //svcHandler is at 0x08000010, but we won't handle svc either
+
+    for(u32 i = 0; i < 4; i++)
+    {
+        *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
+        *(vu32 *)(0x08000000 + offsets[i] + 4) = handlers[i];
+    }
 }
 
 static void hexItoa(u32 n, char *out)
