@@ -7,6 +7,8 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 
+static u32 *exceptionsPage = NULL;
+
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *off = memsearch(pos, "ess9", size, 4);
@@ -16,6 +18,20 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 
     //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
+}
+
+u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr)
+{
+    //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
+    
+    const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};   
+    const u8 exceptionsPagePattern[] = {0x00, 0xB0, 0x9C, 0xE5};
+        
+    *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
+    
+    if(exceptionsPage == NULL) exceptionsPage = (u32 *)memsearch(pos, exceptionsPagePattern, size, 4) - 0xB;
+    
+    return exceptionsPage;
 }
 
 void patchSignatureChecks(u8 *pos, u32 size)
@@ -152,7 +168,7 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
 
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5}; //cpsid aif
     
-    u32 *exceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
+    if(exceptionsPage == NULL) exceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
 
     u32 svcOffset = (-((exceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
     u32 *svcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address

@@ -86,7 +86,7 @@ void main(void)
         if(DEVMODE) 
         { 
             detectAndProcessExceptionDumps();
-            installArm9Handlers(); 
+            installArm9Handlers();
         }
 
         bootType = 0;
@@ -331,7 +331,12 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
     {
         //Apply UNITINFO patch
         if(DEVMODE == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
-
+        
+        //Install arm11 exception handlers
+        u32 stackAddress;
+        u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress);
+        //installArm11Handlers(exceptionsPage, stackAddress);
+        
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);
     }

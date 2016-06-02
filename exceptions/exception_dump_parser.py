@@ -67,7 +67,7 @@ def makeRegisterLine(A, rA, B, rB):
     return "{0:<15}{1:<20}{2:<15}{3:<20}".format(A, "{0:08x}".format(rA), B, "{0:08x}".format(rB))
     
 handledExceptionNames = ("FIQ", "undefined instruction", "prefetch abort", "data abort")
-registerNames = tuple("r{0}".format(i) for i in range(13)) + ("sp", "lr", "pc", "cpsr")
+registerNames = tuple("r{0}".format(i) for i in range(13)) + ("sp", "lr", "pc", "cpsr", "fpexc")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parse Luma3DS exception dumps")
@@ -80,23 +80,31 @@ if __name__ == "__main__":
     
     processor, exceptionType, _, _, codeDumpSize, stackDumpSize = unpack_from("<6I", data, 12)
     
-    print("Processor: ARM{0}".format(processor))
+    if processor == 9: print("Processor: ARM9")
+    else: print("Processor: ARM11 (core {0})".format(processor >> 16))
+    
     print("Exception type: {0}".format("unknown" if exceptionType >= len(handledExceptionNames) else handledExceptionNames[exceptionType]))
     
-    registers = unpack_from("<17I", data, 40)
+    registers = []
     print("\nRegister dump:\n")
-    for i in range(0, 16, 2): 
-        print(makeRegisterLine(registerNames[i], registers[i], registerNames[i+1], registers[i+1]))
-    print("{0:<15}{1:<20}".format(registerNames[-1], "{0:08x}".format(registers[-1])))
+    if processor == 9:
+        registers = unpack_from("<17I", data, 40)
+        for i in range(0, 16, 2): 
+            print(makeRegisterLine(registerNames[i], registers[i], registerNames[i+1], registers[i+1]))
+        print("{0:<15}{1:<20}".format(registerNames[-2], "{0:08x}".format(registers[-1])))
+    else:
+        registers = unpack_from("<18I", data, 40)
+        for i in range(0, 18, 2): 
+            print(makeRegisterLine(registerNames[i], registers[i], registerNames[i+1], registers[i+1]))
     
-    codeDump = data[40+4*17 : 40+4*17 + codeDumpSize]
+    codeDump = data[40+4*len(registers) : 40+4*len(registers) + codeDumpSize]
     print("\nCode dump:\n")
     print(hexdump(registers[15] - codeDumpSize + 2, codeDump))
     
     # Homebrew/CFW set their stack at 0x27000000, let's detect it
     if 0 <= 0x27000000 - registers[13] <= stackDumpSize: stackDumpSize = 0x27000000 - registers[13]
     
-    stackOffset = 40+4*17 + codeDumpSize
+    stackOffset = 40+4*len(registers) + codeDumpSize
     stackDump = data[stackOffset : stackOffset + stackDumpSize]
     print("\nStack dump:\n")
     print(hexdump(registers[13], stackDump))
