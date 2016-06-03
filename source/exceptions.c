@@ -13,47 +13,20 @@
 #include "../build/arm9_exceptions.h"
 #include "../build/arm11_exceptions.h"
 
-
-#define _U __attribute__((unused)) //Silence "unused parameter" warnings
-static void __attribute__((naked)) setupStack(_U u32 mode, _U void* SP)
-{
-    __asm__ volatile(
-            "cmp r0, #0                                         \n"
-            "moveq r0, #0xf          @ usr => sys               \n"
-            "mrs r2, cpsr                                       \n"
-            "bic r3, r2, #0xf                                   \n"
-            "orr r3, r0              @ processor mode           \n"
-            "msr cpsr_c, r3          @ change processor mode    \n"
-            "mov sp, r1                                         \n"
-            "msr cpsr_c, r2          @ restore processor mode   \n"
-            "bx lr                                              \n"
-    );
-}
-#undef _U
-
 void installArm9Handlers(void)
 {
-    void *payloadAddress = (void *)0x01FF8000;
-    u32 *handlers = (u32 *)payloadAddress + 1;
-    
-    void* SP = (void *)0x02000000; //We make the (full descending) stack point to the end of ITCM for our exception handlers. 
-                                   //It doesn't matter if we're overwriting stuff, since we're going to reboot.
-    
-    memcpy(payloadAddress, arm9_exceptions, arm9_exceptions_size);
-    
-    setupStack(1, SP);  //FIQ
-    setupStack(7, SP);  //Abort
-    setupStack(11, SP); //Undefined
-
+    void *payloadAddress = (void *)0x01FF8000;    
     const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
     
+    memcpy(payloadAddress, arm9_exceptions + 32, arm9_exceptions_size - 32);
+
     //IRQHandler is at 0x08000000, but we won't handle it for some reasons
     //svcHandler is at 0x08000010, but we won't handle svc either
 
     for(u32 i = 0; i < 4; i++)
     {
         *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
-        *(vu32 *)(0x08000000 + offsets[i] + 4) = handlers[i];
+        *(vu32 *)(0x08000000 + offsets[i] + 4) = *((const u32 *)arm9_exceptions + 1 + i);
     }
 }
 
@@ -67,25 +40,25 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr)
     
     u32 *mcuReboot;
     for(mcuReboot = exceptionsPage; mcuReboot < (exceptionsPage + 0x400) && (mcuReboot[0] != 0xE59F4104 || mcuReboot[1] != 0xE3A0A0C2); mcuReboot += 1);
+    mcuReboot--;
 
     u32 *freeSpace;
     for(freeSpace = initFPU;  freeSpace < (exceptionsPage + 0x400) && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF); freeSpace += 1);
-    //freeSpace += 4 - ((u32)(freeSpace - exceptionsPage) & 3);
-    memcpy(freeSpace, arm11_exceptions + 20, arm11_exceptions_size - 20);
+    memcpy(freeSpace, arm11_exceptions + 32, arm11_exceptions_size - 32);
     
-    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 8)  - 20);    //Undefined Instruction
-    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 12) - 20);    //Prefetch Abort
-    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 16) - 20);    //Data Abort
-    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 4)  - 20);    //FIQ
+    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 8)  - 32);    //Undefined Instruction
+    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 12) - 32);    //Prefetch Abort
+    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 16) - 32);    //Data Abort
+    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 4)  - 32);    //FIQ
     
-    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_size - 20); pos++)
+    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_size - 32); pos++)
     {
-        switch(*pos)
+        switch(*pos) //Perform relocations
         {
             case 0xFFFF3000: *pos = stackAddr; break;
             case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
             case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
-            case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 20; break; // bx r12 (mainHandler)
+            case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; // bx r12 (mainHandler)
             default: break;
         }
     }
@@ -171,13 +144,23 @@ void detectAndProcessExceptionDumps(void)
         }
 
         posY += 2 * SPACING_Y;
+        
+        u32 mode = dump[40 + 16] & 0xF;
+        if(dump[4] == 3 && (mode == 7 || mode == 11))
+            posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, 0x00FFFF) + 2 * SPACING_Y; //in yellow
+            
         posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
         posY = drawString((dump[3] == 9) ? path9 : path11, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
         drawString("Press any button to shutdown", 10, posY, COLOR_WHITE);
 
         waitInput();
-
-        i2cWriteRegister(I2C_DEV_MCU, 0x20, 1);
+        
+        *(vu32 *)0x25000000 = 0; //Make sure we won't detect a corrupted exception dump after we've rebooted. It doesn't seem to be sufficient though
+        *(vu32 *)0x25000004 = 0;
+        
+        clearScreens();
+        
+        i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown
         while(1);
     }
 }

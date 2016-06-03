@@ -335,7 +335,7 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         //Install arm11 exception handlers
         u32 stackAddress;
         u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress);
-        //installArm11Handlers(exceptionsPage, stackAddress);
+        installArm11Handlers(exceptionsPage, stackAddress);
         
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);

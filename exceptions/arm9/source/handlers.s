@@ -9,6 +9,9 @@
     .global \name
     .type   \name, %function
     \name:
+        ldr sp, =#0x02000000    @ We make the (full descending) stack point to the end of ITCM for our exception handlers. 
+                                @ It doesn't matter if we're overwriting stuff here, since we're going to reboot.
+                                
         stmfd sp!, {r0-r7}      @ FIQ has its own r8-r14 regs
         ldr r1, =\@             @ macro expansion counter
         b _commonHandler

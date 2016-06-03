@@ -13,13 +13,12 @@
 
 #define REG_DUMP_SIZE   (4*17)
 #define CODE_DUMP_SIZE  48
-#define STACK_DUMP_SIZE 0x2000
 #define OTHER_DATA_SIZE 0
 
 void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
 {
     //vu32 *dump = (u32 *)TEMP_BUFFER;
-    u32 dump[(40 + REG_DUMP_SIZE + CODE_DUMP_SIZE + STACK_DUMP_SIZE + OTHER_DATA_SIZE) / 4];
+    u32 dump[(40 + REG_DUMP_SIZE + CODE_DUMP_SIZE) / 4];
     
     dump[0] = 0xDEADC0DE;               //Magic
     dump[1] = 0xDEADCAFE;               //Magic
@@ -28,9 +27,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
     dump[4] = type;                     //Exception type
     dump[6] = REG_DUMP_SIZE;            //Register dump size (r0-r12, sp, lr, pc, cpsr)
     dump[7] = CODE_DUMP_SIZE;           //Code dump size (10 ARM instructions, up to 20 Thumb instructions).
-    dump[8] = STACK_DUMP_SIZE;          //Stack dump size
     dump[9] = OTHER_DATA_SIZE;          //Other data size
-    dump[5] = sizeof(dump);             //Total size
 
     //Dump registers
     //Current order of saved regs: cpsr, pc, r8-r12, sp, lr, r0-r7
@@ -48,22 +45,23 @@ void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
     for(u32 i = 0; i < 8; i++)
         regdump[i] = regs[9 + i]; 
 
+    dump[8] = 0x1000 - (regdump[13] & 0xfff);                                           //Stack dump size (max. 0x1000 bytes)
+    dump[5] = 40 + REG_DUMP_SIZE + CODE_DUMP_SIZE + dump[8] + OTHER_DATA_SIZE;          //Total size
+    
     //Dump code
-    vu16 *codedump = (vu16 *)(regdump + dump[6] / 4);
+    u16 *codedump = (u16 *)(regdump + dump[6] / 4);
     vu16 *instr = (vu16 *)pc - dump[7] / 2 + 1;
     for(u32 i = 0; i < dump[7] / 2; i++)
         codedump[i] = instr[i];
 
     //Dump stack
     vu32 *sp = (vu32 *)regdump[13];
-    vu32 *stackdump = (vu32 *)(codedump + dump[7] / 2);
-    /* Homebrew/CFW set their stack at 0x27000000, but we'd better not make any assumption here
-       as it breaks things it seems */
+    vu32 *stackdump = (vu32 *)((vu8 *)FINAL_BUFFER + 40 + REG_DUMP_SIZE + CODE_DUMP_SIZE);
     for(u32 i = 0; i < dump[8] / 4; i++)
         stackdump[i] = sp[i];
 
-    vu32 *final = (u32 *)FINAL_BUFFER;
-    for(u32 i = 0; i < sizeof(dump) / 4; i++)
+    vu32 *final = (vu32 *)FINAL_BUFFER;
+    for(u32 i = 0; i < (40 + REG_DUMP_SIZE + CODE_DUMP_SIZE) / 4; i++)
         final[i] = dump[i];
 
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot

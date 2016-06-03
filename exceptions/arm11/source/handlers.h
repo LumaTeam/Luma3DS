@@ -8,6 +8,8 @@
 #pragma once
 
 void __attribute__((noreturn)) mcuReboot(void);
+void clearDCacheAndDMB(void);
+
 void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void dataAbortHandler(void);

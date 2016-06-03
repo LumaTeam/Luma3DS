@@ -68,16 +68,6 @@ _commonHandler:
     noFPUInit:
     stmfd sp!, {r2,lr}      @ it's a bit of a mess, but we will fix that later
                             @ order of saved regs now: cpsr, pc + (2/4/8), r8-r14, r0-r7
-                            
-    ldr r4, =#0xdfff3ffc
-    ldr r5, =#0xffff0014
-    ldr r5, [r5]            @ 0xeafffffe
-    mov r6, #0
-    poisonLoop:
-        str r5, [r4, #4]!           @ poison exception vectors in order to hang the other threads
-        add r6, #1
-        cmp r6, #8
-        blt poisonLoop
 
     mov r0, sp
     mrc p15,0,r2,c0,c0,5    @ CPU ID register
@@ -93,3 +83,11 @@ GEN_HANDLER dataAbortHandler
 .type   mcuReboot, %function
 mcuReboot:
     b .                     @ will be replaced
+    
+.global clearDCacheAndDMB
+.type   clearDCacheAndDMB, %function
+clearDCacheAndDMB:
+    mov r0, #0
+    mcr p15,0,r0,c7,c14,0   @ Clean and Invalidate Entire Data Cache
+    mcr p15,0,r0,c7,c10,4   @ Drain Memory Barrier
+    bx lr
