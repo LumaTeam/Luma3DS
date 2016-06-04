@@ -147,9 +147,9 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr)
 {
     //Stub svcBreak with "bkpt 65535" so we can debug the panic.
     //Thanks @yellows8 and others for mentioning this idea on #3dsdev.
-    const u8 svcHandlerPattern[] = {0x08, 0xE0, 0x0D, 0xE5, 0x00, 0xE0, 0x4F, 0xE1}; //str lr, [sp]; mrs lr, spsr
+    const u8 svcHandlerPattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
     
-    u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 8);
+    u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 4);
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
     *(u32 *)(pos + arm9SvcTable[0x3C] - k9addr) = 0xE12FFF7F;
 }
