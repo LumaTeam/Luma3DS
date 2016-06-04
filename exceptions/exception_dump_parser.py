@@ -68,6 +68,7 @@ def makeRegisterLine(A, rA, B, rB):
     
 handledExceptionNames = ("FIQ", "undefined instruction", "prefetch abort", "data abort")
 registerNames = tuple("r{0}".format(i) for i in range(13)) + ("sp", "lr", "pc", "cpsr", "fpexc")
+svcBreakReasons = ("(svcBreak: panic)", "(svcBreak: assertion failed)", "(svcBreak: user-related)")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parse Luma3DS exception dumps")
@@ -81,23 +82,28 @@ if __name__ == "__main__":
     processor, exceptionType, _, nbRegisters, codeDumpSize, stackDumpSize = unpack_from("<6I", data, 12)
     nbRegisters //= 4
     
+    registers = unpack_from("<{0}I".format(nbRegisters), data, 40)
+    codeDump = data[40 + 4 * nbRegisters : 40 + 4 * nbRegisters + codeDumpSize]
+    stackOffset = 40 + 4 * nbRegisters + codeDumpSize
+    stackDump = data[stackOffset : stackOffset + stackDumpSize]
+    
     if processor == 9: print("Processor: ARM9")
     else: print("Processor: ARM11 (core {0})".format(processor >> 16))
     
-    print("Exception type: {0}".format("unknown" if exceptionType >= len(handledExceptionNames) else handledExceptionNames[exceptionType]))
+    svcBreakStr = ""
+    if exceptionType == 2 and (registers[16] & 0x20) == 0 and unpack_from("<I", codeDump[-4:])[0] == 0xe12fff7f:
+        svcBreakStr = " " + (svcBreakReasons[registers[0]] if registers[0] < 3 else "(svcBreak)")
+        
+    print("Exception type: {0}{1}".format("unknown" if exceptionType >= len(handledExceptionNames) else handledExceptionNames[exceptionType], svcBreakStr))
     
-    registers = unpack_from("<{0}I".format(nbRegisters), data, 40)
     print("\nRegister dump:\n")
     for i in range(0, nbRegisters - (nbRegisters % 2), 2): 
         print(makeRegisterLine(registerNames[i], registers[i], registerNames[i+1], registers[i+1]))
     if nbRegisters % 2 == 1: print("{0:<15}{1:<20}".format(registerNames[-2], "{0:08x}".format(registers[-1])))
     
-    codeDump = data[40 + 4 * nbRegisters : 40 + 4 * nbRegisters + codeDumpSize]
     print("\nCode dump:\n")
-    print(hexdump(registers[15] - codeDumpSize + 2, codeDump))
+    print(hexdump(registers[15] - codeDumpSize + (4 if (registers[16] & 0x20 == 0) else 2), codeDump))
     
-    stackOffset = 40 + 4*nbRegisters + codeDumpSize
-    stackDump = data[stackOffset : stackOffset + stackDumpSize]
     print("\nStack dump:\n")
     print(hexdump(registers[13], stackDump))
     

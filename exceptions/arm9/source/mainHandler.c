@@ -49,9 +49,9 @@ void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
     dump[5] = 40 + REG_DUMP_SIZE + CODE_DUMP_SIZE + dump[8] + OTHER_DATA_SIZE;          //Total size
     
     //Dump code
-    u16 *codedump = (u16 *)(regdump + dump[6] / 4);
-    vu16 *instr = (vu16 *)pc - dump[7] / 2 + 1;
-    for(u32 i = 0; i < dump[7] / 2; i++)
+    u8 *codedump = (u8 *)regdump + dump[6];
+    vu8 *instr = (vu8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dump[7]; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+    for(u32 i = 0; i < dump[7]; i++)
         codedump[i] = instr[i];
 
     //Dump stack

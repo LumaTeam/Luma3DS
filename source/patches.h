@@ -23,6 +23,8 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchFirmWriteSafe(u8 *pos, u32 size);
 void patchExceptionHandlersInstall(u8 *pos, u32 size);
+void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr);
+void patchSvcBreak11(u8 *pos, u32 size);
 void patchUnitInfoValueSet(u8 *pos, u32 size);
 void patchKernelFCRAMAndVRAMMappingPermissions(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);

@@ -7,7 +7,21 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 
-static u32 *exceptionsPage = NULL;
+static u32 *arm11ExceptionsPage = NULL;
+static u32 *arm11SvcTable = NULL;
+
+static void findArm11ExceptionsPageAndSvcTable(u8 *pos, u32 size)
+{
+    const u8 arm11ExceptionsPagePattern[] = {0x00, 0xB0, 0x9C, 0xE5};
+    
+    if(arm11ExceptionsPage == NULL) arm11ExceptionsPage = (u32 *)memsearch(pos, arm11ExceptionsPagePattern, size, 4) - 0xB;
+    if(arm11SvcTable == NULL && arm11ExceptionsPage != NULL)
+    {
+        u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
+        arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+        while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
+    }
+}
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -25,13 +39,11 @@ u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr)
     //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
     
     const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};   
-    const u8 exceptionsPagePattern[] = {0x00, 0xB0, 0x9C, 0xE5};
-        
+    
     *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
     
-    if(exceptionsPage == NULL) exceptionsPage = (u32 *)memsearch(pos, exceptionsPagePattern, size, 4) - 0xB;
-    
-    return exceptionsPage;
+    findArm11ExceptionsPageAndSvcTable(pos, size);
+    return arm11ExceptionsPage;
 }
 
 void patchSignatureChecks(u8 *pos, u32 size)
@@ -131,6 +143,25 @@ void patchExceptionHandlersInstall(u8 *pos, u32 size)
     }
 }
 
+void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr)
+{
+    //Stub svcBreak with "bkpt 65535" so we can debug the panic.
+    //Thanks @yellows8 and others for mentioning this idea on #3dsdev.
+    const u8 svcHandlerPattern[] = {0x08, 0xE0, 0x0D, 0xE5, 0x00, 0xE0, 0x4F, 0xE1}; //str lr, [sp]; mrs lr, spsr
+    
+    u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 8);
+    while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
+    *(u32 *)(pos + arm9SvcTable[0x3C] - k9addr) = 0xE12FFF7F;
+}
+
+void patchSvcBreak11(u8 *pos, u32 size)
+{
+    //Same as above, for NFIRM arm11
+    
+    findArm11ExceptionsPageAndSvcTable(pos, size);
+    *(u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000) = 0xE12FFF7F;
+}
+
 void patchUnitInfoValueSet(u8 *pos, u32 size)
 {
     //Look for UNITINFO value being set
@@ -166,22 +197,16 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
                                  0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
                                  0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
 
-    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5}; //cpsid aif
-    
-    if(exceptionsPage == NULL) exceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
+    findArm11ExceptionsPageAndSvcTable(pos, size);
 
-    u32 svcOffset = (-((exceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-    u32 *svcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
-    while(*svcTable) svcTable++; //Look for SVC0 (NULL)
-
-    if(!svcTable[0x7B])
+    if(!arm11SvcTable[0x7B])
     {
         u32 *freeSpace;
-        for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
+        for(freeSpace = arm11ExceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
 
         memcpy(freeSpace, svcBackdoor, 40);
 
-        svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
+        arm11SvcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)arm11ExceptionsPage);
     }
 }
 

@@ -216,7 +216,9 @@ void main(void)
     {
         u32 arm9SectionNum = 0;
         for(; (u32)(section[arm9SectionNum].address) >> 24 != 0x08 && arm9SectionNum < 4; arm9SectionNum++);
+        
         patchExceptionHandlersInstall((u8 *)firm + section[arm9SectionNum].offset, section[arm9SectionNum].size);
+        patchSvcBreak9((u8 *)firm + section[arm9SectionNum].offset, section[arm9SectionNum].size, (u32)(section[arm9SectionNum].address)); 
     }
     
     switch(firmType)
@@ -337,6 +339,9 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress);
         installArm11Handlers(exceptionsPage, stackAddress);
         
+        //Stub svcBreak11 with "bkpt 255"
+        patchSvcBreak11(arm11Section1, section[1].size);
+        
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);
     }
@@ -351,7 +356,8 @@ static inline void patchLegacyFirm(u32 firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
-    applyLegacyFirmPatches((u8 *)firm, firmType, console);}
+    applyLegacyFirmPatches((u8 *)firm, firmType, console);
+}
 
 static inline void patchSafeFirm(void)
 {

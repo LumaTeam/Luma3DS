@@ -98,13 +98,14 @@ void detectAndProcessExceptionDumps(void)
         char path9[41] = "/luma/dumps/arm9";
         char path11[42] = "/luma/dumps/arm11";
         char fileName[] = "crash_dump_00000000.dmp";
+        u32 size = dump[5];
 
         if(dump[3] == 9)
         {
             findDumpFile(path9, fileName);
             path9[16] = '/';
             memcpy(&path9[17], fileName, sizeof(fileName));
-            fileWrite((void *)dump, path9, dump[5]);
+            fileWrite((void *)dump, path9, size);
         }
         
         else
@@ -125,7 +126,9 @@ void detectAndProcessExceptionDumps(void)
         int posY = drawString(((dump[3] & 0xFFFF) == 11) ? arm11Str : "Processor:      ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
         posY = drawString("Exception type: ", 10, posY, COLOR_WHITE);
         posY = drawString(handledExceptionNames[dump[4]], 10 + 16 * SPACING_X, posY, COLOR_WHITE);
-
+        if(dump[4] == 2 && dump[7] >= 4 && (dump[10 + 16] & 0x20) == 0 && *(vu32 *)((vu8 *)dump + 40 + dump[6] + dump[7] - 4) == 0xE12FFF7F)
+            posY = drawString("(svcBreak)", 10 + 31 * SPACING_X, posY, COLOR_WHITE);
+        
         posY += 3 * SPACING_Y;
         for(u32 i = 0; i < 17; i += 2)
         {
@@ -145,7 +148,7 @@ void detectAndProcessExceptionDumps(void)
 
         posY += 2 * SPACING_Y;
         
-        u32 mode = dump[40 + 16] & 0xF;
+        u32 mode = dump[10 + 16] & 0xF;
         if(dump[4] == 3 && (mode == 7 || mode == 11))
             posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, 0x00FFFF) + 2 * SPACING_Y; //in yellow
             
@@ -155,8 +158,7 @@ void detectAndProcessExceptionDumps(void)
 
         waitInput();
         
-        *(vu32 *)0x25000000 = 0; //Make sure we won't detect a corrupted exception dump after we've rebooted. It doesn't seem to be sufficient though
-        *(vu32 *)0x25000004 = 0;
+        for(u32 i = 0; i < size / 4; i++) dump[i] = 0; 
         
         clearScreens();
         
