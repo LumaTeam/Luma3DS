@@ -211,15 +211,6 @@ void main(void)
     }
 
     loadFirm(firmType, !firmType && updatedSys == !firmSource);
-
-    if(DEVMODE)
-    {
-        u32 arm9SectionNum = 0;
-        for(; (u32)(section[arm9SectionNum].address) >> 24 != 0x08 && arm9SectionNum < 4; arm9SectionNum++);
-        
-        patchExceptionHandlersInstall((u8 *)firm + section[arm9SectionNum].offset, section[arm9SectionNum].size);
-        patchSvcBreak9((u8 *)firm + section[arm9SectionNum].offset, section[arm9SectionNum].size, (u32)(section[arm9SectionNum].address)); 
-    }
     
     switch(firmType)
     {
@@ -339,6 +330,10 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress);
         installArm11Handlers(exceptionsPage, stackAddress);
         
+        //Kernel9/Process9 debugging
+        patchExceptionHandlersInstall(arm9Section, section[2].size);
+        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+        
         //Stub svcBreak11 with "bkpt 255"
         patchSvcBreak11(arm11Section1, section[1].size);
         
@@ -349,11 +344,20 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
 
 static inline void patchLegacyFirm(u32 firmType)
 {
+    u8 *arm9Section = (u8 *)firm + section[3].offset;
+    
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
     if(console)
     {
-        arm9Loader((u8 *)firm + section[3].offset, 0);
+        arm9Loader(arm9Section, 0);
         firm->arm9Entry = (u8 *)0x801301C;
+    }
+    
+    if(DEVMODE)
+    {
+        //Kernel9/Process9 debugging
+        patchExceptionHandlersInstall(arm9Section, section[3].size);
+        patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType, console);
@@ -371,6 +375,14 @@ static inline void patchSafeFirm(void)
 
         patchFirmWrites(arm9Section, section[2].size);
     }
+    
+    if(DEVMODE)
+    {
+        //Kernel9/Process9 debugging
+        patchExceptionHandlersInstall(arm9Section, section[2].size);
+        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+    }
+    
     else patchFirmWriteSafe(arm9Section, section[2].size);
 }
 
