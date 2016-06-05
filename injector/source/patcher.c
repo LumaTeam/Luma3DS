@@ -125,21 +125,50 @@ static u32 loadConfig(void)
     return config;
 }
 
+static void progIdToStr(char *strEnd, u64 progId)
+{
+    while(progId)
+    {
+        static const char hexDigits[] = "0123456789ABCDEF";
+        *strEnd-- = hexDigits[(u32)(progId & 0xF)];
+        progId >>= 4;
+    }
+}
+
+static int loadTitleCodeSection(u64 progId, u8 *code, u32 size)
+{
+    /* Here we look for "/luma/code_sections/[u64 titleID in hex, uppercase].bin"
+       If it exists it should be a decompressed binary code file */
+    
+    char path[] = "/luma/code_sections/0000000000000000.bin";
+    progIdToStr(path + 35, progId);
+
+    IFile file;
+    Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+    
+    if(R_SUCCEEDED(ret))
+    {
+        u64 fileSize, total;
+        
+        ret = IFile_GetSize(&file, &fileSize);
+        if(!R_SUCCEEDED(ret) || fileSize > size) return -1;
+        
+        ret = IFile_Read(&file, &total, code, fileSize);
+        IFile_Close(&file);
+        if(!R_SUCCEEDED(ret)) return -1;
+        else if(total < fileSize) return -2; //Shouldn't happen
+    }
+    
+    return ret;
+}
+
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
 
     char path[] = "/luma/locales/0000000000000000.txt";
-
-    u32 i = 29;
-
-    while(progId)
-    {
-        static const char hexDigits[] = "0123456789ABCDEF";
-        path[i--] = hexDigits[(u32)(progId & 0xF)];
-        progId >>= 4;
-    }
+    progIdToStr(path + 29, progId);
 
     IFile file;
     Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
@@ -556,6 +585,9 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
                 if(tidHigh == 0x0004000)
                 {
+                    //External .code section loading
+                    if(loadTitleCodeSection(progId, code, size) == -2) svcBreak(USERBREAK_ASSERT);
+                    
                     //Language emulation
                     u8 regionId = 0xFF,
                        languageId = 0xFF;

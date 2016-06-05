@@ -25,7 +25,7 @@ void configureCFW(const char *configPath)
                                         "( ) SysNAND is updated (A9LH-only)",
                                         "( ) Force A9LH detection",
                                         "( ) Use second EmuNAND as default",
-                                        "( ) Enable region/language emulation",
+                                        "( ) Enable region/language emu. and external       .code loading",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Enable splash screen with no screen-init" };

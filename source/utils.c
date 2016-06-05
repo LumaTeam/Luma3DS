@@ -44,13 +44,13 @@ static inline void startChrono(u64 initialTicks)
 {
     //Based on a NATIVE_FIRM disassembly
 
-    *(vu16 *)0x10003002 = 0; //67MHz
-    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) = 4; //Count-up
+    REG_TIMER_CNT(0) = 0; //67MHz
+    for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
 
-    for(u32 i = 0; i < 4; i++) *(vu16 *)(0x10003000 + 4 * i) = (u16)(initialTicks >> (16 * i));
+    for(u32 i = 0; i < 4; i++) REG_TIMER_VAL(i) = (u16)(initialTicks >> (16 * i));
 
-    *(vu16 *)0x10003002 = 0x80; //67MHz; enabled
-    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) = 0x84; //Count-up; enabled
+    REG_TIMER_CNT(0) = 0x80; //67MHz; enabled
+    for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
 }
 
 void chrono(u32 seconds)
@@ -64,7 +64,7 @@ void chrono(u32 seconds)
     do
     {
         res = 0;
-        for(u32 i = 0; i < 4; i++) res |= *(vu16 *)(0x10003000 + 4 * i) << (16 * i);
+        for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
     }
     while(res - startingTicks < seconds * TICKS_PER_SEC);
 
@@ -73,5 +73,5 @@ void chrono(u32 seconds)
 
 void stopChrono(void)
 {
-    for(u32 i = 1; i < 4; i++) *(vu16 *)(0x10003002 + 4 * i) &= ~0x80;
+    for(u32 i = 0; i < 4; i++) REG_TIMER_CNT(i) &= ~0x80;
 }
