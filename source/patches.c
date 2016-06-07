@@ -34,13 +34,19 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr)
+u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset)
 {
     //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
     
     const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};   
+    const u8 getTitleIDFromCodeSetPattern[] = {0xDC, 0x05, 0xC0, 0xE1, 0x20, 0x04, 0xA0, 0xE1};
     
     *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
+    
+    u32 *loadCodeSet = (u32 *)memsearch(pos, getTitleIDFromCodeSetPattern, size, 8);
+    while((*loadCodeSet >> 20) != 0xE59 || ((*loadCodeSet >> 12) & 0xF) != 0) //ldr r0, [rX, #offset]
+        loadCodeSet--;
+    *codeSetOffset = *loadCodeSet & 0xFFF;
     
     findArm11ExceptionsPageAndSvcTable(pos, size);
     return arm11ExceptionsPage;

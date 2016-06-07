@@ -16,7 +16,7 @@ typedef struct patchData {
 } patchData;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
-u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr);
+u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset);
 void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);

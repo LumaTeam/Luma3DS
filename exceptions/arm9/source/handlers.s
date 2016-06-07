@@ -39,8 +39,15 @@ _commonHandler:
     msr cpsr_c, r3          @ restore processor mode
     mov sp, r6
     
-    stmfd sp!, {r2,lr}      @ it's a bit of a mess, but we will fix that later
-                            @ order of saved regs now: cpsr, pc + (2/4/8), r8-r14, r0-r7
+    stmfd sp!, {r2,lr}
+    
+    mrc p15,0,r3,c5,c0,0    @ dfsr
+    mrc p15,0,r4,c5,c0,1    @ ifsr 
+    mrc p15,0,r5,c6,c0,0    @ far
+    
+    stmfd sp!, {r3-r5}      @ it's a bit of a mess, but we will fix that later
+                            @ order of saved regs now: dfsr, ifsr, far, cpsr, pc + (2/4/8), r8-r14, r0-r7
+                            
     mov r0, sp
     b mainHandler
 

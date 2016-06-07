@@ -33,7 +33,7 @@ void installArm9Handlers(void)
 #define MAKE_BRANCH(src,dst) (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr)
+void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
 {
     u32 *initFPU;
     for(initFPU = exceptionsPage; initFPU < (exceptionsPage + 0x400) && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU += 1);
@@ -59,6 +59,7 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr)
             case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
             case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
             case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; // bx r12 (mainHandler)
+            case 0xBEEFBEEF: *pos = codeSetOffset;
             default: break;
         }
     }
@@ -117,17 +118,26 @@ void detectAndProcessExceptionDumps(void)
         }
         
 
-        char arm11Str[] = "Processor:      ARM11 (core X)";
-        if((dump[3] & 0xFFFF) == 11) arm11Str[28] = '0' + (char)(dump[3] >> 16);
+        char arm11Str[] = "Processor:       ARM11 (core X)";
+        if((dump[3] & 0xFFFF) == 11) arm11Str[29] = '0' + (char)(dump[3] >> 16);
         
         initScreens();
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
-        int posY = drawString(((dump[3] & 0xFFFF) == 11) ? arm11Str : "Processor:      ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
-        posY = drawString("Exception type: ", 10, posY, COLOR_WHITE);
-        posY = drawString(handledExceptionNames[dump[4]], 10 + 16 * SPACING_X, posY, COLOR_WHITE);
+        int posY = drawString(((dump[3] & 0xFFFF) == 11) ? arm11Str : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
+        
+        posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
+        posY = drawString(handledExceptionNames[dump[4]], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
         if(dump[4] == 2 && dump[7] >= 4 && (dump[10 + 16] & 0x20) == 0 && *(vu32 *)((vu8 *)dump + 40 + dump[6] + dump[7] - 4) == 0xE12FFF7F)
-            posY = drawString("(svcBreak)", 10 + 31 * SPACING_X, posY, COLOR_WHITE);
+            posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+        
+        if((dump[3] & 0xFFFF) == 11 && dump[9] != 0)
+        {
+            posY += SPACING_Y;
+            char processNameStr[] = "Current process: --------";
+            memcpy(processNameStr + 17, (char *)(dump + ((dump[5] - dump[9]) / 4)), 8);
+            posY = drawString(processNameStr, 10, posY, COLOR_WHITE);
+        }
         
         posY += 3 * SPACING_Y;
         for(u32 i = 0; i < 17; i += 2)
@@ -139,7 +149,7 @@ void detectAndProcessExceptionDumps(void)
             if(dump[3] != 9 || i != 16)
             {
                 posY = drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
-                hexItoa(dump[10 + i + 1], hexstring);
+                hexItoa((i == 16) ? dump[10 + 20] : dump[10 + i + 1], hexstring);
                 posY = drawString(hexstring, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
 
@@ -150,7 +160,10 @@ void detectAndProcessExceptionDumps(void)
         
         u32 mode = dump[10 + 16] & 0xF;
         if(dump[4] == 3 && (mode == 7 || mode == 11))
+        {
             posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, 0x00FFFF) + 2 * SPACING_Y; //in yellow
+            if(dump[3] != 9) posY -= SPACING_Y;
+        }
             
         posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
         posY = drawString((dump[3] == 9) ? path9 : path11, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;

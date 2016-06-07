@@ -38,7 +38,7 @@ _commonHandler:
     stmfd r6!, {r8-lr}
     msr cpsr_c, r3          @ restore processor mode
     mov sp, r6
-    vmrs r3, fpexc
+    fmrx r3, fpexc
 
     cmp r1, #1
     bne noFPUInit
@@ -66,9 +66,21 @@ _commonHandler:
     rfefd sp!    
     
     noFPUInit:
-    stmfd sp!, {r2,lr}      @ it's a bit of a mess, but we will fix that later
-                            @ order of saved regs now: cpsr, pc + (2/4/8), r8-r14, r0-r7
+    stmfd sp!, {r2,lr}
 
+    mrc p15,0,r4,c5,c0,0    @ dfsr
+    mrc p15,0,r5,c5,c0,1    @ ifsr 
+    mrc p15,0,r6,c6,c0,0    @ far
+    mov r7, r3
+    fmrx r8, fpinst
+    fmrx r9, fpinst2
+    
+    stmfd sp!, {r4-r9}      @ it's a bit of a mess, but we will fix that later
+                            @ order of saved regs now: dfsr, ifsr, far, fpexc, fpinst, fpinst2, cpsr, pc + (2/4/8), r8-r14, r0-r7
+    
+    bic r3, #(1<<31)
+    fmxr fpexc, r3          @ clear the VFP11 exception flag (if it's set)
+    
     mov r0, sp
     mrc p15,0,r2,c0,c0,5    @ CPU ID register
 

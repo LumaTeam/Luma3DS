@@ -326,15 +326,15 @@ static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode)
         if(DEVMODE == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
         
         //Install arm11 exception handlers
-        u32 stackAddress;
-        u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress);
-        installArm11Handlers(exceptionsPage, stackAddress);
+        u32 stackAddress, codeSetOffset;
+        u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
+        installArm11Handlers(exceptionsPage, stackAddress, codeSetOffset);
         
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
         
-        //Stub svcBreak11 with "bkpt 255"
+        //Stub svcBreak11 with "bkpt 65535"
         patchSvcBreak11(arm11Section1, section[1].size);
         
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel

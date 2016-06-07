@@ -11,18 +11,17 @@
 
 #define FINAL_BUFFER    0x25000000
 
-#define REG_DUMP_SIZE   (4*17)
+#define REG_DUMP_SIZE   (4*20)
 #define CODE_DUMP_SIZE  48
 #define OTHER_DATA_SIZE 0
 
-void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
+void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type)
 {
-    //vu32 *dump = (u32 *)TEMP_BUFFER;
     u32 dump[(40 + REG_DUMP_SIZE + CODE_DUMP_SIZE) / 4];
     
     dump[0] = 0xDEADC0DE;               //Magic
     dump[1] = 0xDEADCAFE;               //Magic
-    dump[2] = (1 << 16) | 0;            //Dump format version number
+    dump[2] = (1 << 16) | 1;            //Dump format version number
     dump[3] = 9;                        //Processor
     dump[4] = type;                     //Exception type
     dump[6] = REG_DUMP_SIZE;            //Register dump size (r0-r12, sp, lr, pc, cpsr)
@@ -30,20 +29,17 @@ void __attribute__((noreturn)) mainHandler(u32 regs[17], u32 type)
     dump[9] = OTHER_DATA_SIZE;          //Other data size
 
     //Dump registers
-    //Current order of saved regs: cpsr, pc, r8-r12, sp, lr, r0-r7
+    //Current order of saved regs: dfsr, ifsr, far, cpsr, pc, r8-r14, r0-r7
     vu32 *regdump = dump + 10;
 
-    u32 cpsr = regs[0];
-    u32 pc   = regs[1] - ((type < 3) ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
+    u32 cpsr = regs[3];
+    u32 pc   = regs[4] - ((type < 3) ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
 
     regdump[15] = pc;
     regdump[16] = cpsr;
-
-    for(u32 i = 0; i < 7; i++)
-        regdump[8 + i] = regs[2 + i];
-
-    for(u32 i = 0; i < 8; i++)
-        regdump[i] = regs[9 + i]; 
+    for(u32 i = 0; i < 3; i++) regdump[17 + i] = regs[i];
+    for(u32 i = 0; i < 7; i++) regdump[8 + i]  = regs[5 + i];
+    for(u32 i = 0; i < 8; i++) regdump[i]      = regs[12 + i]; 
 
     dump[8] = 0x1000 - (regdump[13] & 0xfff);                                           //Stack dump size (max. 0x1000 bytes)
     dump[5] = 40 + REG_DUMP_SIZE + CODE_DUMP_SIZE + dump[8] + OTHER_DATA_SIZE;          //Total size
