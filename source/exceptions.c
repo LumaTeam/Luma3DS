@@ -13,6 +13,21 @@
 #include "../build/arm9_exceptions.h"
 #include "../build/arm11_exceptions.h"
 
+typedef struct __attribute__((packed))
+{
+    u32 magic[2];
+    u16 versionMinor, versionMajor;
+    
+    u16 processor, core;
+    u32 type;
+    
+    u32 totalSize;
+    u32 registerDumpSize;
+    u32 codeDumpSize;
+    u32 stackDumpSize;
+    u32 additionalDataSize;
+} ExceptionDumpHeader;
+
 void installArm9Handlers(void)
 {
     void *payloadAddress = (void *)0x01FF8000;    
@@ -92,16 +107,19 @@ void detectAndProcessExceptionDumps(void)
     
     char hexstring[] = "00000000";
     
-    vu32 *dump = (vu32 *)0x25000000;
+    volatile ExceptionDumpHeader *dumpHeader = (volatile ExceptionDumpHeader *)0x25000000;
+    vu32 *dump = (vu32 *)dumpHeader;
+    vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
+    vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
 
-    if(dump[0] == 0xDEADC0DE && dump[1] == 0xDEADCAFE && (dump[3] == 9 || (dump[3] & 0xFFFF) == 11))
+    if(dumpHeader->magic[0] == 0xDEADC0DE && dumpHeader->magic[1] == 0xDEADCAFE && (dumpHeader->processor == 9 || dumpHeader->processor == 11))
     {
         char path9[41] = "/luma/dumps/arm9";
         char path11[42] = "/luma/dumps/arm11";
         char fileName[] = "crash_dump_00000000.dmp";
-        u32 size = dump[5];
+        u32 size = dumpHeader->totalSize;
 
-        if(dump[3] == 9)
+        if(dumpHeader->processor == 9)
         {
             findDumpFile(path9, fileName);
             path9[16] = '/';
@@ -116,26 +134,26 @@ void detectAndProcessExceptionDumps(void)
             memcpy(&path11[18], fileName, sizeof(fileName));
             fileWrite((void *)dump, path11, dump[5]);
         }
-        
 
         char arm11Str[] = "Processor:       ARM11 (core X)";
-        if((dump[3] & 0xFFFF) == 11) arm11Str[29] = '0' + (char)(dump[3] >> 16);
+        if(dumpHeader->processor == 11) arm11Str[29] = '0' + (char)(dumpHeader->core);
         
         initScreens();
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
-        int posY = drawString(((dump[3] & 0xFFFF) == 11) ? arm11Str : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
+        int posY = drawString((dumpHeader->processor == 11) ? arm11Str : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
         
         posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
-        posY = drawString(handledExceptionNames[dump[4]], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
-        if(dump[4] == 2 && dump[7] >= 4 && (dump[10 + 16] & 0x20) == 0 && *(vu32 *)((vu8 *)dump + 40 + dump[6] + dump[7] - 4) == 0xE12FFF7F)
+        posY = drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
+        if(dumpHeader->type == 2 && dumpHeader->registerDumpSize >= 4 && (regs[16] & 0x20) == 0 
+           && *(vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize - 4) == 0xE12FFF7F)
             posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
         
-        if((dump[3] & 0xFFFF) == 11 && dump[9] != 0)
+        if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
         {
             posY += SPACING_Y;
             char processNameStr[] = "Current process: --------";
-            memcpy(processNameStr + 17, (char *)(dump + ((dump[5] - dump[9]) / 4)), 8);
+            memcpy(processNameStr + 17, (char *)additionalData, 8);
             posY = drawString(processNameStr, 10, posY, COLOR_WHITE);
         }
         
@@ -143,13 +161,13 @@ void detectAndProcessExceptionDumps(void)
         for(u32 i = 0; i < 17; i += 2)
         {
             posY = drawString(registerNames[i], 10, posY, COLOR_WHITE);
-            hexItoa(dump[10 + i], hexstring);
+            hexItoa(regs[i], hexstring);
             posY = drawString(hexstring, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
 
-            if(dump[3] != 9 || i != 16)
+            if(dumpHeader->processor != 9 || i != 16)
             {
                 posY = drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
-                hexItoa((i == 16) ? dump[10 + 20] : dump[10 + i + 1], hexstring);
+                hexItoa((i == 16) ? regs[20] : regs[i + 1], hexstring);
                 posY = drawString(hexstring, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
 
@@ -158,15 +176,15 @@ void detectAndProcessExceptionDumps(void)
 
         posY += 2 * SPACING_Y;
         
-        u32 mode = dump[10 + 16] & 0xF;
-        if(dump[4] == 3 && (mode == 7 || mode == 11))
+        u32 mode = regs[16] & 0xF;
+        if(dumpHeader->type == 3 && (mode == 7 || mode == 11))
         {
             posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, 0x00FFFF) + 2 * SPACING_Y; //in yellow
-            if(dump[3] != 9) posY -= SPACING_Y;
+            if(dumpHeader->processor != 9) posY -= SPACING_Y;
         }
             
         posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
-        posY = drawString((dump[3] == 9) ? path9 : path11, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
+        posY = drawString((dumpHeader->processor == 9) ? path9 : path11, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
         drawString("Press any button to shutdown", 10, posY, COLOR_WHITE);
 
         waitInput();
