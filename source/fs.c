@@ -85,7 +85,6 @@ void loadPayload(u32 pressed)
 
         loaderAddress[1] = fileRead((void *)0x24F00000, path);
 
-		cleanInvalidateDCacheAndDMB(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
         ((void (*)())loaderAddress)();
     }
 }

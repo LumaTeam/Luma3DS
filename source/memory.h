@@ -19,6 +19,5 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
         - rebooting
         - powering down
         - setting the ARM11 entrypoint to execute a function
-        - jumping to a payload (?)
 ***/
 void cleanInvalidateDCacheAndDMB(void);

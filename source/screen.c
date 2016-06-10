@@ -36,7 +36,7 @@ static inline void invokeArm11Function(void (*func)())
     
     *arm11Entry = (u32)func;
     while(*arm11Entry);
-    *arm11Entry = (u32)arm11Stub;
+    *arm11Entry = ARM11_STUB_ADDRESS;
 }
 
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
