@@ -11,7 +11,7 @@
 #include "emunand.h"
 #include "crypto.h"
 #include "draw.h"
-#include "screeninit.h"
+#include "screen.h"
 #include "buttons.h"
 #include "../build/injector.h"
 
@@ -376,6 +376,8 @@ static inline void launchFirm(u32 firmType, u32 bootType)
         arm11 = (u32 *)0x1FFFFFF8;
     }
 
+    cleanInvalidateDCacheAndDMB(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
+    
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
 

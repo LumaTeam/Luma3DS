@@ -17,7 +17,6 @@ revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-
 dir_source := source
 dir_patches := patches
 dir_loader := loader
-dir_screeninit := screeninit
 dir_injector := injector
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
@@ -33,7 +32,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/injector.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/injector.h $(dir_build)/loader.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -55,7 +54,6 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
-	@$(MAKE) -C $(dir_screeninit) clean
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
@@ -101,10 +99,6 @@ $(dir_build)/injector.h: $(dir_injector)/Makefile
 $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
 	@bin2c -o $@ -n loader $(@D)/loader.bin
-
-$(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
-	@$(MAKE) -C $(dir_screeninit)
-	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
 
 $(dir_build)/memory.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""

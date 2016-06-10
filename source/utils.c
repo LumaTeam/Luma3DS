@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "i2c.h"
 #include "buttons.h"
+#include "memory.h"
 
 u32 waitInput(void)
 {
@@ -35,6 +36,8 @@ u32 waitInput(void)
 
 void mcuReboot(void)
 {
+    cleanInvalidateDCacheAndDMB(); //Ensure that all memory transfers have completed and that the data cache has been flushed
+    
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(1);
 }

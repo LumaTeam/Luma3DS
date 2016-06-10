@@ -1,7 +1,7 @@
 ENTRY(_start)
 SECTIONS
 {
-    . = 0x24FFFB00;
+    . = 0x24FFFF00;
     .text.start : { *(.text.start) }
     .text : { *(.text) }
     .data : { *(.data) }

@@ -20,6 +20,5 @@
 #define COLOR_BLACK 0x000000
 
 u32 loadSplash(void);
-void clearScreens(void);
 void drawCharacter(char character, int posX, int posY, u32 color);
 int drawString(const char *string, int posX, int posY, u32 color);

@@ -4,7 +4,7 @@
 
 #include "fs.h"
 #include "memory.h"
-#include "screeninit.h"
+#include "screen.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
 #include "../build/loader.h"
@@ -76,7 +76,7 @@ void loadPayload(u32 pressed)
     {
         initScreens();
 
-        u32 *const loaderAddress = (u32 *)0x24FFFB00;
+        u32 *const loaderAddress = (u32 *)0x24FFFF00;
 
         memcpy(loaderAddress, loader, loader_size);
 
@@ -85,6 +85,7 @@ void loadPayload(u32 pressed)
 
         loaderAddress[1] = fileRead((void *)0x24F00000, path);
 
+		cleanInvalidateDCacheAndDMB(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
         ((void (*)())loaderAddress)();
     }
 }
