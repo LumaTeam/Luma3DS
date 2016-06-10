@@ -5,17 +5,10 @@
 */
 
 #include "draw.h"
-#include "screeninit.h"
+#include "screen.h"
 #include "utils.h"
 #include "fs.h"
-#include "memory.h"
 #include "font.h"
-
-static const struct fb {
-    u8 *top_left;
-    u8 *top_right;
-    u8 *bottom;
-} *const fb = (struct fb *)0x23FFFE00;
 
 static inline int strlen(const char *string)
 {
@@ -24,13 +17,6 @@ static inline int strlen(const char *string)
     while(*stringEnd) stringEnd++;
 
     return stringEnd - string;
-}
-
-void clearScreens(void)
-{
-    memset32(fb->top_left, 0, 0x46500);
-    memset32(fb->top_right, 0, 0x46500);
-    memset32(fb->bottom, 0, 0x38400);
 }
 
 u32 loadSplash(void)

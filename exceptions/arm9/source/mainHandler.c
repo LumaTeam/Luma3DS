@@ -67,6 +67,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     for(u32 i = 0; i < dumpHeader.stackDumpSize / 4; i++)
         *final++ = sp[i];
 
+    ((void (*)())0xFFFF0830)(); //Ensure that all memory transfers have completed and that the data cache has been flushed
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot
     while(1);
 }

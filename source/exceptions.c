@@ -6,7 +6,7 @@
 #include "exceptions.h"
 #include "fs.h"
 #include "memory.h"
-#include "screeninit.h"
+#include "screen.h"
 #include "draw.h"
 #include "i2c.h"
 #include "utils.h"
@@ -192,8 +192,6 @@ void detectAndProcessExceptionDumps(void)
         for(u32 i = 0; i < size / 4; i++) dump[i] = 0; 
         
         clearScreens();
-        
-        i2cWriteRegister(I2C_DEV_MCU, 0x20, 1); //Shutdown
-        while(1);
+        mcuPowerOff();
     }
 }

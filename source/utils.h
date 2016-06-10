@@ -8,6 +8,7 @@
 
 u32 waitInput(void);
 void mcuReboot(void);
+void mcuPowerOff(void);
 
 #define TICKS_PER_SEC       67027964ULL
 #define REG_TIMER_CNT(i)    *(vu16 *)(0x10003002 + 4 * i)

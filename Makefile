@@ -19,7 +19,6 @@ dir_patches := patches
 dir_loader := loader
 dir_arm9_exceptions := exceptions/arm9
 dir_arm11_exceptions := exceptions/arm11
-dir_screeninit := screeninit
 dir_injector := injector
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
@@ -35,7 +34,8 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
+
 .PHONY: all
 all: launcher a9lh ninjhax
 
@@ -57,8 +57,7 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
-	@$(MAKE) -C $(dir_arm11_exceptions) clean
-	@$(MAKE) -C $(dir_screeninit) clean
+	@$(MAKE) -C $(dir_arm11_exceptions) clean	
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
@@ -115,10 +114,6 @@ $(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
 	@$(MAKE) -C $(dir_arm11_exceptions)
 	@bin2c -o $@ -n arm11_exceptions $(@D)/arm11_exceptions.bin
 	
-$(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
-	@$(MAKE) -C $(dir_screeninit)
-	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
-
 $(dir_build)/memory.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) (dev) configuration\""
 

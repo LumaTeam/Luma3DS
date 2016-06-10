@@ -91,7 +91,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
     *(ExceptionDumpHeader *)final = dumpHeader;
 
-        
+    
     clearDCacheAndDMB();
-    mcuReboot();
+    mcuReboot(); //Also contains DCache-cleaning code
 }
