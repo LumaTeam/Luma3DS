@@ -28,9 +28,23 @@ typedef struct firmHeader {
     firmSectionHeader section[4];
 } firmHeader;
 
-static inline void loadFirm(u32 firmType, u32 externalFirm);
-static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode);
-static inline void patchLegacyFirm(u32 firmType);
+typedef enum ConfigurationStatus
+{
+    DONT_CONFIGURE = 0,
+    MODIFY_CONFIGURATION = 1,
+    CREATE_CONFIGURATION = 2
+} ConfigurationStatus;
+
+typedef enum A9LHMode
+{
+    NO_A9LH = 0,
+    A9LH_WITH_NFIRM_FIRMPROT = 1,
+    A9LH_WITH_SFIRM_FIRMPROT = 2
+} A9LHMode;
+
+static inline void loadFirm(FirmwareType firmType, u32 externalFirm);
+static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHMode a9lhMode);
+static inline void patchLegacyFirm(FirmwareType firmType);
 static inline void patchSafeFirm(void);
 static inline void copySection0AndInjectLoader(void);
-static inline void launchFirm(u32 sectionNum, u32 bootType);
+static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch);
