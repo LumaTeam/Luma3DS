@@ -61,8 +61,3 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 
     return NULL;
 }
-
-void cleanInvalidateDCacheAndDMB(void)
-{
-    ((void (*)())0xFFFF0830)(); //Why write our own code when it's well implemented in the unprotected bootROM?
-}

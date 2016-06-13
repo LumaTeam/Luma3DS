@@ -225,7 +225,7 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
     if(off != NULL) off[4] = 0xE0;
 }
 
-void applyLegacyFirmPatches(u8 *pos, u32 firmType, u32 console)
+void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, u32 isN3DS)
 {
     const patchData twlPatches[] = {
         {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
@@ -245,9 +245,9 @@ void applyLegacyFirmPatches(u8 *pos, u32 firmType, u32 console)
 
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == 1 ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                     (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
-    const patchData *patches = firmType == 1 ? twlPatches : agbPatches;
+    u32 numPatches = firmType == TWL_FIRM ? (sizeof(twlPatches) / sizeof(patchData)) :
+                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
+    const patchData *patches = firmType == TWL_FIRM ? twlPatches : agbPatches;
 
     //Patch
     for(u32 i = 0; i < numPatches; i++)
@@ -255,12 +255,12 @@ void applyLegacyFirmPatches(u8 *pos, u32 firmType, u32 console)
         switch(patches[i].type)
         {
             case 0:
-                memcpy(pos + patches[i].offset[console], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
+                memcpy(pos + patches[i].offset[isN3DS], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
                 break;
             case 2:
-                *(u16 *)(pos + patches[i].offset[console] + 2) = 0;
+                *(u16 *)(pos + patches[i].offset[isN3DS] + 2) = 0;
             case 1:
-                *(u16 *)(pos + patches[i].offset[console]) = patches[i].patch.type1;
+                *(u16 *)(pos + patches[i].offset[isN3DS]) = patches[i].patch.type1;
                 break;
         }
     }

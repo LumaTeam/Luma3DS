@@ -7,12 +7,12 @@
 #include "fatfs/sdmmc/sdmmc.h"
 #include "../build/emunandpatch.h"
 
-void locateEmuNAND(u32 *off, u32 *head, u32 *emuNAND)
+void locateEmuNAND(u32 *off, u32 *head, FirmwareSource *emuNAND)
 {
     static u8 *const temp = (u8 *)0x24300000;
 
     const u32 nandSize = getMMCDevice(0)->total_size;
-    u32 nandOffset = *emuNAND == 1 ? 0 :
+    u32 nandOffset = *emuNAND == FIRMWARE_EMUNAND ? 0 :
                                   (nandSize > 0x200000 ? 0x400000 : 0x200000);
 
     //Check for RedNAND
@@ -35,7 +35,7 @@ void locateEmuNAND(u32 *off, u32 *head, u32 *emuNAND)
        or to SysNAND if there isn't any */
     else
     {
-        (*emuNAND)--;
+        *emuNAND = (*emuNAND == FIRMWARE_EMUNAND2) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
         if(*emuNAND) locateEmuNAND(off, head, emuNAND);
     }
 }
