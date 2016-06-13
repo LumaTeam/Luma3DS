@@ -8,6 +8,7 @@
 #include "screen.h"
 #include "config.h"
 #include "memory.h"
+#include "cache.h"
 #include "draw.h"
 #include "i2c.h"
 
@@ -30,9 +31,11 @@ void  __attribute__((naked)) arm11Stub(void)
 static inline void invokeArm11Function(void (*func)())
 {
     static u32 hasCopiedStub = 0;
-    if(!hasCopiedStub++) memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x40);
-    
-    cleanInvalidateDCacheAndDMB();
+    if(!hasCopiedStub++)
+    {
+        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x40);
+        flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x40);
+    }
     
     *arm11Entry = (u32)func;
     while(*arm11Entry);
@@ -77,6 +80,7 @@ void updateBrightness(u32 brightnessLevel)
         WAIT_FOR_ARM9();
     }
     
+    flushDCacheRange(&brightnessValue, 4);
     invokeArm11Function(ARM11);
 }
 
@@ -116,6 +120,7 @@ void clearScreens(void)
         WAIT_FOR_ARM9();
     }
     
+    flushDCacheRange(fb, sizeof(struct fb));
     invokeArm11Function(ARM11);
 }
 
@@ -223,6 +228,8 @@ u32 initScreens(void)
     
     if(needToInit)
     {
+        flushDCacheRange(&config, 4);
+        flushDCacheRange(fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 
         //Turn on backlight

@@ -8,6 +8,7 @@
 #include "fs.h"
 #include "patches.h"
 #include "memory.h"
+#include "cache.h"
 #include "emunand.h"
 #include "crypto.h"
 #include "draw.h"
@@ -378,7 +379,7 @@ static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch)
         arm11 = (u32 *)0x1FFFFFF8;
     }
 
-    cleanInvalidateDCacheAndDMB(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
+    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
     
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
