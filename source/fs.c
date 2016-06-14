@@ -4,6 +4,7 @@
 
 #include "fs.h"
 #include "memory.h"
+#include "cache.h"
 #include "screen.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
@@ -85,6 +86,8 @@ void loadPayload(u32 pressed)
 
         loaderAddress[1] = fileRead((void *)0x24F00000, path);
 
+        flushDCacheRange(loaderAddress, loader_size);
+        flushICacheRange(loaderAddress, loader_size);
         ((void (*)())loaderAddress)();
     }
 }

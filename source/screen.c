@@ -120,7 +120,7 @@ void clearScreens(void)
         WAIT_FOR_ARM9();
     }
     
-    flushDCacheRange(fb, sizeof(struct fb));
+    flushDCacheRange((void *)fb, sizeof(struct fb));
     invokeArm11Function(ARM11);
 }
 
@@ -229,7 +229,7 @@ u32 initScreens(void)
     if(needToInit)
     {
         flushDCacheRange(&config, 4);
-        flushDCacheRange(fb, sizeof(struct fb));
+        flushDCacheRange((void *)fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 
         //Turn on backlight

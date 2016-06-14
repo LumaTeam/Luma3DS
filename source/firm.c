@@ -380,6 +380,7 @@ static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch)
     }
 
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
+    flushEntireICache();
     
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
