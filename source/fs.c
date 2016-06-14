@@ -4,6 +4,7 @@
 
 #include "fs.h"
 #include "memory.h"
+#include "cache.h"
 #include "screen.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
@@ -88,6 +89,8 @@ void loadPayload(u32 pressed)
         
         if(pattern[0] == 'n') f_unlink(path);
 
+        flushDCacheRange(loaderAddress, loader_size);
+        flushICacheRange(loaderAddress, loader_size);
         ((void (*)())loaderAddress)();
     }
 }
