@@ -18,26 +18,27 @@ Slim Alternative Firmware for 3DS!
 
 ### How to install standalone:
 1. Drop `arm9loaderhax.bin` to the root of your SD.
-2. DONE!
+2. drop `SaltFW.bin` to `SD:/homebrew/`
+3. DONE!
 
 ### How to install and use with a bootmanager:
-1. Drop `SaltFW.bin` to the root of your SD.
-2. Set your choice of bootmanager to load `/SaltFW.bin` as default.
+1. Drop `SaltFW.bin` to `SD:/homebrew/`.
+2. Set your choice of bootmanager to load `/homebrew/SaltFW.bin` as default.
 3. DONE!
 
 ### How to use splash/bootlogo
-1. Create `SaltFW/` folder in the root of your SD.
-2. Put `splash.bin` **OR** `splashbottom.bin` **OR** **BOTH** in `SaltFW/` folder
+1. Create `homebrew/SaltFW/` folder in the root of your SD.
+2. Put `splash.bin` **OR** `splashbottom.bin` **OR** **BOTH** in `homebrew/SaltFW/` folder
 3. DONE!
 
 ### How to use NTR CFW
 1. Download [this](http://www70.zippyshare.com/v/Fbj6n1vB/file.html).
-2. Put `firmware.bin` from the folder for your device, to the root of SD.
+2. Put `firmware.bin` from the folder for your device, to `SD:/homebrew/` OR `SD:/homebrew/SaltFW/`.
 3. Install NTR CFW like regular.
 4. DONE!
 
 ### How to use Region/Language emulation
-1. Create `SaltFW` folder in the root of your SD.
+1. Create `/homebrew/SaltFW` folder in the root of your SD.
 2. Create `locales` folder in `SaltFW`.
 3. Create a `txt` file titleID of the game you want to edit. (e.g. `0004000000055E00.txt`)
 4. Inside the file, put `RGN LN` where RGN is the region code, and LN is the language code. (e.g. `JPN JP`)

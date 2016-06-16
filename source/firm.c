@@ -92,8 +92,19 @@ static inline void loadFirm(u32 firmType, u32 externalFirm)
 {
     section = firm->section;
 
+    char homebrew[] = "/homebrew/firmware.bin";
+    char saltfw[] = "/homebrew/SaltFW/firmware.bin";
+    char* firmwarePath;
+
+    if(fileRead(firm, homebrew) > 0){
+        firmwarePath = homebrew;
+    }
+    else{
+        firmwarePath = saltfw;
+    }
+
     u32 externalFirmLoaded = externalFirm &&
-                             fileRead(firm, "/firmware.bin") &&
+                             fileRead(firm, firmwarePath) &&
                              (((u32)section[2].address >> 8) & 0xFF) == (console ? 0x60 : 0x68);
 
     /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM

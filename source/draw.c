@@ -38,8 +38,8 @@ u32 loadSplash(void)
     initScreens();
 
     //Don't delay boot if no splash image is on the SD
-    if(fileRead(fb->top_left, "/SaltFW/splash.bin") +
-       fileRead(fb->bottom, "/SaltFW/splashbottom.bin"))
+    if(fileRead(fb->top_left, "/homebrew/SaltFW/splash.bin") +
+       fileRead(fb->bottom, "/homebrew/SaltFW/splashbottom.bin"))
         return 1;
     return 0;
 }
