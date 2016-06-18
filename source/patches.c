@@ -4,8 +4,11 @@
 
 #include "patches.h"
 #include "memory.h"
+#include "cache.h"
 #include "config.h"
+#include "fs.h"
 #include "../build/rebootpatch.h"
+#include "../build/smpatch.h"
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -110,6 +113,52 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
 
         svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
     }
+}
+
+void patchServiceAccessCheck(u8 *pos, u32 size)
+{
+    // We have to detour a function in the ARM11 kernel because the sm module (along with all other builtin modules)
+    // is compressed in memory and is only decompressed at runtime.
+
+    // Find some padding space to add our code
+    const u8 bogus_pattern[] = { 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 
+                                 0x2F, 0xE1, 0x00, 0x10, 0xA0, 0xE3, 0x00, 0x10, 0xC0, 0xE5, 
+                                 0x1E, 0xFF, 0x2F, 0xE1 };
+    
+    u32 *someSpace = (u32 *)memsearch(pos, bogus_pattern, size, 24);
+
+    // We couldn't find the place where to begin our search of an empty block
+    if (someSpace == NULL)
+        return;
+
+    // Advance until we reach the padding area (filled with 0xFF)
+    u32 *freeSpace;
+    for(freeSpace = someSpace; *freeSpace != 0xFFFFFFFF; freeSpace++);
+
+    // Inject our code into the free space
+    memcpy(freeSpace, sm, sm_size);
+
+    // Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
+    const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20, 
+                          0x90, 0xE5, 0x48, 0x00, 0x9D, 0xE5 };
+
+    u8 *off = memsearch(pos, pattern, size, 16);
+
+    // We couldn't find the code that decompresses the module
+    if (off == NULL)
+        return;
+
+    // Inject a jump instruction to our code at the offset we found
+    // Construct a jump (BL) instruction to our code
+    u32 offset = ((((u32)freeSpace) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
+    u32 instruction = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
+
+    // Write our jump
+    memcpy(off, &instruction, 4);
+
+    // Clear the data and instruction caches
+    flushEntireDCache();
+    flushEntireICache();
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)

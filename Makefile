@@ -32,7 +32,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/injector.h $(dir_build)/loader.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/smpatch.h $(dir_build)/injector.h $(dir_build)/loader.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -90,6 +90,11 @@ $(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
 	@mkdir -p "$(@D)"
 	@armips $<
 	@bin2c -o $@ -n reboot $(@D)/reboot.bin
+
+$(dir_build)/smpatch.h: $(dir_patches)/sm.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n sm $(@D)/sm.bin
 
 $(dir_build)/injector.h: $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
