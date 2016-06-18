@@ -11,7 +11,7 @@
 #define NULL 0
 
 void __attribute__((noreturn)) mcuReboot(void);
-void clearDCacheAndDMB(void);
+void cleanInvalidateDCacheAndDMB(void);
 
 void FIQHandler(void);
 void undefinedInstructionHandler(void);

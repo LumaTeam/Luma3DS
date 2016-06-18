@@ -92,6 +92,6 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     *(ExceptionDumpHeader *)final = dumpHeader;
 
     
-    clearDCacheAndDMB();
+    cleanInvalidateDCacheAndDMB();
     mcuReboot(); //Also contains DCache-cleaning code
 }

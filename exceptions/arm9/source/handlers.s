@@ -36,7 +36,7 @@ _commonHandler:
     orr r5, r4
     msr cpsr_c, r5          @ change processor mode
     stmfd r6!, {r8-lr}
-    msr cpsr_c, r3          @ restore processor mode
+    msr cpsr_cx, r3         @ restore processor mode
     mov sp, r6
     
     stmfd sp!, {r2,lr}      @ it's a bit of a mess, but we will fix that later
