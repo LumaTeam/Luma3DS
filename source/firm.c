@@ -378,6 +378,7 @@ static inline void patchSafeFirm(void)
 
         patchFirmWrites(arm9Section, section[2].size);
     }
+    else patchFirmWriteSafe(arm9Section, section[2].size);
     
     if(DEVMODE)
     {
@@ -385,20 +386,70 @@ static inline void patchSafeFirm(void)
         patchExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
     }
-    
-    else patchFirmWriteSafe(arm9Section, section[2].size);
 }
 
-static inline void copySection0AndInjectLoader(void)
+static inline void copySection0AndInjectSystemModules(void)
 {
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+    char fileName[] = "/luma/sysmodules/--------.cxi";
+    const char *ext = ".cxi";
 
-    u32 loaderSize;
-    u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
+    struct
+    {
+        u32 size;
+        char name[8];
+        const u8 *addr;
+    } modules[5] = {{0}};
 
-    memcpy(section[0].address, arm11Section0, loaderOffset);
-    memcpy(section[0].address + loaderOffset, injector, injector_size);
-    memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+    u8 *pos = arm11Section0;
+    u32 loaderIndex = 0;
+    for(u32 i = 0; i < 5; i++)
+    {
+        modules[i].addr = pos;
+        modules[i].size = *(u32 *)(pos + 0x104) * 0x200;
+        
+        memcpy(modules[i].name, pos + 0x200, 8);
+        pos += modules[i].size;
+        
+        //Read modules from files if they exist
+        u32 nameOff;
+        for(nameOff = 0; nameOff < 8 && modules[i].name[nameOff] != 0; nameOff++);
+        memcpy(fileName + 17, modules[i].name, nameOff);
+        memcpy(fileName + 17 + nameOff, ext, 5);
+        
+        u32 fileSize = getFileSize(fileName);
+        if(fileSize != 0)
+        {
+            modules[i].addr = NULL;
+            modules[i].size = fileSize;
+        }
+
+        if(memcmp(modules[i].name, "loader", 7) == 0) loaderIndex = i;
+    }
+
+    if(modules[loaderIndex].addr != NULL)
+    {
+        modules[loaderIndex].size = injector_size;
+        modules[loaderIndex].addr = injector;
+    }
+
+    pos = section[0].address;
+    for(u32 i = 0; i < 5; i++)
+    {
+        if(modules[i].addr != NULL)
+            memcpy(pos, modules[i].addr, modules[i].size);
+        else
+        {
+             //Read modules from files if they exist
+            u32 nameOff;
+            for(nameOff = 0; nameOff < 8 && modules[i].name[nameOff] != 0; nameOff++);
+            memcpy(fileName + 17, modules[i].name, nameOff);
+            memcpy(fileName + 17 + nameOff, ext, 5);
+            fileRead(pos, fileName);
+        }
+
+        pos += modules[i].size;
+    }
 }
 
 static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch)
@@ -407,7 +458,7 @@ static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch)
     u32 sectionNum;
     if(firmType == NATIVE_FIRM)
     {
-        copySection0AndInjectLoader();
+        copySection0AndInjectSystemModules();
         sectionNum = 1;
     }
     else sectionNum = 0;

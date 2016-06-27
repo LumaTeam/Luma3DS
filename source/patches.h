@@ -29,5 +29,4 @@ void patchUnitInfoValueSet(u8 *pos, u32 size);
 void patchKernelFCRAMAndVRAMMappingPermissions(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, u32 isN3DS);
-u32 getLoader(u8 *pos, u32 *loaderSize);
 u8 *getUnitInfoValueSet(u8 *pos, u32 size);

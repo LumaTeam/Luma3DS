@@ -30,12 +30,18 @@ u32 fileRead(void *dest, const char *path)
     {
         unsigned int read;
         size = f_size(&file);
+        if(dest == NULL) return size;
         f_read(&file, dest, size, &read);
         f_close(&file);
     }
     else size = 0;
 
     return size;
+}
+
+u32 getFileSize(const char *path)
+{
+    return fileRead(NULL, path);
 }
 
 void fileWrite(const void *buffer, const char *path, u32 size)
