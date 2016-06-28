@@ -345,7 +345,8 @@ void verifyPin(void)
                 }
 
                 pressed = 0;
-
+                charDrawPos = 35;
+                
                 clearScreens();
           
     			drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
