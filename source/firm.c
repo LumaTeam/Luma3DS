@@ -15,6 +15,7 @@
 #include "screen.h"
 #include "buttons.h"
 #include "../build/injector.h"
+#include "pin.h"
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
@@ -201,6 +202,13 @@ void main(void)
 
             fileWrite(&newConfig, configPath, 4);
         }
+    }
+
+    // After all the setup is done, activate lockscreen if enabled. Add a delay to allow splash screen to show.
+    if (CONFIG(8))
+    {
+        chrono(2);
+        verifyPin();
     }
 
     loadFirm(firmType, firmType == NATIVE_FIRM && firmSource == ((updatedSys) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND));

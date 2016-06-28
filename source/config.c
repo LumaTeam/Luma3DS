@@ -9,6 +9,7 @@
 #include "fs.h"
 #include "i2c.h"
 #include "buttons.h"
+#include "pin.h"
 
 void configureCFW(const char *configPath)
 {
@@ -27,7 +28,9 @@ void configureCFW(const char *configPath)
                                         "( ) Enable region/language emu. and external       .code loading",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Enable splash screen with no screen-init" };
+                                        "( ) Enable splash screen with no screen-init",
+                                        "( ) Use Pin",
+                                        "( ) Ask to change pin when exiting config menu" };
 
     struct multiOption {
         int posXs[4];
@@ -182,6 +185,49 @@ void configureCFW(const char *configPath)
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);
+
+    // pin not enabled, if pin binary exists, delete it.
+    if (!singleOptions[8].enabled)
+    {
+        if (doesPinExist() == true)
+        {
+            // If it does exist, this means your turning it off - so we need to verify its you who is turning it off.
+            verifyPin();
+            deletePin();
+        }
+    }
+    else
+    {
+        if(doesPinExist() == true)
+        {
+            // only if user specifies it to be changed each time
+            if (CONFIG(9))
+            {
+                clearScreens();
+                drawString("Do you want to change your pin?", 10, 10, COLOR_WHITE);
+                drawString(" (A) Yes, (B) No.", 10, 20, COLOR_WHITE);
+            
+                u32 choice = 0;
+                do
+                {
+                    choice = waitInput();
+                }
+                while(!(choice & PIN_BUTTONS));
+
+                if(choice == BUTTON_A)
+                {
+                    // Verify old pin to change to new pin.
+                    verifyPin();
+                    newPin();
+                }
+            }
+        }
+        else
+        {
+            // if enabled, but no pin, create new pin.
+            newPin();
+        }
+    }
 
     if(needToDeinit)
     {
