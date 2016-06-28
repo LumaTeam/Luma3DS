@@ -347,10 +347,10 @@ void verifyPin(void)
                 pressed = 0;
 
                 clearScreens();
-
-    			drawString("Wrong pin! Try again!", 10, 10, COLOR_RED);           
-    			drawString("Press START to shutdown or enter pin to proceed.", 10, 20, COLOR_WHITE);
-    			drawString("Pin: ", 10, 30, COLOR_WHITE);
+          
+    			drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
+    			drawString("Pin: ", 10, 20, COLOR_WHITE);
+    			drawString("Wrong pin! Try again!", 10, 30, COLOR_RED); 
             }
             else
             {
