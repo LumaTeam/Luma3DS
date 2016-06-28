@@ -207,18 +207,27 @@ void configureCFW(const char *configPath)
                 drawString("Do you want to change your pin?", 10, 10, COLOR_WHITE);
                 drawString(" (A) Yes, (B) No.", 10, 20, COLOR_WHITE);
             
-                u32 choice = 0;
-                do
+                bool running = true;
+                while (running)
                 {
-                    choice = waitInput();
-                }
-                while(!(choice & PIN_BUTTONS));
+                    u32 choice = 0;
+                    do
+                    {
+                        choice = waitInput();
+                    }
+                    while(!(choice & PIN_BUTTONS));
 
-                if(choice == BUTTON_A)
-                {
-                    // Verify old pin to change to new pin.
-                    verifyPin();
-                    newPin();
+                    if(choice == BUTTON_A)
+                    {
+                        // Verify old pin to change to new pin.
+                        verifyPin();
+                        newPin();
+                        running = false;
+                    }
+                    else
+                    {
+                        running = false;
+                    }
                 }
             }
         }
