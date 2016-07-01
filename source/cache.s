@@ -47,7 +47,7 @@ flushDCacheRange:
         mcr p15, 0, r0, c7, c14, 1      @ clean and flush the line corresponding to the address r0 is holding
         add r0, #0x20
         cmp r0, r1
-        blt flush_dcache_range_loop
+        blo flush_dcache_range_loop
     
     mov r0, #0
     mcr p15, 0, r0, c7, c10, 4          @ drain write buffer
@@ -74,7 +74,7 @@ flushICacheRange:
         mcr p15, 0, r0, c7, c5, 1      @ flush the line corresponding to the address r0 is holding
         add r0, #0x20
         cmp r0, r1
-        blt flush_icache_range_loop
+        blo flush_icache_range_loop
     
     bx lr
     

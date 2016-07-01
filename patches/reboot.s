@@ -1,7 +1,7 @@
 .arm.little
 
 payload_addr equ 0x23F00000   ; Brahma payload address.
-payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
+payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeBrah supports).
 
 .create "build/reboot.bin", 0
 .arm
@@ -88,60 +88,31 @@ dat_fname:     .dcw "sdmc:/Luma3DS.dat"
 
 .align 4
     kernelcode_start:
-        ; Set MPU settings
-        mrc p15, 0, r0, c2, c0, 0  ; dcacheable
-        mrc p15, 0, r12, c2, c0, 1  ; icacheable
-        mrc p15, 0, r1, c3, c0, 0  ; write bufferable
-        mrc p15, 0, r2, c5, c0, 2  ; daccess
-        mrc p15, 0, r3, c5, c0, 3  ; iaccess
-        ldr r4, =0x18000035  ; 0x18000000 128M
-        bic r2, r2, #0xF0000  ; unprotect region 4
-        bic r3, r3, #0xF0000  ; unprotect region 4
-        orr r0, r0, #0x10  ; dcacheable region 4
-        orr r2, r2, #0x30000  ; region 4 r/w
-        orr r3, r3, #0x30000  ; region 4 r/w
-        orr r12, r12, #0x10  ; icacheable region 4
-        orr r1, r1, #0x10  ; write bufferable region 4
-        mcr p15, 0, r0, c2, c0, 0
-        mcr p15, 0, r12, c2, c0, 1
-        mcr p15, 0, r1, c3, c0, 0  ; write bufferable
-        mcr p15, 0, r2, c5, c0, 2  ; daccess
-        mcr p15, 0, r3, c5, c0, 3  ; iaccess
-        mcr p15, 0, r4, c6, c4, 0  ; region 4 (hmmm)
 
-        mrc p15, 0, r0, c2, c0, 0  ; dcacheable
-        mrc p15, 0, r1, c2, c0, 1  ; icacheable
-        mrc p15, 0, r2, c3, c0, 0  ; write bufferable
-        orr r0, r0, #0x20  ; dcacheable region 5
-        orr r1, r1, #0x20  ; icacheable region 5
-        orr r2, r2, #0x20  ; write bufferable region 5
-        mcr p15, 0, r0, c2, c0, 0  ; dcacheable
-        mcr p15, 0, r1, c2, c0, 1  ; icacheable
-        mcr p15, 0, r2, c3, c0, 0  ; write bufferable
-
-    ; Flush cache
-    mov r2, #0
-    mov r1, r2
-    flush_cache:
-        mov r0, #0
-        mov r3, r2, lsl #30
-        flush_cache_inner_loop:
-            orr r12, r3, r0, lsl#5
-            mcr p15, 0, r1, c7, c10, 4  ; drain write buffer
-            mcr p15, 0, r12, c7, c14, 2  ; clean and flush dcache entry (index and segment)
-            add r0, #1
-            cmp r0, #0x20
-            bcc flush_cache_inner_loop
-        add r2, #1
-        cmp r2, #4
-        bcc flush_cache
-
-    ; Enable MPU
+    ; Disable MPU
     ldr r0, =0x42078  ; alt vector select, enable itcm
     mcr p15, 0, r0, c1, c0, 0
-    mcr p15, 0, r1, c7, c5, 0  ; flush dcache
-    mcr p15, 0, r1, c7, c6, 0  ; flush icache
-    mcr p15, 0, r1, c7, c10, 4  ; drain write buffer
+
+    ; Clean and flush data cache
+    mov r1, #0                          ; segment counter
+    outer_loop:
+        mov r0, #0                      ; line counter
+
+        inner_loop:
+            orr r2, r1, r0                  ; generate segment and line address
+            mcr p15, 0, r2, c7, c14, 2      ; clean and flush the line
+            add r0, #0x20                   ; increment to next line
+            cmp r0, #0x400
+            bne inner_loop
+
+        add r1, #0x40000000
+        cmp r1, #0
+        bne outer_loop
+
+    mcr p15, 0, r1, c7, c10, 4              ; drain write buffer
+
+    ; Flush instruction cache
+    mcr p15, 0, r1, c7, c5, 0
 
     ; Jump to payload
     ldr r0, =payload_addr

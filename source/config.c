@@ -145,6 +145,9 @@ void configureCFW(const char *configPath)
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = oldEnabled == 3 ? 0 : oldEnabled + 1;
+
+                if(!selectedOption)
+                    updateBrightness(multiOptions[selectedOption].enabled);
             }
             else
             {
@@ -156,12 +159,7 @@ void configureCFW(const char *configPath)
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
         if(selectedOption < multiOptionsAmount)
-        {
-            if(selectedOption == 0)
-                updateBrightness(multiOptions[selectedOption].enabled);
-            
             drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        }
         else
         {
             u32 singleSelected = selectedOption - multiOptionsAmount;

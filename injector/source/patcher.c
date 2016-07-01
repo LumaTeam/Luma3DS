@@ -135,31 +135,29 @@ static void progIdToStr(char *strEnd, u64 progId)
     }
 }
 
-static int loadTitleCodeSection(u64 progId, u8 *code, u32 size)
+static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/code_sections/[u64 titleID in hex, uppercase].bin"
        If it exists it should be a decompressed binary code file */
-    
+
     char path[] = "/luma/code_sections/0000000000000000.bin";
     progIdToStr(path + 35, progId);
 
     IFile file;
     Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
-    
+
     if(R_SUCCEEDED(ret))
     {
         u64 fileSize, total;
-        
+
         ret = IFile_GetSize(&file, &fileSize);
-        if(!R_SUCCEEDED(ret) || fileSize > size) return -1;
-        
-        ret = IFile_Read(&file, &total, code, fileSize);
-        IFile_Close(&file);
-        if(!R_SUCCEEDED(ret)) return -1;
-        else if(total < fileSize) return -2; //Shouldn't happen
+
+        if(R_SUCCEEDED(ret) && fileSize <= size)
+        {
+            ret = IFile_Read(&file, &total, code, fileSize);
+            IFile_Close(&file);
+        }
     }
-    
-    return ret;
 }
 
 static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
@@ -366,7 +364,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             );
 
             //Apply only if the updated NAND hasn't been booted
-            if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(3, 1) && CONFIG(1)))
+            if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(2, 1) && CONFIG(1)))
             {
                 static const u8 skipEshopUpdateCheckPattern[] = {
                     0x30, 0xB5, 0xF1, 0xB0
@@ -552,8 +550,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 if(tidHigh == 0x0004000)
                 {
                     //External .code section loading
-                    if(loadTitleCodeSection(progId, code, size) == -2) svcBreak(USERBREAK_ASSERT);
-                    
+                    loadTitleCodeSection(progId, code, size);
+
                     //Language emulation
                     u8 regionId = 0xFF,
                        languageId = 0xFF;

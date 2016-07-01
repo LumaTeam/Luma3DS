@@ -38,7 +38,7 @@ u32 waitInput(void)
 void mcuReboot(void)
 {
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
-    
+
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(1);
 }
