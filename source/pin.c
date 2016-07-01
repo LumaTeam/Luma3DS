@@ -11,39 +11,56 @@
 #include "i2c.h"
 #include "pin.h"
 
-PinCont readPin(void)
+// Use ECB
+#define ECB 1
+#include "aes/aes.h"
+
+void readPin(uint8_t* out)
 {
+	// example key. would need to be stored more securely.
+	uint8_t key[] = {0xc9, 0x43, 0x7a, 0x92, 0x76, 0x5e, 0x64, 0x9f, 0x6f, 0x4c, 0x33, 0xb4, 0x5c, 0x30, 0x15, 0x97};
+
 	FIL file;
-	PinCont temp;
+
+	// AES is 128bit, even though our pin is 32bit. So we have to pad it with zeros.
+	uint8_t in[16];
+	//uint8_t temp[16];
 
 	if(f_open(&file, "/luma/pin.bin", FA_READ) == FR_OK)
     {
         unsigned int read;
         u32 size = f_size(&file);
-        f_read(&file, &temp, size, &read);
+        f_read(&file, &in, size, &read);
         f_close(&file);
     }
 
-    return temp;
+    AES128_ECB_decrypt(in, key, out);
 }
 
-void writePin(PinCont* pin)
+void writePin(uint8_t* in)
 {
+	// example key. would need to be stored more securely.
+	uint8_t key[] = {0xc9, 0x43, 0x7a, 0x92, 0x76, 0x5e, 0x64, 0x9f, 0x6f, 0x4c, 0x33, 0xb4, 0x5c, 0x30, 0x15, 0x97};
+
 	FIL file;
+
+	uint8_t out[16];
+
+	AES128_ECB_encrypt(in, key, out);
 
     if(f_open(&file, "/luma/pin.bin", FA_WRITE | FA_OPEN_ALWAYS) == FR_OK)
     {
         unsigned int written;
-        f_write(&file, pin, sizeof(pin), &written);
+        f_write(&file, &out, sizeof(out), &written);
         f_close(&file);
     }
 }
 
 bool doesPinExist(void)
 {
-	FIL file;
 	bool result = true;
-
+	FIL file;
+	
 	if(f_open(&file, "/luma/pin.bin", FA_READ) == FR_OK)
 	{
 		f_close(&file);
@@ -56,12 +73,34 @@ bool doesPinExist(void)
 	return result;
 }
 
+/*
+bool validateFile(void)
+{	
+	bool result = true;
+
+	uint8_t in[16];
+	readPin(in);
+
+	if (in[16] != 0x65)
+	{
+		result = false;
+	}
+}
+*/
+
 void deletePin(void)
 {
-	// need a way to delete a file.
-	// cant get f_unlink to work.
+	// To get around f_unlink.
 
-	//f_unlink("/luma/pin.bin");
+	uint8_t in[16];
+    readPin(in);
+
+    for (int i = 0; i < 16; i++)
+    {
+    	in[i] = 0x00;
+    }
+
+    writePin(in);
 }
 
 void newPin(void)
@@ -72,11 +111,12 @@ void newPin(void)
 
 	u32 pressed = 0;
 
-    // Set the default characters as 'n' so we can check if there are any unentered characters.
-    PinCont enteredPassword;
-    for (int i = 0; i < 4; i++)
+    // Set the default value as 0x00 so we can check if there are any unentered characters.
+    uint8_t enteredPassword[16];
+
+    for (int i = 0; i < 16; i++)
     {
-    	enteredPassword.pin[i] = 'n';
+    	enteredPassword[i] = 0x00;
     }
 
     bool running = true;
@@ -103,9 +143,9 @@ void newPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'A';
+                        enteredPassword[cnt] = 0x41;
                         checking = false;
                     }
                     cnt++;
@@ -122,9 +162,9 @@ void newPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'B';
+                        enteredPassword[cnt] = 0x42;
                         checking = false;
                     }
                     cnt++;
@@ -141,9 +181,9 @@ void newPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'X';
+                        enteredPassword[cnt] = 0x58;
                         checking = false;
                     }
                     cnt++;
@@ -160,9 +200,9 @@ void newPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'Y';
+                        enteredPassword[cnt] = 0x59;
                         checking = false;
                     }
                     cnt++;
@@ -174,19 +214,23 @@ void newPin(void)
                 break;
         }
 
-        if (enteredPassword.pin[0] == 'n' || enteredPassword.pin[1] == 'n' || enteredPassword.pin[2] == 'n' || enteredPassword.pin[3] == 'n')
+        // we leave the rest of the array zerod out, we only need the first 4 elements.
+        if (enteredPassword[0] == 0x00 || enteredPassword[1] == 0x00 || enteredPassword[2] == 0x00 || enteredPassword[3] == 0x00)
         {
             running = true;
         }
         else
         {
-            writePin(&enteredPassword);
+        	// Add check
+        	enteredPassword[16] = 0x65;
+
+            writePin(enteredPassword);
             running = false;
         }
     }
 }
 
-void verifyPin(void)
+void verifyPin(bool allowQuit)
 {
     u32 needToDeinit = 0;
 
@@ -203,18 +247,19 @@ void verifyPin(void)
 
     u32 pressed = 0;
 
-    // Set the default characters as 'n' so we can check if there are any unentered characters.
-    PinCont enteredPassword;
-    for (int i = 0; i < 4; i++)
+    // Set the default characters as 0x00 so we can check if there are any unentered characters.
+    uint8_t enteredPassword[16];
+    for (int i = 0; i < 16; i++)
     {
-    	enteredPassword.pin[i] = 'n';
+    	enteredPassword[i] = 0x00;
     }
 
     bool running = true;
     bool unlock = true;
     int charDrawPos = 35;
 
-    PinCont setPassword = readPin();
+    uint8_t setPassword[16];
+    readPin(setPassword);
 
     while (running == true)
     {
@@ -236,9 +281,9 @@ void verifyPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'A';
+                        enteredPassword[cnt] = 0x41;
                         checking = false;
                     }
                     cnt++;
@@ -255,9 +300,9 @@ void verifyPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'B';
+                        enteredPassword[cnt] = 0x42;
                         checking = false;
                     }
                     cnt++;
@@ -274,9 +319,9 @@ void verifyPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'X';
+                        enteredPassword[cnt] = 0x58;
                         checking = false;
                     }
                     cnt++;
@@ -292,9 +337,9 @@ void verifyPin(void)
                 while (checking)
                 {
                     // add character to password.
-                    if (enteredPassword.pin[cnt] == 'n')
+                    if (enteredPassword[cnt] == 0x00)
                     {
-                        enteredPassword.pin[cnt] = 'Y';
+                        enteredPassword[cnt] = 0x59;
                         checking = false;
                     }
                     cnt++;
@@ -305,29 +350,33 @@ void verifyPin(void)
                 break;
 
             case BUTTON_START:
-                // exit, no password
-                if(needToDeinit)
+                if (allowQuit)
                 {
-                     //Turn off backlight
-                    i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
-                    deinitScreens();
-                    PDN_GPU_CNT = 1;
-                }
+                	// exit, no password
+	                if(needToDeinit)
+	                {
+	                     //Turn off backlight
+	                    i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
+	                    deinitScreens();
+	                    PDN_GPU_CNT = 1;
+	                }
 
-                // I think this is the correct shutdown procedure. Not sure.
-                i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
+	                // I think this is the correct shutdown procedure. Not sure.
+	                i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
+	            }
                 break;
         }
 
-        if (enteredPassword.pin[0] == 'n' || enteredPassword.pin[1] == 'n' || enteredPassword.pin[2] == 'n' || enteredPassword.pin[3] == 'n')
+        if (enteredPassword[0] == 0x00 || enteredPassword[1] == 0x00 || enteredPassword[2] == 0x00 || enteredPassword[3] == 0x00)
         {
             running = true;
         }
         else
         {
+        	// only compare first 4
             for (int i = 0; i < 4; i++)
             {
-                if (setPassword.pin[i] != enteredPassword.pin[i])
+                if (setPassword[i] != enteredPassword[i])
                 {
                     unlock = false;
                 }
@@ -339,9 +388,10 @@ void verifyPin(void)
                 running = true;
                 unlock = true;
 
-                for (int i = 0; i < 4; i++)
+                // re zero out all 16 just in case.
+                for (int i = 0; i < 16; i++)
                 {
-                    enteredPassword.pin[i] = 'n';
+                    enteredPassword[i] = 0x00;
                 }
 
                 pressed = 0;

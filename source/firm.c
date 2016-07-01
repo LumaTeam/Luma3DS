@@ -207,8 +207,8 @@ void main(void)
     // After all the setup is done, activate lockscreen if enabled. Add a delay to allow splash screen to show.
     if (CONFIG(8))
     {
-        chrono(2);
-        verifyPin();
+        chrono(1);
+        verifyPin(true);
     }
 
     loadFirm(firmType, firmType == NATIVE_FIRM && firmSource == ((updatedSys) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND));

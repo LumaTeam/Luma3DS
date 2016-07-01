@@ -8,16 +8,12 @@
 
 #include "types.h"
 
-// Stands for Pin Container
-typedef struct PinCont
-{
-	char pin[4];
-} PinCont;
-
-PinCont readPin(void);
-void writePin(PinCont* pin);
-bool doesPinExist(void);
+void readPin(uint8_t* out);
+void writePin(uint8_t* in);
 void deletePin(void);
 
+//bool validateFile(void);
+bool doesPinExist(void);
+
 void newPin(void);
-void verifyPin(void);
+void verifyPin(bool allowQuit);

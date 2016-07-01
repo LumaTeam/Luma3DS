@@ -192,7 +192,7 @@ void configureCFW(const char *configPath)
         if (doesPinExist() == true)
         {
             // If it does exist, this means your turning it off - so we need to verify its you who is turning it off.
-            verifyPin();
+            verifyPin(false);
             deletePin();
         }
     }
@@ -220,7 +220,7 @@ void configureCFW(const char *configPath)
                     if(choice == BUTTON_A)
                     {
                         // Verify old pin to change to new pin.
-                        verifyPin();
+                        verifyPin(false);
                         newPin();
                         running = false;
                     }
