@@ -313,6 +313,9 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHM
 
         //Does nothing if svcBackdoor is still there
         reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
+
+        // Patch the service access checks in the sm module
+        patchServiceAccessCheck((u8 *)firm + section[1].offset, section[1].size);
     }
 }
 
