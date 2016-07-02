@@ -79,6 +79,16 @@ void patchFirmWriteSafe(u8 *pos, u32 size)
     off[1] = writeBlockSafe[1];
 }
 
+void patchSvcAccessChecks(u8* pos, u32 size)
+{
+    const u8 pattern[] = {0xEA, 0xFF, 0xFF, 0x0A};
+
+    u32* off = (u32*)memsearch(pos, pattern, size, 4);
+    
+    // Patch the access check to a NOP
+    *off = 0xE320F000;
+}
+
 void reimplementSvcBackdoor(u8 *pos, u32 size)
 {
     //Official implementation of svcBackdoor
