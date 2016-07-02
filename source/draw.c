@@ -19,15 +19,15 @@ static inline int strlen(const char *string)
     return stringEnd - string;
 }
 
-u32 loadSplash(void)
+bool loadSplash(void)
 {
     initScreens();
 
     //Don't delay boot if no splash image is on the SD
     if(fileRead(fb->top_left, "/luma/splash.bin") +
-       fileRead(fb->bottom, "/luma/splashbottom.bin"))
-        return 1;
-    return 0;
+       fileRead(fb->bottom, "/luma/splashbottom.bin") != 0)
+        return true;
+    return false;
 }
 
 void drawCharacter(char character, int posX, int posY, u32 color)

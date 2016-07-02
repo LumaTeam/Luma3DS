@@ -79,7 +79,8 @@
 #define SHA_224_HASH_SIZE   (224 / 8)
 #define SHA_1_HASH_SIZE     (160 / 8)
 
-extern u32 emuOffset, isN3DS;
+extern u32 emuOffset;
+extern bool isN3DS;
 extern FirmwareSource firmSource;
 
 void ctrNandInit(void);

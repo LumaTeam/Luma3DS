@@ -13,12 +13,12 @@
 static FATFS sdFs,
              nandFs;
 
-u32 mountFs(void)
+bool mountFs(void)
 {
-    if(f_mount(&sdFs, "0:", 1) != FR_OK) return 0;
+    if(f_mount(&sdFs, "0:", 1) != FR_OK) return false;
     f_mount(&nandFs, "1:", 0);
 
-    return 1;
+    return true;
 }
 
 u32 fileRead(void *dest, const char *path)

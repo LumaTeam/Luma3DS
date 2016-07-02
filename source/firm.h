@@ -42,9 +42,9 @@ typedef enum A9LHMode
     A9LH_WITH_SFIRM_FIRMPROT = 2
 } A9LHMode;
 
-static inline void loadFirm(FirmwareType firmType, u32 externalFirm);
+static inline void loadFirm(FirmwareType firmType, bool externalFirm);
 static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHMode a9lhMode);
 static inline void patchLegacyFirm(FirmwareType firmType);
 static inline void patchSafeFirm(void);
 static inline void copySection0AndInjectSystemModules(void);
-static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch);
+static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch);

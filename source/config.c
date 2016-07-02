@@ -12,7 +12,7 @@
 
 void configureCFW(const char *configPath)
 {
-    u32 needToDeinit = initScreens();
+    bool needToDeinit = initScreens();
 
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
@@ -48,7 +48,7 @@ void configureCFW(const char *configPath)
 
     struct singleOption {
         int posY;
-        u32 enabled;
+        bool enabled;
     } singleOptions[singleOptionsAmount];
 
     //Parse the existing options
@@ -153,7 +153,7 @@ void configureCFW(const char *configPath)
             }
             else
             {
-                u32 oldEnabled = singleOptions[selectedOption - multiOptionsAmount].enabled;
+                bool oldEnabled = singleOptions[selectedOption - multiOptionsAmount].enabled;
                 singleOptions[selectedOption - multiOptionsAmount].enabled = !oldEnabled;
                 if(oldEnabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
             }
@@ -176,7 +176,7 @@ void configureCFW(const char *configPath)
     for(u32 i = 0; i < multiOptionsAmount; i++)
         config |= multiOptions[i].enabled << (i * 2 + 6);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        config |= singleOptions[i].enabled << (i + 16);
+        config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
     fileWrite(&config, configPath, 4);
 

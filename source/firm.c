@@ -21,16 +21,18 @@ static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
 u32 config,
-    isN3DS,
     emuOffset;
+
+bool isN3DS;
 
 FirmwareSource firmSource;
 
 void main(void)
 {
-    u32 isFirmlaunch,
-        updatedSys,
-        newConfig,
+    bool isFirmlaunch,
+         updatedSys;
+
+    u32 newConfig,
         emuHeader,
         nbChronoStarted = 0;
 
@@ -61,7 +63,7 @@ void main(void)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuReboot();
 
-        isFirmlaunch = 1;
+        isFirmlaunch = true;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = *(vu8 *)0x23F00009 == '3' ? SAFE_FIRM : (FirmwareType)(*(vu8 *)0x23F00005 - '0');
@@ -92,11 +94,11 @@ void main(void)
             pressed = HID_PAD;
         }
 
-        isFirmlaunch = 0;
+        isFirmlaunch = false;
         firmType = NATIVE_FIRM;
         
         //Determine if booting with A9LH
-        u32 a9lhBoot = !PDN_SPI_CNT;
+        bool a9lhBoot = !PDN_SPI_CNT;
 
         //Determine if A9LH is installed and the user has an updated sysNAND
         if(a9lhBoot || CONFIG(2))
@@ -107,7 +109,7 @@ void main(void)
         else
         {
             a9lhMode = NO_A9LH;
-            updatedSys = 0;
+            updatedSys = false;
         }
 
         newConfig = (u32)a9lhMode << 3;
@@ -149,7 +151,7 @@ void main(void)
         }
 
         //Boot options aren't being forced
-        if(needConfig)
+        if(needConfig != DONT_CONFIGURE)
         {
             /* If L and R/A/Select or one of the single payload buttons are pressed,
                chainload an external payload */
@@ -234,13 +236,13 @@ void main(void)
     launchFirm(firmType, isFirmlaunch);
 }
 
-static inline void loadFirm(FirmwareType firmType, u32 externalFirm)
+static inline void loadFirm(FirmwareType firmType, bool externalFirm)
 {
     section = firm->section;
 
-    u32 externalFirmLoaded = externalFirm &&
-                             fileRead(firm, "/luma/firmware.bin") &&
-                             (((u32)section[2].address >> 8) & 0xFF) == (isN3DS ? 0x60 : 0x68);
+    bool externalFirmLoaded = externalFirm &&
+                              fileRead(firm, "/luma/firmware.bin") &&
+                              (((u32)section[2].address >> 8) & 0xFF) == (isN3DS ? 0x60 : 0x68);
 
     /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
        doesn't match the console, load FIRM from CTRNAND */
@@ -251,7 +253,7 @@ static inline void loadFirm(FirmwareType firmType, u32 externalFirm)
                                          { "00000202", "20000202" },
                                          { "00000003", "20000003" }};
 
-        firmRead(firm, firmFolders[(u32)firmType][isN3DS]);
+        firmRead(firm, firmFolders[(u32)firmType][isN3DS ? 1 : 0]);
         decryptExeFs((u8 *)firm);
     }
 }
@@ -261,7 +263,7 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHM
     u8 *arm9Section = (u8 *)firm + section[2].offset,
        *arm11Section1 = (u8 *)firm + section[1].offset;
 
-    u32 is90Firm;
+    bool is90Firm;
 
     if(isN3DS)
     {
@@ -302,7 +304,7 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHM
     patchSignatureChecks(process9Offset, process9Size);
 
     //Apply emuNAND patches
-    if(nandType)
+    if(nandType != FIRMWARE_SYSNAND)
     {
         u32 branchAdditive = (u32)firm + section[2].offset - (u32)section[2].address;
         patchEmuNAND(arm9Section, section[2].size, process9Offset, process9Size, emuOffset, emuHeader, branchAdditive);
@@ -452,7 +454,7 @@ static inline void copySection0AndInjectSystemModules(void)
     }
 }
 
-static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch)
+static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch)
 {
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
