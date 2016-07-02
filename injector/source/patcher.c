@@ -5,7 +5,7 @@
 
 #ifndef PATH_MAX
 #define PATH_MAX 255
-#define CONFIG(a) ((loadConfig() >> (a + 16)) & 1)
+#define CONFIG(a) (((loadConfig() >> (a + 16)) & 1) != 0)
 #define MULTICONFIG(a) ((loadConfig() >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((loadConfig() >> a) & b)
 #endif
@@ -90,21 +90,21 @@ static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int f
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
-static u32 secureInfoExists(void)
+static bool secureInfoExists(void)
 {
-    static u32 secureInfoExists = 0;
+    static bool exists = false;
 
-    if(!secureInfoExists)
+    if(!exists)
     {
         IFile file;
         if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, "/sys/SecureInfo_C", FS_OPEN_READ)))
         {
-            secureInfoExists = 1;
+            exists = true;
             IFile_Close(&file);
         }
     }
 
-    return secureInfoExists;
+    return exists;
 }
 
 static u32 loadConfig(void)
@@ -263,8 +263,8 @@ static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetC
                 if(instr[3] == 0xEB) //We're looking for BL
                 {
                     u8 *calledFunction = instr;
-                    u32 i = 0,
-                        found;
+                    u32 i = 0;
+                    bool found;
 
                     do
                     {

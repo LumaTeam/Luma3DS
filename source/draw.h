@@ -21,6 +21,6 @@
 
 extern volatile struct fb *const fb;
 
-u32 loadSplash(void);
+bool loadSplash(void);
 void drawCharacter(char character, int posX, int posY, u32 color);
 int drawString(const char *string, int posX, int posY, u32 color);

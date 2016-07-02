@@ -6,7 +6,7 @@
 
 #include "types.h"
 
-#define CONFIG(a) ((config >> (a + 16)) & 1)
+#define CONFIG(a) (((config >> (a + 16)) & 1) != 0)
 #define MULTICONFIG(a) ((config >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((config >> a) & b)
 

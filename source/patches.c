@@ -121,7 +121,7 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
     if(off != NULL) off[4] = 0xE0;
 }
 
-void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, u32 isN3DS)
+void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, bool isN3DS)
 {
     const patchData twlPatches[] = {
         {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
@@ -151,12 +151,12 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, u32 isN3DS)
         switch(patches[i].type)
         {
             case 0:
-                memcpy(pos + patches[i].offset[isN3DS], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
+                memcpy(pos + patches[i].offset[isN3DS ? 1 : 0], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
                 break;
             case 2:
-                *(u16 *)(pos + patches[i].offset[isN3DS] + 2) = 0;
+                *(u16 *)(pos + patches[i].offset[isN3DS ? 1 : 0] + 2) = 0;
             case 1:
-                *(u16 *)(pos + patches[i].offset[isN3DS]) = patches[i].patch.type1;
+                *(u16 *)(pos + patches[i].offset[isN3DS ? 1 : 0]) = patches[i].patch.type1;
                 break;
         }
     }
