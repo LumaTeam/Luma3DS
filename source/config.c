@@ -13,7 +13,16 @@
 
 void configureCFW(const char *configPath)
 {
-    u32 needToDeinit = initScreens();
+    u32 needToDeinit = 0;
+
+    // Verify we actually need to init screen.
+    if(PDN_GPU_CNT == 1)
+    {
+        needToDeinit = initScreens();
+    }
+
+    // We need to clear the screen incase we verify the pin to remove the data related to that.
+    clearScreens();
 
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);

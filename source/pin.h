@@ -8,8 +8,8 @@
 
 #include "types.h"
 
-void readPin(uint8_t* out);
-void writePin(uint8_t* in);
+bool readPin(uint8_t* out);
+bool writePin(uint8_t* in);
 void deletePin(void);
 
 //bool validateFile(void);

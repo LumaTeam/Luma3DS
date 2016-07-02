@@ -11,14 +11,16 @@
 #include "i2c.h"
 #include "pin.h"
 
-// Use ECB
+// Use ECB method.
 #define ECB 1
 #include "aes/aes.h"
 
-void readPin(uint8_t* out)
+bool readPin(uint8_t* out)
 {
+	bool result = true;
+
 	// example key. would need to be stored more securely.
-	uint8_t key[] = {0xc9, 0x43, 0x7a, 0x92, 0x76, 0x5e, 0x64, 0x9f, 0x6f, 0x4c, 0x33, 0xb4, 0x5c, 0x30, 0x15, 0x97};
+	uint8_t key[] = AES_PINKEY;
 
 	FIL file;
 
@@ -26,6 +28,7 @@ void readPin(uint8_t* out)
 	uint8_t in[16];
 	//uint8_t temp[16];
 
+	// Load pin
 	if(f_open(&file, "/luma/pin.bin", FA_READ) == FR_OK)
     {
         unsigned int read;
@@ -33,14 +36,24 @@ void readPin(uint8_t* out)
         f_read(&file, &in, size, &read);
         f_close(&file);
     }
+    else
+    {
+    	result = false;
+    }
 
+    // decrypt and store in out.
     AES128_ECB_decrypt(in, key, out);
+
+    // return appropriate result.
+    return result;
 }
 
-void writePin(uint8_t* in)
+bool writePin(uint8_t* in)
 {
+	bool result = true;
+
 	// example key. would need to be stored more securely.
-	uint8_t key[] = {0xc9, 0x43, 0x7a, 0x92, 0x76, 0x5e, 0x64, 0x9f, 0x6f, 0x4c, 0x33, 0xb4, 0x5c, 0x30, 0x15, 0x97};
+	uint8_t key[] = AES_PINKEY;
 
 	FIL file;
 
@@ -54,39 +67,29 @@ void writePin(uint8_t* in)
         f_write(&file, &out, sizeof(out), &written);
         f_close(&file);
     }
+    else
+    {
+    	result = false;
+    }
+
+    return result;
 }
 
 bool doesPinExist(void)
 {
-	bool result = true;
-	FIL file;
-	
-	if(f_open(&file, "/luma/pin.bin", FA_READ) == FR_OK)
-	{
-		f_close(&file);
-	}
-	else
-	{
-		result = false;
-	}	
+	uint8_t in[16];
+
+    bool result = readPin(in);
+
+    if (in[0] == 0x00 && in[16] == 0x00)
+    {
+    	result = false;
+    }
+
+    writePin(in);
 
 	return result;
 }
-
-/*
-bool validateFile(void)
-{	
-	bool result = true;
-
-	uint8_t in[16];
-	readPin(in);
-
-	if (in[16] != 0x65)
-	{
-		result = false;
-	}
-}
-*/
 
 void deletePin(void)
 {
@@ -221,9 +224,6 @@ void newPin(void)
         }
         else
         {
-        	// Add check
-        	enteredPassword[16] = 0x65;
-
             writePin(enteredPassword);
             running = false;
         }

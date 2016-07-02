@@ -73,6 +73,11 @@ void main(void)
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)))
         {
+            // Verify the config menu if the pin has been set.
+            if(CONFIG(8))
+            {
+                verifyPin(true);
+            }
             configureCFW(configPath);
 
             //Zero the last booted FIRM flag
