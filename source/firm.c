@@ -23,7 +23,7 @@ static const firmSectionHeader *section;
 u32 config,
     isN3DS,
     emuOffset;
-    
+
 FirmwareSource firmSource;
 
 void main(void)
@@ -38,7 +38,7 @@ void main(void)
     FirmwareSource nandType;
     ConfigurationStatus needConfig;
     A9LHMode a9lhMode;
-    
+
     //Detect the console being used
     isN3DS = PDN_MPCORE_CFG == 7;
 
@@ -478,7 +478,7 @@ static inline void launchFirm(FirmwareType firmType, u32 isFirmlaunch)
 
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
     flushEntireICache();
-    
+
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
 

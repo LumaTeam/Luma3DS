@@ -19,6 +19,8 @@
 #define COLOR_RED   0x0000FF
 #define COLOR_BLACK 0x000000
 
+extern volatile struct fb *const fb;
+
 u32 loadSplash(void);
 void drawCharacter(char character, int posX, int posY, u32 color);
 int drawString(const char *string, int posX, int posY, u32 color);

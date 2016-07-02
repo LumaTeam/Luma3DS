@@ -25,7 +25,7 @@ void configureCFW(const char *configPath)
                                         "( ) SysNAND is updated (A9LH-only)",
                                         "( ) Force A9LH detection",
                                         "( ) Use second EmuNAND as default",
-                                        "( ) Enable region/language emu. and external       .code loading",
+                                        "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Enable splash screen with no screen-init" };
@@ -147,6 +147,9 @@ void configureCFW(const char *configPath)
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
+
+                if(!selectedOption)
+                    updateBrightness(multiOptions[selectedOption].enabled);
             }
             else
             {
@@ -158,12 +161,7 @@ void configureCFW(const char *configPath)
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
         if(selectedOption < multiOptionsAmount)
-        {
-            if(selectedOption == 0)
-                updateBrightness(multiOptions[selectedOption].enabled);
-            
             drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        }
         else
         {
             u32 singleSelected = selectedOption - multiOptionsAmount;
