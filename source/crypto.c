@@ -1,6 +1,26 @@
 /*
-*   crypto.c
+*   This file is part of Luma3DS
+*   Copyright (C) 2016 Aurora Wright, TuxSH
 *
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
+*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
+*   Notices displayed by works containing it.
+*/
+
+/*
 *   Crypto libs from http://github.com/b1l1s/ctr
 */
 
@@ -9,7 +29,7 @@
 #include "fatfs/sdmmc/sdmmc.h"
 
 /****************************************************************
-*                   Crypto libs
+*                  Crypto libs
 ****************************************************************/
 
 /* original version by megazig */
@@ -271,7 +291,7 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 }
 
 /****************************************************************
-*                   NAND/FIRM crypto
+*                  NAND/FIRM crypto
 ****************************************************************/
 
 static u8 nandCTR[0x10],
@@ -345,6 +365,7 @@ void decryptExeFs(u8 *inbuf)
 }
 
 //ARM9Loader replacement
+//Originally adapted from: https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 void arm9Loader(u8 *arm9Section, u32 mode)
 {
     //Firm keys
