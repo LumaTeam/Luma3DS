@@ -313,6 +313,10 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHM
         is90Firm = memcmp(section[2].hash, firm90Hash, 0x10) == 0;
     }
 
+    //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY
+    if(a9lhMode == NO_A9LH)
+        setRSAMod0DerivedKeys();
+    
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;
