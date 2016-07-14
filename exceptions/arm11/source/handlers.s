@@ -116,3 +116,14 @@ cleanInvalidateDCacheAndDMB:
     mcr p15,0,r0,c7,c14,0   @ Clean and Invalidate Entire Data Cache
     mcr p15,0,r0,c7,c10,4   @ Drain Memory Barrier
     bx lr
+
+.global cannotAccessVA
+.type   cannotAccessVA, %function
+cannotAccessVA:
+    @ Thanks yellows8 for the hint 
+    lsr r0, #12
+    lsl r0, #12
+    mcr p15,0,r0,c7,c8,0    @ VA to PA translation with privileged read permission check
+    mrc p15,0,r0,c7,c4,0    @ read PA register
+    and r0, #1              @ failure bit
+    bx lr

@@ -63,10 +63,12 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     for(u32 i = 0; i < 7; i++) registerDump[8 + i]  = regs[8 + i];
     for(u32 i = 0; i < 8; i++) registerDump[i]      = regs[15 + i]; 
     
-    dumpHeader.stackDumpSize = 0x1000 - (registerDump[13] & 0xfff);
+    dumpHeader.stackDumpSize = 0x1000 - (registerDump[13] & 0xFFF);
     
     //Dump code
     vu8 *instr = (vu8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+    if(cannotAccessVA((u8 *)instr) || cannotAccessVA((u8 *)instr + dumpHeader.codeDumpSize))
+        dumpHeader.codeDumpSize = 0;
     for(u32 i = 0; i < dumpHeader.codeDumpSize; i++)
         codeDump[i] = instr[i];
         
@@ -81,13 +83,17 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
         
     //Dump stack in place
     vu32 *sp = (vu32 *)registerDump[13];
+    if(cannotAccessVA((u8 *)sp))
+        dumpHeader.stackDumpSize = 0;
     for(u32 i = 0; i < dumpHeader.stackDumpSize / 4; i++)
         *final++ = sp[i];
 
 
-    vu8 *currentKProcess = *(vu8 **)0xFFFF9004;
-    vu8 *currentKCodeSet = (currentKProcess != NULL) ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
-    if(currentKCodeSet != NULL)
+    vu8 *currentKProcess = (cannotAccessVA((u8 *)0xFFFF9004)) ? NULL : *(vu8 **)0xFFFF9004;
+    vu8 *currentKCodeSet = (currentKProcess != NULL && ((u32)currentKProcess & 3) == 0 && !cannotAccessVA((u8 *)currentKProcess + CODESET_OFFSET))
+                            ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
+    
+    if(currentKCodeSet != NULL && ((u32)currentKCodeSet & 3) == 0 && !cannotAccessVA((u8 *)currentKCodeSet))
     {
         vu32 *additionalData = final;
         dumpHeader.additionalDataSize = 16;
@@ -99,7 +105,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
         additionalData[3] = *(vu32 *)(currentKCodeSet + 0x60);  
     }
     else
-        dumpHeader.additionalDataSize = 16;
+        dumpHeader.additionalDataSize = 0;
 
     //Copy header (actually optimized by the compiler)
     final = (vu32 *)FINAL_BUFFER;

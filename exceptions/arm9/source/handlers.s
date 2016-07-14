@@ -62,3 +62,20 @@ GEN_HANDLER FIQHandler
 GEN_HANDLER undefinedInstructionHandler
 GEN_HANDLER prefetchAbortHandler
 GEN_HANDLER dataAbortHandler
+
+.global readMPUConfig
+.type   readMPUConfig, %function
+readMPUConfig:
+    stmfd sp!, {r4-r8}
+    mrc p15,0,r1,c6,c0,0
+    mrc p15,0,r2,c6,c1,0
+    mrc p15,0,r3,c6,c2,0
+    mrc p15,0,r4,c6,c3,0
+    mrc p15,0,r5,c6,c4,0
+    mrc p15,0,r6,c6,c5,0
+    mrc p15,0,r7,c6,c6,0
+    mrc p15,0,r8,c6,c7,0
+    stmia r0, {r1-r8}
+    mrc p15,0,r0,c5,c0,2    @ read data access permission bits
+    ldmfd sp!, {r4-r8}
+    bx lr

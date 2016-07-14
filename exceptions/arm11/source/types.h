@@ -23,7 +23,11 @@
 #pragma once
 
 #include <stdint.h>
-#define NULL 0
+#include <stdbool.h>
+
+#ifndef NULL
+    #define NULL 0
+#endif
 
 //Common data types
 typedef uint8_t u8;

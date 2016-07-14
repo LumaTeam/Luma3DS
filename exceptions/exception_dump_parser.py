@@ -114,7 +114,7 @@ if __name__ == "__main__":
     else: print("Processor: ARM11 (core {0})".format(processor >> 16))
     
     typeDetailsStr = ""
-    if exceptionType == 2 and (registers[16] & 0x20) == 0 and unpack_from("<I", codeDump[-4:])[0] == 0xe12fff7f:
+    if exceptionType == 2 and (registers[16] & 0x20) == 0 and codeDumpSize >= 4 and unpack_from("<I", codeDump[-4:])[0] == 0xe12fff7f:
         typeDetailsStr = " " + (svcBreakReasons[registers[0]] if registers[0] < 3 else "(svcBreak)")
     elif processor != 9 and (registers[20] & 0x80000000) != 0:
         typeDetailsStr = " (VFP exception)"

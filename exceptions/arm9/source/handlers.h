@@ -23,6 +23,7 @@
 #pragma once
 #include "types.h"
 
+u32 readMPUConfig(u32 regionSettings[8]);
 void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void dataAbortHandler(void);
