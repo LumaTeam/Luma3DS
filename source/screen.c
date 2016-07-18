@@ -84,7 +84,9 @@ void deinitScreens(void)
 
 void updateBrightness(u32 brightnessIndex)
 {
-    u32 brightnessLevel = brightness[brightnessIndex];
+    static u32 brightnessLevel;
+
+    brightnessLevel = brightness[brightnessIndex];
 
     void __attribute__((naked)) ARM11(void)
     {
@@ -97,7 +99,7 @@ void updateBrightness(u32 brightnessIndex)
 
         WAIT_FOR_ARM9();
     }
-    
+
     flushDCacheRange(&brightnessLevel, 4);
     invokeArm11Function(ARM11);
 }
