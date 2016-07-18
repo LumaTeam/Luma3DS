@@ -89,22 +89,6 @@ void main(void)
         //Get pressed buttons
         u32 pressed = HID_PAD;
 
-        //If no configuration file exists or SELECT is held, load configuration menu
-        if(needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)))
-        {
-            configureCFW(configPath);
-
-            //Zero the last booted FIRM flag
-            CFG_BOOTENV = 0;
-
-            nbChronoStarted = 1;
-            chrono(0);
-            chrono(2);
-
-            //Update pressed buttons
-            pressed = HID_PAD;
-        }
-
         isFirmlaunch = false;
         firmType = NATIVE_FIRM;
 
@@ -125,40 +109,52 @@ void main(void)
 
         newConfig = (u32)a9lhMode << 3;
 
-        if(a9lhBoot)
+        //If it's a MCU reboot, try to force boot options
+        if(a9lhBoot && CFG_BOOTENV)
         {
-            //If it's a MCU reboot, try to force boot options
-            if(CFG_BOOTENV)
+            //Always force a sysNAND boot when quitting AGB_FIRM
+            if(CFG_BOOTENV == 7)
             {
-                //Always force a sysNAND boot when quitting AGB_FIRM
-                if(CFG_BOOTENV == 7)
-                {
-                    nandType = FIRMWARE_SYSNAND;
-                    firmSource = updatedSys ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
-                    needConfig = DONT_CONFIGURE;
+                nandType = FIRMWARE_SYSNAND;
+                firmSource = updatedSys ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
+                needConfig = DONT_CONFIGURE;
 
-                    //Flag to prevent multiple boot options-forcing
-                    newConfig |= 1 << 4;
-                }
-
-                /* Else, force the last used boot options unless a button is pressed
-                    or the no-forcing flag is set */
-                else if(!pressed && !BOOTCONFIG(4, 1))
-                {
-                    nandType = (FirmwareSource)BOOTCONFIG(0, 3);
-                    firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
-                    needConfig = DONT_CONFIGURE;
-                }
+                //Flag to prevent multiple boot options-forcing
+                newConfig |= 1 << 4;
             }
 
-            //If the SAFE MODE combo is held, force a sysNAND boot
-            else if(pressed == SAFE_MODE)
+            /* Else, force the last used boot options unless a button is pressed
+               or the no-forcing flag is set */
+            else if(!pressed && !BOOTCONFIG(4, 1))
             {
-                a9lhMode = A9LH_WITH_SFIRM_FIRMPROT;
-                nandType = FIRMWARE_SYSNAND;
-                firmSource = FIRMWARE_SYSNAND;
+                nandType = (FirmwareSource)BOOTCONFIG(0, 3);
+                firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
                 needConfig = DONT_CONFIGURE;
             }
+        }
+
+        //If no configuration file exists or SELECT is held, load configuration menu
+        if(needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)))
+        {
+            configureCFW(configPath);
+
+            //Zero the last booted FIRM flag
+            CFG_BOOTENV = 0;
+
+            nbChronoStarted = 1;
+            chrono(0);
+            chrono(2);
+
+            //Update pressed buttons
+            pressed = HID_PAD;
+        }
+
+        if(needConfig != DONT_CONFIGURE && pressed == SAFE_MODE)
+        {
+            a9lhMode = A9LH_WITH_SFIRM_FIRMPROT;
+            nandType = FIRMWARE_SYSNAND;
+            firmSource = FIRMWARE_SYSNAND;
+            needConfig = DONT_CONFIGURE;
         }
 
         //Boot options aren't being forced
@@ -308,7 +304,7 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHM
     //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY
     if(a9lhMode == NO_A9LH)
         setRSAMod0DerivedKeys();
-    
+
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;
