@@ -252,7 +252,7 @@ static inline u32 loadFirm(FirmwareType firmType)
 
     if(!isN3DS && firmType == NATIVE_FIRM && firmVersion < 0x25)
     {
-        if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) == (isN3DS ? 0x60 : 0x68)) mcuReboot();
+        if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68) mcuReboot();
         firmVersion = 0x49;
     }
     else decryptExeFs((u8 *)firm);
