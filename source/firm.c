@@ -47,6 +47,7 @@ FirmwareSource firmSource;
 void main(void)
 {
     bool isFirmlaunch,
+         isA9lh,
          updatedSys;
 
     u32 newConfig,
@@ -56,7 +57,6 @@ void main(void)
     FirmwareType firmType;
     FirmwareSource nandType;
     ConfigurationStatus needConfig;
-    A9LHMode a9lhMode;
 
     //Detect the console being used
     isN3DS = PDN_MPCORE_CFG == 7;
@@ -81,8 +81,8 @@ void main(void)
 
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
-        a9lhMode = (A9LHMode)BOOTCONFIG(3, 1);
-        updatedSys = a9lhMode != NO_A9LH && CONFIG(1);
+        isA9lh = BOOTCONFIG(3, 1) != 0;
+        updatedSys = isA9lh && CONFIG(1);
     }
     else
     {
@@ -98,16 +98,16 @@ void main(void)
         //Determine if A9LH is installed and the user has an updated sysNAND
         if(a9lhBoot || CONFIG(2))
         {
-            a9lhMode = A9LH_WITH_NFIRM_FIRMPROT;
+            isA9lh = true;
             updatedSys = CONFIG(1);
         }
         else
         {
-            a9lhMode = NO_A9LH;
+            isA9lh = false;
             updatedSys = false;
         }
 
-        newConfig = (u32)a9lhMode << 3;
+        newConfig = (u32)isA9lh << 3;
 
         //If it's a MCU reboot, try to force boot options
         if(a9lhBoot && CFG_BOOTENV)
@@ -149,9 +149,8 @@ void main(void)
             pressed = HID_PAD;
         }
 
-        if(needConfig != DONT_CONFIGURE && pressed == SAFE_MODE)
+        if(a9lhBoot && !CFG_BOOTENV && pressed == SAFE_MODE)
         {
-            a9lhMode = A9LH_WITH_SFIRM_FIRMPROT;
             nandType = FIRMWARE_SYSNAND;
             firmSource = FIRMWARE_SYSNAND;
             needConfig = DONT_CONFIGURE;
@@ -224,7 +223,7 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            patchNativeFirm(nandType, emuHeader, a9lhMode);
+            patchNativeFirm(nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
             patchSafeFirm();
@@ -265,45 +264,19 @@ static inline void loadFirm(FirmwareType firmType, bool externalFirm)
     }
 }
 
-static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHMode a9lhMode)
+static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, bool isA9lh)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
-    bool is90Firm;
-
     if(isN3DS)
     {
-        u32 a9lVersion;
-        
-        //Determine the NATIVE_FIRM/arm9loader version
-        switch(arm9Section[0x53])
-        {
-            case 0xFF:
-                a9lVersion = 0;
-                break;
-            case '1':
-                a9lVersion = 1;
-                break;
-            default:
-                a9lVersion = 2;
-                break;
-        }
-
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, a9lVersion);
+        arm9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
-        is90Firm = a9lVersion == 0;
-    }
-    else
-    {
-        //Determine if we're booting the 9.0 FIRM
-        u8 firm90Hash[0x10] = {0x27, 0x2D, 0xFE, 0xEB, 0xAF, 0x3F, 0x6B, 0x3B, 0xF5, 0xDE, 0x4C, 0x41, 0xDE, 0x95, 0x27, 0x6A};
-        is90Firm = memcmp(section[2].hash, firm90Hash, 0x10) == 0;
     }
 
     //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY
-    if(a9lhMode == NO_A9LH)
-        setRSAMod0DerivedKeys();
+    else if(!isA9lh) setRSAMod0DerivedKeys();
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -321,19 +294,16 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHM
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    else if(a9lhMode != NO_A9LH) patchFirmWrites(process9Offset, process9Size);
+    else if(isA9lh) patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches, not on 9.0 FIRM as it breaks firmlaunchhax
-    if(!is90Firm || a9lhMode == A9LH_WITH_SFIRM_FIRMPROT) patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+    patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
-    if(!is90Firm)
-    {
-        //Apply anti-anti-DG patches for >= 11.0 firmwares
-        patchTitleInstallMinVersionCheck(process9Offset, process9Size);
+    //Apply anti-anti-DG patches for >= 11.0 firmwares
+    patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
-        //Does nothing if svcBackdoor is still there
-        reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
-    }
+    //Does nothing if svcBackdoor is still there
+    reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
@@ -341,7 +311,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
     if(isN3DS)
     {
-        arm9Loader((u8 *)firm + section[3].offset, 0);
+        arm9Loader((u8 *)firm + section[3].offset);
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
@@ -355,7 +325,7 @@ static inline void patchSafeFirm(void)
     if(isN3DS)
     {
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section, 0);
+        arm9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
 
         patchFirmWrites(arm9Section, section[2].size);

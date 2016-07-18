@@ -141,9 +141,9 @@ void clearScreens(void)
     invokeArm11Function(ARM11);
 }
 
-u32 initScreens(void)
+bool initScreens(void)
 {
-    u32 needToInit = PDN_GPU_CNT == 1;
+    bool needToInit = PDN_GPU_CNT == 1;
 
     void __attribute__((naked)) ARM11(void)
     {

@@ -53,15 +53,8 @@ typedef enum ConfigurationStatus
     CREATE_CONFIGURATION = 2
 } ConfigurationStatus;
 
-typedef enum A9LHMode
-{
-    NO_A9LH = 0,
-    A9LH_WITH_NFIRM_FIRMPROT = 1,
-    A9LH_WITH_SFIRM_FIRMPROT = 2
-} A9LHMode;
-
 static inline void loadFirm(FirmwareType firmType, bool externalFirm);
-static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, A9LHMode a9lhMode);
+static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, bool isA9lh);
 static inline void patchLegacyFirm(FirmwareType firmType);
 static inline void patchSafeFirm(void);
 static inline void copySection0AndInjectLoader(void);
