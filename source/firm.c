@@ -47,8 +47,7 @@ FirmwareSource firmSource;
 void main(void)
 {
     bool isFirmlaunch,
-         isA9lh,
-         updatedSys;
+         isA9lh;
 
     u32 newConfig,
         emuHeader,
@@ -82,7 +81,6 @@ void main(void)
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
         isA9lh = BOOTCONFIG(3, 1) != 0;
-        updatedSys = isA9lh && CONFIG(1);
     }
     else
     {
@@ -95,8 +93,8 @@ void main(void)
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
 
-        //Determine if the user has an updated sysNAND
-        updatedSys = isA9lh ? CONFIG(1) : false;
+        //Determine if the user chose to use the SysNAND FIRM as default for a R boot
+        bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
 
         newConfig = (u32)isA9lh << 3;
 
@@ -107,7 +105,7 @@ void main(void)
             if(CFG_BOOTENV == 7)
             {
                 nandType = FIRMWARE_SYSNAND;
-                firmSource = updatedSys ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
+                firmSource = useSysAsDefault ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
@@ -165,8 +163,8 @@ void main(void)
             //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
             if(pressed & BUTTON_R1)
             {
-                nandType = (updatedSys) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                firmSource = (updatedSys) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
             }
 
             /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
