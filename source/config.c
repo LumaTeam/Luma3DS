@@ -40,7 +40,6 @@ void configureCFW(const char *configPath)
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) SysNAND is updated (A9LH-only)",
-                                        "( ) Force A9LH detection",
                                         "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",

@@ -93,24 +93,15 @@ void main(void)
         firmType = NATIVE_FIRM;
 
         //Determine if booting with A9LH
-        bool a9lhBoot = !PDN_SPI_CNT;
+        isA9lh = !PDN_SPI_CNT;
 
-        //Determine if A9LH is installed and the user has an updated sysNAND
-        if(a9lhBoot || CONFIG(2))
-        {
-            isA9lh = true;
-            updatedSys = CONFIG(1);
-        }
-        else
-        {
-            isA9lh = false;
-            updatedSys = false;
-        }
+        //Determine if the user has an updated sysNAND
+        updatedSys = isA9lh ? CONFIG(1) : false;
 
         newConfig = (u32)isA9lh << 3;
 
         //If it's a MCU reboot, try to force boot options
-        if(a9lhBoot && CFG_BOOTENV)
+        if(isA9lh && CFG_BOOTENV)
         {
             //Always force a sysNAND boot when quitting AGB_FIRM
             if(CFG_BOOTENV == 7)
@@ -149,7 +140,7 @@ void main(void)
             pressed = HID_PAD;
         }
 
-        if(a9lhBoot && !CFG_BOOTENV && pressed == SAFE_MODE)
+        if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = FIRMWARE_SYSNAND;
@@ -165,7 +156,7 @@ void main(void)
                 loadPayload(pressed);
 
             //If screens are inited or the corresponding option is set, load splash screen
-            if((PDN_GPU_CNT != 1 || CONFIG(7)) && loadSplash())
+            if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
             {
                 nbChronoStarted = 2;
                 chrono(0);
@@ -188,7 +179,7 @@ void main(void)
 
             /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
                or vice-versa, boot the second emuNAND */
-            if(nandType != FIRMWARE_SYSNAND && (CONFIG(3) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+            if(nandType != FIRMWARE_SYSNAND && (CONFIG(2) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
         }
     }
 
