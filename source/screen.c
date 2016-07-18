@@ -48,13 +48,13 @@ void  __attribute__((naked)) arm11Stub(void)
 
 static inline void invokeArm11Function(void (*func)())
 {
-    static u32 hasCopiedStub = 0;
+    static bool hasCopiedStub = false;
 
     if(!hasCopiedStub)
     {
         memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x40);
         flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x40);
-        hasCopiedStub = 1;
+        hasCopiedStub = true;
     }
 
     *arm11Entry = (u32)func;
