@@ -193,7 +193,12 @@ void configureCFW(const char *configPath)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
-    fileWrite(&config, configPath, 4);
+    if(!fileWrite(&config, configPath, 4))
+    {
+        createDirectory("luma");
+        if(!fileWrite(&config, configPath, 4))
+            error("Error writing the configuration file");
+    }
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);

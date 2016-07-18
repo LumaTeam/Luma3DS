@@ -203,7 +203,8 @@ void main(void)
             //Preserve user settings (last 26 bits)
             newConfig |= config & 0xFFFFFFC0;
 
-            fileWrite(&newConfig, configPath, 4);
+            if(!fileWrite(&newConfig, configPath, 4))
+                error("Error writing the configuration file");
         }
     }
 
@@ -241,7 +242,10 @@ static inline u32 loadFirm(FirmwareType firmType)
 
     if(!isN3DS && firmType == NATIVE_FIRM && firmVersion < 0x25)
     {
-        if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68) mcuReboot();
+        if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
+            error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+
+        //9.6 O3DS FIRM
         firmVersion = 0x49;
     }
     else decryptExeFs((u8 *)firm);
@@ -296,9 +300,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
 static inline void patchLegacyFirm(FirmwareType firmType)
 {
-    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
     if(isN3DS)
     {
+        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
         arm9Loader((u8 *)firm + section[3].offset);
         firm->arm9Entry = (u8 *)0x801301C;
     }

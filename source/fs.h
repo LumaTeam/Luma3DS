@@ -28,8 +28,9 @@
 
 extern bool isN3DS;
 
-bool mountFs(void);
+void mountFs(void);
 u32 fileRead(void *dest, const char *path);
-void fileWrite(const void *buffer, const char *path, u32 size);
+bool fileWrite(const void *buffer, const char *path, u32 size);
+void createDirectory(const char *path);
 void loadPayload(u32 pressed);
 u32 firmRead(void *dest, u32 firmType);

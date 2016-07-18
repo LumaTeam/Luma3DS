@@ -31,12 +31,10 @@
 static FATFS sdFs,
              nandFs;
 
-bool mountFs(void)
+void mountFs(void)
 {
-    if(f_mount(&sdFs, "0:", 1) != FR_OK) return false;
+    f_mount(&sdFs, "0:", 1);
     f_mount(&nandFs, "1:", 0);
-
-    return true;
 }
 
 u32 fileRead(void *dest, const char *path)
@@ -56,7 +54,7 @@ u32 fileRead(void *dest, const char *path)
     return size;
 }
 
-void fileWrite(const void *buffer, const char *path, u32 size)
+bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
 
@@ -65,7 +63,16 @@ void fileWrite(const void *buffer, const char *path, u32 size)
         unsigned int written;
         f_write(&file, buffer, size, &written);
         f_close(&file);
+
+        return true;
     }
+
+    return false;
+}
+
+void createDirectory(const char *path)
+{
+    f_mkdir(path);
 }
 
 void loadPayload(u32 pressed)
