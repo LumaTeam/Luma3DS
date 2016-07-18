@@ -218,18 +218,19 @@ void main(void)
         }
     }
 
-    loadFirm(firmType, firmType == NATIVE_FIRM && firmSource == ((updatedSys) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND));
+    u32 firmVersion = loadFirm(firmType);
 
     switch(firmType)
     {
         case NATIVE_FIRM:
-            patchNativeFirm(nandType, emuHeader, isA9lh);
+            patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
             patchSafeFirm();
             break;
         default:
-            patchLegacyFirm(firmType);
+            //Skip patching on unsupported O3DS AGB/TWL FIRMs
+            if(isN3DS || firmVersion >= (firmType == TWL_FIRM ? 0x16 : 0xB)) patchLegacyFirm(firmType);
             break;
     }
 
@@ -242,29 +243,23 @@ void main(void)
     launchFirm(firmType, isFirmlaunch);
 }
 
-static inline void loadFirm(FirmwareType firmType, bool externalFirm)
+static inline u32 loadFirm(FirmwareType firmType)
 {
     section = firm->section;
 
-    bool externalFirmLoaded = externalFirm &&
-                              fileRead(firm, "/luma/firmware.bin") &&
-                              (((u32)section[2].address >> 8) & 0xFF) == (isN3DS ? 0x60 : 0x68);
+    //Load FIRM from CTRNAND, unless it's an O3DS and we're loading a pre-5.0 NATIVE FIRM
+    u32 firmVersion = firmRead(firm, (u32)firmType);
 
-    /* If the conditions to load the external FIRM aren't met, or reading fails, or the FIRM
-       doesn't match the console, load FIRM from CTRNAND */
-    if(!externalFirmLoaded)
+    if(!isN3DS && firmType == NATIVE_FIRM && firmVersion < 0x25)
     {
-        const char *firmFolders[4][2] = {{ "00000002", "20000002" },
-                                         { "00000102", "20000102" },
-                                         { "00000202", "20000202" },
-                                         { "00000003", "20000003" }};
-
-        firmRead(firm, firmFolders[(u32)firmType][isN3DS ? 1 : 0]);
-        decryptExeFs((u8 *)firm);
+        if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) == (isN3DS ? 0x60 : 0x68)) mcuReboot();
     }
+    else decryptExeFs((u8 *)firm);
+
+    return firmVersion;
 }
 
-static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, bool isA9lh)
+static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
@@ -275,8 +270,8 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, bool 
         firm->arm9Entry = (u8 *)0x801B01C;
     }
 
-    //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY
-    else if(!isA9lh) setRSAMod0DerivedKeys();
+    //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH
+    else if(!isA9lh && firmVersion >= 0x29) setRSAMod0DerivedKeys();
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -299,11 +294,14 @@ static inline void patchNativeFirm(FirmwareSource nandType, u32 emuHeader, bool 
     //Apply firmlaunch patches, not on 9.0 FIRM as it breaks firmlaunchhax
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
-    //Apply anti-anti-DG patches for >= 11.0 firmwares
-    patchTitleInstallMinVersionCheck(process9Offset, process9Size);
+    //11.0 FIRM patches
+    if(firmVersion >= (isN3DS ? 0x21 : 0x52))
+    {
+        //Apply anti-anti-DG patches
+        patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
-    //Does nothing if svcBackdoor is still there
-    reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
+        reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
+    }
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
@@ -315,7 +313,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
-    applyLegacyFirmPatches((u8 *)firm, firmType, isN3DS);
+    applyLegacyFirmPatches((u8 *)firm, firmType);
 }
 
 static inline void patchSafeFirm(void)
@@ -369,11 +367,11 @@ static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch)
         arm11 = (u32 *)0x1FFFFFF8;
     }
 
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
-    flushEntireICache();
-
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
+
+    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
+    flushEntireICache();
 
     //Final jump to ARM9 kernel
     ((void (*)())firm->arm9Entry)();

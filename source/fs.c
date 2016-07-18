@@ -106,14 +106,20 @@ void loadPayload(u32 pressed)
 
         flushDCacheRange(loaderAddress, loader_size);
         flushICacheRange(loaderAddress, loader_size);
+
         ((void (*)())loaderAddress)();
     }
 }
 
-void firmRead(void *dest, const char *firmFolder)
+u32 firmRead(void *dest, u32 firmType)
 {
+    const char *firmFolders[4][2] = {{ "00000002", "20000002" },
+                                    { "00000102", "20000102" },
+                                    { "00000202", "20000202" },
+                                    { "00000003", "20000003" }};
+
     char path[48] = "1:/title/00040138/00000000/content";
-    memcpy(&path[18], firmFolder, 8);
+    memcpy(&path[18], firmFolders[firmType][isN3DS ? 1 : 0], 8);
 
     DIR dir;
     FILINFO info;
@@ -149,12 +155,16 @@ void firmRead(void *dest, const char *firmFolder)
     u32 i = 42;
 
     //Convert back the .app name from integer to array
-    while(id)
+    u32 tempId = id;
+
+    while(tempId)
     {
         static const char hexDigits[] = "0123456789ABCDEF";
-        path[i--] = hexDigits[id & 0xF];
-        id >>= 4;
+        path[i--] = hexDigits[tempId & 0xF];
+        tempId >>= 4;
     }
 
     fileRead(dest, path);
+
+    return id;
 }

@@ -26,8 +26,10 @@
 
 #define PATTERN(a)      a "_*.bin"
 
+extern bool isN3DS;
+
 bool mountFs(void);
 u32 fileRead(void *dest, const char *path);
 void fileWrite(const void *buffer, const char *path, u32 size);
 void loadPayload(u32 pressed);
-void firmRead(void *dest, const char *firmFolder);
+u32 firmRead(void *dest, u32 firmType);

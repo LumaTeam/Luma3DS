@@ -33,6 +33,8 @@ typedef struct patchData {
     u32 type;
 } patchData;
 
+extern bool isN3DS;
+
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
@@ -40,5 +42,5 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchFirmWriteSafe(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);
-void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, bool isN3DS);
+void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 u32 getLoader(u8 *pos, u32 *loaderSize);
