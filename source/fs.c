@@ -133,7 +133,7 @@ u32 firmRead(void *dest, u32 firmType)
 
     f_opendir(&dir, path);
 
-    u32 id = 0xFFFFFFFF;
+    u32 firmVersion = 0xFFFFFFFF;
 
     //Parse the target directory
     while(f_readdir(&dir, &info) == FR_OK && info.fname[0])
@@ -142,15 +142,15 @@ u32 firmRead(void *dest, u32 firmType)
         if(info.altname[9] != 'A') continue;
 
         //Convert the .app name to an integer
-        u32 tempId = 0;
+        u32 tempVersion = 0;
         for(char *tmp = info.altname; *tmp != '.'; tmp++)
         {
-            tempId <<= 4;
-            tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
+            tempVersion <<= 4;
+            tempVersion += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
         }
 
         //Found an older cxi
-        if(tempId < id) id = tempId;
+        if(tempVersion < firmVersion) firmVersion = tempVersion;
     }
 
     f_closedir(&dir);
@@ -162,16 +162,15 @@ u32 firmRead(void *dest, u32 firmType)
     u32 i = 42;
 
     //Convert back the .app name from integer to array
-    u32 tempId = id;
-
-    while(tempId)
+    u32 tempVersion = firmVersion;
+    while(tempVersion)
     {
         static const char hexDigits[] = "0123456789ABCDEF";
-        path[i--] = hexDigits[tempId & 0xF];
-        tempId >>= 4;
+        path[i--] = hexDigits[tempVersion & 0xF];
+        tempVersion >>= 4;
     }
 
     fileRead(dest, path);
 
-    return id;
+    return firmVersion;
 }

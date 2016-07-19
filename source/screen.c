@@ -32,7 +32,8 @@
 #include "draw.h"
 #include "i2c.h"
 
-vu32 *arm11Entry = (vu32 *)0x1FFFFFF8;
+vu32 *const arm11Entry = (vu32 *)0x1FFFFFF8;
+static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
 {
@@ -46,14 +47,13 @@ void  __attribute__((naked)) arm11Stub(void)
     ((void (*)())*arm11Entry)();
 }
 
-static inline void invokeArm11Function(void (*func)())
+static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
-
     if(!hasCopiedStub)
     {
-        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x40);
-        flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x40);
+        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x30);
+        flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x30);
         hasCopiedStub = true;
     }
 
@@ -61,8 +61,6 @@ static inline void invokeArm11Function(void (*func)())
     while(*arm11Entry);
     *arm11Entry = ARM11_STUB_ADDRESS;
 }
-
-static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void deinitScreens(void)
 {
@@ -85,7 +83,6 @@ void deinitScreens(void)
 void updateBrightness(u32 brightnessIndex)
 {
     static u32 brightnessLevel;
-
     brightnessLevel = brightness[brightnessIndex];
 
     void __attribute__((naked)) ARM11(void)

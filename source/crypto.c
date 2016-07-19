@@ -380,7 +380,6 @@ void arm9Loader(u8 *arm9Section)
 {
     //Determine the arm9loader version
     u32 a9lVersion;
-
     switch(arm9Section[0x53])
     {
         case 0xFF:

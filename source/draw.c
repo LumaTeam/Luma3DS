@@ -46,7 +46,7 @@ bool loadSplash(void)
 
     //Don't delay boot if no splash image is on the SD
     if(fileRead(fb->top_left, "/luma/splash.bin") +
-       fileRead(fb->bottom, "/luma/splashbottom.bin") != 0) return true;
+       fileRead(fb->bottom, "/luma/splashbottom.bin")) return true;
 
     return false;
 }

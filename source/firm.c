@@ -285,7 +285,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
     else if(isA9lh) patchFirmWrites(process9Offset, process9Size);
 
-    //Apply firmlaunch patches, not on 9.0 FIRM as it breaks firmlaunchhax
+    //Apply firmlaunch patches
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
     //11.0 FIRM patches
@@ -294,6 +294,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Apply anti-anti-DG patches
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
+        //Restore SVCBackdoor
         reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
     }
 }
