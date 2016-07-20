@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module configuration file  R0.12  (C)ChaN, 2016
+/  FatFs - FAT file system module configuration file
 /---------------------------------------------------------------------------*/
 
-#define _FFCONF 88100	/* Revision ID */
+#define _FFCONF 80186	/* Revision ID */
 
 /*---------------------------------------------------------------------------/
 / Function Configurations
@@ -62,8 +62,7 @@
 
 
 #define	_USE_FORWARD	0
-/* This option switches f_forward() function. (0:Disable or 1:Enable)
-/  To enable it, also _FS_TINY need to be 1. */
+/* This option switches f_forward() function. (0:Disable or 1:Enable) */
 
 
 /*---------------------------------------------------------------------------/
@@ -118,13 +117,13 @@
 
 
 #define	_LFN_UNICODE	0
-/* This option switches character encoding on the API. (0:ANSI/OEM or 1:Unicode)
+/* This option switches character encoding on the API. (0:ANSI/OEM or 1:UTF-16)
 /  To use Unicode string for the path name, enable LFN and set _LFN_UNICODE = 1.
 /  This option also affects behavior of string I/O functions. */
 
 
 #define _STRF_ENCODE	3
-/* When _LFN_UNICODE == 1, this option selects the character encoding on the file to
+/* When _LFN_UNICODE == 1, this option selects the character encoding ON THE FILE to
 /  be read/written via string I/O functions, f_gets(), f_putc(), f_puts and f_printf().
 /
 /  0: ANSI/OEM
@@ -153,7 +152,7 @@
 
 
 #define _STR_VOLUME_ID	0
-#define _VOLUME_STRS	"RAM","NAND","CF","SD1","SD2","USB1","USB2","USB3"
+#define _VOLUME_STRS	"RAM","NAND","CF","SD","SD2","USB","USB2","USB3"
 /* _STR_VOLUME_ID switches string support of volume ID.
 /  When _STR_VOLUME_ID is set to 1, also pre-defined strings can be used as drive
 /  number in the path name. _VOLUME_STRS defines the drive ID strings for each
@@ -217,7 +216,7 @@
 
 
 #define _FS_NORTC	1
-#define _NORTC_MON	3
+#define _NORTC_MON	1
 #define _NORTC_MDAY	1
 #define _NORTC_YEAR	2016
 /* The option _FS_NORTC switches timestamp functiton. If the system does not have
