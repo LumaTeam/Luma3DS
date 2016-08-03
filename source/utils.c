@@ -70,14 +70,6 @@ void mcuPowerOff(void)
     while(true);
 }
 
-void mcuPowerOff(void)
-{
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
-    
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
-    while(1);
-}
-
 //TODO: add support for TIMER IRQ
 static inline void startChrono(u64 initialTicks)
 {
