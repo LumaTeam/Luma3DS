@@ -240,7 +240,7 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
     
     u8 *off = memsearch(pos, pattern, size, 4);
     
-    off[4] = 0xE0;
+    if(off != NULL) off[4] = 0xE0;
 }
 
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
