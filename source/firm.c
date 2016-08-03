@@ -32,6 +32,8 @@
 #include "draw.h"
 #include "screen.h"
 #include "buttons.h"
+#include "pin.h"
+#include "i2c.h"
 #include "../build/injector.h"
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
@@ -43,6 +45,8 @@ u32 config,
 bool isN3DS;
 
 FirmwareSource firmSource;
+
+PINData pin;
 
 void main(void)
 {
@@ -67,6 +71,7 @@ void main(void)
 
     //Attempt to read the configuration file
     needConfig = fileRead(&config, configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+    bool pinExists = CONFIG(7) && readPin(&pin);
 
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
@@ -123,9 +128,18 @@ void main(void)
         }
 
         //If no configuration file exists or SELECT is held, load configuration menu
-        if(needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)))
+        bool loadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
+        bool needToDeinit = false;
+        if(CFG_BOOTENV == 0 || loadConfigurationMenu)
+        {
+            if(loadConfigurationMenu || pinExists) needToDeinit = initScreens();
+            if(pinExists) verifyPin(&pin, true);
+        }
+        if(loadConfigurationMenu)
         {
             configureCFW(configPath);
+
+            if(!pinExists && CONFIG(7)) pin = newPin();
 
             //Zero the last booted FIRM flag
             CFG_BOOTENV = 0;
@@ -136,6 +150,13 @@ void main(void)
 
             //Update pressed buttons
             pressed = HID_PAD;
+        }
+        if(needToDeinit)
+        {
+            //Turn off backlight
+            i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
+            deinitScreens();
+            PDN_GPU_CNT = 1;
         }
 
         if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
@@ -294,7 +315,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Apply anti-anti-DG patches
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
-        //Restore SVCBackdoor
+        //Restore svcBackdoor
         reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
     }
 }

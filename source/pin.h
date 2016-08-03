@@ -20,18 +20,27 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   pin.h
+*
+*   Code to manage pin locking for 3ds. By reworks.
+*/
+
 #pragma once
 
 #include "types.h"
 
-#define TICKS_PER_SEC       67027964ULL
-#define REG_TIMER_CNT(i)    *(vu16 *)(0x10003002 + 4 * i)
-#define REG_TIMER_VAL(i)    *(vu16 *)(0x10003000 + 4 * i)
+#define PIN_LENGTH  4
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    u16 formatVersionMajor, formatVersionMinor;
 
-u32 waitInput(void);
-void mcuReboot(void);
-void mcuPowerOff(void);
+    u8 testHash[32];
+    u8 hash[32];
+} PINData;
 
-void chrono(u32 seconds);
-void stopChrono(void);
-void error(const char *message);
+bool readPin(PINData* out);
+
+PINData newPin(void);
+void verifyPin(PINData *in, bool allowQuit);
