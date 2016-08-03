@@ -273,8 +273,8 @@ static inline u32 loadFirm(FirmwareType firmType)
         if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
             error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
 
-        //9.6 O3DS FIRM
-        firmVersion = 0x49;
+        //No assumption regarding FIRM version
+        firmVersion = 0xffffffff;
     }
     else decryptExeFs((u8 *)firm);
 
