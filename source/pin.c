@@ -43,7 +43,6 @@ bool readPin(PINData *out)
     else if(memcmp(out->magic, "PINF", 4) != 0) return false;
     
     computePINHash(tmp, zeroes, 1);
-    fileWrite(tmp, "/luma/testhash.bin", 32);
     return memcmp(out->testHash, tmp, 32) == 0; //test vector verification (SD card has (or hasn't) been used on another console)
 }
 
@@ -61,14 +60,14 @@ PINData newPin(void)
 {
     clearScreens();
 
-    drawString("Enter your NEW PIN (4 keys): ", 10, 10, COLOR_WHITE);
+    drawString("Enter your NEW PIN: ", 10, 10, COLOR_WHITE);
 
     u32 pressed = 0;
 
     // Set the default value as 0x00 so we can check if there are any unentered characters.
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0}; // pad to AES block length
 
-    int charDrawPos = 29 * SPACING_X;
+    int charDrawPos = 20 * SPACING_X;
     int cnt = 0;
     
     while(true)
