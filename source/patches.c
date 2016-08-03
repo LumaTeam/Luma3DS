@@ -157,7 +157,7 @@ void patchExceptionHandlersInstall(u8 *pos, u32 size)
             pre = (*off >> 24) & 1;
 
         u32 addr = r0 + ((pre || !writeback) ? offset : 0);
-        if(addr != 0x08000014 && addr != 0x08000004)
+        if((addr & 7) != 0 && addr != 0x08000014 && addr != 0x08000004)
             *off = 0xE1A00000; //nop
         else
             *off = 0xE5800000 | (rD << 12) | (addr & 0xFFF); //Preserve IRQ and SVC handlers
