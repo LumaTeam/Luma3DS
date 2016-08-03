@@ -31,12 +31,10 @@
 static FATFS sdFs,
              nandFs;
 
-bool mountFs(void)
+void mountFs(void)
 {
-    if(f_mount(&sdFs, "0:", 1) != FR_OK) return false;
+    f_mount(&sdFs, "0:", 1);
     f_mount(&nandFs, "1:", 0);
-
-    return true;
 }
 
 u32 fileRead(void *dest, const char *path)
@@ -62,7 +60,7 @@ u32 getFileSize(const char *path)
     return fileRead(NULL, path);
 }
 
-void fileWrite(const void *buffer, const char *path, u32 size)
+bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
 
@@ -71,7 +69,16 @@ void fileWrite(const void *buffer, const char *path, u32 size)
         unsigned int written;
         f_write(&file, buffer, size, &written);
         f_close(&file);
+
+        return true;
     }
+
+    return false;
+}
+
+void createDirectory(const char *path)
+{
+    f_mkdir(path);
 }
 
 void loadPayload(u32 pressed)
@@ -115,6 +122,7 @@ void loadPayload(u32 pressed)
 
         flushDCacheRange(loaderAddress, loader_size);
         flushICacheRange(loaderAddress, loader_size);
+
         ((void (*)())loaderAddress)();
     }
 }
@@ -140,17 +148,22 @@ void findDumpFile(const char *path, char *fileName)
     f_closedir(&dir);
 }
 
-void firmRead(void *dest, const char *firmFolder)
+u32 firmRead(void *dest, u32 firmType)
 {
+    const char *firmFolders[4][2] = {{ "00000002", "20000002" },
+                                    { "00000102", "20000102" },
+                                    { "00000202", "20000202" },
+                                    { "00000003", "20000003" }};
+
     char path[48] = "1:/title/00040138/00000000/content";
-    memcpy(&path[18], firmFolder, 8);
+    memcpy(&path[18], firmFolders[firmType][isN3DS ? 1 : 0], 8);
 
     DIR dir;
     FILINFO info;
 
     f_opendir(&dir, path);
 
-    u32 id = 0xFFFFFFFF;
+    u32 firmVersion = 0xFFFFFFFF;
 
     //Parse the target directory
     while(f_readdir(&dir, &info) == FR_OK && info.fname[0])
@@ -159,15 +172,15 @@ void firmRead(void *dest, const char *firmFolder)
         if(info.altname[9] != 'A') continue;
 
         //Convert the .app name to an integer
-        u32 tempId = 0;
+        u32 tempVersion = 0;
         for(char *tmp = info.altname; *tmp != '.'; tmp++)
         {
-            tempId <<= 4;
-            tempId += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
+            tempVersion <<= 4;
+            tempVersion += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
         }
 
         //Found an older cxi
-        if(tempId < id) id = tempId;
+        if(tempVersion < firmVersion) firmVersion = tempVersion;
     }
 
     f_closedir(&dir);
@@ -179,12 +192,15 @@ void firmRead(void *dest, const char *firmFolder)
     u32 i = 42;
 
     //Convert back the .app name from integer to array
-    while(id)
+    u32 tempVersion = firmVersion;
+    while(tempVersion)
     {
         static const char hexDigits[] = "0123456789ABCDEF";
-        path[i--] = hexDigits[id & 0xF];
-        id >>= 4;
+        path[i--] = hexDigits[tempVersion & 0xF];
+        tempVersion >>= 4;
     }
 
     fileRead(dest, path);
+
+    return firmVersion;
 }

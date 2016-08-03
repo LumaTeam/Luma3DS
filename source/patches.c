@@ -240,10 +240,10 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
     
     u8 *off = memsearch(pos, pattern, size, 4);
     
-    if(off != NULL) off[4] = 0xE0;
+    off[4] = 0xE0;
 }
 
-void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, bool isN3DS)
+void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
 {
     const patchData twlPatches[] = {
         {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
@@ -264,7 +264,7 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType, bool isN3DS)
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = firmType == TWL_FIRM ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
+                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(5));
     const patchData *patches = firmType == TWL_FIRM ? twlPatches : agbPatches;
 
     //Patch

@@ -23,7 +23,8 @@
 #include "utils.h"
 #include "i2c.h"
 #include "buttons.h"
-#include "memory.h"
+#include "screen.h"
+#include "draw.h"
 #include "cache.h"
 
 u32 waitInput(void)
@@ -58,7 +59,15 @@ void mcuReboot(void)
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
-    while(1);
+    while(true);
+}
+
+void mcuPowerOff(void)
+{
+    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
+    
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
+    while(true);
 }
 
 void mcuPowerOff(void)
@@ -104,4 +113,17 @@ void chrono(u32 seconds)
 void stopChrono(void)
 {
     for(u32 i = 0; i < 4; i++) REG_TIMER_CNT(i) &= ~0x80;
+}
+
+void error(const char *message)
+{
+    initScreens();
+    clearScreens();
+
+    drawString("An error has occurred:", 10, 10, COLOR_RED);
+    int posY = drawString(message, 10, 30, COLOR_WHITE);
+    drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+
+    waitInput();
+    mcuPowerOff();
 }

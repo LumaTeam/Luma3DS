@@ -20,19 +20,30 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   pin.h
+*
+*   Code to manage pin locking for 3ds. By reworks.
+*/
+
 #pragma once
 
 #include "types.h"
 
-#define PATTERN(a)      a "_*.bin"
+#ifndef PIN_LENGTH
+    #define PIN_LENGTH  4
+#endif
 
-extern bool isN3DS;
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    u16 formatVersionMajor, formatVersionMinor;
 
-void mountFs(void);
-u32 getFileSize(const char *path);
-u32 fileRead(void *dest, const char *path);
-bool fileWrite(const void *buffer, const char *path, u32 size);
-void createDirectory(const char *path);
-void findDumpFile(const char *path, char *fileName);
-void loadPayload(u32 pressed);
-u32 firmRead(void *dest, u32 firmType);
+    u8 testHash[32];
+    u8 hash[32];
+} PINData;
+
+bool readPin(PINData* out);
+
+PINData newPin(void);
+void verifyPin(PINData *in, bool allowQuit);

@@ -28,7 +28,7 @@
 
 #define BUTTON_R1              (1 << 8)
 #define BUTTON_L1              (1 << 9)
-#define BUTTON_A               1
+#define BUTTON_A               (1 << 0)
 #define BUTTON_B               (1 << 1)
 #define BUTTON_X               (1 << 10)
 #define BUTTON_Y               (1 << 11)
@@ -43,3 +43,4 @@
 #define SINGLE_PAYLOAD_BUTTONS (BUTTON_LEFT | BUTTON_RIGHT | BUTTON_UP | BUTTON_DOWN | BUTTON_START | BUTTON_X | BUTTON_Y)
 #define L_PAYLOAD_BUTTONS      (BUTTON_R1 | BUTTON_A | BUTTON_SELECT)
 #define MENU_BUTTONS           (BUTTON_LEFT | BUTTON_RIGHT | BUTTON_UP | BUTTON_DOWN | BUTTON_A | BUTTON_START)
+#define PIN_BUTTONS            (BUTTON_A | BUTTON_B | BUTTON_X | BUTTON_Y | BUTTON_START)

@@ -25,13 +25,11 @@
 #include "screen.h"
 #include "draw.h"
 #include "fs.h"
-#include "i2c.h"
 #include "buttons.h"
 
 void configureCFW(const char *configPath)
 {
-    bool needToDeinit = initScreens();
-
+    clearScreens();
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
@@ -40,13 +38,13 @@ void configureCFW(const char *configPath)
                                         "Dev. features: None( ) ErrDisp( ) UNITINFO( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
-                                        "( ) SysNAND is updated (A9LH-only)",
-                                        "( ) Force A9LH detection",
+                                        "( ) Use SysNAND FIRM if booting with R (A9LH)",
                                         "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Enable splash screen with no screen-init" };
+                                        "( ) Enable splash screen with no screen-init",
+                                        "( ) Use a PIN" };
 
     struct multiOption {
         int posXs[4];
@@ -196,16 +194,13 @@ void configureCFW(const char *configPath)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
-    fileWrite(&config, configPath, 4);
+    if(!fileWrite(&config, configPath, 4))
+    {
+        createDirectory("luma");
+        if(!fileWrite(&config, configPath, 4))
+            error("Error writing the configuration file");
+    }
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);
-
-    if(needToDeinit)
-    {
-        //Turn off backlight
-        i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
-        deinitScreens();
-        PDN_GPU_CNT = 1;
-    }
 }

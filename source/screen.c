@@ -32,38 +32,35 @@
 #include "draw.h"
 #include "i2c.h"
 
-#define ARM11_STUB_ADDRESS  (0x25000000 - 0x40) //It's currently only 0x28 bytes large. We're putting 0x40 just to be sure here
-#define WAIT_FOR_ARM9()     *arm11Entry = 0; while(!*arm11Entry); ((void (*)())*arm11Entry)();
-vu32 *arm11Entry = (vu32 *)0x1FFFFFF8;
+vu32 *const arm11Entry = (vu32 *)0x1FFFFFF8;
+static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
 {
     //Disable interrupts
     __asm(".word 0xF10C01C0");
-    
+
     //Wait for the entry to be set
     while(*arm11Entry == ARM11_STUB_ADDRESS);
-    
+
     //Jump to it
     ((void (*)())*arm11Entry)();
 }
 
-static inline void invokeArm11Function(void (*func)())
+static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
     if(!hasCopiedStub)
     {
-        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x40);
-        flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x40);
+        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x30);
+        flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x30);
         hasCopiedStub = true;
     }
-    
+
     *arm11Entry = (u32)func;
     while(*arm11Entry);
     *arm11Entry = ARM11_STUB_ADDRESS;
 }
-
-static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void deinitScreens(void)
 {
@@ -83,25 +80,24 @@ void deinitScreens(void)
     if(PDN_GPU_CNT != 1) invokeArm11Function(ARM11);
 }
 
-void updateBrightness(u32 brightnessLevel)
+void updateBrightness(u32 brightnessIndex)
 {
-    static int brightnessValue;
-    
-    brightnessValue = brightness[brightnessLevel];
-    
+    static u32 brightnessLevel;
+    brightnessLevel = brightness[brightnessIndex];
+
     void __attribute__((naked)) ARM11(void)
     {
         //Disable interrupts
-        __asm(".word 0xF10C01C0");      
-            
+        __asm(".word 0xF10C01C0");
+
         //Change brightness
-        *(vu32 *)0x10202240 = brightnessValue;
-        *(vu32 *)0x10202A40 = brightnessValue;
+        *(vu32 *)0x10202240 = brightnessLevel;
+        *(vu32 *)0x10202A40 = brightnessLevel;
 
         WAIT_FOR_ARM9();
     }
-    
-    flushDCacheRange(&brightnessValue, 4);
+
+    flushDCacheRange(&brightnessLevel, 4);
     invokeArm11Function(ARM11);
 }
 
@@ -111,9 +107,8 @@ void clearScreens(void)
     {
         //Disable interrupts
         __asm(".word 0xF10C01C0");
-        
+
         //Setting up two simultaneous memory fills using the GPU
-        
         vu32 *REGs_PSC0 = (vu32 *)0x10400010;
         REGs_PSC0[0] = (u32)fb->top_left >> 3; //Start address
         REGs_PSC0[1] = (u32)(fb->top_left + 0x46500) >> 3; //End address
@@ -125,7 +120,7 @@ void clearScreens(void)
         REGs_PSC1[1] = (u32)(fb->bottom + 0x38400) >> 3; //End address
         REGs_PSC1[2] = 0; //Fill value
         REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
-        
+
         while(!((REGs_PSC0[3] & 2) && (REGs_PSC1[3] & 2)));
 
         if(fb->top_right != fb->top_left)
@@ -134,33 +129,33 @@ void clearScreens(void)
             REGs_PSC0[1] = (u32)(fb->top_right + 0x46500) >> 3; //End address
             REGs_PSC0[2] = 0; //Fill value
             REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
-            
+
             while(!(REGs_PSC0[3] & 2));
         }
-        
+
         WAIT_FOR_ARM9();
     }
-    
+
     flushDCacheRange((void *)fb, sizeof(struct fb));
     invokeArm11Function(ARM11);
 }
 
-u32 initScreens(void)
+bool initScreens(void)
 {
-    u32 needToInit = PDN_GPU_CNT == 1;
+    bool needToInit = PDN_GPU_CNT == 1;
 
     void __attribute__((naked)) ARM11(void)
     {
         //Disable interrupts
         __asm(".word 0xF10C01C0");
 
-        u32 brightnessLevel = MULTICONFIG(0);
+        u32 brightnessLevel = brightness[MULTICONFIG(0)];
         
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
         *(vu32 *)0x1020200C &= 0xFFFEFFFE;
-        *(vu32 *)0x10202240 = brightness[brightnessLevel];
-        *(vu32 *)0x10202A40 = brightness[brightnessLevel];
+        *(vu32 *)0x10202240 = brightnessLevel;
+        *(vu32 *)0x10202A40 = brightnessLevel;
         *(vu32 *)0x10202244 = 0x1023E;
         *(vu32 *)0x10202A44 = 0x1023E;
 
@@ -246,7 +241,7 @@ u32 initScreens(void)
 
         WAIT_FOR_ARM9();
     }
-    
+
     if(needToInit)
     {
         flushDCacheRange(&config, 4);
@@ -256,9 +251,8 @@ u32 initScreens(void)
         //Turn on backlight
         i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
     }
-    else
-        updateBrightness(MULTICONFIG(0));
-    
+    else updateBrightness(MULTICONFIG(0));
+
     clearScreens();
 
     return needToInit;

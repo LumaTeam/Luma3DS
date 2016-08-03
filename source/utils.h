@@ -24,13 +24,14 @@
 
 #include "types.h"
 
-u32 waitInput(void);
-void mcuReboot(void);
-void mcuPowerOff(void);
-
 #define TICKS_PER_SEC       67027964ULL
 #define REG_TIMER_CNT(i)    *(vu16 *)(0x10003002 + 4 * i)
 #define REG_TIMER_VAL(i)    *(vu16 *)(0x10003000 + 4 * i)
 
+u32 waitInput(void);
+void mcuReboot(void);
+void mcuPowerOff(void);
+
 void chrono(u32 seconds);
 void stopChrono(void);
+void error(const char *message);
