@@ -30,7 +30,10 @@
 
 #include "types.h"
 
-#define PIN_LENGTH  4
+#ifndef PIN_LENGTH
+    #define PIN_LENGTH  4
+#endif
+
 typedef struct __attribute__((packed))
 {
     char magic[4];

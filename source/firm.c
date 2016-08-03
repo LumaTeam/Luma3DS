@@ -71,7 +71,6 @@ void main(void)
 
     //Attempt to read the configuration file
     needConfig = fileRead(&config, configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
-    bool pinExists = CONFIG(7) && readPin(&pin);
 
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
@@ -127,78 +126,86 @@ void main(void)
             }
         }
 
-        //If no configuration file exists or SELECT is held, load configuration menu
-        bool loadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
-        bool needToDeinit = false;
-        if(CFG_BOOTENV == 0 || loadConfigurationMenu)
-        {
-            if(loadConfigurationMenu || pinExists) needToDeinit = initScreens();
-            if(pinExists) verifyPin(&pin, true);
-        }
-        if(loadConfigurationMenu)
-        {
-            configureCFW(configPath);
-
-            if(!pinExists && CONFIG(7)) pin = newPin();
-
-            //Zero the last booted FIRM flag
-            CFG_BOOTENV = 0;
-
-            nbChronoStarted = 1;
-            chrono(0);
-            chrono(2);
-
-            //Update pressed buttons
-            pressed = HID_PAD;
-        }
-        if(needToDeinit)
-        {
-            //Turn off backlight
-            i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
-            deinitScreens();
-            PDN_GPU_CNT = 1;
-        }
-
-        if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
-        {
-            nandType = FIRMWARE_SYSNAND;
-            firmSource = FIRMWARE_SYSNAND;
-            needConfig = DONT_CONFIGURE;
-        }
-
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            /* If L and R/A/Select or one of the single payload buttons are pressed,
-               chainload an external payload */
-            if((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
-                loadPayload(pressed);
+            //If no configuration file exists or SELECT is held, load configuration menu
+            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
+            bool pinExists = CONFIG(7) && readPin(&pin);
 
-            //If screens are inited or the corresponding option is set, load splash screen
-            if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
+            if(pinExists || shouldLoadConfigurationMenu)
             {
-                nbChronoStarted = 2;
-                chrono(0);
+                bool needToDeinit = initScreens();
+
+                //If we get here we should check the PIN (if it exists) in all cases
+                if(pinExists) verifyPin(&pin, true);
+
+                if(shouldLoadConfigurationMenu)
+                {
+                    configureCFW(configPath);
+
+                    if(!pinExists && CONFIG(7)) pin = newPin();
+
+                    //Zero the last booted FIRM flag
+                    CFG_BOOTENV = 0;
+
+                    nbChronoStarted = 1;
+                    chrono(0);
+                    chrono(2);
+
+                    //Update pressed buttons
+                    pressed = HID_PAD;
+                }
+
+                if(needToDeinit)
+                {
+                    //Turn off backlight
+                    i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
+                    deinitScreens();
+                    PDN_GPU_CNT = 1;
+                }
             }
 
-            //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
-            if(pressed & BUTTON_R1)
+            if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
             {
-                nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                nandType = FIRMWARE_SYSNAND;
+                firmSource = FIRMWARE_SYSNAND;
             }
-
-            /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
-               with their own FIRM */
             else
-            {
-                nandType = (CONFIG(0) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                firmSource = nandType;
-            }
+            {   
+                /* If L and R/A/Select or one of the single payload buttons are pressed,
+                   chainload an external payload (verify the PIN if needed)*/
+                bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
-            /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
-               or vice-versa, boot the second emuNAND */
-            if(nandType != FIRMWARE_SYSNAND && (CONFIG(2) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+                if(shouldLoadPayload)
+                    loadPayload(pressed);
+
+                //If screens are inited or the corresponding option is set, load splash screen
+                if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
+                {
+                    nbChronoStarted = 2;
+                    chrono(0);
+                }
+
+                //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
+                if(pressed & BUTTON_R1)
+                {
+                    nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                }
+
+                /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
+                   with their own FIRM */
+                else
+                {
+                    nandType = (CONFIG(0) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    firmSource = nandType;
+                }
+
+                /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
+                   or vice-versa, boot the second emuNAND */
+                if(nandType != FIRMWARE_SYSNAND && (CONFIG(2) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+            }
         }
     }
 
