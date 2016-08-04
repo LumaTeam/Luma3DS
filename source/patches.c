@@ -24,19 +24,21 @@
 #include "memory.h"
 #include "config.h"
 #include "../build/rebootpatch.h"
+#include "../build/k11modulespatch.h"
 
 static u32 *arm11ExceptionsPage = NULL;
 static u32 *arm11SvcTable = NULL;
+static u32 *arm11SvcHandler = NULL;
 
-static void findArm11ExceptionsPageAndSvcTable(u8 *pos, u32 size)
+static void findArm11ExceptionsPageAndSvcHandlerAndTable(u8 *pos, u32 size)
 {
     const u8 arm11ExceptionsPagePattern[] = {0x00, 0xB0, 0x9C, 0xE5};
     
     if(arm11ExceptionsPage == NULL) arm11ExceptionsPage = (u32 *)memsearch(pos, arm11ExceptionsPagePattern, size, 4) - 0xB;
-    if(arm11SvcTable == NULL && arm11ExceptionsPage != NULL)
+    if((arm11SvcTable == NULL || arm11SvcHandler == NULL) && arm11ExceptionsPage != NULL)
     {
         u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-        arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+        arm11SvcHandler = arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
         while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
     }
 }
@@ -66,7 +68,7 @@ u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *co
         loadCodeSet--;
     *codeSetOffset = *loadCodeSet & 0xFFF;
     
-    findArm11ExceptionsPageAndSvcTable(pos, size);
+    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
     return arm11ExceptionsPage;
 }
 
@@ -182,9 +184,73 @@ void patchSvcBreak11(u8 *pos, u32 size)
 {
     //Same as above, for NFIRM arm11
     
-    findArm11ExceptionsPageAndSvcTable(pos, size);
+    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
     *(u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000) = 0xE12FFF7F;
 }
+
+void patchArm11SvcAccessChecks(u8 *pos, u32 size)
+{
+    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
+
+    u32 *off = arm11SvcHandler;
+    while(*off != 0xE11A0E1B) off++; //TST R10, R11,LSL LR
+
+    *off = 0xE3B0A001; //MOVS R10, #1
+}
+
+//It's mainly Subv's code here:
+void patchK11ModuleChecks(u8 *pos, u32 size)
+{
+    // We have to detour a function in the ARM11 kernel because builtin modules
+    // are compressed in memory and are only decompressed at runtime.
+
+    // Find some padding space to add our code
+    const u8 bogus_pattern[] = { 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 
+                                 0x2F, 0xE1, 0x00, 0x10, 0xA0, 0xE3, 0x00, 0x10, 0xC0, 0xE5, 
+                                 0x1E, 0xFF, 0x2F, 0xE1 };
+    
+    u32 *someSpace = (u32 *)memsearch(pos, bogus_pattern, size, 24);
+
+    // We couldn't find the place where to begin our search of an empty block
+    if (someSpace == NULL)
+        return;
+
+    // Advance until we reach the padding area (filled with 0xFF)
+    u32 *freeSpace;
+    for(freeSpace = someSpace; *freeSpace != 0xFFFFFFFF; freeSpace++);
+
+    // Inject our code into the free space
+    memcpy(freeSpace, k11modules, k11modules_size);
+
+    // Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
+    const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20, 
+                          0x90, 0xE5, 0x48, 0x00, 0x9D, 0xE5 };
+
+    u8 *off = memsearch(pos, pattern, size, 16);
+
+    // We couldn't find the code that decompresses the module
+    if (off == NULL)
+        return;
+
+    // Inject a jump instruction to our code at the offset we found
+    // Construct a jump (BL) instruction to our code
+    u32 offset = ((((u32)freeSpace) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
+    u32 instruction = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
+
+    // Write our jump
+    memcpy(off, &instruction, 4);
+}
+
+void patchP9AccessChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0xE0, 0x00, 0x40, 0x39, 0x08, 0x58};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, 6) - 7;
+
+    off[0] = 0x2001; //mov r0, #1
+    off[1] = 0x4770; //bx lr
+}
+
 
 void patchUnitInfoValueSet(u8 *pos, u32 size)
 {
@@ -221,7 +287,7 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
                                  0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
                                  0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
 
-    findArm11ExceptionsPageAndSvcTable(pos, size);
+    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
 
     if(!arm11SvcTable[0x7B])
     {

@@ -34,7 +34,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -96,6 +96,11 @@ $(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
 	@mkdir -p "$(@D)"
 	@armips $<
 	@bin2c -o $@ -n reboot $(@D)/reboot.bin
+
+$(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
 
 $(dir_build)/injector.h: $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"

@@ -44,7 +44,8 @@ void configureCFW(const char *configPath)
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Enable splash screen with no screen-init",
-                                        "( ) Use a PIN" };
+                                        "( ) Use a PIN",
+                                        "( ) Disable access checks" };
 
     struct multiOption {
         int posXs[4];

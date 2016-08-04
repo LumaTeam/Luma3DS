@@ -362,6 +362,13 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);
     }
+
+    if(CONFIG(8))
+    {
+        patchArm11SvcAccessChecks(arm11Section1, section[1].size);
+        patchK11ModuleChecks(arm11Section1, section[1].size);
+        patchP9AccessChecks(arm9Section, section[2].size);
+    }
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
