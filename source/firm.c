@@ -271,21 +271,27 @@ void main(void)
 static inline u32 loadFirm(FirmwareType firmType)
 {
     section = firm->section;
-    bool externalFirmExists = getFileSize("/luma/firmware.bin") != 0;
+    const char *firmwareFiles[4] = {
+        "/luma/firmware.bin",
+        "/luma/firmware_twl.bin",
+        "/luma/firmware_agb.bin",
+        "/luma/firmware_safe.bin"
+    };
 
-    //Load FIRM from CTRNAND, unless it's an O3DS and we're loading a pre-5.0 NATIVE FIRM
-    u32 firmVersion = firmRead(firm, (u32)firmType);
+    u32 firmVersion;
 
-    if(firmType == NATIVE_FIRM && ((!isN3DS && firmVersion < 0x25) || externalFirmExists))
+    if(fileRead(firm, firmwareFiles[(u32)firmType]))
     {
-        //Always load the external firmware file if it exists
-        if((!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68) && (!isN3DS && firmVersion < 0x25))
-            error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
-
-        //No assumption regarding FIRM version
         firmVersion = 0xffffffff;
     }
-    else decryptExeFs((u8 *)firm);
+    else
+    {
+        firmVersion = firmRead(firm, (u32)firmType);
+        if(firmType == NATIVE_FIRM && !isN3DS && firmVersion < 0x25)
+            error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+
+        decryptExeFs((u8 *)firm);
+    }
 
     return firmVersion;
 }
@@ -469,7 +475,7 @@ static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch)
 {
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
-    if(firmType == NATIVE_FIRM)
+    if(firmType != SAFE_FIRM)
     {
         copySection0AndInjectSystemModules();
         sectionNum = 1;
