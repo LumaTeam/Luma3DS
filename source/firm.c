@@ -32,6 +32,8 @@
 #include "draw.h"
 #include "screen.h"
 #include "buttons.h"
+#include "pin.h"
+#include "i2c.h"
 #include "../build/injector.h"
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
@@ -43,6 +45,8 @@ u32 config,
 bool isN3DS;
 
 FirmwareSource firmSource;
+
+PINData pin;
 
 void main(void)
 {
@@ -122,62 +126,86 @@ void main(void)
             }
         }
 
-        //If no configuration file exists or SELECT is held, load configuration menu
-        if(needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)))
-        {
-            configureCFW(configPath);
-
-            //Zero the last booted FIRM flag
-            CFG_BOOTENV = 0;
-
-            nbChronoStarted = 1;
-            chrono(0);
-            chrono(2);
-
-            //Update pressed buttons
-            pressed = HID_PAD;
-        }
-
-        if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
-        {
-            nandType = FIRMWARE_SYSNAND;
-            firmSource = FIRMWARE_SYSNAND;
-            needConfig = DONT_CONFIGURE;
-        }
-
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            /* If L and R/A/Select or one of the single payload buttons are pressed,
-               chainload an external payload */
-            if((pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS)))
-                loadPayload(pressed);
+            //If no configuration file exists or SELECT is held, load configuration menu
+            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
+            bool pinExists = CONFIG(7) && readPin(&pin);
 
-            //If screens are inited or the corresponding option is set, load splash screen
-            if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
+            if(pinExists || shouldLoadConfigurationMenu)
             {
-                nbChronoStarted = 2;
-                chrono(0);
+                bool needToDeinit = initScreens();
+
+                //If we get here we should check the PIN (if it exists) in all cases
+                if(pinExists) verifyPin(&pin, true);
+
+                if(shouldLoadConfigurationMenu)
+                {
+                    configureCFW(configPath);
+
+                    if(!pinExists && CONFIG(7)) pin = newPin();
+
+                    //Zero the last booted FIRM flag
+                    CFG_BOOTENV = 0;
+
+                    nbChronoStarted = 1;
+                    chrono(0);
+                    chrono(2);
+
+                    //Update pressed buttons
+                    pressed = HID_PAD;
+                }
+
+                if(needToDeinit)
+                {
+                    //Turn off backlight
+                    i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
+                    deinitScreens();
+                    PDN_GPU_CNT = 1;
+                }
             }
 
-            //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
-            if(pressed & BUTTON_R1)
+            if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
             {
-                nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                nandType = FIRMWARE_SYSNAND;
+                firmSource = FIRMWARE_SYSNAND;
             }
-
-            /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
-               with their own FIRM */
             else
-            {
-                nandType = (CONFIG(0) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                firmSource = nandType;
-            }
+            {   
+                /* If L and R/A/Select or one of the single payload buttons are pressed,
+                   chainload an external payload (verify the PIN if needed)*/
+                bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
-            /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
-               or vice-versa, boot the second emuNAND */
-            if(nandType != FIRMWARE_SYSNAND && (CONFIG(2) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+                if(shouldLoadPayload)
+                    loadPayload(pressed);
+
+                //If screens are inited or the corresponding option is set, load splash screen
+                if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
+                {
+                    nbChronoStarted = 2;
+                    chrono(0);
+                }
+
+                //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
+                if(pressed & BUTTON_R1)
+                {
+                    nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                }
+
+                /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
+                   with their own FIRM */
+                else
+                {
+                    nandType = (CONFIG(0) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    firmSource = nandType;
+                }
+
+                /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
+                   or vice-versa, boot the second emuNAND */
+                if(nandType != FIRMWARE_SYSNAND && (CONFIG(2) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+            }
         }
     }
 
@@ -245,8 +273,8 @@ static inline u32 loadFirm(FirmwareType firmType)
         if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
             error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
 
-        //9.6 O3DS FIRM
-        firmVersion = 0x49;
+        //No assumption regarding FIRM version
+        firmVersion = 0xffffffff;
     }
     else decryptExeFs((u8 *)firm);
 
@@ -294,7 +322,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Apply anti-anti-DG patches
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
-        //Restore SVCBackdoor
+        //Restore svcBackdoor
         reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
     }
 }

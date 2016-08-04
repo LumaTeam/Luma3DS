@@ -80,7 +80,7 @@ typedef struct _OPTION_TEXT
 
 void configureCFW(const char *configPath)
 {
-    bool needToDeinit = initScreens();
+    clearScreens();
     char szString[100];
 
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
@@ -98,6 +98,7 @@ void configureCFW(const char *configPath)
         {   20, 1, 0, 0, "Show current NAND in System Settings  ", 2, {"OFF","ON"}},
         {   21, 1, 0, 0, "Show GBA boot screen(patched AGB_FIRM)", 2, {"OFF","ON"}},
         {   22, 1, 0, 0, "Splash screen with no screen-init     ", 2, {"OFF","ON"}}
+        {   23, 1, 0, 0, "Use a PIN                             ", 2, {"OFF","ON"}}
     };
 
 
@@ -216,12 +217,4 @@ void configureCFW(const char *configPath)
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);
-
-    if(needToDeinit)
-    {
-        //Turn off backlight
-        i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
-        deinitScreens();
-        PDN_GPU_CNT = 1;
-    }
 }

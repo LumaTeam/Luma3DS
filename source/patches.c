@@ -119,12 +119,15 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
     u32 *svcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
     while(*svcTable) svcTable++; //Look for SVC0 (NULL)
 
-    u32 *freeSpace;
-    for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
+    if(svcTable[0x7B] == 0)
+    {
+        u32 *freeSpace;
+        for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
 
-    memcpy(freeSpace, svcBackdoor, 40);
+        memcpy(freeSpace, svcBackdoor, 40);
 
-    svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
+        svcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)exceptionsPage);
+    }
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
@@ -133,7 +136,7 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
     
     u8 *off = memsearch(pos, pattern, size, 4);
     
-    off[4] = 0xE0;
+    if(off != NULL) off[4] = 0xE0;
 }
 
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
