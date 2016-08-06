@@ -101,6 +101,7 @@
 
 extern u32 emuOffset;
 extern bool isN3DS;
+extern bool isDevUnit;
 extern FirmwareSource firmSource;
 
 void ctrNandInit(void);

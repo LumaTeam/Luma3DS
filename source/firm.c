@@ -42,7 +42,7 @@ static const firmSectionHeader *section;
 u32 config,
     emuOffset;
 
-bool isN3DS;
+bool isN3DS, isDevUnit;
 
 FirmwareSource firmSource;
 
@@ -63,6 +63,9 @@ void main(void)
 
     //Detect the console being used
     isN3DS = PDN_MPCORE_CFG == 7;
+
+    //Detect dev units
+    isDevUnit = CFG_UNITINFO != 0;
 
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
