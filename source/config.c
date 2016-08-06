@@ -25,76 +25,108 @@
 #include "screen.h"
 #include "draw.h"
 #include "fs.h"
+#include "i2c.h"
 #include "buttons.h"
+
+char *str_format(char *dst, const char *src1, const char *src2)
+{
+    while (*src1)
+    {
+        *dst++ = *src1++;
+    }
+
+    *dst++ = ':';
+
+    while (*src2)
+    {
+        *dst++ = *src2++;
+    }
+    *dst = 0;
+
+    return dst;
+}
+
+//CONFIG
+//15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
+//                                           x  x : nandType
+//                                        x       : firmSource
+//                                     x          : isA9lh
+//                                  x             : Flag to prevent multiple boot options-forcing
+//                               x                : ?
+//                         x  x                   : Screen-init brightness
+//                   x  x                         : New 3DS CPU
+
+//CONFIG
+//31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 
+//                                              x : Autoboot SysNAND
+//                                           x    : SysNAND is updated
+//                                        x       : Use second EmuNAND as default
+//                                     x          : Region/language emu. and ext. .code
+//                                  x             : Show current NAND in System Settings
+//                               x                : Show GBA boot screen(patched AGB_FIRM)
+//                            x                   : Splash screen with no screen-init
+
+
+typedef struct _OPTION_TEXT
+{
+    int bit_start;
+    int bit_mask;
+    int value_select;
+    int posY;
+    const char* option_text;
+    int value_count;
+    const char* value_text[8];
+}OPTION_TEXT, *POPTION_TEXT;
 
 void configureCFW(const char *configPath)
 {
     clearScreens();
+    char szString[100];
+
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
-    const char *multiOptionsText[]  = { "Screen-init brightness: 4( ) 3( ) 2( ) 1( )",
-                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
-
-    const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
-                                        "( ) Use SysNAND FIRM if booting with R (A9LH)",
-                                        "( ) Use second EmuNAND as default",
-                                        "( ) Enable region/language emu. and ext. .code",
-                                        "( ) Show current NAND in System Settings",
-                                        "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Enable splash screen with no screen-init",
-                                        "( ) Use a PIN" };
-
-    struct multiOption {
-        int posXs[4];
-        int posY;
-        u32 enabled;
-    } multiOptions[] = {
-        { .posXs = {26, 31, 36, 41} },
-        { .posXs = {17, 26, 32, 44} }
+    OPTION_TEXT OptionTexts[] =
+    {
+        {    6, 3, 0, 0, "Screen-init brightness                ", 4, {"4", "3", "2", "1"}},
+        {    8, 3, 0, 0, "New 3DS CPU                           ", 4, {"Off", "Clock", "L2", "Clock+L2"}},
+        {   -1, 0, 0, 0, "                                      ", 0, {""}},
+        {   16, 1, 0, 0, "Autoboot SysNAND                      ", 2, {"OFF","ON"}},
+        {   17, 1, 0, 0, "Use SysNAND FIRM if booting w/R (A9LH)", 2, {"OFF","ON"}},
+        {   18, 1, 0, 0, "Use second EmuNAND as default         ", 2, {"OFF","ON"}},
+        {   19, 1, 0, 0, "Region/language emu. and ext. .code   ", 2, {"OFF","ON"}},
+        {   20, 1, 0, 0, "Show current NAND in System Settings  ", 2, {"OFF","ON"}},
+        {   21, 1, 0, 0, "Show GBA boot screen(patched AGB_FIRM)", 2, {"OFF","ON"}},
+        {   22, 1, 0, 0, "Splash screen with no screen-init     ", 2, {"OFF","ON"}}
+        {   23, 1, 0, 0, "Use a PIN                             ", 2, {"OFF","ON"}}
     };
 
-    //Calculate the amount of the various kinds of options and pre-select the first single one
-    u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
-        singleOptionsAmount = sizeof(singleOptionsText) / sizeof(char *),
-        totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption = multiOptionsAmount;
 
-    struct singleOption {
-        int posY;
-        bool enabled;
-    } singleOptions[singleOptionsAmount];
-
-    //Parse the existing options
-    for(u32 i = 0; i < multiOptionsAmount; i++)
-        multiOptions[i].enabled = MULTICONFIG(i);
-    for(u32 i = 0; i < singleOptionsAmount; i++)
-        singleOptions[i].enabled = CONFIG(i);
-
-    //Character to display a selected option
-    char selected = 'x';
-
+    u32 totalCount = sizeof (OptionTexts) / sizeof (OPTION_TEXT);
+    u32 selectedOption = 3;//Autoboot SysNAND
     int endPos = 42;
 
-    //Display all the multiple choice options in white
-    for(u32 i = 0; i < multiOptionsAmount; i++)
+    //Parse the existing options
+    for(u32 i = 0; i < totalCount; i++)
     {
-        multiOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(multiOptionsText[i], 10, multiOptions[i].posY, COLOR_WHITE);
-        drawCharacter(selected, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+        OptionTexts[i].value_select = (config >> OptionTexts[i].bit_start) & OptionTexts[i].bit_mask;
     }
 
-    endPos += SPACING_Y / 2;
-    u32 color = COLOR_RED;
-
-    //Display all the normal options in white except for the first one
-    for(u32 i = 0; i < singleOptionsAmount; i++)
+    //Display all options
+    for (u32 i=0;i<totalCount;i++)
     {
-        singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], 10, singleOptions[i].posY, color);
-        if(singleOptions[i].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[i].posY, color);
-        color = COLOR_WHITE;
+        OptionTexts[i].posY = endPos + SPACING_Y;
+
+        if (OptionTexts[i].bit_start == -1)
+        {
+            endPos += SPACING_Y;
+            continue;
+        }
+
+        str_format (szString, OptionTexts[i].option_text, OptionTexts[i].value_text[OptionTexts[i].value_select]);
+        endPos = drawString (szString, 10, OptionTexts[i].posY, selectedOption == i ? COLOR_RED : COLOR_WHITE);
     }
+
 
     u32 pressed = 0;
 
@@ -115,16 +147,24 @@ void configureCFW(const char *configPath)
             switch(pressed)
             {
                 case BUTTON_UP:
-                    selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
+                    selectedOption = !selectedOption ? (totalCount - 1) : selectedOption - 1;
+                    while (OptionTexts[selectedOption].bit_start == -1)
+                    {
+                        selectedOption = !selectedOption ? (totalCount - 1) : selectedOption - 1;
+                    }
                     break;
                 case BUTTON_DOWN:
-                    selectedOption = selectedOption == totalIndexes ? 0 : selectedOption + 1;
+                    selectedOption = selectedOption == (totalCount - 1) ? 0 : selectedOption + 1;
+                    while (OptionTexts[selectedOption].bit_start == -1)
+                    {
+                       selectedOption = selectedOption == (totalCount -1 ) ? 0 : selectedOption + 1;
+                    }
                     break;
                 case BUTTON_LEFT:
                     selectedOption = 0;
                     break;
                 case BUTTON_RIGHT:
-                    selectedOption = totalIndexes;
+                    selectedOption = (totalCount - 1);
                     break;
                 default:
                     continue;
@@ -132,65 +172,41 @@ void configureCFW(const char *configPath)
 
             if(selectedOption == oldSelectedOption) continue;
 
-            //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
-            if(oldSelectedOption < multiOptionsAmount)
-            {
-                drawString(multiOptionsText[oldSelectedOption], 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
-                drawCharacter(selected, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
-            }
-            else
-            {
-                u32 singleOldSelected = oldSelectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleOldSelected], 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
-                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
-            }
+            //The user moved to a different option, print the old option in white and the new one in red.
+            str_format (szString, OptionTexts[oldSelectedOption].option_text, OptionTexts[oldSelectedOption].value_text[OptionTexts[oldSelectedOption].value_select]);
+            drawString (szString, 10, OptionTexts[oldSelectedOption].posY, COLOR_WHITE);
 
-            if(selectedOption < multiOptionsAmount)
-                drawString(multiOptionsText[selectedOption], 10, multiOptions[selectedOption].posY, COLOR_RED);
-            else
-            {
-                u32 singleSelected = selectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleSelected], 10, singleOptions[singleSelected].posY, COLOR_RED);
-            }
+            str_format (szString, OptionTexts[selectedOption].option_text, OptionTexts[selectedOption].value_text[OptionTexts[selectedOption].value_select]);
+            drawString (szString, 10, OptionTexts[selectedOption].posY, COLOR_RED);
         }
         else
         {
-            //The selected option's status changed, print the 'x's accordingly
-            if(selectedOption < multiOptionsAmount)
-            {
-                u32 oldEnabled = multiOptions[selectedOption].enabled;
-                drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
-                multiOptions[selectedOption].enabled = oldEnabled == 3 ? 0 : oldEnabled + 1;
+            //The selected option's status changed.
+            str_format (szString, OptionTexts[selectedOption].option_text, OptionTexts[selectedOption].value_text[OptionTexts[selectedOption].value_select]);
+            drawString (szString, 10, OptionTexts[selectedOption].posY, COLOR_BLACK);
 
-                if(!selectedOption)
-                    updateBrightness(multiOptions[selectedOption].enabled);
-            }
-            else
+            OptionTexts[selectedOption].value_select++;
+            if (OptionTexts[selectedOption].value_select >= OptionTexts[selectedOption].value_count)
             {
-                bool oldEnabled = singleOptions[selectedOption - multiOptionsAmount].enabled;
-                singleOptions[selectedOption - multiOptionsAmount].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
+                OptionTexts[selectedOption].value_select = 0;
             }
-        }
+                
+            str_format (szString, OptionTexts[selectedOption].option_text, OptionTexts[selectedOption].value_text[OptionTexts[selectedOption].value_select]);
+            drawString (szString, 10, OptionTexts[selectedOption].posY, COLOR_RED);
 
-        //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-        if(selectedOption < multiOptionsAmount)
-            drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        else
-        {
-            u32 singleSelected = selectedOption - multiOptionsAmount;
-            if(singleOptions[singleSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
+            if(OptionTexts[selectedOption].bit_start == 6)
+                updateBrightness(OptionTexts[selectedOption].value_select);
         }
-    }
+   }
 
     //Preserve the last-used boot options (last 12 bits)
     config &= 0x3F;
 
     //Parse and write the new configuration
-    for(u32 i = 0; i < multiOptionsAmount; i++)
-        config |= multiOptions[i].enabled << (i * 2 + 6);
-    for(u32 i = 0; i < singleOptionsAmount; i++)
-        config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
+    for(u32 i = 0; i < totalCount; i++)
+    {
+        config |= OptionTexts[i].value_select << OptionTexts[i].bit_start;
+    }
 
     if(!fileWrite(&config, configPath, 4))
     {
