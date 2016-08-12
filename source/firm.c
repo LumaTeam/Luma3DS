@@ -358,9 +358,12 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+        patchKernel9Panic(arm9Section, section[2].size);
         
         //Stub svcBreak11 with "bkpt 65535"
         patchSvcBreak11(arm11Section1, section[1].size);
+        //Stub kernel11panic with "bkpt 65534"
+        patchKernel11Panic(arm11Section1, section[1].size);
         
         //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
         patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);
@@ -390,6 +393,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[3].size);
         patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
+        patchKernel9Panic(arm9Section, section[3].size);
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
@@ -414,10 +418,11 @@ static inline void patchSafeFirm(void)
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+        patchKernel9Panic(arm9Section, section[2].size);
     }
 }
 
-static inline void copySection0AndInjectSystemModules(void)
+static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 {
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
     char fileName[] = "/luma/sysmodules/--------.cxi";
@@ -430,40 +435,45 @@ static inline void copySection0AndInjectSystemModules(void)
         const u8 *addr;
     } modules[5] = {{0}};
 
-    u8 *pos = arm11Section0;
+    u8 *pos = arm11Section0, *end = pos + section[0].size;
+    u32 n = 0;
+
     u32 loaderIndex = 0;
-    for(u32 i = 0; i < 5; i++)
+    
+    while(pos < end)
     {
-        modules[i].addr = pos;
-        modules[i].size = *(u32 *)(pos + 0x104) * 0x200;
+        modules[n].addr = pos;
+        modules[n].size = *(u32 *)(pos + 0x104) * 0x200;
         
-        memcpy(modules[i].name, pos + 0x200, 8);
-        pos += modules[i].size;
+        memcpy(modules[n].name, pos + 0x200, 8);
+        pos += modules[n].size;
         
         //Read modules from files if they exist
         u32 nameOff;
-        for(nameOff = 0; nameOff < 8 && modules[i].name[nameOff] != 0; nameOff++);
-        memcpy(fileName + 17, modules[i].name, nameOff);
+        for(nameOff = 0; nameOff < 8 && modules[n].name[nameOff] != 0; nameOff++);
+        memcpy(fileName + 17, modules[n].name, nameOff);
         memcpy(fileName + 17 + nameOff, ext, 5);
         
         u32 fileSize = getFileSize(fileName);
         if(fileSize != 0)
         {
-            modules[i].addr = NULL;
-            modules[i].size = fileSize;
+            modules[n].addr = NULL;
+            modules[n].size = fileSize;
         }
 
-        if(memcmp(modules[i].name, "loader", 7) == 0) loaderIndex = i;
+        if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
+
+        n++;
     }
 
-    if(modules[loaderIndex].addr != NULL)
+    if(firmType == NATIVE_FIRM && modules[loaderIndex].addr != NULL)
     {
         modules[loaderIndex].size = injector_size;
         modules[loaderIndex].addr = injector;
     }
 
     pos = section[0].address;
-    for(u32 i = 0; i < 5; i++)
+    for(u32 i = 0; i < n; i++)
     {
         if(modules[i].addr != NULL)
             memcpy(pos, modules[i].addr, modules[i].size);
@@ -487,7 +497,7 @@ static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch)
     u32 sectionNum;
     if(firmType != SAFE_FIRM)
     {
-        copySection0AndInjectSystemModules();
+        copySection0AndInjectSystemModules(firmType);
         sectionNum = 1;
     }
     else sectionNum = 0;

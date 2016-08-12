@@ -100,7 +100,7 @@ if __name__ == "__main__":
     version, processor, exceptionType, _, nbRegisters, codeDumpSize, stackDumpSize, additionalDataSize = unpack_from("<8I", data, 8)
     nbRegisters //= 4
     
-    if version < (1 << 16) | 1:
+    if version < (1 << 16) | 2:
         raise SystemExit("Incompatible format version, please use the appropriate parser.")
     
     registers = unpack_from("<{0}I".format(nbRegisters), data, 40)
@@ -114,8 +114,18 @@ if __name__ == "__main__":
     else: print("Processor: ARM11 (core {0})".format(processor >> 16))
     
     typeDetailsStr = ""
-    if exceptionType == 2 and (registers[16] & 0x20) == 0 and codeDumpSize >= 4 and unpack_from("<I", codeDump[-4:])[0] == 0xe12fff7f:
-        typeDetailsStr = " " + (svcBreakReasons[registers[0]] if registers[0] < 3 else "(svcBreak)")
+    if exceptionType == 2:
+        if (registers[16] & 0x20) == 0 and codeDumpSize >= 4:
+            instr = unpack_from("<I", codeDump[-4:])[0]
+            if instr == 0xe12fff7e:
+                typeDetailsStr = " (kernel panic)"
+            elif instr == 0xef00003c:
+                typeDetailsStr = " " + (svcBreakReasons[registers[0]] if registers[0] < 3 else "(svcBreak)")
+        elif (registers[16] & 0x20) == 1 and codeDumpSize >= 2:
+            instr = unpack_from("<I", codeDump[-4:])[0]
+            if instr == 0xdf3c:
+                typeDetailsStr = " " + (svcBreakReasons[registers[0]] if registers[0] < 3 else "(svcBreak)")
+    
     elif processor != 9 and (registers[20] & 0x80000000) != 0:
         typeDetailsStr = " (VFP exception)"
     

@@ -177,7 +177,8 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr)
     
     u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 4);
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
-    *(u32 *)(pos + arm9SvcTable[0x3C] - k9addr) = 0xE12FFF7F;
+    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - k9addr);
+    *addr = 0xE12FFF7F;
 }
 
 void patchSvcBreak11(u8 *pos, u32 size)
@@ -185,7 +186,24 @@ void patchSvcBreak11(u8 *pos, u32 size)
     //Same as above, for NFIRM arm11
     
     findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
-    *(u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000) = 0xE12FFF7F;
+    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
+    *addr = 0xE12FFF7F;
+}
+
+void patchKernel9Panic(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x02, 0x30, 0xA0, 0xE1, 0x02, 0x10, 0xA0, 0xE1, 0x05, 0x00, 0xA0, 0xE3};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
+    *off = 0xE12FFF7E;
+}
+
+void patchKernel11Panic(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x02, 0x0B, 0x44, 0xE2, 0x00, 0x10, 0x90, 0xE5};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
+    *off = 0xE12FFF7E;
 }
 
 void patchArm11SvcAccessChecks(u8 *pos, u32 size)

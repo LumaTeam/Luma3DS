@@ -43,33 +43,52 @@ _commonHandler:
     mov r6, sp
     mrs r3, cpsr
     
+    tst r2, #0x20
+    bne noFPUInitNorSvcBreak
+    sub r0, lr, #4
+    stmfd sp!, {lr}
+    bl cannotAccessVA
+    ldmfd sp!, {lr}
+    cmp r0, #0
+    bne noFPUInitNorSvcBreak
+    ldr r4, [lr, #-4]
     cmp r1, #1
     bne noFPUInit
-    tst r2, #0x20
-    bne noFPUInit
     
-    ldr r4, [lr, #-4]
     lsl r4, #4
     sub r4, #0xc0000000
     cmp r4, #0x30000000
-    bcs noFPUInit
-    fmrx r3, fpexc
-    tst r3, #0x40000000
-    bne noFPUInit
+    bcs noFPUInitNorSvcBreak
+    fmrx r0, fpexc
+    tst r0, #0x40000000
+    bne noFPUInitNorSvcBreak
     
     sub lr, #4
     srsfd sp!, #0x13
-    ldmfd sp!, {r0-r7}      @ restore context
-    cps #0x13               @ FPU init
+    ldmfd sp!, {r0-r7}          @ restore context
+    cps #0x13                   @ FPU init
     stmfd sp, {r0-r3, r11-lr}^
     sub sp, #0x20
-    bl .                    @ will be replaced
+    bl .                        @ will be replaced
     ldmfd sp, {r0-r3, r11-lr}^
     add sp, #0x20
     rfefd sp!
 
     noFPUInit:
+    cmp r1, #2
+    bne noFPUInitNorSvcBreak
+    ldr r5, =#0xe12fff7f
+    cmp r4, r5
+    bne noFPUInitNorSvcBreak
+    cps #0x13                   @ switch to supervisor mode
+    ldr r2, [sp, #0x1c]         @ implementation details of the official svc handler
+    ldr r4, [sp, #0x18]
+    msr cpsr_c, r3              @ restore processor mode
+    tst r2, #0x20
+    addne lr, r4, #2            @ adjust address for later
+    moveq lr, r4
 
+    noFPUInitNorSvcBreak:
     ands r4, r2, #0xf       @ get the mode that triggered the exception
     moveq r4, #0xf          @ usr => sys
     bic r5, r3, #0xf

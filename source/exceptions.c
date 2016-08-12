@@ -162,10 +162,25 @@ void detectAndProcessExceptionDumps(void)
         
         posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
         posY = drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
-        if(dumpHeader->type == 2 && dumpHeader->registerDumpSize >= 4 && (regs[16] & 0x20) == 0 
-           && *(vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize - 4) == 0xE12FFF7F)
-            posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
         
+        if(dumpHeader->type == 2)
+        {
+            if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 4)
+            {
+                u32 instr = *(vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize - 4);
+                if(instr == 0xE12FFF7E)
+                    posY = drawString("(kernel panic)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                else if(instr == 0xEF00003C)
+                    posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+            }
+            else if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 2)
+            {
+                u16 instr = *(vu16 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize - 2);
+                if(instr == 0xDF3C)
+                    posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+            }
+        }
+
         if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
         {
             posY += SPACING_Y;
