@@ -63,8 +63,6 @@ clean:
 
 $(dir_out):
 	@mkdir -p "$(dir_out)/luma/payloads"
-	@mkdir -p "$(dir_out)/luma/dumps/arm9"
-	@mkdir -p "$(dir_out)/luma/dumps/arm11"
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher

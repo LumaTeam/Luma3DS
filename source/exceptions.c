@@ -141,7 +141,11 @@ void detectAndProcessExceptionDumps(void)
             findDumpFile(path9, fileName);
             path9[16] = '/';
             memcpy(&path9[17], fileName, sizeof(fileName));
-            fileWrite((void *)dump, path9, size);
+            if(!fileWrite((void *)dump, path9, size))
+            {
+                createDirectory("/luma/dumps/arm9");
+                fileWrite((void *)dump, path9, size);
+            }
         }
         
         else
@@ -149,7 +153,11 @@ void detectAndProcessExceptionDumps(void)
             findDumpFile(path11, fileName);
             path11[17] = '/';
             memcpy(&path11[18], fileName, sizeof(fileName));
-            fileWrite((void *)dump, path11, size);
+            if(!fileWrite((void *)dump, path11, size))
+            {
+                createDirectory("/luma/dumps/arm11");
+                fileWrite((void *)dump, path11, size);
+            }
         }
 
         char arm11Str[] = "Processor:       ARM11 (core X)";
