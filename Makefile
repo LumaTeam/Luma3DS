@@ -58,7 +58,7 @@ clean:
 	@rm -rf $(dir_out) $(dir_build)
 
 $(dir_out):
-	@mkdir -p "$(dir_out)/luma/payloads"
+	@mkdir -p "$(dir_out)"
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
