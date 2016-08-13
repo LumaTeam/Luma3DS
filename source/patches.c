@@ -190,12 +190,23 @@ void patchSvcBreak11(u8 *pos, u32 size)
     *addr = 0xE12FFF7F;
 }
 
-void patchKernel9Panic(u8 *pos, u32 size)
+void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType)
 {
-    const u8 pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x02, 0x30, 0xA0, 0xE1, 0x02, 0x10, 0xA0, 0xE1, 0x05, 0x00, 0xA0, 0xE3};
+    if(firmType == TWL_FIRM || firmType == AGB_FIRM)
+    {
+        u8 *off = pos + ((isN3DS) ? 0x723C : 0x69A8);
+        *(u16 *)off = 0x4778;           //bx pc 
+        *(u16 *)(off + 2) = 0x46C0;     //nop
+        *(u32 *)(off + 4) = 0xE12FFF7E; //bkpt 65534
+    }
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
-    *off = 0xE12FFF7E;
+    else
+    {
+        const u8 pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x02, 0x30, 0xA0, 0xE1, 0x02, 0x10, 0xA0, 0xE1, 0x05, 0x00, 0xA0, 0xE3};
+
+        u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
+        *off = 0xE12FFF7E;
+    }
 }
 
 void patchKernel11Panic(u8 *pos, u32 size)

@@ -45,7 +45,7 @@ void patchFirmWriteSafe(u8 *pos, u32 size);
 void patchExceptionHandlersInstall(u8 *pos, u32 size);
 void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr);
 void patchSvcBreak11(u8 *pos, u32 size);
-void patchKernel9Panic(u8 *pos, u32 size);
+void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType);
 void patchKernel11Panic(u8 *pos, u32 size);
 void patchArm11SvcAccessChecks(u8 *pos, u32 size);
 void patchK11ModuleChecks(u8 *pos, u32 size);

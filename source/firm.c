@@ -358,7 +358,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
-        patchKernel9Panic(arm9Section, section[2].size);
+        patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
         
         //Stub svcBreak11 with "bkpt 65535"
         patchSvcBreak11(arm11Section1, section[1].size);
@@ -393,7 +393,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[3].size);
         patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
-        patchKernel9Panic(arm9Section, section[3].size);
+        patchKernel9Panic(arm9Section, section[3].size, firmType);
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
@@ -418,7 +418,6 @@ static inline void patchSafeFirm(void)
         //Kernel9/Process9 debugging
         patchExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
-        patchKernel9Panic(arm9Section, section[2].size);
     }
 }
 
