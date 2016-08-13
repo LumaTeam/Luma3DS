@@ -76,11 +76,8 @@ void main(void)
     //Attempt to read the configuration file
     needConfig = fileRead(&config, configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
-    if(DEVMODE) 
-    { 
-            detectAndProcessExceptionDumps();
-            installArm9Handlers();
-    }
+    detectAndProcessExceptionDumps();
+    installArm9Handlers();
         
     //Determine if this is a firmlaunch boot
     if(*(vu8 *)0x23F00005)
@@ -345,30 +342,24 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         reimplementSvcBackdoor(arm11Section1, section[1].size);
     }
 
-    if(DEVMODE)
-    {
-        //Apply UNITINFO patch
-        if(DEVMODE == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
-        
-        //Install arm11 exception handlers
-        u32 stackAddress, codeSetOffset;
-        u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
-        installArm11Handlers(exceptionsPage, stackAddress, codeSetOffset);
-        
-        //Kernel9/Process9 debugging
-        patchExceptionHandlersInstall(arm9Section, section[2].size);
-        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
-        patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
-        
-        //Stub svcBreak11 with "bkpt 65535"
-        patchSvcBreak11(arm11Section1, section[1].size);
-        //Stub kernel11panic with "bkpt 65534"
-        patchKernel11Panic(arm11Section1, section[1].size);
-        
-        //Make FCRAM (and VRAM as a side effect) globally executable from arm11 kernel
-        patchKernelFCRAMAndVRAMMappingPermissions(arm11Section1, section[1].size);
-    }
-
+    //Apply UNITINFO patch
+    if(DEV_OPTIONS == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
+    
+    //Install arm11 exception handlers
+    u32 stackAddress, codeSetOffset;
+    u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
+    installArm11Handlers(exceptionsPage, stackAddress, codeSetOffset);
+    
+    //Kernel9/Process9 debugging
+    patchExceptionHandlersInstall(arm9Section, section[2].size);
+    patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+    patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
+    
+    //Stub svcBreak11 with "bkpt 65535"
+    patchSvcBreak11(arm11Section1, section[1].size);
+    //Stub kernel11panic with "bkpt 65534"
+    patchKernel11Panic(arm11Section1, section[1].size);
+    
     if(CONFIG(8))
     {
         patchArm11SvcAccessChecks(arm11Section1, section[1].size);
@@ -388,13 +379,10 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
     
-    if(DEVMODE)
-    {
-        //Kernel9/Process9 debugging
-        patchExceptionHandlersInstall(arm9Section, section[3].size);
-        patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
-        patchKernel9Panic(arm9Section, section[3].size, firmType);
-    }
+    //Kernel9/Process9 debugging
+    patchExceptionHandlersInstall(arm9Section, section[3].size);
+    patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
+    patchKernel9Panic(arm9Section, section[3].size, firmType);
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 }
@@ -413,12 +401,9 @@ static inline void patchSafeFirm(void)
     }
     else patchFirmWriteSafe(arm9Section, section[2].size);
     
-    if(DEVMODE)
-    {
-        //Kernel9/Process9 debugging
-        patchExceptionHandlersInstall(arm9Section, section[2].size);
-        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
-    }
+    //Kernel9/Process9 debugging
+    patchExceptionHandlersInstall(arm9Section, section[2].size);
+    patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
 }
 
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType)

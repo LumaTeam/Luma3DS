@@ -51,7 +51,6 @@ void patchArm11SvcAccessChecks(u8 *pos, u32 size);
 void patchK11ModuleChecks(u8 *pos, u32 size);
 void patchP9AccessChecks(u8 *pos, u32 size);
 void patchUnitInfoValueSet(u8 *pos, u32 size);
-void patchKernelFCRAMAndVRAMMappingPermissions(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 u8 *getUnitInfoValueSet(u8 *pos, u32 size);

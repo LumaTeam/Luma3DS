@@ -291,17 +291,6 @@ void patchUnitInfoValueSet(u8 *pos, u32 size)
     off[3] = 0xE3;
 }
 
-void patchKernelFCRAMAndVRAMMappingPermissions(u8 *pos, u32 size)
-{
-    //Look for MMU config
-    const u8 pattern[] = {0x97, 0x05, 0x00, 0x00, 0x15, 0xE4, 0x00, 0x00};
-
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
-    while(off != NULL && *off != 0x16416) off--;
-
-    if(off != NULL) *off &= ~(1 << 4); //Clear XN bit
-}
-
 void reimplementSvcBackdoor(u8 *pos, u32 size)
 {
     //Official implementation of svcBackdoor
