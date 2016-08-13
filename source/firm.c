@@ -179,14 +179,23 @@ void main(void)
             else
             {   
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
-                   chainload an external payload (verify the PIN if needed)*/
+                   chainload an external payload (the PIN, if any, has been verified)*/
+                
+                if(CONFIG(6) && loadSplash())
+                {
+                    nbChronoStarted = 2;
+                    chrono(0);
+                    chrono(3);
+                    nbChronoStarted = 0;
+                    pressed = HID_PAD;
+                }
+
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
                 if(shouldLoadPayload)
-                    loadPayload(pressed);
+                    loadPayload(pressed, nbChronoStarted != 2);
 
-                //If screens are inited or the corresponding option is set, load splash screen
-                if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
+                if(!CONFIG(6) && loadSplash())
                 {
                     nbChronoStarted = 2;
                     chrono(0);
