@@ -46,8 +46,8 @@ u32 fileRead(void *dest, const char *path)
     {
         unsigned int read;
         size = f_size(&file);
-        if(dest == NULL) return size;
-        f_read(&file, dest, size, &read);
+        if(dest != NULL)
+            f_read(&file, dest, size, &read);
         f_close(&file);
     }
     else size = 0;
@@ -81,7 +81,7 @@ void createDirectory(const char *path)
     f_mkdir(path);
 }
 
-void loadPayload(u32 pressed)
+void loadPayload(u32 pressed, bool needToInitScreens)
 {
     const char *pattern;
 
@@ -107,7 +107,7 @@ void loadPayload(u32 pressed)
 
     if(result == FR_OK && info.fname[0])
     {
-        initScreens();
+        if(needToInitScreens) initScreens();
 
         u32 *const loaderAddress = (u32 *)0x24FFFF00;
 

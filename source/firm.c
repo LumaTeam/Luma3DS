@@ -37,6 +37,8 @@
 #include "i2c.h"
 #include "../build/injector.h"
 
+extern u16 launchedFirmTIDLow[8]; //defined in start.s
+
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
@@ -80,14 +82,14 @@ void main(void)
     installArm9Handlers();
         
     //Determine if this is a firmlaunch boot
-    if(*(vu8 *)0x23F00005)
+    if(launchedFirmTIDLow[5] != 0)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuReboot();
 
         isFirmlaunch = true;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = *(vu8 *)0x23F00009 == '3' ? SAFE_FIRM : (FirmwareType)(*(vu8 *)0x23F00005 - '0');
+        firmType = launchedFirmTIDLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTIDLow[5] - u'0');
 
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
@@ -181,14 +183,23 @@ void main(void)
             else
             {   
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
-                   chainload an external payload (verify the PIN if needed)*/
+                   chainload an external payload (the PIN, if any, has been verified)*/
+                
+                if(CONFIG(6) && loadSplash())
+                {
+                    nbChronoStarted = 2;
+                    chrono(0);
+                    chrono(3);
+                    nbChronoStarted = 0;
+                    pressed = HID_PAD;
+                }
+
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
                 if(shouldLoadPayload)
-                    loadPayload(pressed);
+                    loadPayload(pressed, nbChronoStarted != 2);
 
-                //If screens are inited or the corresponding option is set, load splash screen
-                if((PDN_GPU_CNT != 1 || CONFIG(6)) && loadSplash())
+                if(!CONFIG(6) && loadSplash())
                 {
                     nbChronoStarted = 2;
                     chrono(0);
