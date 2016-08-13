@@ -36,6 +36,8 @@
 #include "i2c.h"
 #include "../build/injector.h"
 
+extern u16 launchedFirmTIDLow[8]; //defined in start.s
+
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
@@ -76,14 +78,14 @@ void main(void)
     needConfig = fileRead(&config, configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
-    if(*(vu8 *)0x23F00005)
+    if(launchedFirmTIDLow[5] != 0)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuReboot();
 
         isFirmlaunch = true;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = *(vu8 *)0x23F00009 == '3' ? SAFE_FIRM : (FirmwareType)(*(vu8 *)0x23F00005 - '0');
+        firmType = launchedFirmTIDLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTIDLow[5] - u'0');
 
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);

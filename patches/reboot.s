@@ -41,26 +41,29 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
 
     read_payload:
         ; Read file
-	mov r0, r7
+        mov r0, r7
         adr r1, bytes_read
         ldr r2, =payload_addr
         cmp r4, #0
         movne r3, #0x12000 ; Skip the first 0x12000 bytes.
         moveq r3, payload_maxsize
-	ldr r6, [sp, #0x3A8-0x198]
-	ldr r6, [r6, #0x28]
-	blx r6
+        ldr r6, [sp, #0x3A8-0x198]
+        ldr r6, [r6, #0x28]
+        blx r6
         cmp r4, #0
         movne r4, #0
         bne read_payload ; Go read the real payload.
 
-    ; Copy the last digits of the wanted firm to the 5th byte of the payload
-    add r2, sp, #0x3A8 - 0x70
-    ldr r0, [r2, #0x27]
-    ldr r1, =payload_addr + 4
-    str r0, [r1]
-    ldr r0, [r2, #0x2B]
-    str r0, [r1, #4]
+    ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
+    add r0, sp, #0x3A8 - 0x70
+    add r0, 0x1A
+    add r1, r0, #0x10
+    ldr r2, =payload_addr + 4
+    copy_TID_low:
+        ldrh r3, [r0], #2
+        strh r3, [r2], #2
+        cmp r0, r1
+        blo copy_TID_low
 
     ; Set kernel state
     mov r0, #0
@@ -81,10 +84,10 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
-	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname:     .dcw "sdmc:/Luma3DS.dat"
-	       .word 0
+bin_fname:  .dcw "sdmc:/arm9loaderhax.bin"
+            .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+dat_fname: .dcw "sdmc:/Luma3DS.dat"
+           .word 0
 
 .align 4
     kernelcode_start:

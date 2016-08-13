@@ -53,7 +53,7 @@ typedef enum ConfigurationStatus
     MODIFY_CONFIGURATION = 1,
     CREATE_CONFIGURATION = 2
 } ConfigurationStatus;
-
+ 
 static inline u32 loadFirm(FirmwareType firmType);
 static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh);
 static inline void patchLegacyFirm(FirmwareType firmType);
