@@ -361,6 +361,12 @@ void setRSAMod0DerivedKeys(void)
 
         aes_setkey(0x25, keyX0x25, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_setkey(0x2F, keyY0x2F, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+        
+        /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function, 
+                    when non-zero it clears this block and continues to do the key generation.
+                    Otherwise when this block was already all-zero, it immediately returns.
+        */
+        memset32((void *)0x01FFCD00, 0, 0x10);
     }
 }
 
