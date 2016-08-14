@@ -143,6 +143,8 @@ void detectAndProcessExceptionDumps(void)
             memcpy(&path9[17], fileName, sizeof(fileName));
             if(!fileWrite((void *)dump, path9, size))
             {
+                createDirectory("/luma");
+                createDirectory("/luma/dumps");
                 createDirectory("/luma/dumps/arm9");
                 fileWrite((void *)dump, path9, size);
             }
@@ -155,6 +157,8 @@ void detectAndProcessExceptionDumps(void)
             memcpy(&path11[18], fileName, sizeof(fileName));
             if(!fileWrite((void *)dump, path11, size))
             {
+                createDirectory("/luma");
+                createDirectory("/luma/dumps");
                 createDirectory("/luma/dumps/arm11");
                 fileWrite((void *)dump, path11, size);
             }
