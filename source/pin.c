@@ -168,4 +168,6 @@ void verifyPin(PINData *in, bool allowQuit)
             else break;
         }
     }
+
+    while(HID_PAD & PIN_BUTTONS);
 }
