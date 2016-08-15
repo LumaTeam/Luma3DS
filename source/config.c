@@ -34,7 +34,7 @@ void configureCFW(const char *configPath)
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
-    const char *multiOptionsText[]  = { "Screen-init brightness: 4( ) 3( ) 2( ) 1( )",
+    const char *multiOptionsText[]  = { "Screen-init brightness: 4( )  3( )  2( )  1( )",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
@@ -51,7 +51,7 @@ void configureCFW(const char *configPath)
         int posY;
         u32 enabled;
     } multiOptions[] = {
-        { .posXs = {26, 31, 36, 41} },
+        { .posXs = {26, 32, 38, 44} },
         { .posXs = {17, 26, 32, 44} }
     };
 
