@@ -56,6 +56,8 @@ u32 waitInput(void)
 
 void mcuReboot(void)
 {
+    if(PDN_GPU_CNT != 1) clearScreens();
+
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
@@ -64,6 +66,8 @@ void mcuReboot(void)
 
 void mcuPowerOff(void)
 {
+    if(PDN_GPU_CNT != 1) clearScreens();
+
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
     
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
