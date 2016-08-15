@@ -81,7 +81,7 @@ void createDirectory(const char *path)
     f_mkdir(path);
 }
 
-void loadPayload(u32 pressed, bool needToInitScreens)
+void loadPayload(u32 pressed)
 {
     const char *pattern;
 
@@ -107,7 +107,7 @@ void loadPayload(u32 pressed, bool needToInitScreens)
 
     if(result == FR_OK && info.fname[0])
     {
-        if(needToInitScreens) initScreens();
+        initScreens();
 
         u32 *const loaderAddress = (u32 *)0x24FFFF00;
 

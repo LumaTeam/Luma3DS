@@ -140,10 +140,8 @@ void clearScreens(void)
     invokeArm11Function(ARM11);
 }
 
-bool initScreens(void)
+void initScreens(void)
 {
-    bool needToInit = PDN_GPU_CNT == 1;
-
     void __attribute__((naked)) ARM11(void)
     {
         //Disable interrupts
@@ -242,18 +240,20 @@ bool initScreens(void)
         WAIT_FOR_ARM9();
     }
 
-    if(needToInit)
+    if(PDN_GPU_CNT == 1)
     {
         flushDCacheRange(&config, 4);
         flushDCacheRange((void *)fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 
+        clearScreens();
+
         //Turn on backlight
         i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
     }
-    else updateBrightness(MULTICONFIG(0));
-
-    clearScreens();
-
-    return needToInit;
+    else
+    {
+        clearScreens();
+        updateBrightness(MULTICONFIG(0));
+    }
 }

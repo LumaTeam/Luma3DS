@@ -311,11 +311,8 @@ void ctrNandInit(void)
 
     if(isN3DS)
     {
-        if(!isDevUnit)
-        {
-            u8 __attribute__((aligned(4))) keyY0x5[0x10] = {0x4D, 0x80, 0x4F, 0x4E, 0x99, 0x90, 0x19, 0x46, 0x13, 0xA2, 0x04, 0xAC, 0x58, 0x44, 0x60, 0xBE};
-            aes_setkey(0x05, keyY0x5, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-        }
+        u8 __attribute__((aligned(4))) keyY0x5[0x10] = {0x4D, 0x80, 0x4F, 0x4E, 0x99, 0x90, 0x19, 0x46, 0x13, 0xA2, 0x04, 0xAC, 0x58, 0x44, 0x60, 0xBE};
+        aes_setkey(0x05, keyY0x5, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         nandSlot = 0x05;
         fatStart = 0x5CAD7;
@@ -361,11 +358,10 @@ void setRSAMod0DerivedKeys(void)
 
         aes_setkey(0x25, keyX0x25, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_setkey(0x2F, keyY0x2F, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-        
+
         /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function, 
                     when non-zero it clears this block and continues to do the key generation.
-                    Otherwise when this block was already all-zero, it immediately returns.
-        */
+                    Otherwise when this block was already all-zero, it immediately returns. */
         memset32((void *)0x01FFCD00, 0, 0x10);
     }
 }
@@ -408,7 +404,7 @@ void arm9Loader(u8 *arm9Section)
 
     //Firm keys
     u8 __attribute__((aligned(4))) keyY[0x10];
-    u8 __attribute__((aligned(4)))  arm9BinCTR[0x10];
+    u8 __attribute__((aligned(4))) arm9BinCTR[0x10];
     u8 arm9BinSlot = a9lVersion ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
@@ -424,7 +420,7 @@ void arm9Loader(u8 *arm9Section)
     if(a9lVersion)
     {
         u8 __attribute__((aligned(4))) keyX[0x10];
-        
+
         if(!isDevUnit)
         {
             const u8 __attribute__((aligned(4))) key1[0x10] = {0x07, 0x29, 0x44, 0x38, 0xF8, 0xC9, 0x75, 0x93, 0xAA, 0x0E, 0x4A, 0xB4, 0xAE, 0x84, 0xC1, 0xD8};
@@ -453,11 +449,10 @@ void arm9Loader(u8 *arm9Section)
 
         //Set keys 0x19..0x1F keyXs
         aes_use_keyslot(0x11);
-        for(u8 slot = 0x19; slot < 0x20; slot++)
+        for(u8 slot = 0x19; slot < 0x20; slot++, keyData[0xF]++)
         {
             aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
             aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-            keyData[0xF] += 1;
         }
     }
 }

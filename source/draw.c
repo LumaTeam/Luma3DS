@@ -51,6 +51,8 @@ bool loadSplash(void)
     fileRead(fb->top_left, "/luma/splash.bin");
     fileRead(fb->bottom, "/luma/splashbottom.bin");
 
+    chrono(3);
+
     return true;
 }
 
