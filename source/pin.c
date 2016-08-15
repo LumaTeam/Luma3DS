@@ -109,6 +109,8 @@ PINData newPin(void)
             return pin;
         }
     }
+    
+    while(HID_PAD & PIN_BUTTONS);
 }
 
 void verifyPin(PINData *in, bool allowQuit)
@@ -168,6 +170,4 @@ void verifyPin(PINData *in, bool allowQuit)
             else break;
         }
     }
-
-    while(HID_PAD & PIN_BUTTONS);
 }
