@@ -147,6 +147,8 @@ void main(void)
 
                 if(!pinExists && CONFIG(7)) pin = newPin();
 
+                chrono(2);
+
                 //Update pressed buttons
                 pressed = HID_PAD;
             }
