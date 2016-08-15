@@ -42,10 +42,14 @@
     ; Save the value of all registers
     push {r0-r12}
 
+    ; Clear all the caches, just to be safe
+    mcr p15, 0, r6, c7, c14, 0
+    mcr p15, 0, r6, c7, c5, 0
+
     ldr r0, [r0, #(0x80 - 0x7C)] ; Load the .text address
     ldr r7, [r4]
+    ldr r2, [r7, #0x18]          ; Load the size of the .text
     ldr r8, [r7, #0x200]         ; Load the low title id of the current NCCH
-    ldr r2, [r7, #0x18]
     mov r5, r0
     add r11, r5, r2              ; Max bounds of the memory region
 
@@ -53,63 +57,67 @@
     cmp r8, r9           ; Compare the low title id to the id of the sm module
     bne fs_patch         ; Skip if they're not the same
 
-    ldr r7, =0xE5901024   ; mov r6, r2
-    ldr r8, =0xE1B02001   ; mov r7, #0
-    ldr r9, =0x0A00000A   ; ldr r1, [r2, #0x24]
-    ldr r10, =0xE5915014  ; movs r2, r1
+    ldr r7, =0xE1A01006   ; mov r1, r6
+    ldr r8, =0xE1A00005   ; mov r0, r5
+    ldr r9, =0xE3500000   ; cmp r0, #0
+    ldr r10, =0xE2850004  ; add r0, r5, #4
     
-    loop_sm: ; patch adapted from BootNTR
-        cmp r5, r11
-        bhs out
+    loop:
+        cmp r11, r5
+        blo out         ; Check if we didn't go past the bounds of the memory region
         ldr r6, [r5]
         cmp r6, r7
-        bne loop_sm_continue
-        ldr r6, [r5, #4]
-        cmp r6, r8
-        bne loop_sm_continue
-        ldr r6, [r5, #8]
-        cmp r6, r9
-        bne loop_sm_continue
-        ldr r6, [r5, #12]
-        cmp r6, r10
-        bne loop_sm_continue
-            ldr r9, =0xE3A00002   ; mov r0, #2
-            ldr r10, =0xE12FFF1E  ; bx lr
-            str r9, [r5, #-8]
-            str r10, [r5, #-4]
-            b out
-        loop_sm_continue:
-        add r5, r5, #4
-        b loop_sm
+        ldreq r6, [r5, #4]
+        cmpeq r6, r8
+        ldreq r6, [r5, #12]
+        cmpeq r6, r9
+        ldreq r6, [r5, #24]
+        cmpeq r6, r10
+        moveq r8, r5
+        addne r5, r5, #4
+        bne loop
 
+    ; r8 now contains the start address of the pattern we found
+
+    ; Write NOPs to the four instructions we want to patch
+    ldr r9, =0xE320F000   ; nop
+    str r9, [r8, #8]      ; Patch the bl
+    str r9, [r8, #12]     ; Patch the cmp
+    str r9, [r8, #16]     ; Patch the ldreq
+    str r9, [r8, #20]     ; Patch the beq
+    b out
 
     fs_patch: ; patch adapted from BootNTR
     ldr r9, =0x00001102  ; Low title id of the fs module
-    cmp r8, r9           ; Compare the low title id to the id of the fs module
+    cmp r8, r9           ; Compare the low title id to the id of the sm module
     bne out              ; Skip if they're not the same
 
     ldr r7, =0x4618     ; mov r0, r3
     ldr r8, =0x3481     ; add r4, #0x81
+
     loop_fs:
-        cmp r5, r11
-        bhs out
+        cmp r11, r5
+        blo out
         ldrh r6, [r5]
         cmp r6, r7
-        bne loop_fs_continue
-        ldrh r6, [r5, #2]
-        cmp r6, r8
-        bne loop_fs_continue
-            ldr r9, =0x2001     ; mov r0, #1
-            ldr r10, =0x4770    ; bx lr
-            strh r9, [r5, #-8]
-            strh r10, [r5, #-6]
-            b out
-        loop_fs_continue:
-        add r5, #2
-        b loop_fs
+        ldreqh r6, [r5, #2]
+        cmpeq r6, r8
+        subeq r8, r5, #8
+        addne r5, #2
+        bne loop_fs
+
+    ; r8 now contains the start address of the pattern we found
+    ldr r9, =0x2001     ; mov r0, #1
+    ldr r10, =0x4770    ; bx lr
+    strh r9, [r8]
+    strh r10, [r8, #2]
     
     out:
     pop {r0-r12}               ; Restore the registers we used
+
+    ; Clear all the caches again, just to be safe
+    mcr p15, 0, r6, c7, c14, 0
+    mcr p15, 0, r6, c7, c5, 0
 
     ldr r0, [r4]               ; Execute the instruction we overwrote in our detour
 
