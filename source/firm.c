@@ -157,12 +157,11 @@ void main(void)
                 firmSource = FIRMWARE_SYSNAND;
             }
             else
-            {   
-                /* If L and R/A/Select or one of the single payload buttons are pressed,
-                   chainload an external payload (the PIN, if any, has been verified)*/
-
+            {
                 if(CONFIG(6) && loadSplash()) pressed = HID_PAD;
 
+                /* If L and R/A/Select or one of the single payload buttons are pressed,
+                   chainload an external payload (the PIN, if any, has been verified)*/
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
                 if(shouldLoadPayload) loadPayload(pressed);
