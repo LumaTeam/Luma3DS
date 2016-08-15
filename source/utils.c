@@ -110,7 +110,6 @@ void chrono(u32 seconds)
 void error(const char *message)
 {
     initScreens();
-    clearScreens();
 
     drawString("An error has occurred:", 10, 10, COLOR_RED);
     int posY = drawString(message, 10, 30, COLOR_WHITE);

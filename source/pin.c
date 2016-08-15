@@ -138,11 +138,7 @@ void verifyPin(PINData *in, bool allowQuit)
         if(!allowQuit) pressed &= ~BUTTON_START;
         if(!pressed) continue;
 
-        if(pressed & BUTTON_START)
-        {
-            clearScreens();
-            mcuPowerOff();
-        }
+        if(pressed & BUTTON_START) mcuPowerOff();
 
         char key = PINKeyToLetter(pressed);
         enteredPassword[cnt++] = (u8)key; // add character to password.
