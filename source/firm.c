@@ -133,26 +133,22 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
+            bool pinExists = CONFIG(7) && readPin(&pin);
+
+            //If we get here we should check the PIN (if it exists) in all cases
+            if(pinExists) verifyPin(&pin, true);
+
             //If no configuration file exists or SELECT is held, load configuration menu
-            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)),
-                 pinExists = CONFIG(7) && readPin(&pin);
+            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
 
-            if(pinExists || shouldLoadConfigurationMenu)
+            if(shouldLoadConfigurationMenu)
             {
-                initScreens();
+                configureCFW(configPath);
 
-                //If we get here we should check the PIN (if it exists) in all cases
-                if(pinExists) verifyPin(&pin, true);
+                if(!pinExists && CONFIG(7)) pin = newPin();
 
-                if(shouldLoadConfigurationMenu)
-                {
-                    configureCFW(configPath);
-
-                    if(!pinExists && CONFIG(7)) pin = newPin();
-
-                    //Update pressed buttons
-                    pressed = HID_PAD;
-                }
+                //Update pressed buttons
+                pressed = HID_PAD;
             }
 
             if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)

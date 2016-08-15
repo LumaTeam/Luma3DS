@@ -113,7 +113,7 @@ PINData newPin(void)
 
 void verifyPin(PINData *in, bool allowQuit)
 {
-    clearScreens();
+    initScreens();
 
     drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
     drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);

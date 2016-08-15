@@ -29,7 +29,8 @@
 
 void configureCFW(const char *configPath)
 {
-    clearScreens();
+    initScreens();
+
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
