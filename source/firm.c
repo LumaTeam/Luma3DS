@@ -56,8 +56,7 @@ void main(void)
          isA9lh;
 
     u32 newConfig,
-        emuHeader,
-        nbChronoStarted = 0;
+        emuHeader;
 
     FirmwareType firmType;
     FirmwareSource nandType;
@@ -135,12 +134,12 @@ void main(void)
         if(needConfig != DONT_CONFIGURE)
         {
             //If no configuration file exists or SELECT is held, load configuration menu
-            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
-            bool pinExists = CONFIG(7) && readPin(&pin);
+            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1)),
+                 pinExists = CONFIG(7) && readPin(&pin);
 
             if(pinExists || shouldLoadConfigurationMenu)
             {
-                bool needToDeinit = initScreens();
+                initScreens();
 
                 //If we get here we should check the PIN (if it exists) in all cases
                 if(pinExists) verifyPin(&pin, true);
@@ -154,20 +153,10 @@ void main(void)
                     //Zero the last booted FIRM flag
                     CFG_BOOTENV = 0;
 
-                    nbChronoStarted = 1;
-                    chrono(0);
                     chrono(2);
 
                     //Update pressed buttons
                     pressed = HID_PAD;
-                }
-
-                if(needToDeinit)
-                {
-                    //Turn off backlight
-                    i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x16);
-                    deinitScreens();
-                    PDN_GPU_CNT = 1;
                 }
             }
 
@@ -183,22 +172,19 @@ void main(void)
                 
                 if(CONFIG(6) && loadSplash())
                 {
-                    nbChronoStarted = 2;
-                    chrono(0);
                     chrono(3);
-                    nbChronoStarted = 0;
+
+                    //Update pressed buttons
                     pressed = HID_PAD;
                 }
 
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
-                if(shouldLoadPayload)
-                    loadPayload(pressed, nbChronoStarted != 2);
+                if(shouldLoadPayload) loadPayload(pressed);
 
                 if(!CONFIG(6) && loadSplash())
                 {
-                    nbChronoStarted = 2;
-                    chrono(0);
+                    chrono(3);
                 }
 
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
@@ -264,12 +250,6 @@ void main(void)
             //Skip patching on unsupported O3DS AGB/TWL FIRMs
             if(isN3DS || firmVersion >= (firmType == TWL_FIRM ? 0x16 : 0xB)) patchLegacyFirm(firmType);
             break;
-    }
-
-    if(nbChronoStarted)
-    {
-        if(nbChronoStarted == 2) chrono(3);
-        stopChrono();
     }
 
     launchFirm(firmType, isFirmlaunch);

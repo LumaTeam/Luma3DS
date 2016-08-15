@@ -185,7 +185,7 @@ u32 getLoader(u8 *pos, u32 *loaderSize)
     u8 *off = pos;
     u32 size;
 
-    while(1)
+    while(true)
     {
         size = *(u32 *)(off + 0x104) * 0x200;
         if(*(u32 *)(off + 0x200) == 0x64616F6C) break;

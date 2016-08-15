@@ -84,14 +84,19 @@ static inline void startChrono(u64 initialTicks)
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
 }
 
+static inline void stopChrono(void)
+{
+    for(u32 i = 0; i < 4; i++) REG_TIMER_CNT(i) &= ~0x80;
+}
+
 void chrono(u32 seconds)
 {
-    static u64 startingTicks = 0;
+    startChrono(0);
 
-    if(!startingTicks) startChrono(0);
+    u64 startingTicks = 0;
+    for(u32 i = 0; i < 4; i++) startingTicks |= REG_TIMER_VAL(i) << (16 * i);
 
     u64 res;
-
     do
     {
         res = 0;
@@ -99,12 +104,7 @@ void chrono(u32 seconds)
     }
     while(res - startingTicks < seconds * TICKS_PER_SEC);
 
-    if(!seconds) startingTicks = res;
-}
-
-void stopChrono(void)
-{
-    for(u32 i = 0; i < 4; i++) REG_TIMER_CNT(i) &= ~0x80;
+    stopChrono();
 }
 
 void error(const char *message)

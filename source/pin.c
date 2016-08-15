@@ -39,9 +39,10 @@ bool readPin(PINData *out)
 {
     u8 __attribute__((aligned(4))) zeroes[16] = {0};
     u8 __attribute__((aligned(4))) tmp[32] = {0};
+
     if(fileRead(out, "/luma/pin.bin") != sizeof(PINData)) return false;
-    else if(memcmp(out->magic, "PINF", 4) != 0) return false;
-    
+    if(memcmp(out->magic, "PINF", 4) != 0) return false;
+
     computePINHash(tmp, zeroes, 1);
     return memcmp(out->testHash, tmp, 32) == 0; //test vector verification (SD card has (or hasn't) been used on another console)
 }
@@ -62,16 +63,15 @@ PINData newPin(void)
 
     drawString("Enter your NEW PIN: ", 10, 10, COLOR_WHITE);
 
-    u32 pressed = 0;
-
     // Set the default value as 0x00 so we can check if there are any unentered characters.
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0}; // pad to AES block length
 
+    u32 cnt = 0;
     int charDrawPos = 20 * SPACING_X;
-    int cnt = 0;
-    
+
     while(true)
     {
+        u32 pressed;
         do
         {
             pressed = waitInput();
@@ -89,9 +89,8 @@ PINData newPin(void)
         charDrawPos += 2 * SPACING_X;
 
         // we leave the rest of the array zeroed out.
-        if (cnt >= PIN_LENGTH)
+        if(cnt >= PIN_LENGTH)
         {
-
             PINData pin = {0};
             u8 __attribute__((aligned(4))) tmp[32] = {0};
             u8 __attribute__((aligned(4))) zeroes[16] = {0};
@@ -119,16 +118,16 @@ void verifyPin(PINData *in, bool allowQuit)
     drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
     drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
-    u32 pressed = 0;
-
     // Set the default characters as 0x00 so we can check if there are any unentered characters.
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
 
+    u32 cnt = 0;
     bool unlock;
-    int charDrawPos = 5 * SPACING_X, cnt = 0;
+    int charDrawPos = 5 * SPACING_X;
 
     while(true)
     {
+        u32 pressed;
         do
         {
             pressed = waitInput();
@@ -159,22 +158,18 @@ void verifyPin(PINData *in, bool allowQuit)
             computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
             unlock = memcmp(in->hash, tmp, 32) == 0;
 
-            if (!unlock)
-            {   
-                // re zero out all 16 just in case.
-                memset32(enteredPassword, 0, 16);
-
-                pressed = 0;
+            if(!unlock)
+            {
                 charDrawPos = 5 * SPACING_X;
                 cnt = 0;
-                
+
                 clearScreens();
-          
+
                 drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
                 drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
                 drawString("Wrong pin! Try again!", 10, 10 + 3 * SPACING_Y, COLOR_RED); 
             }
-            else return;
+            else break;
         }
     }
 }
