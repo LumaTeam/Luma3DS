@@ -1,12 +1,12 @@
 out
 build
 loader/build
-screeninit/build
 injector/build
+exceptions/arm9/build
+exceptions/arm11/build
 *.bin
 *.3dsx
 *.smdh
 *.o
 *.d
 *.elf
-*.bat
