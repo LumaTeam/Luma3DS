@@ -201,4 +201,6 @@ void configureCFW(const char *configPath)
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);
+
+    chrono(2);
 }

@@ -150,11 +150,6 @@ void main(void)
 
                     if(!pinExists && CONFIG(7)) pin = newPin();
 
-                    //Zero the last booted FIRM flag
-                    CFG_BOOTENV = 0;
-
-                    chrono(2);
-
                     //Update pressed buttons
                     pressed = HID_PAD;
                 }
@@ -169,23 +164,14 @@ void main(void)
             {   
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload (the PIN, if any, has been verified)*/
-                
-                if(CONFIG(6) && loadSplash())
-                {
-                    chrono(3);
 
-                    //Update pressed buttons
-                    pressed = HID_PAD;
-                }
+                if(CONFIG(6) && loadSplash()) pressed = HID_PAD;
 
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
-                if(!CONFIG(6) && loadSplash())
-                {
-                    chrono(3);
-                }
+                if(!CONFIG(6)) loadSplash();
 
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 if(pressed & BUTTON_R1)
