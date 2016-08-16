@@ -24,4 +24,6 @@
 _start:
     b main
 
+.global payloadSize
+payloadSize:
     .word 0

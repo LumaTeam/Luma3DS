@@ -27,7 +27,7 @@
 
 void locateEmuNAND(u32 *off, u32 *head, FirmwareSource *emuNAND)
 {
-    static u8 *const temp = (u8 *)0x24300000;
+    static u8 temp[0x200];
 
     const u32 nandSize = getMMCDevice(0)->total_size;
     u32 nandOffset = *emuNAND == FIRMWARE_EMUNAND ? 0 :
