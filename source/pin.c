@@ -31,7 +31,6 @@
 #include "memory.h"
 #include "buttons.h"
 #include "fs.h"
-#include "i2c.h"
 #include "pin.h"
 #include "crypto.h"
 
@@ -44,6 +43,7 @@ bool readPin(PINData *out)
     if(memcmp(out->magic, "PINF", 4) != 0) return false;
 
     computePINHash(tmp, zeroes, 1);
+
     return memcmp(out->testHash, tmp, 32) == 0; //test vector verification (SD card has (or hasn't) been used on another console)
 }
 
@@ -57,7 +57,7 @@ static inline char PINKeyToLetter(u32 pressed)
     return keys[31 - i];
 }
 
-PINData newPin(void)
+void newPin(void)
 {
     clearScreens();
 
@@ -106,7 +106,6 @@ PINData newPin(void)
             memcpy(pin.hash, tmp, 32);
 
             fileWrite(&pin, "/luma/pin.bin", sizeof(PINData));
-            return pin;
         }
     }
     

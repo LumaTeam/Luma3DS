@@ -30,9 +30,7 @@
 
 #include "types.h"
 
-#ifndef PIN_LENGTH
-    #define PIN_LENGTH  4
-#endif
+#define PIN_LENGTH  4
 
 typedef struct __attribute__((packed))
 {
@@ -44,6 +42,5 @@ typedef struct __attribute__((packed))
 } PINData;
 
 bool readPin(PINData* out);
-
-PINData newPin(void);
+void newPin(void);
 void verifyPin(PINData *in, bool allowQuit);
