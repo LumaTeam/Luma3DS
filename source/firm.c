@@ -34,7 +34,6 @@
 #include "screen.h"
 #include "buttons.h"
 #include "pin.h"
-#include "i2c.h"
 #include "../build/injector.h"
 
 extern u16 launchedFirmTIDLow[8]; //defined in start.s
@@ -48,8 +47,6 @@ u32 config,
 bool isN3DS, isDevUnit;
 
 FirmwareSource firmSource;
-
-PINData pin;
 
 void main(void)
 {
@@ -137,10 +134,12 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
+            PINData pin;
+
             bool pinExists = CONFIG(7) && readPin(&pin);
 
             //If we get here we should check the PIN (if it exists) in all cases
-            if(pinExists) verifyPin(&pin, true);
+            if(pinExists) verifyPin(&pin);
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
@@ -149,7 +148,7 @@ void main(void)
             {
                 configureCFW(configPath);
 
-                if(!pinExists && CONFIG(7)) pin = newPin();
+                if(!pinExists && CONFIG(7)) newPin();
 
                 chrono(2);
 

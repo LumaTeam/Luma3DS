@@ -31,7 +31,6 @@
 #include "memory.h"
 #include "buttons.h"
 #include "fs.h"
-#include "i2c.h"
 #include "pin.h"
 #include "crypto.h"
 
@@ -44,6 +43,7 @@ bool readPin(PINData *out)
     if(memcmp(out->magic, "PINF", 4) != 0) return false;
 
     computePINHash(tmp, zeroes, 1);
+
     return memcmp(out->testHash, tmp, 32) == 0; //test vector verification (SD card has (or hasn't) been used on another console)
 }
 
@@ -57,7 +57,7 @@ static inline char PINKeyToLetter(u32 pressed)
     return keys[31 - i];
 }
 
-PINData newPin(void)
+void newPin(void)
 {
     clearScreens();
 
@@ -69,7 +69,7 @@ PINData newPin(void)
     u32 cnt = 0;
     int charDrawPos = 20 * SPACING_X;
 
-    while(true)
+    while(cnt < PIN_LENGTH)
     {
         u32 pressed;
         do
@@ -87,33 +87,28 @@ PINData newPin(void)
         // visualize character on screen.
         drawCharacter(key, 10 + charDrawPos, 10, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
-
-        // we leave the rest of the array zeroed out.
-        if(cnt >= PIN_LENGTH)
-        {
-            PINData pin = {0};
-            u8 __attribute__((aligned(4))) tmp[32] = {0};
-            u8 __attribute__((aligned(4))) zeroes[16] = {0};
-
-            memcpy(pin.magic, "PINF", 4);
-            pin.formatVersionMajor = 1;
-            pin.formatVersionMinor = 0;
-
-            computePINHash(tmp, zeroes, 1);
-            memcpy(pin.testHash, tmp, 32);
-
-            computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
-            memcpy(pin.hash, tmp, 32);
-
-            fileWrite(&pin, "/luma/pin.bin", sizeof(PINData));
-            return pin;
-        }
     }
+
+    PINData pin = {0};
+    u8 __attribute__((aligned(4))) tmp[32] = {0};
+    u8 __attribute__((aligned(4))) zeroes[16] = {0};
+
+    memcpy(pin.magic, "PINF", 4);
+    pin.formatVersionMajor = 1;
+    pin.formatVersionMinor = 0;
+
+    computePINHash(tmp, zeroes, 1);
+    memcpy(pin.testHash, tmp, 32);
+
+    computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
+    memcpy(pin.hash, tmp, 32);
+
+    fileWrite(&pin, "/luma/pin.bin", sizeof(PINData));
     
     while(HID_PAD & PIN_BUTTONS);
 }
 
-void verifyPin(PINData *in, bool allowQuit)
+void verifyPin(PINData *in)
 {
     initScreens();
 
@@ -124,10 +119,10 @@ void verifyPin(PINData *in, bool allowQuit)
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
 
     u32 cnt = 0;
-    bool unlock;
+    bool unlock = false;
     int charDrawPos = 5 * SPACING_X;
 
-    while(true)
+    while(!unlock)
     {
         u32 pressed;
         do
@@ -136,8 +131,8 @@ void verifyPin(PINData *in, bool allowQuit)
         }
         while(!(pressed & PIN_BUTTONS));
 
-        pressed &= PIN_BUTTONS;// & ~BUTTON_START;
-        if(!allowQuit) pressed &= ~BUTTON_START;
+        pressed &= PIN_BUTTONS & ~BUTTON_START;
+
         if(!pressed) continue;
 
         if(pressed & BUTTON_START) mcuPowerOff();
@@ -167,7 +162,6 @@ void verifyPin(PINData *in, bool allowQuit)
                 drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
                 drawString("Wrong pin! Try again!", 10, 10 + 3 * SPACING_Y, COLOR_RED); 
             }
-            else break;
         }
     }
 }
