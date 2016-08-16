@@ -135,7 +135,7 @@ void main(void)
             bool pinExists = CONFIG(7) && readPin(&pin);
 
             //If we get here we should check the PIN (if it exists) in all cases
-            if(pinExists) verifyPin(&pin, true);
+            if(pinExists) verifyPin(&pin);
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));

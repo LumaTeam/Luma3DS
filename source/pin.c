@@ -108,7 +108,7 @@ void newPin(void)
     while(HID_PAD & PIN_BUTTONS);
 }
 
-void verifyPin(PINData *in, bool allowQuit)
+void verifyPin(PINData *in)
 {
     initScreens();
 
@@ -131,8 +131,8 @@ void verifyPin(PINData *in, bool allowQuit)
         }
         while(!(pressed & PIN_BUTTONS));
 
-        pressed &= PIN_BUTTONS;// & ~BUTTON_START;
-        if(!allowQuit) pressed &= ~BUTTON_START;
+        pressed &= PIN_BUTTONS & ~BUTTON_START;
+
         if(!pressed) continue;
 
         if(pressed & BUTTON_START) mcuPowerOff();

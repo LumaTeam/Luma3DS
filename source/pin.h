@@ -43,4 +43,4 @@ typedef struct __attribute__((packed))
 
 bool readPin(PINData* out);
 void newPin(void);
-void verifyPin(PINData *in, bool allowQuit);
+void verifyPin(PINData *in);
