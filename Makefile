@@ -13,6 +13,7 @@ OC := arm-none-eabi-objcopy
 
 name := Luma3DS
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
+commit := $(shell git rev-parse --short=8 HEAD)
 
 dir_source := source
 dir_patches := patches
@@ -34,7 +35,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/k11modulespatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -100,6 +101,11 @@ $(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
 	@armips $<
 	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
 
+$(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n svcGetCFWInfo $(@D)/svcGetCFWInfo.bin
+
 $(dir_build)/injector.h: $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $(dir_injector)
@@ -119,6 +125,7 @@ $(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
 	
 $(dir_build)/memory.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) (dev) configuration\""
+$(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 	@mkdir -p "$(@D)"

@@ -25,10 +25,14 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 #include "../build/k11modulespatch.h"
+#include "../build/svcGetCFWInfopatch.h"
+#include "fs.h"
 
 static u32 *arm11ExceptionsPage = NULL;
 static u32 *arm11SvcTable = NULL;
 static u32 *arm11SvcHandler = NULL;
+
+static u8 *freeK11Space = NULL; //other than the one used for svcBackdoor
 
 static void findArm11ExceptionsPageAndSvcHandlerAndTable(u8 *pos, u32 size)
 {
@@ -40,6 +44,28 @@ static void findArm11ExceptionsPageAndSvcHandlerAndTable(u8 *pos, u32 size)
         u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
         arm11SvcHandler = arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
         while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
+    }
+}
+
+static void findFreeK11Space(u8 *pos, u32 size)
+{
+    if(freeK11Space == NULL)
+    {
+        const u8 bogus_pattern[] = { 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 
+                                     0x2F, 0xE1, 0x00, 0x10, 0xA0, 0xE3, 0x00, 0x10, 0xC0, 0xE5, 
+                                     0x1E, 0xFF, 0x2F, 0xE1 };
+        
+        u32 *someSpace = (u32 *)memsearch(pos, bogus_pattern, size, 24);
+
+        // We couldn't find the place where to begin our search of an empty block
+        if (someSpace == NULL)
+            return;
+
+        // Advance until we reach the padding area (filled with 0xFF)
+        u32 *freeSpace;
+        for(freeSpace = someSpace; *freeSpace != 0xFFFFFFFF; freeSpace++);
+
+        freeK11Space = (u8 *)freeSpace;
     }
 }
 
@@ -233,21 +259,10 @@ void patchK11ModuleChecks(u8 *pos, u32 size)
     // We have to detour a function in the ARM11 kernel because builtin modules
     // are compressed in memory and are only decompressed at runtime.
 
-    // Find some padding space to add our code
-    const u8 bogus_pattern[] = { 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 
-                                 0x2F, 0xE1, 0x00, 0x10, 0xA0, 0xE3, 0x00, 0x10, 0xC0, 0xE5, 
-                                 0x1E, 0xFF, 0x2F, 0xE1 };
+    findFreeK11Space(pos, size);
+    u8 *freeSpace = freeK11Space;
+    freeK11Space += k11modules_size;
     
-    u32 *someSpace = (u32 *)memsearch(pos, bogus_pattern, size, 24);
-
-    // We couldn't find the place where to begin our search of an empty block
-    if (someSpace == NULL)
-        return;
-
-    // Advance until we reach the padding area (filled with 0xFF)
-    u32 *freeSpace;
-    for(freeSpace = someSpace; *freeSpace != 0xFFFFFFFF; freeSpace++);
-
     // Inject our code into the free space
     memcpy(freeSpace, k11modules, k11modules_size);
 
@@ -316,6 +331,52 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
 
         arm11SvcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)arm11ExceptionsPage);
     }
+}
+
+extern u32 config;
+
+void implementSvcGetCFWInfo(u8 *pos, u32 size)
+{
+    typedef struct __attribute__((packed))
+    {
+        char magic[4];
+        
+        u8 versionMajor;
+        u8 versionMinor;
+        u8 versionBuild;
+        u8 flags;
+
+        u32 commitHash;
+
+        u32 config;
+    } CFWInfo;
+
+    const char *rev = REVISION;
+    bool isRelease = false;
+
+    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
+    findFreeK11Space(pos, size);
+    
+    memcpy(freeK11Space, svcGetCFWInfo, svcGetCFWInfo_size);
+
+    CFWInfo *info = (CFWInfo *)memsearch(freeK11Space, "LUMA", svcGetCFWInfo_size, 4);
+
+    info->commitHash = COMMIT_HASH;
+    info->config = config;
+    info->versionMajor = (u8)(rev[1] - '0');
+    info->versionMinor = (u8)(rev[3] - '0');
+    if(rev[4] == '.')
+    {
+        info->versionBuild = (u8)(rev[5] - '0');
+        isRelease = rev[6] == 0;
+    }
+    else
+        isRelease = rev[4] == 0;
+
+    info->flags = 1 /* dev branch */ | (((isRelease) ? 1 : 0) << 1) /* is release */;
+
+    arm11SvcTable[0x2E] = 0xFFF00000 + freeK11Space - pos; //stubbed svc
+    freeK11Space += svcGetCFWInfo_size;
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)

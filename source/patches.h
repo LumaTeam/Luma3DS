@@ -52,5 +52,6 @@ void patchK11ModuleChecks(u8 *pos, u32 size);
 void patchP9AccessChecks(u8 *pos, u32 size);
 void patchUnitInfoValueSet(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);
+void implementSvcGetCFWInfo(u8 *pos, u32 size);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 u8 *getUnitInfoValueSet(u8 *pos, u32 size);

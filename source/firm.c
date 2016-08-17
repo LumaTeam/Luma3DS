@@ -339,6 +339,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchK11ModuleChecks(arm11Section1, section[1].size);
         patchP9AccessChecks(arm9Section, section[2].size);
     }
+
+    implementSvcGetCFWInfo((u8 *)firm + section[1].offset, section[1].size);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)

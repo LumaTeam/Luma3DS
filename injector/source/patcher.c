@@ -3,11 +3,39 @@
 #include "patcher.h"
 #include "ifile.h"
 
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    
+    u8 versionMajor;
+    u8 versionMinor;
+    u8 versionBuild;
+    u8 flags; /* bit 0: dev branch; bit 1: is release */
+
+    u32 commitHash;
+
+    u32 config;
+} CFWInfo;
+
+CFWInfo info = {0};
+
+int __attribute__((naked)) svcGetCFWInfo(CFWInfo __attribute__((unused)) *out)
+{
+    __asm__ volatile("svc 0x2E; bx lr");
+}
+
+static void loadCFWInfo(void)
+{
+    static bool infoLoaded = false;
+    if(!infoLoaded) svcGetCFWInfo(&info);
+    infoLoaded = true;
+}
+
 #ifndef PATH_MAX
 #define PATH_MAX 255
-#define CONFIG(a) (((loadConfig() >> (a + 16)) & 1) != 0)
-#define MULTICONFIG(a) ((loadConfig() >> (a * 2 + 6)) & 3)
-#define BOOTCONFIG(a, b) ((loadConfig() >> a) & b)
+#define CONFIG(a) (((info.config >> (a + 16)) & 1) != 0)
+#define MULTICONFIG(a) ((info.config >> (a * 2 + 6)) & 3)
+#define BOOTCONFIG(a, b) ((info.config >> a) & b)
 #endif
 
 static int memcmp(const void *buf1, const void *buf2, u32 size)
@@ -105,24 +133,6 @@ static bool secureInfoExists(void)
     }
 
     return exists;
-}
-
-static u32 loadConfig(void)
-{
-    static u32 config = 0;
-
-    if(!config)
-    {
-        IFile file;
-        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/luma/config.bin", FS_OPEN_READ)))
-        {
-            u64 total;
-            if(R_SUCCEEDED(IFile_Read(&file, &total, &config, 4))) config |= 1 << 4;
-            IFile_Close(&file);
-        }
-    }
-
-    return config;
 }
 
 static void progIdToStr(char *strEnd, u64 progId)
@@ -319,6 +329,7 @@ static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOff
 
 void patchCode(u64 progId, u8 *code, u32 size)
 {
+    loadCFWInfo();
     switch(progId)
     {
         case 0x0004003000008F02LL: // USA Menu
