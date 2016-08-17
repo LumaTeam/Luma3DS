@@ -301,6 +301,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Restore svcBackdoor
         reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
     }
+
+    implementSvcGetCFWInfo((u8 *)firm + section[1].offset, section[1].size);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
