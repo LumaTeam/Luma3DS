@@ -25,7 +25,6 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
-#include "fs.h"
 
 static u32 *arm11ExceptionsPage = NULL;
 static u32 *arm11SvcTable = NULL;
