@@ -90,6 +90,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
         
     //Dump stack in place
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
+    final += dumpHeader.stackDumpSize;
 
     vu8 *currentKProcess = (cannotAccessVA((u8 *)0xFFFF9004)) ? NULL : *(vu8 **)0xFFFF9004;
     vu8 *currentKCodeSet = (currentKProcess != NULL) ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
