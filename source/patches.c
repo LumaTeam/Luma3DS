@@ -24,9 +24,8 @@
 #include "memory.h"
 #include "config.h"
 #include "../build/rebootpatch.h"
-#include "../build/k11modulespatch.h"
 #include "../build/svcGetCFWInfopatch.h"
-#include "fs.h"
+#include "../build/k11modulespatch.h"
 
 static u32 *arm11ExceptionsPage = NULL;
 static u32 *arm11SvcTable = NULL;
