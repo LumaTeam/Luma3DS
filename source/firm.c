@@ -332,25 +332,73 @@ static inline void patchSafeFirm(void)
     else patchFirmWriteSafe(arm9Section, section[2].size);
 }
 
-static inline void copySection0AndInjectLoader(void)
+static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 {
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
 
-    u32 loaderSize;
-    u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
+    struct
+    {
+        u32 size;
+        char name[8];
+        const u8 *addr;
+    } modules[5] = {{0}};
 
-    memcpy(section[0].address, arm11Section0, loaderOffset);
-    memcpy(section[0].address + loaderOffset, injector, injector_size);
-    memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+    u8 *pos = arm11Section0, *end = pos + section[0].size;
+    u32 n = 0;
+
+    u32 loaderIndex = 0, twlBgIndex = 0;
+    
+    while(pos < end)
+    {
+        modules[n].addr = pos;
+        modules[n].size = *(u32 *)(pos + 0x104) * 0x200;
+        
+        memcpy(modules[n].name, pos + 0x200, 8);
+        pos += modules[n].size;
+
+        if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
+        else if(firmType == TWL_FIRM && memcmp(modules[n].name, "TwlBg", 6) == 0) twlBgIndex = n;
+
+        n++;
+    }
+
+    u32 twlBgSize = 0;
+
+    if(firmType == NATIVE_FIRM)
+    {
+        modules[loaderIndex].size = injector_size;
+        modules[loaderIndex].addr = injector;
+    }
+
+    else if(firmType == TWL_FIRM)
+    {
+        twlBgSize = getFileSize("/luma/TwlBg.cxi");
+        if(twlBgSize != 0)
+        {
+            modules[twlBgIndex].size = twlBgSize;
+            modules[twlBgIndex].addr = NULL;
+        } 
+    }
+
+    pos = section[0].address;
+    for(u32 i = 0; i < n; i++)
+    {
+        if(firmType == TWL_FIRM && i == twlBgIndex && twlBgSize != 0)
+            fileRead(pos, "/luma/TwlBg.cxi");
+        else if(modules[i].addr != NULL)
+            memcpy(pos, modules[i].addr, modules[i].size);
+
+        pos += modules[i].size;
+    }
 }
 
 static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch)
 {
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
-    if(firmType == NATIVE_FIRM)
+    if(firmType != SAFE_FIRM)
     {
-        copySection0AndInjectLoader();
+        copySection0AndInjectSystemModules(firmType);
         sectionNum = 1;
     }
     else sectionNum = 0;
