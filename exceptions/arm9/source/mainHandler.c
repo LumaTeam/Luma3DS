@@ -56,7 +56,7 @@ static u32 __attribute__((noinline)) copyMemory(void *dst, const void *src, u32 
     u8 *out = (u8 *)dst;
     const u8 *in = (const u8 *)src;
 
-    if(((u32)src & (alignment - 1)) != 0 || cannotAccessAddress(src) || cannotAccessAddress((u8 *)src + size))
+    if(((u32)src & (alignment - 1)) != 0 || cannotAccessAddress(src) || (size != 0 && cannotAccessAddress((u8 *)src + size - 1)))
         return 0;
 
     for(u32 i = 0; i < size; i++)
@@ -94,8 +94,6 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     registerDump[16] = cpsr;
     for(u32 i = 0; i < 7; i++) registerDump[8 + i]  = regs[2 + i];
     for(u32 i = 0; i < 8; i++) registerDump[i] = regs[9 + i]; 
-
-    dumpHeader.stackDumpSize = 0x1000 - (registerDump[13] & 0xFFF);
     
     //Dump code
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
