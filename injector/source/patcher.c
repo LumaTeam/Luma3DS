@@ -19,18 +19,6 @@ typedef struct __attribute__((packed))
 
 CFWInfo info = {0};
 
-int __attribute__((naked)) svcGetCFWInfo(CFWInfo __attribute__((unused)) *out)
-{
-    __asm__ volatile("svc 0x2E; bx lr");
-}
-
-static void loadCFWInfo(void)
-{
-    static bool infoLoaded = false;
-    if(!infoLoaded) svcGetCFWInfo(&info);
-    infoLoaded = true;
-}
-
 #ifndef PATH_MAX
 #define PATH_MAX 255
 #define CONFIG(a) (((info.config >> (a + 16)) & 1) != 0)
@@ -116,6 +104,26 @@ static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int f
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
+}
+
+int __attribute__((naked)) svcGetCFWInfo(CFWInfo __attribute__((unused)) *out)
+{
+    __asm__ volatile("svc 0x2E; bx lr");
+}
+
+static void loadCFWInfo(void)
+{
+    static bool infoLoaded = false;
+    if(!infoLoaded)
+    {
+        svcGetCFWInfo(&info);
+        IFile file;
+        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //init SD card for firmlaunch patches
+        {
+            IFile_Close(&file);
+        }
+    }
+    infoLoaded = true;
 }
 
 static bool secureInfoExists(void)

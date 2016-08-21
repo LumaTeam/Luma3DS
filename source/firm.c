@@ -397,7 +397,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
     u8 *pos = arm11Section0, *end = pos + section[0].size;
     u32 n = 0;
 
-    u32 loaderIndex = 0;
+    u32 loaderIndex = 0, twlBgIndex = 0;
     
     while(pos < end)
     {
@@ -421,9 +421,12 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         }
 
         if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
+        else if(firmType == TWL_FIRM && memcmp(modules[n].name, "TwlBg", 6) == 0) twlBgIndex = n;
 
         n++;
     }
+
+    u32 twlBgSize = 0;
 
     if(firmType == NATIVE_FIRM && modules[loaderIndex].addr != NULL)
     {
@@ -431,10 +434,22 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         modules[loaderIndex].addr = injector;
     }
 
+    else if(firmType == TWL_FIRM)
+    {
+        twlBgSize = getFileSize("/luma/TwlBg.cxi");
+        if(twlBgSize != 0)
+        {
+            modules[twlBgIndex].size = twlBgSize;
+            modules[twlBgIndex].addr = NULL;
+        } 
+    }
+
     pos = section[0].address;
     for(u32 i = 0; i < n; i++)
     {
-        if(modules[i].addr != NULL)
+        if(firmType == TWL_FIRM && i == twlBgIndex && twlBgSize != 0)
+            fileRead(pos, "/luma/TwlBg.cxi");
+        else if(modules[i].addr != NULL)
             memcpy(pos, modules[i].addr, modules[i].size);
         else
         {

@@ -43,7 +43,7 @@ static inline int strlen(const char *string)
 bool loadSplash(void)
 {
     //Don't delay boot nor init the screens if no splash image is on the SD
-    if(getFileSize("/luma/splash.bin") + getFileSize("/luma/splash.bin") == 0)
+    if(getFileSize("/luma/splash.bin") + getFileSize("/luma/splashbottom.bin") == 0)
         return false;
     
     initScreens();
