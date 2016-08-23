@@ -36,7 +36,7 @@ void configureCFW(const char *configPath)
 
     const char *multiOptionsText[]  = { "Screen brightness: 4( ) 3( ) 2( ) 1( )",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
-                                        "Dev. features: None( ) ErrDisp( ) UNITINFO( )" };
+                                        "Dev. features: ErrDisp( ) UNITINFO( ) None( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
@@ -55,7 +55,7 @@ void configureCFW(const char *configPath)
     } multiOptions[] = {
         { .posXs = {21, 26, 31, 36} },
         { .posXs = {17, 26, 32, 44} },
-        { .posXs = {20, 31, 43, 0} }
+        { .posXs = {23, 35, 43, 0} }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

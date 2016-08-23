@@ -564,7 +564,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         
         case 0x0004003000008A02LL: // ErrDisp
         {
-            if(MULTICONFIG(2) == 1)
+            if(MULTICONFIG(2) == 0)
             {
                 static const u8 unitinfoCheckPattern1[] = { 
                     0x14, 0x00, 0xD0, 0xE5, 0xDB, 0x9A, 0x9F, 0xED 

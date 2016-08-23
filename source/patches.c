@@ -295,13 +295,16 @@ void patchP9AccessChecks(u8 *pos, u32 size)
 }
 
 
-void patchUnitInfoValueSet(u8 *pos, u32 size)
+void patchUnitInfoValueSet(u8 *pos, u32 size, FirmwareType firmType)
 {
-    //Look for UNITINFO value being set
+    //Look for UNITINFO value being set during kernel sync
     const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
+    const u8 patternSafe[] = {0x00, 0x20, 0x91, 0xE2, 0x01, 0x20, 0xA0, 0x13};
+    bool safe = firmType == SAFE_FIRM && !isN3DS;
 
-    u8 *off = memsearch(pos, pattern, size, 4);
+    u8 *off = (!safe) ? memsearch(pos, pattern, size, 4) : (memsearch(pos, patternSafe, size, 8) + 4);
 
+    off[0] = (*(vu8 *)0x10010010 == 0) ? 1 : 0;
     off[3] = 0xE3;
 }
 

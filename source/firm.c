@@ -74,9 +74,12 @@ void main(void)
     //Attempt to read the configuration file
     needConfig = fileRead(&config, configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
-    detectAndProcessExceptionDumps();
-    installArm9Handlers();
-        
+    if(DEV_OPTIONS != 2)
+    {
+        detectAndProcessExceptionDumps();
+        installArm9Handlers();
+    }
+
     //Determine if this is a firmlaunch boot
     if(launchedFirmTIDLow[5] != 0)
     {
@@ -316,28 +319,31 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     }
 
     //Apply UNITINFO patch
-    if(DEV_OPTIONS == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
+    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size, NATIVE_FIRM);
     
-    //Install arm11 exception handlers
-    u32 stackAddress, codeSetOffset;
-    u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
-    installArm11Handlers(exceptionsPage, stackAddress, codeSetOffset);
-    
-    //Kernel9/Process9 debugging
-    patchExceptionHandlersInstall(arm9Section, section[2].size);
-    patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
-    patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
-    
-    //Stub svcBreak11 with "bkpt 65535"
-    patchSvcBreak11(arm11Section1, section[1].size);
-    //Stub kernel11panic with "bkpt 65534"
-    patchKernel11Panic(arm11Section1, section[1].size);
-    
+    if(DEV_OPTIONS != 2)
+    {
+        //Install arm11 exception handlers
+        u32 stackAddress, codeSetOffset;
+        u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
+        installArm11Handlers(exceptionsPage, stackAddress, codeSetOffset);
+        
+        //Kernel9/Process9 debugging
+        patchExceptionHandlersInstall(arm9Section, section[2].size);
+        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+        patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
+        
+        //Stub svcBreak11 with "bkpt 65535"
+        patchSvcBreak11(arm11Section1, section[1].size);
+        //Stub kernel11panic with "bkpt 65534"
+        patchKernel11Panic(arm11Section1, section[1].size);
+    }
+
     if(CONFIG(8))
     {
         patchArm11SvcAccessChecks(arm11Section1, section[1].size);
         patchK11ModuleChecks(arm11Section1, section[1].size);
-        patchP9AccessChecks(arm9Section, section[2].size);
+        patchP9AccessChecks(process9Offset, process9Size);
     }
 
     implementSvcGetCFWInfo((u8 *)firm + section[1].offset, section[1].size);
@@ -354,12 +360,20 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
     
-    //Kernel9/Process9 debugging
-    patchExceptionHandlersInstall(arm9Section, section[3].size);
-    patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
-    patchKernel9Panic(arm9Section, section[3].size, firmType);
+    //Apply UNITINFO patch
+    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size, firmType);
+
+    if(DEV_OPTIONS != 2)
+    {
+        //Kernel9/Process9 debugging
+        patchExceptionHandlersInstall(arm9Section, section[3].size);
+        patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
+        patchKernel9Panic(arm9Section, section[3].size, firmType);
+    }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
+    fileWrite(arm9Section, "/luma/twl_arm9sec.bin", section[3].size);
+
 }
 
 static inline void patchSafeFirm(void)
@@ -375,10 +389,16 @@ static inline void patchSafeFirm(void)
         patchFirmWrites(arm9Section, section[2].size);
     }
     else patchFirmWriteSafe(arm9Section, section[2].size);
+
+    //Apply UNITINFO patch
+    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size, SAFE_FIRM);
     
-    //Kernel9/Process9 debugging
-    patchExceptionHandlersInstall(arm9Section, section[2].size);
-    patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+    if(DEV_OPTIONS != 2)
+    {
+        //Kernel9/Process9 debugging
+        patchExceptionHandlersInstall(arm9Section, section[2].size);
+        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+    }
 }
 
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
