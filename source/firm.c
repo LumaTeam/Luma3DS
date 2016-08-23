@@ -319,7 +319,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     }
 
     //Apply UNITINFO patch
-    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size, NATIVE_FIRM);
+    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
     
     if(DEV_OPTIONS != 2)
     {
@@ -361,7 +361,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     }
     
     //Apply UNITINFO patch
-    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size, firmType);
+    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
 
     if(DEV_OPTIONS != 2)
     {
@@ -390,9 +390,6 @@ static inline void patchSafeFirm(void)
     }
     else patchFirmWriteSafe(arm9Section, section[2].size);
 
-    //Apply UNITINFO patch
-    if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size, SAFE_FIRM);
-    
     if(DEV_OPTIONS != 2)
     {
         //Kernel9/Process9 debugging
