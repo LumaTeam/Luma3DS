@@ -260,6 +260,7 @@ static inline u32 loadFirm(FirmwareType firmType)
 static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
+    u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
     if(isN3DS)
     {
@@ -299,10 +300,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor((u8 *)firm + section[1].offset, section[1].size);
+        reimplementSvcBackdoor(arm11Section1, section[1].size);
     }
 
-    implementSvcGetCFWInfo((u8 *)firm + section[1].offset, section[1].size);
+    implementSvcGetCFWInfo(arm11Section1, section[1].size);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
@@ -315,6 +316,9 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
+
+    if(firmType == TWL_FIRM)
+        patchTwlBg((u8 *)firm + section[1].offset);
 }
 
 static inline void patchSafeFirm(void)

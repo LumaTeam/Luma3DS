@@ -25,6 +25,7 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
+#include "../build/twl_k11modulespatch.h"
 
 static u32 *arm11ExceptionsPage = NULL;
 static u32 *arm11SvcTable = NULL;
@@ -260,4 +261,22 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
                 break;
         }
     }
+}
+
+void patchTwlBg(u8 *pos)
+{
+    u8 *dst = pos + ((isN3DS) ?  0xFEA4 : 0xFCA0);
+    u16 *src1 = (u16 *)(pos + ((isN3DS) ? 0xE38 : 0xE3C)), *src2 = (u16 *)(pos + ((isN3DS) ? 0xE54 : 0xE58));
+    memcpy(dst, twl_k11modules, twl_k11modules_size); //install k11 hook
+    
+    u32 *off;
+    for(off = (u32 *)dst; *off != 0xABCDABCD; off++);
+    *off = (isN3DS) ? 0xCDE88 : 0xCD5F8; //dev SRL launcher offset
+    
+    //Construct BLX instructions:
+    src1[0] = 0xF000 | ((((u32)dst - (u32)src1 - 4) & (0xFFF << 11)) >> 12);
+    src1[1] = 0xE800 | ((((u32)dst - (u32)src1 - 4) & 0xFFF) >> 1);
+
+    src2[0] = 0xF000 | ((((u32)dst - (u32)src2 - 4) & (0xFFF << 11)) >> 12);
+    src2[1] = 0xE800 | ((((u32)dst - (u32)src2 - 4) & 0xFFF) >> 1);
 }

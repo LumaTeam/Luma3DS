@@ -44,3 +44,4 @@ void patchFirmWriteSafe(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);
 void implementSvcGetCFWInfo(u8 *pos, u32 size);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
+void patchTwlBg(u8 *pos);
