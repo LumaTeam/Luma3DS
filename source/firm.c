@@ -49,8 +49,7 @@ FirmwareSource firmSource;
 
 void main(void)
 {
-    bool isFirmlaunch,
-         isA9lh;
+    bool isA9lh;
 
     u32 newConfig,
         emuHeader;
