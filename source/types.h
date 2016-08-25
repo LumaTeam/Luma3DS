@@ -26,10 +26,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
-#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
 #define CFG_BOOTENV    (*(vu32 *)0x10010000)
 #define CFG_UNITINFO   (*(vu8  *)0x10010010)
+
+#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
+#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
+#define PDN_GPU_CNT    (*(vu8  *)0x10141200)
 
 //Common data types
 typedef uint8_t u8;

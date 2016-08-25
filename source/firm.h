@@ -54,4 +54,4 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 static inline void patchLegacyFirm(FirmwareType firmType);
 static inline void patchSafeFirm(void);
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType);
-static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch);
+static inline void launchFirm(FirmwareType firmType);

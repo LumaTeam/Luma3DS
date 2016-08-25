@@ -27,6 +27,8 @@
 #include "draw.h"
 #include "cache.h"
 
+extern bool isFirmlaunch;
+
 u32 waitInput(void)
 {
     u32 pressedKey = 0,
@@ -56,7 +58,7 @@ u32 waitInput(void)
 
 void mcuReboot(void)
 {
-    if(PDN_GPU_CNT != 1) clearScreens();
+    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens();
 
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 
@@ -66,7 +68,7 @@ void mcuReboot(void)
 
 void mcuPowerOff(void)
 {
-    if(PDN_GPU_CNT != 1) clearScreens();
+    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens();
 
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
     
