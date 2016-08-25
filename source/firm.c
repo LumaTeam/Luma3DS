@@ -44,7 +44,7 @@ static const firmSectionHeader *section;
 u32 config,
     emuOffset;
 
-bool isN3DS, isDevUnit;
+bool isN3DS, isDevUnit, isFirmlaunch;
 
 FirmwareSource firmSource;
 
@@ -101,7 +101,7 @@ void main(void)
 
         isFirmlaunch = false;
         firmType = NATIVE_FIRM;
-        
+
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
 
@@ -226,7 +226,7 @@ void main(void)
     }
 
     u32 firmVersion = loadFirm(firmType);
-    
+
     switch(firmType)
     {
         case NATIVE_FIRM:
@@ -241,7 +241,7 @@ void main(void)
             break;
     }
 
-    launchFirm(firmType, isFirmlaunch);
+    launchFirm(firmType);
 }
 
 static inline u32 loadFirm(FirmwareType firmType)
@@ -346,7 +346,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchP9AccessChecks(process9Offset, process9Size);
     }
 
-    implementSvcGetCFWInfo((u8 *)firm + section[1].offset, section[1].size);
+    implementSvcGetCFWInfo(arm11Section1, section[1].size);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
@@ -372,8 +372,9 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
-    fileWrite(arm9Section, "/luma/twl_arm9sec.bin", section[3].size);
 
+    if(firmType == TWL_FIRM)
+        patchTwlBg((u8 *)firm + section[1].offset);
 }
 
 static inline void patchSafeFirm(void)
@@ -414,7 +415,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
     u8 *pos = arm11Section0, *end = pos + section[0].size;
     u32 n = 0;
 
-    u32 loaderIndex = 0, twlBgIndex = 0;
+    u32 loaderIndex = 0;
     
     while(pos < end)
     {
@@ -438,12 +439,9 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         }
 
         if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
-        else if(firmType == TWL_FIRM && memcmp(modules[n].name, "TwlBg", 6) == 0) twlBgIndex = n;
 
         n++;
     }
-
-    u32 twlBgSize = 0;
 
     if(firmType == NATIVE_FIRM && modules[loaderIndex].addr != NULL)
     {
@@ -451,22 +449,10 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         modules[loaderIndex].addr = injector;
     }
 
-    else if(firmType == TWL_FIRM)
-    {
-        twlBgSize = getFileSize("/luma/TwlBg.cxi");
-        if(twlBgSize != 0)
-        {
-            modules[twlBgIndex].size = twlBgSize;
-            modules[twlBgIndex].addr = NULL;
-        } 
-    }
-
     pos = section[0].address;
     for(u32 i = 0; i < n; i++)
     {
-        if(firmType == TWL_FIRM && i == twlBgIndex && twlBgSize != 0)
-            fileRead(pos, "/luma/TwlBg.cxi");
-        else if(modules[i].addr != NULL)
+        if(modules[i].addr != NULL)
             memcpy(pos, modules[i].addr, modules[i].size);
         else
         {
@@ -482,7 +468,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
     }
 }
 
-static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch)
+static inline void launchFirm(FirmwareType firmType)
 {
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;

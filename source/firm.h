@@ -24,11 +24,6 @@
 
 #include "types.h"
 
-#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
-#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
-#define CFG_BOOTENV    (*(vu32 *)0x10010000)
-#define CFG_UNITINFO   (*(vu8 *)0x10010010)
-
 //FIRM Header layout
 typedef struct firmSectionHeader {
     u32 offset;
@@ -59,4 +54,4 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 static inline void patchLegacyFirm(FirmwareType firmType);
 static inline void patchSafeFirm(void);
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType);
-static inline void launchFirm(FirmwareType firmType, bool isFirmlaunch);
+static inline void launchFirm(FirmwareType firmType);
