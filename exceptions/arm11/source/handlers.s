@@ -81,6 +81,8 @@ _commonHandler:
     cmp r4, r5
     bne noFPUInitNorSvcBreak
     cps #0x13                   @ switch to supervisor mode
+    cmp r10, #0
+    addne sp, #0x28
     ldr r2, [sp, #0x1c]         @ implementation details of the official svc handler
     ldr r4, [sp, #0x18]
     msr cpsr_c, r3              @ restore processor mode
