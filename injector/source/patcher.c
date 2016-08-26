@@ -3,28 +3,7 @@
 #include "patcher.h"
 #include "ifile.h"
 
-typedef struct __attribute__((packed))
-{
-    char magic[4];
-    
-    u8 versionMajor;
-    u8 versionMinor;
-    u8 versionBuild;
-    u8 flags; /* bit 0: dev branch; bit 1: is release */
-
-    u32 commitHash;
-
-    u32 config;
-} CFWInfo;
-
-CFWInfo info = {0};
-
-#ifndef PATH_MAX
-#define PATH_MAX 255
-#define CONFIG(a) (((info.config >> (a + 16)) & 1) != 0)
-#define MULTICONFIG(a) ((info.config >> (a * 2 + 6)) & 3)
-#define BOOTCONFIG(a, b) ((info.config >> a) & b)
-#endif
+static CFWInfo info = {0};
 
 static int memcmp(const void *buf1, const void *buf2, u32 size)
 {
@@ -114,6 +93,7 @@ int __attribute__((naked)) svcGetCFWInfo(CFWInfo __attribute__((unused)) *out)
 static void loadCFWInfo(void)
 {
     static bool infoLoaded = false;
+
     if(!infoLoaded)
     {
         svcGetCFWInfo(&info);
@@ -122,8 +102,9 @@ static void loadCFWInfo(void)
         {
             IFile_Close(&file);
         }
+
+        infoLoaded = true;
     }
-    infoLoaded = true;
 }
 
 static bool secureInfoExists(void)
@@ -338,6 +319,7 @@ static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOff
 void patchCode(u64 progId, u8 *code, u32 size)
 {
     loadCFWInfo();
+
     switch(progId)
     {
         case 0x0004003000008F02LL: // USA Menu

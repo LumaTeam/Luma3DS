@@ -167,26 +167,10 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
     }
 }
 
-extern u32 config;
-
 void implementSvcGetCFWInfo(u8 *pos, u32 size)
 {
-    typedef struct __attribute__((packed))
-    {
-        char magic[4];
-        
-        u8 versionMajor;
-        u8 versionMinor;
-        u8 versionBuild;
-        u8 flags;
-
-        u32 commitHash;
-
-        u32 config;
-    } CFWInfo;
-
     const char *rev = REVISION;
-    bool isRelease = false;
+    bool isRelease;
 
     findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
     findFreeK11Space(pos, size);

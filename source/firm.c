@@ -100,7 +100,7 @@ void main(void)
         //Determine if the user chose to use the SysNAND FIRM as default for a R boot
         bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
 
-        newConfig = (u32)isA9lh << 3;
+        newConfig = (config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
@@ -141,7 +141,7 @@ void main(void)
 
             if(shouldLoadConfigurationMenu)
             {
-                configureCFW(configPath);
+                configureCFW();
 
                 if(!pinExists && CONFIG(7)) newPin();
 
@@ -207,13 +207,17 @@ void main(void)
 
         /* If the boot configuration is different from previously, overwrite it.
            Just the no-forcing flag being set is not enough */
-        if((newConfig & 0x2F) != (config & 0x3F))
+        if((newConfig & 0xFFFFFFEF) != config)
         {
-            //Preserve user settings (last 26 bits)
-            newConfig |= config & 0xFFFFFFC0;
+            //Update the last boot configuration
+            config |= newConfig & 0x3F;
 
-            if(!fileWrite(&newConfig, configPath, 4))
-                error("Error writing the configuration file");
+            if(!fileWrite(&config, configPath, 4))
+            {
+                createDirectory("luma");
+                if(!fileWrite(&config, configPath, 4))
+                    error("Error writing the configuration file");
+            }
         }
     }
 
@@ -335,56 +339,44 @@ static inline void patchSafeFirm(void)
     else patchFirmWriteSafe(arm9Section, section[2].size);
 }
 
-static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
+static inline void copySection0AndInjectSystemModules(void)
 {
     u8 *arm11Section0 = (u8 *)firm + section[0].offset;
 
     struct
     {
         u32 size;
-        char name[8];
         const u8 *addr;
-    } modules[5] = {{0}};
+    } modules[5];
 
-    u8 *pos = arm11Section0, *end = pos + section[0].size;
-    u32 n = 0;
+    u32 n = 0,
+        loaderIndex;
+    u8 *pos = arm11Section0;
 
-    u32 loaderIndex = 0;
-    
-    while(pos < end)
+    for(u8 *end = pos + section[0].size; pos < end; pos += modules[n++].size)
     {
         modules[n].addr = pos;
         modules[n].size = *(u32 *)(pos + 0x104) * 0x200;
-        
-        memcpy(modules[n].name, pos + 0x200, 8);
-        pos += modules[n].size;
 
-        if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
-        n++;
+        if(memcmp(modules[n].addr + 0x200, "loader", 7) == 0) loaderIndex = n;
     }
 
-    if(firmType == NATIVE_FIRM)
-    {
-        modules[loaderIndex].size = injector_size;
-        modules[loaderIndex].addr = injector;
-    }
+    modules[loaderIndex].addr = injector;
+    modules[loaderIndex].size = injector_size;
 
     pos = section[0].address;
-    for(u32 i = 0; i < n; i++)
-    {
-        memcpy(pos, modules[i].addr, modules[i].size);
-        pos += modules[i].size;
-    }
 
+    for(u32 i = 0; i < n; pos += modules[i++].size)
+        memcpy(pos, modules[i].addr, modules[i].size);
 }
 
 static inline void launchFirm(FirmwareType firmType)
 {
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
-    if(firmType != SAFE_FIRM)
+    if(firmType == NATIVE_FIRM)
     {
-        copySection0AndInjectSystemModules(firmType);
+        copySection0AndInjectSystemModules();
         sectionNum = 1;
     }
     else sectionNum = 0;

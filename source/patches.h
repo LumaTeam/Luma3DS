@@ -33,7 +33,22 @@ typedef struct patchData {
     u32 type;
 } patchData;
 
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+        
+    u8 versionMajor;
+    u8 versionMinor;
+    u8 versionBuild;
+    u8 flags;
+
+    u32 commitHash;
+
+    u32 config;
+} CFWInfo;
+
 extern bool isN3DS;
+extern u32 config;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 void patchSignatureChecks(u8 *pos, u32 size);
