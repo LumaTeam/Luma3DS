@@ -320,7 +320,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 
-    if(firmType == TWL_FIRM)
+    if(firmType == TWL_FIRM && CONFIG(8))
         patchTwlBg((u8 *)firm + section[1].offset);
 }
 

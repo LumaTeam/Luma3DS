@@ -43,7 +43,8 @@ void configureCFW(void)
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
-                                        "( ) Use a PIN" };
+                                        "( ) Use a PIN",
+                                        "( ) Enable experimental TwlBg patches" };
 
     struct multiOption {
         int posXs[4];
