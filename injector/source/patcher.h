@@ -3,8 +3,9 @@
 #include <3ds/types.h>
 
 #define PATH_MAX 255
-#define CONFIG(a) (((info.config >> (a + 16)) & 1) != 0)
-#define MULTICONFIG(a) ((info.config >> (a * 2 + 6)) & 3)
+
+#define CONFIG(a)        (((info.config >> (a + 16)) & 1) != 0)
+#define MULTICONFIG(a)   ((info.config >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((info.config >> a) & b)
 
 typedef struct __attribute__((packed))

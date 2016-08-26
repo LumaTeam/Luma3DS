@@ -156,6 +156,9 @@ void main(void)
             {
                 nandType = FIRMWARE_SYSNAND;
                 firmSource = FIRMWARE_SYSNAND;
+
+                //Flag to tell loader to init SD
+                configTemp |= 1 << 5;
             }
             else
             {
