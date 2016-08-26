@@ -107,7 +107,7 @@ void main(void)
         //Determine if the user chose to use the SysNAND FIRM as default for a R boot
         bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
 
-        newConfig = (u32)isA9lh << 3;
+        newConfig = (config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
@@ -148,7 +148,7 @@ void main(void)
 
             if(shouldLoadConfigurationMenu)
             {
-                configureCFW(configPath);
+                configureCFW();
 
                 if(!pinExists && CONFIG(7)) newPin();
 
@@ -214,13 +214,17 @@ void main(void)
 
         /* If the boot configuration is different from previously, overwrite it.
            Just the no-forcing flag being set is not enough */
-        if((newConfig & 0x2F) != (config & 0x3F))
+        if((newConfig & 0xFFFFFFEF) != config)
         {
-            //Preserve user settings (last 26 bits)
-            newConfig |= config & 0xFFFFFFC0;
+            //Update the last boot configuration
+            config |= newConfig & 0x3F;
 
-            if(!fileWrite(&newConfig, configPath, 4))
-                error("Error writing the configuration file");
+            if(!fileWrite(&config, configPath, 4))
+            {
+                createDirectory("luma");
+                if(!fileWrite(&config, configPath, 4))
+                    error("Error writing the configuration file");
+            }
         }
     }
 
@@ -338,7 +342,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchKernel11Panic(arm11Section1, section[1].size);
     }
 
-    if(CONFIG(8))
+    if(CONFIG(9))
     {
         patchArm11SvcAccessChecks(arm11Section1, section[1].size);
         patchK11ModuleChecks(arm11Section1, section[1].size);
@@ -372,7 +376,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 
-    if(firmType == TWL_FIRM)
+    if(firmType == TWL_FIRM && CONFIG(8))
         patchTwlBg((u8 *)firm + section[1].offset);
 }
 
@@ -409,20 +413,19 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         u32 size;
         char name[8];
         const u8 *addr;
-    } modules[5] = {{0}};
+    } modules[5];
 
-    u8 *pos = arm11Section0, *end = pos + section[0].size;
+    u8 *pos = arm11Section0;
     u32 n = 0;
 
     u32 loaderIndex = 0;
     
-    while(pos < end)
+    for(u8 *end = pos + section[0].size; pos < end; pos += modules[n++].size)
     {
         modules[n].addr = pos;
         modules[n].size = *(u32 *)(pos + 0x104) * 0x200;
         
         memcpy(modules[n].name, pos + 0x200, 8);
-        pos += modules[n].size;
         
         //Read modules from files if they exist
         u32 nameOff;
@@ -438,8 +441,6 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         }
 
         if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
-
-        n++;
     }
 
     if(firmType == NATIVE_FIRM && modules[loaderIndex].addr != NULL)
@@ -449,7 +450,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
     }
 
     pos = section[0].address;
-    for(u32 i = 0; i < n; i++)
+    for(u32 i = 0; i < n; pos += modules[i++].size)
     {
         if(modules[i].addr != NULL)
             memcpy(pos, modules[i].addr, modules[i].size);
@@ -461,9 +462,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
             memcpy(fileName + 17, modules[i].name, nameOff);
             memcpy(fileName + 17 + nameOff, ext, 5);
             fileRead(pos, fileName);
-        }
-
-        pos += modules[i].size;
+        }     
     }
 }
 

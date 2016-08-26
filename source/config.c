@@ -24,10 +24,9 @@
 #include "utils.h"
 #include "screen.h"
 #include "draw.h"
-#include "fs.h"
 #include "buttons.h"
 
-void configureCFW(const char *configPath)
+void configureCFW(void)
 {
     initScreens();
 
@@ -46,6 +45,7 @@ void configureCFW(const char *configPath)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
                                         "( ) Use a PIN",
+                                        "( ) Enable experimental TwlBg patches",
                                         "( ) Disable access checks" };
 
     struct multiOption {
@@ -195,13 +195,6 @@ void configureCFW(const char *configPath)
         config |= multiOptions[i].enabled << (i * 2 + 6);
     for(u32 i = 0; i < singleOptionsAmount; i++)
         config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
-
-    if(!fileWrite(&config, configPath, 4))
-    {
-        createDirectory("luma");
-        if(!fileWrite(&config, configPath, 4))
-            error("Error writing the configuration file");
-    }
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);

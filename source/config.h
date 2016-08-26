@@ -32,4 +32,4 @@
 
 extern u32 config;
 
-void configureCFW(const char *configPath);
+void configureCFW(void);
