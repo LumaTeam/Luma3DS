@@ -270,6 +270,12 @@ static inline u32 loadFirm(FirmwareType firmType)
     else
     {
         firmVersion = firmRead(firm, (u32)firmType);
+        
+        //We can't boot < 3.x NANDs (if firmware.bin is in the /luma folder, booting will fail)
+        if(firmVersion < 0x18)
+            error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it.");
+
+        //We can't boot a 4.x NATIVE_FIRM, load one from SD
         if(firmType == NATIVE_FIRM && !isN3DS && firmVersion < 0x25)
             error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
 
