@@ -52,7 +52,7 @@ void main(void)
 {
     bool isA9lh;
 
-    u32 newConfig,
+    u32 configTemp,
         emuHeader;
 
     FirmwareType firmType;
@@ -107,7 +107,8 @@ void main(void)
         //Determine if the user chose to use the SysNAND FIRM as default for a R boot
         bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
 
-        newConfig = (config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
+        //Save old options and begin saving the new boot configuration
+        configTemp = (config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
@@ -120,7 +121,7 @@ void main(void)
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
-                newConfig |= 1 << 4;
+                configTemp |= 1 << 4;
             }
 
             /* Else, force the last used boot options unless a button is pressed
@@ -162,6 +163,9 @@ void main(void)
             {
                 nandType = FIRMWARE_SYSNAND;
                 firmSource = FIRMWARE_SYSNAND;
+
+                //Flag to tell loader to init SD
+                configTemp |= 1 << 5;
             }
             else
             {
@@ -210,14 +214,14 @@ void main(void)
 
     if(!isFirmlaunch)
     {
-        newConfig |= (u32)nandType | ((u32)firmSource << 2);
+        configTemp |= (u32)nandType | ((u32)firmSource << 2);
 
-        /* If the boot configuration is different from previously, overwrite it.
+        /* If the configuration is different from previously, overwrite it.
            Just the no-forcing flag being set is not enough */
-        if((newConfig & 0xFFFFFFEF) != config)
+        if((configTemp & 0xFFFFFFEF) != config)
         {
-            //Update the last boot configuration
-            config |= newConfig & 0x3F;
+            //Merge the new options and new boot configuration
+            config = (config & 0xFFFFFFC0) | (configTemp & 0x3F);
 
             if(!fileWrite(&config, configPath, 4))
             {

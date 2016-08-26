@@ -98,7 +98,7 @@ static void loadCFWInfo(void)
     {
         svcGetCFWInfo(&info);
         IFile file;
-        if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //init SD card for firmlaunch patches
+        if(BOOTCONFIG(5, 1) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
         {
             IFile_Close(&file);
         }
