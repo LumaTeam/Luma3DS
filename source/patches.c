@@ -113,7 +113,7 @@ void patchFirmWrites(u8 *pos, u32 size)
     off2[1] = writeBlock[1];
 }
 
-void patchFirmWriteSafe(u8 *pos, u32 size)
+void patchOldFirmWrites(u8 *pos, u32 size)
 {
     const u16 writeBlockSafe[2] = {0x2400, 0xE01D};
 

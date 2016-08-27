@@ -7,12 +7,14 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
 .arm
     ; Interesting registers and locations to keep in mind, set just before this code is ran:
     ; - r1: FIRM path in exefs.
-    ; - r7: pointer to file object
+    ; - r7: pointer to file object (r10 on < 4.x; r7 is equal to 0 in that case)
     ;   - *r7: vtable
     ;       - *(vtable + 0x28): fread function 
-    ;   - *(r7 + 8): file handle
+    ;   - *(r7 + 8) = r0: file handle
 
     mov r8, r1
+    cmp r7, #0
+    moveq r7, r10
 
     pxi_wait_recv:
         ldr r2, =0x44846

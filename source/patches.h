@@ -54,7 +54,7 @@ void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
-void patchFirmWriteSafe(u8 *pos, u32 size);
+void patchOldFirmWrites(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 size);
 void implementSvcGetCFWInfo(u8 *pos, u32 size);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
