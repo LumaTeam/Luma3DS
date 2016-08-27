@@ -27,8 +27,6 @@
 #include "draw.h"
 #include "cache.h"
 
-extern bool isFirmlaunch;
-
 u32 waitInput(void)
 {
     u32 pressedKey = 0,

@@ -5,10 +5,14 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
 
 .create "build/reboot.bin", 0
 .arm
-    ; Interesting registers and locations to keep in mind, set before this code is ran:
-    ; - sp + 0x3A8 - 0x70: FIRM path in exefs.
-    ; - r7 (which is sp + 0x3A8 - 0x198): Reserved space for file handle
-    ; - *(sp + 0x3A8 - 0x198) + 0x28: fread function.
+    ; Interesting registers and locations to keep in mind, set just before this code is ran:
+    ; - r1: FIRM path in exefs.
+    ; - r7: pointer to file object
+    ;   - *r7: vtable
+    ;       - *(vtable + 0x28): fread function 
+    ;   - *(r7 + 8): file handle
+
+    mov r8, r1
 
     pxi_wait_recv:
         ldr r2, =0x44846
@@ -47,7 +51,7 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
         cmp r4, #0
         movne r3, #0x12000 ; Skip the first 0x12000 bytes.
         moveq r3, payload_maxsize
-        ldr r6, [sp, #0x3A8-0x198]
+        ldr r6, [r7]
         ldr r6, [r6, #0x28]
         blx r6
         cmp r4, #0
@@ -55,8 +59,7 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
         bne read_payload ; Go read the real payload.
 
     ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
-    add r0, sp, #0x3A8 - 0x70
-    add r0, 0x1A
+    add r0, r8, 0x1A
     add r1, r0, #0x10
     ldr r2, =payload_addr + 4
     copy_TID_low:
@@ -75,7 +78,7 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
     goto_reboot:
         ; Jump to reboot code
         ldr r0, =(kernelcode_start - goto_reboot - 12)
-        add r0, pc
+        add r0, pc ; pc is two instructions ahead of the instruction being executed (12 = 2*4 + 4)
         swi 0x7B
 
     die:

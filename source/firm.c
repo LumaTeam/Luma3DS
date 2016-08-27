@@ -36,16 +36,16 @@
 #include "pin.h"
 #include "../build/injector.h"
 
-extern u16 launchedFirmTIDLow[8]; //defined in start.s
+extern u16 launchedFirmTIDLow[8]; //Defined in start.s
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-u32 config,
-    emuOffset;
+u32 emuOffset;
 
 bool isN3DS, isDevUnit, isFirmlaunch;
 
+cfgData configData;
 FirmwareSource firmSource;
 
 void main(void)
@@ -71,7 +71,7 @@ void main(void)
     const char configPath[] = "/luma/config.bin";
 
     //Attempt to read the configuration file
-    needConfig = fileRead(&config, configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+    needConfig = readConfig(configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     if(DEV_OPTIONS != 2)
     {
@@ -104,11 +104,8 @@ void main(void)
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
 
-        //Determine if the user chose to use the SysNAND FIRM as default for a R boot
-        bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
-
         //Save old options and begin saving the new boot configuration
-        configTemp = (config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
+        configTemp = (configData.config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
@@ -117,7 +114,7 @@ void main(void)
             if(CFG_BOOTENV == 7)
             {
                 nandType = FIRMWARE_SYSNAND;
-                firmSource = useSysAsDefault ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
+                firmSource = CONFIG(1) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
@@ -126,7 +123,7 @@ void main(void)
 
             /* Else, force the last used boot options unless a button is pressed
                or the no-forcing flag is set */
-            else if(!pressed && !BOOTCONFIG(4, 1))
+            else if(needConfig != CREATE_CONFIGURATION && !pressed && !BOOTCONFIG(4, 1))
             {
                 nandType = (FirmwareSource)BOOTCONFIG(0, 3);
                 firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
@@ -139,7 +136,7 @@ void main(void)
         {
             PINData pin;
 
-            bool pinExists = CONFIG(7) && readPin(&pin);
+            bool pinExists = CONFIG(8) && readPin(&pin);
 
             //If we get here we should check the PIN (if it exists) in all cases
             if(pinExists) verifyPin(&pin);
@@ -149,9 +146,9 @@ void main(void)
 
             if(shouldLoadConfigurationMenu)
             {
-                configureCFW();
+                configure();
 
-                if(!pinExists && CONFIG(7)) newPin();
+                if(!pinExists && CONFIG(8)) newPin();
 
                 chrono(2);
 
@@ -169,7 +166,7 @@ void main(void)
             }
             else
             {
-                if(CONFIG(6) && loadSplash()) pressed = HID_PAD;
+                if(CONFIG(7) && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload (the PIN, if any, has been verified)*/
@@ -177,7 +174,10 @@ void main(void)
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
-                if(!CONFIG(6)) loadSplash();
+                if(!CONFIG(7)) loadSplash();
+
+                //Determine if the user chose to use the SysNAND FIRM as default for a R boot
+                bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
 
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 if(pressed & BUTTON_R1)
@@ -215,21 +215,7 @@ void main(void)
     if(!isFirmlaunch)
     {
         configTemp |= (u32)nandType | ((u32)firmSource << 2);
-
-        /* If the configuration is different from previously, overwrite it.
-           Just the no-forcing flag being set is not enough */
-        if((configTemp & 0xFFFFFFEF) != config)
-        {
-            //Merge the new options and new boot configuration
-            config = (config & 0xFFFFFFC0) | (configTemp & 0x3F);
-
-            if(!fileWrite(&config, configPath, 4))
-            {
-                createDirectory("luma");
-                if(!fileWrite(&config, configPath, 4))
-                    error("Error writing the configuration file");
-            }
-        }
+        writeConfig(configPath, configTemp);
     }
 
     u32 firmVersion = loadFirm(firmType);
@@ -388,7 +374,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 
-    if(firmType == TWL_FIRM && CONFIG(8))
+    if(firmType == TWL_FIRM && CONFIG(5))
         patchTwlBg((u8 *)firm + section[1].offset);
 }
 

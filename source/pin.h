@@ -31,6 +31,8 @@
 #include "types.h"
 
 #define PIN_LENGTH  4
+#define PIN_VERSIONMAJOR 1
+#define PIN_VERSIONMINOR 0
 
 typedef struct __attribute__((packed))
 {

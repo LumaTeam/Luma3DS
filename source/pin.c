@@ -36,11 +36,14 @@
 
 bool readPin(PINData *out)
 {
-    u8 __attribute__((aligned(4))) zeroes[16] = {0};
-    u8 __attribute__((aligned(4))) tmp[32] = {0};
+    if(fileRead(out, "/luma/pin.bin") != sizeof(PINData) ||
+       memcmp(out->magic, "PINF", 4) != 0 ||
+       out->formatVersionMajor != PIN_VERSIONMAJOR ||
+       out->formatVersionMinor != PIN_VERSIONMINOR)
+        return false;
 
-    if(fileRead(out, "/luma/pin.bin") != sizeof(PINData)) return false;
-    if(memcmp(out->magic, "PINF", 4) != 0) return false;
+    u8 __attribute__((aligned(4))) zeroes[16] = {0};
+    u8 __attribute__((aligned(4))) tmp[32];
 
     computePINHash(tmp, zeroes, 1);
 
@@ -89,13 +92,13 @@ void newPin(void)
         charDrawPos += 2 * SPACING_X;
     }
 
-    PINData pin = {0};
-    u8 __attribute__((aligned(4))) tmp[32] = {0};
+    PINData pin;
+    u8 __attribute__((aligned(4))) tmp[32];
     u8 __attribute__((aligned(4))) zeroes[16] = {0};
 
     memcpy(pin.magic, "PINF", 4);
-    pin.formatVersionMajor = 1;
-    pin.formatVersionMinor = 0;
+    pin.formatVersionMajor = PIN_VERSIONMAJOR;
+    pin.formatVersionMinor = PIN_VERSIONMINOR;
 
     computePINHash(tmp, zeroes, 1);
     memcpy(pin.testHash, tmp, 32);
@@ -103,8 +106,13 @@ void newPin(void)
     computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
     memcpy(pin.hash, tmp, 32);
 
-    fileWrite(&pin, "/luma/pin.bin", sizeof(PINData));
-    
+    if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
+    {
+        createDirectory("luma");
+        if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
+            error("Error writing the PIN file");
+    }
+
     while(HID_PAD & PIN_BUTTONS);
 }
 
@@ -145,7 +153,7 @@ void verifyPin(PINData *in)
 
         if(cnt >= PIN_LENGTH)
         {
-            u8 __attribute__((aligned(4))) tmp[32] = {0};
+            u8 __attribute__((aligned(4))) tmp[32];
 
             computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
             unlock = memcmp(in->hash, tmp, 32) == 0;

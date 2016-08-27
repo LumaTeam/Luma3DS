@@ -47,8 +47,7 @@ typedef struct __attribute__((packed))
     u32 config;
 } CFWInfo;
 
-extern bool isN3DS;
-extern u32 config;
+extern bool isN3DS, isDevUnit;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset);
