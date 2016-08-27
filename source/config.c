@@ -21,12 +21,50 @@
 */
 
 #include "config.h"
+#include "memory.h"
+#include "fs.h"
 #include "utils.h"
 #include "screen.h"
 #include "draw.h"
 #include "buttons.h"
 
-void configureCFW(void)
+bool readConfig(const char *configPath)
+{
+    if(fileRead(&configData, configPath) != sizeof(cfgData) ||
+       memcmp(configData.magic, "CONF", 4) != 0 ||
+       configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
+       configData.formatVersionMinor != CONFIG_VERSIONMINOR)
+    {
+        configData.config = 0;
+        return false;
+    }
+
+    return true;
+}
+
+void writeConfig(const char *configPath, u32 configTemp)
+{
+    /* If the configuration is different from previously, overwrite it.
+       Just the no-forcing flag being set is not enough */
+    if((configTemp & 0xFFFFFFEF) != configData.config)
+    {
+        //Merge the new options and new boot configuration
+        configData.config = (configData.config & 0xFFFFFFC0) | (configTemp & 0x3F);
+
+        memcpy(configData.magic, "CONF", 4);
+        configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
+        configData.formatVersionMinor = CONFIG_VERSIONMINOR;
+
+        if(!fileWrite(&configData, configPath, sizeof(configData)))
+        {
+            createDirectory("luma");
+            if(!fileWrite(&configData, configPath, sizeof(configData)))
+                error("Error writing the configuration file");
+        }
+    }
+}
+
+void configure(void)
 {
     initScreens();
 
@@ -41,10 +79,10 @@ void configureCFW(void)
                                         "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",
+                                        "( ) Enable experimental TwlBg patches",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
-                                        "( ) Use a PIN",
-                                        "( ) Enable experimental TwlBg patches" };
+                                        "( ) Use a PIN" };
 
     struct multiOption {
         int posXs[4];
@@ -185,13 +223,13 @@ void configureCFW(void)
     }
 
     //Preserve the last-used boot options (last 12 bits)
-    config &= 0x3F;
+    configData.config &= 0x3F;
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        config |= multiOptions[i].enabled << (i * 2 + 6);
+        configData.config |= multiOptions[i].enabled << (i * 2 + 6);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
     //Wait for the pressed buttons to change
     while(HID_PAD == BUTTON_START);

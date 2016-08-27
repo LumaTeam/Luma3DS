@@ -29,6 +29,8 @@
 
 #include "types.h"
 
+#define PDN_GPU_CNT    (*(vu8  *)0x10141200)
+
 #define ARM11_STUB_ADDRESS  (0x25000000 - 0x30) //It's currently only 0x28 bytes large. We're putting 0x30 just to be sure here
 #define WAIT_FOR_ARM9()     *arm11Entry = 0; while(!*arm11Entry); ((void (*)())*arm11Entry)();
 

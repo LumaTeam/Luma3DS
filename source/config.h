@@ -24,10 +24,23 @@
 
 #include "types.h"
 
-#define CONFIG(a) (((config >> (a + 16)) & 1) != 0)
-#define MULTICONFIG(a) ((config >> (a * 2 + 6)) & 3)
-#define BOOTCONFIG(a, b) ((config >> a) & b)
+#define CONFIG(a) (((configData.config >> (a + 16)) & 1) != 0)
+#define MULTICONFIG(a) ((configData.config >> (a * 2 + 6)) & 3)
+#define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
-extern u32 config;
+#define CONFIG_VERSIONMAJOR 1
+#define CONFIG_VERSIONMINOR 0
 
-void configureCFW(void);
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    u16 formatVersionMajor, formatVersionMinor;
+
+    u32 config;
+} cfgData;
+
+extern cfgData configData;
+
+bool readConfig(const char *configPath);
+void writeConfig(const char *configPath, u32 configTemp);
+void configure(void);

@@ -98,9 +98,9 @@ void patchSignatureChecks(u8 *pos, u32 size)
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 {
     //Look for firmlaunch code
-    const u8 pattern[] = {0xDE, 0x1F, 0x8D, 0xE2};
+    const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
-    u8 *off = memsearch(pos, pattern, size, 4) - 0x10;
+    u8 *off = memsearch(pos, pattern, size, 4) - 0x13;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
@@ -180,7 +180,7 @@ void implementSvcGetCFWInfo(u8 *pos, u32 size)
     CFWInfo *info = (CFWInfo *)memsearch(freeK11Space, "LUMA", svcGetCFWInfo_size, 4);
 
     info->commitHash = COMMIT_HASH;
-    info->config = config;
+    info->config = configData.config;
     info->versionMajor = (u8)(rev[1] - '0');
     info->versionMinor = (u8)(rev[3] - '0');
     if(rev[4] == '.')
@@ -227,7 +227,7 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = firmType == TWL_FIRM ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(5));
+                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
     const patchData *patches = firmType == TWL_FIRM ? twlPatches : agbPatches;
 
     //Patch

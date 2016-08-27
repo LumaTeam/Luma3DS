@@ -48,7 +48,6 @@ typedef struct __attribute__((packed))
 } CFWInfo;
 
 extern bool isN3DS;
-extern u32 config;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 void patchSignatureChecks(u8 *pos, u32 size);
