@@ -27,21 +27,19 @@
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/twl_k11modulespatch.h"
 
-static u32 *arm11ExceptionsPage = NULL;
 static u32 *arm11SvcTable = NULL;
-static u32 *arm11SvcHandler = NULL;
 
-static u8 *freeK11Space = NULL; //other than the one used for svcBackdoor
+static u8 *freeK11Space = NULL;
 
-static void findArm11ExceptionsPageAndSvcHandlerAndTable(u8 *pos, u32 size)
-{
-    const u8 arm11ExceptionsPagePattern[] = {0x00, 0xB0, 0x9C, 0xE5};
-    
-    if(arm11ExceptionsPage == NULL) arm11ExceptionsPage = (u32 *)memsearch(pos, arm11ExceptionsPagePattern, size, 4) - 0xB;
-    if((arm11SvcTable == NULL || arm11SvcHandler == NULL) && arm11ExceptionsPage != NULL)
+static void findArm11SvcTable(u8 *pos, u32 size)
+{    
+    if(arm11SvcTable == NULL)
     {
+        const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
+
+        u32 *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
         u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-        arm11SvcHandler = arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+        arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
         while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
     }
 }
@@ -50,21 +48,9 @@ static void findFreeK11Space(u8 *pos, u32 size)
 {
     if(freeK11Space == NULL)
     {
-        const u8 bogus_pattern[] = { 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1, 0x1E, 0xFF, 
-                                     0x2F, 0xE1, 0x00, 0x10, 0xA0, 0xE3, 0x00, 0x10, 0xC0, 0xE5, 
-                                     0x1E, 0xFF, 0x2F, 0xE1 };
+        const u8 pattern[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
         
-        u32 *someSpace = (u32 *)memsearch(pos, bogus_pattern, size, 24);
-
-        // We couldn't find the place where to begin our search of an empty block
-        if (someSpace == NULL)
-            return;
-
-        // Advance until we reach the padding area (filled with 0xFF)
-        u32 *freeSpace;
-        for(freeSpace = someSpace; *freeSpace != 0xFFFFFFFF; freeSpace++);
-
-        freeK11Space = (u8 *)freeSpace;
+        freeK11Space = memsearch(pos, pattern, size, 5) + 1;
     }
 }
 
@@ -154,30 +140,29 @@ void reimplementSvcBackdoor(u8 *pos, u32 size)
                                  0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
                                  0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
 
-    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
+    findArm11SvcTable(pos, size);
 
     if(!arm11SvcTable[0x7B])
     {
-        u32 *freeSpace;
-        for(freeSpace = arm11ExceptionsPage; *freeSpace != 0xFFFFFFFF; freeSpace++);
+        findFreeK11Space(pos, size);
 
-        memcpy(freeSpace, svcBackdoor, 40);
+        memcpy(freeK11Space, svcBackdoor, 40);
 
-        arm11SvcTable[0x7B] = 0xFFFF0000 + ((u8 *)freeSpace - (u8 *)arm11ExceptionsPage);
+        arm11SvcTable[0x7B] = 0xFFF00000 + freeK11Space - pos;
+        freeK11Space += 40;
     }
 }
 
 void implementSvcGetCFWInfo(u8 *pos, u32 size)
 {
-    const char *rev = REVISION;
-    bool isRelease;
-
-    findArm11ExceptionsPageAndSvcHandlerAndTable(pos, size);
     findFreeK11Space(pos, size);
     
     memcpy(freeK11Space, svcGetCFWInfo, svcGetCFWInfo_size);
 
     CFWInfo *info = (CFWInfo *)memsearch(freeK11Space, "LUMA", svcGetCFWInfo_size, 4);
+
+    const char *rev = REVISION;
+    bool isRelease;
 
     info->commitHash = COMMIT_HASH;
     info->config = configData.config;
@@ -188,12 +173,13 @@ void implementSvcGetCFWInfo(u8 *pos, u32 size)
         info->versionBuild = (u8)(rev[5] - '0');
         isRelease = rev[6] == 0;
     }
-    else
-        isRelease = rev[4] == 0;
+    else isRelease = rev[4] == 0;
 
     info->flags = 0 /* master branch */ | (((isRelease) ? 1 : 0) << 1) /* is release */;
 
-    arm11SvcTable[0x2E] = 0xFFF00000 + freeK11Space - pos; //stubbed svc
+    findArm11SvcTable(pos, size);
+
+    arm11SvcTable[0x2E] = 0xFFF00000 + freeK11Space - pos; //Stubbed svc
     freeK11Space += svcGetCFWInfo_size;
 }
 
@@ -250,12 +236,14 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
 void patchTwlBg(u8 *pos)
 {
     u8 *dst = pos + ((isN3DS) ?  0xFEA4 : 0xFCA0);
-    u16 *src1 = (u16 *)(pos + ((isN3DS) ? 0xE38 : 0xE3C)), *src2 = (u16 *)(pos + ((isN3DS) ? 0xE54 : 0xE58));
-    memcpy(dst, twl_k11modules, twl_k11modules_size); //install k11 hook
+
+    memcpy(dst, twl_k11modules, twl_k11modules_size); //Install K11 hook
     
-    u32 *off;
-    for(off = (u32 *)dst; *off != 0xABCDABCD; off++);
-    *off = (isN3DS) ? 0xCDE88 : 0xCD5F8; //dev SRL launcher offset
+    u32 *off = (u32 *)memsearch(dst, "LAUN", twl_k11modules_size, 4);
+    *off = (isN3DS) ? 0xCDE88 : 0xCD5F8; //Dev SRL launcher offset
+
+    u16 *src1 = (u16 *)(pos + ((isN3DS) ? 0xE38 : 0xE3C)),
+        *src2 = (u16 *)(pos + ((isN3DS) ? 0xE54 : 0xE58));
     
     //Construct BLX instructions:
     src1[0] = 0xF000 | ((((u32)dst - (u32)src1 - 4) & (0xFFF << 11)) >> 12);

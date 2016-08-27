@@ -44,7 +44,7 @@ patch:
     cmp r7, r6
     bne end
 
-    ldr r7, =#0xabcdabcd    ; offset of the dev launcher (will be replaced later)
+    ldr r7, [launcher]      ; offset of the dev launcher (will be replaced later)
     add r7, r9
 
     adr r5, patchesStart
@@ -81,7 +81,9 @@ patch:
 
     end:
 
-    pop {r0-r11, pc}  
+    pop {r0-r11, pc}
+
+launcher: .ascii "LAUN"  
 
 .align 2
 .thumb
