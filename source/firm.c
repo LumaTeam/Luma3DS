@@ -141,11 +141,7 @@ void main(void)
 
             if(shouldLoadConfigMenu)
             {
-                configMenu();
-
-                if(!pinExists && CONFIG(8)) newPin();
-
-                chrono(2);
+                configMenu(pinExists);
 
                 //Update pressed buttons
                 pressed = HID_PAD;

@@ -43,4 +43,4 @@ extern cfgData configData;
 
 bool readConfig(const char *configPath);
 void writeConfig(const char *configPath, u32 configTemp);
-void configMenu(void);
+void configMenu(bool oldPinStatus);

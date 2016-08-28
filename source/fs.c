@@ -76,6 +76,11 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
     return false;
 }
 
+void fileDelete(const char *path)
+{
+    f_unlink(path);
+}
+
 void createDirectory(const char *path)
 {
     f_mkdir(path);

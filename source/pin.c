@@ -60,11 +60,12 @@ static inline char PINKeyToLetter(u32 pressed)
     return keys[31 - i];
 }
 
-void newPin(void)
+void newPin(bool allowSkipping)
 {
     clearScreens();
 
-    drawString("Enter a new PIN to proceed", 10, 10, COLOR_TITLE);
+    char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
+    drawString(title, 10, 10, COLOR_TITLE);
     drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
@@ -80,10 +81,12 @@ void newPin(void)
         {
             pressed = waitInput();
         }
-        while(!(pressed & PIN_BUTTONS & ~BUTTON_START));
+        while(!(pressed & PIN_BUTTONS));
 
-        pressed &= PIN_BUTTONS & ~BUTTON_START;
+        pressed &= PIN_BUTTONS;
+        if(!allowSkipping) pressed &= ~BUTTON_START;
 
+        if(pressed & BUTTON_START) return;
         if(!pressed) continue;
 
         char key = PINKeyToLetter(pressed);
@@ -114,8 +117,6 @@ void newPin(void)
         if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
             error("Error writing the PIN file");
     }
-
-    while(HID_PAD & PIN_BUTTONS);
 }
 
 void verifyPin(PINData *in)
@@ -143,9 +144,7 @@ void verifyPin(PINData *in)
 
         if(pressed & BUTTON_START) mcuPowerOff();
 
-        pressed &= PIN_BUTTONS & ~BUTTON_START;
-
-        if(!pressed) continue;
+        pressed &= PIN_BUTTONS;
 
         char key = PINKeyToLetter(pressed);
         enteredPassword[cnt++] = (u8)key; //Add character to password
