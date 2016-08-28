@@ -146,6 +146,8 @@ void verifyPin(PINData *in)
 
         pressed &= PIN_BUTTONS;
 
+        if(!pressed) continue;
+
         char key = PINKeyToLetter(pressed);
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
