@@ -213,7 +213,7 @@ void main(void)
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM2X:
-            patch2xNativeAndSafeFirm();
+            if(isA9lh) patch2xNativeAndSafeFirm();
             break;
         default:
             //Skip patching on unsupported O3DS AGB/TWL FIRMs
