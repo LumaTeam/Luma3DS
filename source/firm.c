@@ -236,7 +236,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 {
     section = firm->section;
 
-    //Load FIRM from CTRNAND, unless it's an O3DS and we're loading a pre-5.0 NATIVE FIRM
+    //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
 
     if(!isN3DS && *firmType == NATIVE_FIRM)
@@ -253,7 +253,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         }
 
         //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
-        if(firmVersion > 0xF && firmVersion < 0x25 && firmSource != FIRMWARE_SYSNAND)
+        else if(firmVersion < 0x25)
         {
             if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
                 error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
