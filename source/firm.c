@@ -242,10 +242,10 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
     if(!isN3DS && *firmType == NATIVE_FIRM)
     {
-        //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs.
+        //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
         if(firmVersion < 0x18)
         {
-            if(firmSource == FIRMWARE_SYSNAND && firmVersion < 9) 
+            if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9) 
                 error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
 
             *firmType = SAFE_FIRM;
