@@ -14,6 +14,9 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
 
     mov r8, r1
 
+    cmp r7, #0
+    moveq r7, r10 ; for 2.x
+
     pxi_wait_recv:
         ldr r2, =0x44846
         ldr r0, =0x10008000
