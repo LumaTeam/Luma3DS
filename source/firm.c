@@ -341,17 +341,10 @@ static inline void patchSafeFirm(void)
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
         arm9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
+
+        patchFirmWrites(arm9Section, section[2].size);
     }
-
-    //Find the Process9 .code location, size and memory address
-    u32 process9Size,
-        process9MemAddr;
-    u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
-
-    if(isN3DS) patchFirmWrites(process9Offset, process9Size);
-    else patchFirmWriteSafe(process9Offset, process9Size);
-
-    patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+    else patchFirmWriteSafe(arm9Section, section[2].size);
 }
 
 static inline void copySection0AndInjectSystemModules(void)
