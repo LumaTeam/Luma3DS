@@ -40,14 +40,14 @@ extern u16 launchedFirmTIDLow[8]; //Defined in start.s
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-u32 emuOffset, firmVersion;
+u32 emuOffset;
 
 bool isN3DS,
      isDevUnit,
      isFirmlaunch;
 
 cfgData configData;
-FirmwareSource firmSource, nandType;
+FirmwareSource firmSource;
 
 void main(void)
 {
@@ -213,14 +213,15 @@ void main(void)
         writeConfig(configPath, configTemp);
     }
 
-    loadFirm(firmType);
+    u32 firmVersion = loadFirm(&firmType, firmSource);
 
     switch(firmType)
     {
         case NATIVE_FIRM:
-            patchNativeFirm(emuHeader, isA9lh);
+            patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
+            if(!isFirmlaunch && BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM!");
             patchSafeFirm();
             break;
         default:
@@ -232,38 +233,46 @@ void main(void)
     launchFirm(firmType);
 }
 
-static inline void loadFirm(FirmwareType firmType)
+static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 {
     section = firm->section;
 
     //Load FIRM from CTRNAND, unless it's an O3DS and we're loading a pre-5.0 NATIVE FIRM
-    firmVersion = firmRead(firm, (u32)firmType);
+    u32 firmVersion = firmRead(firm, (u32)*firmType);
 
-    if(!isN3DS && firmType == NATIVE_FIRM && firmVersion < 0x25)
+    if(!isN3DS && *firmType == NATIVE_FIRM)
     {
-        //We can't boot < 2.x NANDs. No emuNAND either.
-        if(firmVersion < ((firmSource == FIRMWARE_SYSNAND) ? 9 : 0x18))
-            error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it.");
+        //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs.
+        if(firmVersion < 0x18)
+        {
+            if(firmSource == FIRMWARE_SYSNAND && firmVersion < 9) 
+                error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
 
-        //We can't boot a 4.x NATIVE_FIRM, load one from SD
-        else if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
-            error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot.");
+            *firmType = SAFE_FIRM;
+        }
 
-        //No assumption regarding FIRM version
-        firmVersion = 0xffffffff;
+        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
+        if(firmVersion > 0xF && firmVersion < 0x25 && firmSource != FIRMWARE_SYSNAND)
+        {
+            if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
+                error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+
+            //No assumption regarding FIRM version
+            firmVersion = 0xFFFFFFFF;
+        }
     }
-    else if(!isN3DS && firmType == SAFE_FIRM && firmVersion < 1)
-        error("An old unsupported SAFE_FIRM has been detected.");
 
-    else decryptExeFs((u8 *)firm);
+    if(firmVersion != 0xFFFFFFFF) decryptExeFs((u8 *)firm);
+
+    return firmVersion;
 }
 
-static inline void patchNativeFirm(u32 emuHeader, bool isA9lh)
+static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
     u8 *arm11Section1 = (u8 *)firm + section[1].offset;
 
-    if(firmVersion >= 0x37 && isN3DS)
+    if(isN3DS)
     {
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
         arm9Loader(arm9Section);
@@ -278,15 +287,6 @@ static inline void patchNativeFirm(u32 emuHeader, bool isA9lh)
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
-    //Apply firmlaunch patches
-    patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
-
-    if(firmVersion < 0x18) // < 3.x
-    {
-        if(isA9lh) patchOldFirmWrites(process9Offset, process9Size);
-        return;
-    }
-
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
@@ -299,6 +299,9 @@ static inline void patchNativeFirm(u32 emuHeader, bool isA9lh)
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
     else if(isA9lh) patchFirmWrites(process9Offset, process9Size);
+
+    //Apply firmlaunch patches
+    patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
     //11.0 FIRM patches
     if(firmVersion >= (isN3DS ? 0x21 : 0x52))
@@ -340,7 +343,7 @@ static inline void patchSafeFirm(void)
 
         patchFirmWrites(arm9Section, section[2].size);
     }
-    else patchOldFirmWrites(arm9Section, section[2].size);
+    else patchFirmWriteSafe(arm9Section, section[2].size);
 }
 
 static inline void copySection0AndInjectSystemModules(void)
@@ -378,7 +381,7 @@ static inline void launchFirm(FirmwareType firmType)
 {
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
-    if(firmType == NATIVE_FIRM && firmVersion >= 0x18)
+    if(firmType == NATIVE_FIRM)
     {
         copySection0AndInjectSystemModules();
         sectionNum = 1;
