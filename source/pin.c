@@ -64,13 +64,14 @@ void newPin(void)
 {
     clearScreens();
 
-    drawString("Enter your NEW PIN: ", 10, 10, COLOR_WHITE);
+    drawString("Enter a new PIN to proceed", 10, 10, COLOR_TITLE);
+    drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
 
     u32 cnt = 0;
-    int charDrawPos = 20 * SPACING_X;
+    int charDrawPos = 5 * SPACING_X;
 
     while(cnt < PIN_LENGTH)
     {
@@ -89,7 +90,7 @@ void newPin(void)
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
         //Visualize character on screen
-        drawCharacter(key, 10 + charDrawPos, 10, COLOR_WHITE);
+        drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
     }
 
@@ -121,9 +122,6 @@ void verifyPin(PINData *in)
 {
     initScreens();
 
-    drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
-    drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
 
@@ -133,6 +131,9 @@ void verifyPin(PINData *in)
 
     while(!unlock)
     {
+        drawString("Press START to shutdown or enter PIN to proceed", 10, 10, COLOR_TITLE);
+        drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+
         u32 pressed;
         do
         {
@@ -143,6 +144,7 @@ void verifyPin(PINData *in)
         if(pressed & BUTTON_START) mcuPowerOff();
 
         pressed &= PIN_BUTTONS & ~BUTTON_START;
+
         if(!pressed) continue;
 
         char key = PINKeyToLetter(pressed);
@@ -166,9 +168,7 @@ void verifyPin(PINData *in)
 
                 clearScreens();
 
-                drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
-                drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-                drawString("Wrong pin! Try again!", 10, 10 + 3 * SPACING_Y, COLOR_RED); 
+                drawString("Wrong PIN, try again", 10, 10 + 4 * SPACING_Y, COLOR_RED); 
             }
         }
     }
