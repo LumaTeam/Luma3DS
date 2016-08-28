@@ -64,7 +64,7 @@ void writeConfig(const char *configPath, u32 configTemp)
     }
 }
 
-void configure(void)
+void configMenu(void)
 {
     initScreens();
 

@@ -137,11 +137,11 @@ void main(void)
             if(pinExists) verifyPin(&pin);
 
             //If no configuration file exists or SELECT is held, load configuration menu
-            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
+            bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
 
-            if(shouldLoadConfigurationMenu)
+            if(shouldLoadConfigMenu)
             {
-                configure();
+                configMenu();
 
                 if(!pinExists && CONFIG(8)) newPin();
 
@@ -164,7 +164,7 @@ void main(void)
                 if(CONFIG(7) && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
-                   chainload an external payload (the PIN, if any, has been verified)*/
+                   chainload an external payload */
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
                 if(shouldLoadPayload) loadPayload(pressed);
@@ -177,8 +177,8 @@ void main(void)
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 if(pressed & BUTTON_R1)
                 {
-                    nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                    firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                    nandType = useSysAsDefault ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    firmSource = useSysAsDefault ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
                 }
 
                 /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
@@ -221,7 +221,8 @@ void main(void)
             patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
-            patchSafeFirm();
+        case NATIVE_FIRM2X:
+            patch2xNativeAndSafeFirm();
             break;
         default:
             //Skip patching on unsupported O3DS AGB/TWL FIRMs
@@ -247,9 +248,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
             if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9) 
                 error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
 
-            if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM!");
+            if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM");
 
-            *firmType = SAFE_FIRM;
+            *firmType = NATIVE_FIRM2X;
         }
 
         //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
@@ -328,11 +329,10 @@ static inline void patchLegacyFirm(FirmwareType firmType)
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 
-    if(firmType == TWL_FIRM && CONFIG(5))
-        patchTwlBg((u8 *)firm + section[1].offset);
+    if(firmType == TWL_FIRM && CONFIG(5)) patchTwlBg((u8 *)firm + section[1].offset);
 }
 
-static inline void patchSafeFirm(void)
+static inline void patch2xNativeAndSafeFirm(void)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
@@ -344,7 +344,7 @@ static inline void patchSafeFirm(void)
 
         patchFirmWrites(arm9Section, section[2].size);
     }
-    else patchFirmWriteSafe(arm9Section, section[2].size);
+    else patchOldFirmWrites(arm9Section, section[2].size);
 }
 
 static inline void copySection0AndInjectSystemModules(void)

@@ -49,5 +49,6 @@ typedef enum FirmwareType
     NATIVE_FIRM = 0,
     TWL_FIRM = 1,
     AGB_FIRM = 2,
-    SAFE_FIRM = 3
+    SAFE_FIRM = 3,
+    NATIVE_FIRM2X = 4
 } FirmwareType;

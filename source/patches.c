@@ -48,7 +48,7 @@ static void findFreeK11Space(u8 *pos, u32 size)
 {
     if(freeK11Space == NULL)
     {
-        const u8 pattern[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+        const u8 pattern[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
         
         freeK11Space = memsearch(pos, pattern, size, 5) + 1;
     }
@@ -113,23 +113,23 @@ void patchFirmWrites(u8 *pos, u32 size)
     off2[1] = writeBlock[1];
 }
 
-void patchFirmWriteSafe(u8 *pos, u32 size)
+void patchOldFirmWrites(u8 *pos, u32 size)
 {
-    const u16 writeBlockSafe[2] = {0x2400, 0xE01D};
+    const u16 writeBlockOld[2] = {0x2400, 0xE01D};
 
     //Look for FIRM writing code
     const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, 4);
 
-    off[0] = writeBlockSafe[0];
-    off[1] = writeBlockSafe[1];
+    off[0] = writeBlockOld[0];
+    off[1] = writeBlockOld[1];
 }
 
 void reimplementSvcBackdoor(u8 *pos, u32 size)
 {
     //Official implementation of svcBackdoor
-    const u8  svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
+    const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
                                  0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
                                  0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
                                  0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
@@ -175,7 +175,7 @@ void implementSvcGetCFWInfo(u8 *pos, u32 size)
     }
     else isRelease = rev[4] == 0;
 
-    info->flags = 0 /* master branch */ | (((isRelease) ? 1 : 0) << 1) /* is release */;
+    info->flags = 0 /* master branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 
     findArm11SvcTable(pos, size);
 
@@ -235,15 +235,15 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
 
 void patchTwlBg(u8 *pos)
 {
-    u8 *dst = pos + ((isN3DS) ?  0xFEA4 : 0xFCA0);
+    u8 *dst = pos + (isN3DS ?  0xFEA4 : 0xFCA0);
 
     memcpy(dst, twl_k11modules, twl_k11modules_size); //Install K11 hook
     
     u32 *off = (u32 *)memsearch(dst, "LAUN", twl_k11modules_size, 4);
-    *off = (isN3DS) ? 0xCDE88 : 0xCD5F8; //Dev SRL launcher offset
+    *off = isN3DS ? 0xCDE88 : 0xCD5F8; //Dev SRL launcher offset
 
-    u16 *src1 = (u16 *)(pos + ((isN3DS) ? 0xE38 : 0xE3C)),
-        *src2 = (u16 *)(pos + ((isN3DS) ? 0xE54 : 0xE58));
+    u16 *src1 = (u16 *)(pos + (isN3DS ? 0xE38 : 0xE3C)),
+        *src2 = (u16 *)(pos + (isN3DS ? 0xE54 : 0xE58));
     
     //Construct BLX instructions:
     src1[0] = 0xF000 | ((((u32)dst - (u32)src1 - 4) & (0xFFF << 11)) >> 12);

@@ -3,7 +3,7 @@
 #include "patcher.h"
 #include "ifile.h"
 
-static CFWInfo info = {0};
+static CFWInfo info;
 
 static int memcmp(const void *buf1, const void *buf2, u32 size)
 {
@@ -97,11 +97,10 @@ static void loadCFWInfo(void)
     if(!infoLoaded)
     {
         svcGetCFWInfo(&info);
+
         IFile file;
         if(BOOTCONFIG(5, 1) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
-        {
             IFile_Close(&file);
-        }
 
         infoLoaded = true;
     }

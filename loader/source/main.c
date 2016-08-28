@@ -23,7 +23,7 @@
 #include "memory.h"
 #include "cache.h"
 
-extern u32 payloadSize; //defined in start.s
+extern u32 payloadSize; //Defined in start.s
 
 void main(void)
 {

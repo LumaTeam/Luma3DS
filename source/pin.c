@@ -47,7 +47,7 @@ bool readPin(PINData *out)
 
     computePINHash(tmp, zeroes, 1);
 
-    return memcmp(out->testHash, tmp, 32) == 0; //test vector verification (SD card has (or hasn't) been used on another console)
+    return memcmp(out->testHash, tmp, 32) == 0; //Test vector verification (SD card has, or hasn't been used on another console)
 }
 
 static inline char PINKeyToLetter(u32 pressed)
@@ -66,8 +66,8 @@ void newPin(void)
 
     drawString("Enter your NEW PIN: ", 10, 10, COLOR_WHITE);
 
-    // Set the default value as 0x00 so we can check if there are any unentered characters.
-    u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0}; // pad to AES block length
+    //Pad to AES block length with zeroes
+    u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
 
     u32 cnt = 0;
     int charDrawPos = 20 * SPACING_X;
@@ -84,10 +84,11 @@ void newPin(void)
         pressed &= PIN_BUTTONS & ~BUTTON_START;
 
         if(!pressed) continue;
-        char key = PINKeyToLetter(pressed);
-        enteredPassword[cnt++] = (u8)key; // add character to password.
 
-        // visualize character on screen.
+        char key = PINKeyToLetter(pressed);
+        enteredPassword[cnt++] = (u8)key; //Add character to password
+
+        //Visualize character on screen
         drawCharacter(key, 10 + charDrawPos, 10, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
     }
@@ -123,7 +124,7 @@ void verifyPin(PINData *in)
     drawString("Press START to shutdown or enter pin to proceed.", 10, 10, COLOR_WHITE);
     drawString("Pin: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
-    // Set the default characters as 0x00 so we can check if there are any unentered characters.
+    //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
 
     u32 cnt = 0;
@@ -145,9 +146,9 @@ void verifyPin(PINData *in)
         if(!pressed) continue;
 
         char key = PINKeyToLetter(pressed);
-        enteredPassword[cnt++] = (u8)key; // add character to password.
+        enteredPassword[cnt++] = (u8)key; //Add character to password
 
-        // visualize character on screen.
+        //Visualize character on screen
         drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
 
