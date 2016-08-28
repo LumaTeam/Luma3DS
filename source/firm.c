@@ -221,7 +221,6 @@ void main(void)
             patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
-            if(!isFirmlaunch && BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM!");
             patchSafeFirm();
             break;
         default:
@@ -247,6 +246,8 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         {
             if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9) 
                 error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
+
+            if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM!");
 
             *firmType = SAFE_FIRM;
         }
