@@ -34,23 +34,7 @@
 #include "pin.h"
 #include "crypto.h"
 
-bool readPin(PINData *out)
-{
-    if(fileRead(out, "/luma/pin.bin") != sizeof(PINData) ||
-       memcmp(out->magic, "PINF", 4) != 0 ||
-       out->formatVersionMajor != PIN_VERSIONMAJOR ||
-       out->formatVersionMinor != PIN_VERSIONMINOR)
-        return false;
-
-    u8 __attribute__((aligned(4))) zeroes[16] = {0};
-    u8 __attribute__((aligned(4))) tmp[32];
-
-    computePINHash(tmp, zeroes, 1);
-
-    return memcmp(out->testHash, tmp, 32) == 0; //Test vector verification (SD card has, or hasn't been used on another console)
-}
-
-static inline char PINKeyToLetter(u32 pressed)
+static char pinKeyToLetter(u32 pressed)
 {
     const char keys[] = "AB--------XY";
 
@@ -89,7 +73,7 @@ void newPin(bool allowSkipping)
         if(pressed & BUTTON_START) return;
         if(!pressed) continue;
 
-        char key = PINKeyToLetter(pressed);
+        char key = pinKeyToLetter(pressed);
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
         //Visualize character on screen
@@ -105,10 +89,10 @@ void newPin(bool allowSkipping)
     pin.formatVersionMajor = PIN_VERSIONMAJOR;
     pin.formatVersionMinor = PIN_VERSIONMINOR;
 
-    computePINHash(tmp, zeroes, 1);
+    computePinHash(tmp, zeroes, 1);
     memcpy(pin.testHash, tmp, 32);
 
-    computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
+    computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
     memcpy(pin.hash, tmp, 32);
 
     if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
@@ -119,9 +103,25 @@ void newPin(bool allowSkipping)
     }
 }
 
-void verifyPin(PINData *in)
+bool verifyPin(void)
 {
     initScreens();
+
+    PINData pin;
+
+    if(fileRead(&pin, "/luma/pin.bin") != sizeof(PINData) ||
+       memcmp(pin.magic, "PINF", 4) != 0 ||
+       pin.formatVersionMajor != PIN_VERSIONMAJOR ||
+       pin.formatVersionMinor != PIN_VERSIONMINOR)
+        return false;
+
+    u8 __attribute__((aligned(4))) zeroes[16] = {0};
+    u8 __attribute__((aligned(4))) tmp[32];
+
+    computePinHash(tmp, zeroes, 1);
+
+    //Test vector verification (SD card has, or hasn't been used on another console)
+    if(memcmp(pin.testHash, tmp, 32) != 0) return false;
 
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
@@ -148,7 +148,7 @@ void verifyPin(PINData *in)
 
         if(!pressed) continue;
 
-        char key = PINKeyToLetter(pressed);
+        char key = pinKeyToLetter(pressed);
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
         //Visualize character on screen
@@ -157,10 +157,8 @@ void verifyPin(PINData *in)
 
         if(cnt >= PIN_LENGTH)
         {
-            u8 __attribute__((aligned(4))) tmp[32];
-
-            computePINHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
-            unlock = memcmp(in->hash, tmp, 32) == 0;
+            computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
+            unlock = memcmp(pin.hash, tmp, 32) == 0;
 
             if(!unlock)
             {
@@ -173,4 +171,6 @@ void verifyPin(PINData *in)
             }
         }
     }
+
+    return true;
 }

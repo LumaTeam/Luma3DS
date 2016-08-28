@@ -129,12 +129,7 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            PINData pin;
-
-            bool pinExists = CONFIG(8) && readPin(&pin);
-
-            //If we get here we should check the PIN (if it exists) in all cases
-            if(pinExists) verifyPin(&pin);
+            bool pinExists = CONFIG(8) && verifyPin();
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
