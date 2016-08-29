@@ -44,4 +44,4 @@ typedef struct __attribute__((packed))
 } PINData;
 
 void newPin(bool allowSkipping);
-bool verifyPin(void);
+bool verifyPin(bool skipVerification);

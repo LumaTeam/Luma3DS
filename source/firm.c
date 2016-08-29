@@ -129,7 +129,7 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            bool pinExists = CONFIG(8) && verifyPin();
+            bool pinExists = CONFIG(8) && verifyPin(isA9lh && CFG_BOOTENV);
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
