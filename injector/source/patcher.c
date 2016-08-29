@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
+#include "CFWInfo.h"
 
 static CFWInfo info;
 
@@ -83,11 +84,6 @@ static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int f
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
-}
-
-int __attribute__((naked)) svcGetCFWInfo(CFWInfo __attribute__((unused)) *out)
-{
-    __asm__ volatile("svc 0x2E; bx lr");
 }
 
 static void loadCFWInfo(void)

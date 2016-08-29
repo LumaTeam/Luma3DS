@@ -28,7 +28,7 @@ CFLAGS := -Wall -Wextra -MMD -MP -marm $(ARCH) -fno-builtin -std=c11 -O2 -flto -
 LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ARCH)
 
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
-          $(call rwildcard, $(dir_source), *.c))
+          $(call rwildcard, $(dir_source), *.s *.c))
 
 .PHONY: all
 all: ../$(dir_build)/$(name).cxi
@@ -48,4 +48,9 @@ $(dir_build)/memory.o : CFLAGS += -O3
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
+
+$(dir_build)/%.o: $(dir_source)/%.s
+	@mkdir -p "$(@D)"
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+
 include $(call rwildcard, $(dir_build), *.d)
