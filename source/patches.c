@@ -216,7 +216,7 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
 
 void patchTwlBg(u8 *pos)
 {
-    u8 *dst = pos + (isN3DS ?  0xFEA4 : 0xFCA0);
+    u8 *dst = pos + (isN3DS ? 0xFEA4 : 0xFCA0);
 
     memcpy(dst, twl_k11modules, twl_k11modules_size); //Install K11 hook
     

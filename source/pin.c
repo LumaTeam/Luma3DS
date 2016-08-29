@@ -39,7 +39,7 @@ static char pinKeyToLetter(u32 pressed)
     const char keys[] = "AB--------XY";
 
     u32 i;
-    __asm__ volatile("clz %[i], %[pressed]" : [i] "=r" (i) : [pressed] "r" (pressed));
+    for(i = 31; pressed > 1; i--) pressed /= 2;
 
     return keys[31 - i];
 }

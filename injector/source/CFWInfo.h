@@ -1,7 +1,5 @@
 #pragma once
 
-#include <3ds.h>
-
 typedef struct __attribute__((packed))
 {
     char magic[4];

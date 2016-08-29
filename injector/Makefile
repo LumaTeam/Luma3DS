@@ -22,10 +22,10 @@ LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
-ARCH := -mcpu=mpcore -mfloat-abi=hard -mtp=soft
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ARCH) -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
+ASFLAGS := -mcpu=mpcore -mfloat-abi=hard -mtp=soft
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
 	  -ffunction-sections -fdata-sections $(INCLUDE) -DARM11 -D_3DS
-LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ARCH)
+LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS)
 
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
@@ -51,6 +51,5 @@ $(dir_build)/%.o: $(dir_source)/%.c
 
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-
+	$(COMPILE.s) $(OUTPUT_OPTION) $<
 include $(call rwildcard, $(dir_build), *.d)
