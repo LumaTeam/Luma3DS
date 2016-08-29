@@ -27,6 +27,7 @@
 #include "screen.h"
 #include "draw.h"
 #include "buttons.h"
+#include "pin.h"
 
 bool readConfig(const char *configPath)
 {
@@ -64,7 +65,7 @@ void writeConfig(const char *configPath, u32 configTemp)
     }
 }
 
-void configure(void)
+void configMenu(bool oldPinStatus)
 {
     initScreens();
 
@@ -234,6 +235,11 @@ void configure(void)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
+    if(CONFIG(8)) newPin(oldPinStatus);
+    else if(oldPinStatus) fileDelete("/luma/pin.bin");
+
     //Wait for the pressed buttons to change
-    while(HID_PAD == BUTTON_START);
+    while(HID_PAD & PIN_BUTTONS);
+
+    chrono(2);
 }

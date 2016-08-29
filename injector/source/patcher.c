@@ -2,8 +2,9 @@
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
+#include "CFWInfo.h"
 
-static CFWInfo info = {0};
+static CFWInfo info;
 
 static int memcmp(const void *buf1, const void *buf2, u32 size)
 {
@@ -85,11 +86,6 @@ static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int f
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
-int __attribute__((naked)) svcGetCFWInfo(CFWInfo __attribute__((unused)) *out)
-{
-    __asm__ volatile("svc 0x2E; bx lr");
-}
-
 static void loadCFWInfo(void)
 {
     static bool infoLoaded = false;
@@ -97,11 +93,10 @@ static void loadCFWInfo(void)
     if(!infoLoaded)
     {
         svcGetCFWInfo(&info);
+
         IFile file;
         if(BOOTCONFIG(5, 1) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
-        {
             IFile_Close(&file);
-        }
 
         infoLoaded = true;
     }

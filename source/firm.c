@@ -36,7 +36,7 @@
 #include "pin.h"
 #include "../build/injector.h"
 
-extern u16 launchedFirmTIDLow[8]; //Defined in start.s
+extern u16 launchedFirmTidLow[8]; //Defined in start.s
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
@@ -80,14 +80,14 @@ void main(void)
     }
 
     //Determine if this is a firmlaunch boot
-    if(launchedFirmTIDLow[5] != 0)
+    if(launchedFirmTidLow[5] != 0)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuReboot();
 
         isFirmlaunch = true;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = launchedFirmTIDLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTIDLow[5] - u'0');
+        firmType = launchedFirmTidLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTidLow[5] - u'0');
 
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
@@ -134,23 +134,14 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            PINData pin;
-
-            bool pinExists = CONFIG(8) && readPin(&pin);
-
-            //If we get here we should check the PIN (if it exists) in all cases
-            if(pinExists) verifyPin(&pin);
+            bool pinExists = CONFIG(8) && verifyPin();
 
             //If no configuration file exists or SELECT is held, load configuration menu
-            bool shouldLoadConfigurationMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
+            bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
 
-            if(shouldLoadConfigurationMenu)
+            if(shouldLoadConfigMenu)
             {
-                configure();
-
-                if(!pinExists && CONFIG(8)) newPin();
-
-                chrono(2);
+                configMenu(pinExists);
 
                 //Update pressed buttons
                 pressed = HID_PAD;
@@ -163,13 +154,20 @@ void main(void)
 
                 //Flag to tell loader to init SD
                 configTemp |= 1 << 5;
+
+                //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
+                if(pinExists && !shouldLoadConfigMenu)
+                {
+                    while(HID_PAD & PIN_BUTTONS);
+                    chrono(2);
+                }
             }
             else
             {
                 if(CONFIG(7) && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
-                   chainload an external payload (the PIN, if any, has been verified)*/
+                   chainload an external payload */
                 bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
                 if(shouldLoadPayload) loadPayload(pressed);
@@ -182,8 +180,8 @@ void main(void)
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 if(pressed & BUTTON_R1)
                 {
-                    nandType = (useSysAsDefault) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                    firmSource = (useSysAsDefault) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                    nandType = useSysAsDefault ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    firmSource = useSysAsDefault ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
                 }
 
                 /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
@@ -204,13 +202,13 @@ void main(void)
     //If we need to boot emuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNAND(&emuOffset, &emuHeader, &nandType);
+        locateEmuNand(&emuOffset, &emuHeader, &nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
     //Same if we're using emuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNAND(&emuOffset, &emuHeader, &firmSource);
+        locateEmuNand(&emuOffset, &emuHeader, &firmSource);
 
     if(!isFirmlaunch)
     {
@@ -218,7 +216,7 @@ void main(void)
         writeConfig(configPath, configTemp);
     }
 
-    u32 firmVersion = loadFirm(firmType);
+    u32 firmVersion = loadFirm(&firmType, firmSource);
 
     switch(firmType)
     {
@@ -226,7 +224,8 @@ void main(void)
             patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
-            patchSafeFirm();
+        case NATIVE_FIRM2X:
+            if(isA9lh) patch2xNativeAndSafeFirm();
             break;
         default:
             //Skip patching on unsupported O3DS AGB/TWL FIRMs
@@ -237,7 +236,7 @@ void main(void)
     launchFirm(firmType);
 }
 
-static inline u32 loadFirm(FirmwareType firmType)
+static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 {
     section = firm->section;
     const char *firmwareFiles[4] = {
@@ -251,25 +250,39 @@ static inline u32 loadFirm(FirmwareType firmType)
 
     if(fileRead(firm, firmwareFiles[(u32)firmType]))
     {
-        firmVersion = 0xffffffff;
+        firmVersion = 0xFFFFFFFF;
     }
     else
     {
         firmVersion = firmRead(firm, (u32)firmType);
 
-        if(firmType == NATIVE_FIRM && !isN3DS)
+        if(!isN3DS && *firmType == NATIVE_FIRM)
         {
-            //We can't boot < 3.x NANDs (if firmware.bin is in the /luma folder, booting will fail)
+            //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
             if(firmVersion < 0x18)
-                error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it.");
-                
-            //We can't boot a 4.x NATIVE_FIRM
-            if(firmVersion < 0x25)
-                error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+            {
+                if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9) 
+                    error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
+
+                if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM");
+
+                *firmType = NATIVE_FIRM2X;
+            }
+
+            //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
+            else if(firmVersion < 0x25)
+            {
+                if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
+                    error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+
+                //No assumption regarding FIRM version
+                firmVersion = 0xFFFFFFFF;
+            }
         }
-        decryptExeFs((u8 *)firm);
     }
 
+    if(firmVersion != 0xFFFFFFFF) decryptExeFs((u8 *)firm);
+    
     return firmVersion;
 }
 
@@ -293,6 +306,13 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
+    //Find Kernel11 SVC table and free space locations
+    u8 *freeK11Space;
+    u32 *arm11SvcHandler, 
+        *arm11ExceptionsPage;
+
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
@@ -300,7 +320,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(nandType != FIRMWARE_SYSNAND)
     {
         u32 branchAdditive = (u32)firm + section[2].offset - (u32)section[2].address;
-        patchEmuNAND(arm9Section, section[2].size, process9Offset, process9Size, emuOffset, emuHeader, branchAdditive);
+        patchEmuNand(arm9Section, section[2].size, process9Offset, process9Size, emuHeader, branchAdditive);
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
@@ -316,9 +336,11 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, section[1].size);
+        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
     }
 
+    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
+    
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
     
@@ -326,28 +348,27 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     {
         //Install arm11 exception handlers
         u32 stackAddress, codeSetOffset;
-        u32 *exceptionsPage = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
-        installArm11Handlers(exceptionsPage, stackAddress, codeSetOffset);
+        getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
+        installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
         
         //Kernel9/Process9 debugging
-        patchExceptionHandlersInstall(arm9Section, section[2].size);
+        patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
         patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
         
         //Stub svcBreak11 with "bkpt 65535"
-        patchSvcBreak11(arm11Section1, section[1].size);
+        patchSvcBreak11(arm11Section1, arm11SvcTable);
+
         //Stub kernel11panic with "bkpt 65534"
         patchKernel11Panic(arm11Section1, section[1].size);
     }
 
     if(CONFIG(9))
     {
-        patchArm11SvcAccessChecks(arm11Section1, section[1].size);
-        patchK11ModuleChecks(arm11Section1, section[1].size);
+        patchArm11SvcAccessChecks(arm11SvcHandler);
+        patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
         patchP9AccessChecks(process9Offset, process9Size);
     }
-
-    implementSvcGetCFWInfo(arm11Section1, section[1].size);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
@@ -367,18 +388,17 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     if(DEV_OPTIONS != 2)
     {
         //Kernel9/Process9 debugging
-        patchExceptionHandlersInstall(arm9Section, section[3].size);
+        patchArm9ExceptionHandlersInstall(arm9Section, section[3].size);
         patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
         patchKernel9Panic(arm9Section, section[3].size, firmType);
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 
-    if(firmType == TWL_FIRM && CONFIG(5))
-        patchTwlBg((u8 *)firm + section[1].offset);
+    if(firmType == TWL_FIRM && CONFIG(5)) patchTwlBg((u8 *)firm + section[1].offset);
 }
 
-static inline void patchSafeFirm(void)
+static inline void patch2xNativeAndSafeFirm(void)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
@@ -390,12 +410,12 @@ static inline void patchSafeFirm(void)
 
         patchFirmWrites(arm9Section, section[2].size);
     }
-    else patchFirmWriteSafe(arm9Section, section[2].size);
+    else patchOldFirmWrites(arm9Section, section[2].size);
 
     if(DEV_OPTIONS != 2)
     {
         //Kernel9/Process9 debugging
-        patchExceptionHandlersInstall(arm9Section, section[2].size);
+        patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
     }
 }

@@ -26,8 +26,8 @@
 _start:
     b start
 
-.global launchedFirmTIDLow
-launchedFirmTIDLow:
+.global launchedFirmTidLow
+launchedFirmTidLow:
     .hword 0, 0, 0, 0, 0, 0, 0, 0 
 
 start:

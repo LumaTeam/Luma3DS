@@ -50,22 +50,24 @@ typedef struct __attribute__((packed))
 extern bool isN3DS, isDevUnit;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
-u32* getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset);
+u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
 void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
-void patchFirmWriteSafe(u8 *pos, u32 size);
-void patchExceptionHandlersInstall(u8 *pos, u32 size);
-void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr);
-void patchSvcBreak11(u8 *pos, u32 size);
-void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType);
-void patchKernel11Panic(u8 *pos, u32 size);
-void patchArm11SvcAccessChecks(u8 *pos, u32 size);
-void patchK11ModuleChecks(u8 *pos, u32 size);
-void patchP9AccessChecks(u8 *pos, u32 size);
-void patchUnitInfoValueSet(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 size);
-void implementSvcGetCFWInfo(u8 *pos, u32 size);
+void patchOldFirmWrites(u8 *pos, u32 size);
+void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
+void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 void patchTwlBg(u8 *pos);
+
+void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset);
+void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
+void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr);
+void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable);
+void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType);
+void patchKernel11Panic(u8 *pos, u32 size);
+void patchArm11SvcAccessChecks(u32 *arm11SvcHandler);
+void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
+void patchP9AccessChecks(u8 *pos, u32 size);
+void patchUnitInfoValueSet(u8 *pos, u32 size);

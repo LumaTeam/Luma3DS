@@ -26,5 +26,7 @@
 
 #define NCSD_MAGIC 0x4453434E
 
-void locateEmuNAND(u32 *off, u32 *head, FirmwareSource *emuNAND);
-void patchEmuNAND(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuOffset, u32 emuHeader, u32 branchAdditive);
+extern u32 emuOffset;
+
+void locateEmuNand(u32 *off, u32 *head, FirmwareSource *emuNand);
+void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive);

@@ -43,6 +43,5 @@ typedef struct __attribute__((packed))
     u8 hash[32];
 } PINData;
 
-bool readPin(PINData* out);
-void newPin(void);
-void verifyPin(PINData *in);
+void newPin(bool allowSkipping);
+bool verifyPin(void);
