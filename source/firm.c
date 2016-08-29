@@ -35,7 +35,7 @@
 #include "pin.h"
 #include "../build/injector.h"
 
-extern u16 launchedFirmTIDLow[8]; //Defined in start.s
+extern u16 launchedFirmTidLow[8]; //Defined in start.s
 
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
@@ -75,14 +75,14 @@ void main(void)
     needConfig = readConfig(configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
-    if(launchedFirmTIDLow[5] != 0)
+    if(launchedFirmTidLow[5] != 0)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuReboot();
 
         isFirmlaunch = true;
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = launchedFirmTIDLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTIDLow[5] - u'0');
+        firmType = launchedFirmTidLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTidLow[5] - u'0');
 
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
@@ -149,6 +149,13 @@ void main(void)
 
                 //Flag to tell loader to init SD
                 configTemp |= 1 << 5;
+
+                //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
+                if(pinExists && !shouldLoadConfigMenu)
+                {
+                    while(HID_PAD & PIN_BUTTONS);
+                    chrono(2);
+                }
             }
             else
             {
