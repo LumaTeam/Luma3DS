@@ -197,13 +197,13 @@ void main(void)
     //If we need to boot emuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNAND(&emuOffset, &emuHeader, &nandType);
+        locateEmuNand(&emuOffset, &emuHeader, &nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
     //Same if we're using emuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNAND(&emuOffset, &emuHeader, &firmSource);
+        locateEmuNand(&emuOffset, &emuHeader, &firmSource);
 
     if(!isFirmlaunch)
     {
@@ -287,6 +287,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
+    //Find Kernel11 SVC table and free space locations
+    u8 *freeK11Space;
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space);
+
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
@@ -294,7 +298,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(nandType != FIRMWARE_SYSNAND)
     {
         u32 branchAdditive = (u32)firm + section[2].offset - (u32)section[2].address;
-        patchEmuNAND(arm9Section, section[2].size, process9Offset, process9Size, emuOffset, emuHeader, branchAdditive);
+        patchEmuNand(arm9Section, section[2].size, process9Offset, process9Size, emuHeader, branchAdditive);
     }
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
@@ -310,10 +314,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, section[1].size);
+        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
     }
 
-    implementSvcGetCFWInfo(arm11Section1, section[1].size);
+    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)

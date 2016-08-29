@@ -50,12 +50,13 @@ typedef struct __attribute__((packed))
 extern bool isN3DS;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
+u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space);
 void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchOldFirmWrites(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 size);
-void implementSvcGetCFWInfo(u8 *pos, u32 size);
+void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
+void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 void patchTwlBg(u8 *pos);
