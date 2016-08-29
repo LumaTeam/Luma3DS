@@ -103,7 +103,7 @@ void newPin(bool allowSkipping)
     }
 }
 
-bool verifyPin(bool skipVerification)
+bool verifyPin(void)
 {
     initScreens();
 
@@ -123,54 +123,51 @@ bool verifyPin(bool skipVerification)
     //Test vector verification (SD card has, or hasn't been used on another console)
     if(memcmp(pin.testHash, tmp, 32) != 0) return false;
 
-    if(!skipVerification)
+    //Pad to AES block length with zeroes
+    u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
+
+    u32 cnt = 0;
+    bool unlock = false;
+    int charDrawPos = 5 * SPACING_X;
+
+    while(!unlock)
     {
-        //Pad to AES block length with zeroes
-        u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
+        drawString("Press START to shutdown or enter PIN to proceed", 10, 10, COLOR_TITLE);
+        drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
-        u32 cnt = 0;
-        bool unlock = false;
-        int charDrawPos = 5 * SPACING_X;
-
-        while(!unlock)
+        u32 pressed;
+        do
         {
-            drawString("Press START to shutdown or enter PIN to proceed", 10, 10, COLOR_TITLE);
-            drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+            pressed = waitInput();
+        }
+        while(!(pressed & PIN_BUTTONS));
 
-            u32 pressed;
-            do
+        if(pressed & BUTTON_START) mcuPowerOff();
+
+        pressed &= PIN_BUTTONS;
+
+        if(!pressed) continue;
+
+        char key = pinKeyToLetter(pressed);
+        enteredPassword[cnt++] = (u8)key; //Add character to password
+
+        //Visualize character on screen
+        drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        charDrawPos += 2 * SPACING_X;
+
+        if(cnt >= PIN_LENGTH)
+        {
+            computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
+            unlock = memcmp(pin.hash, tmp, 32) == 0;
+
+            if(!unlock)
             {
-                pressed = waitInput();
-            }
-            while(!(pressed & PIN_BUTTONS));
+                charDrawPos = 5 * SPACING_X;
+                cnt = 0;
 
-            if(pressed & BUTTON_START) mcuPowerOff();
+                clearScreens();
 
-            pressed &= PIN_BUTTONS;
-
-            if(!pressed) continue;
-
-            char key = pinKeyToLetter(pressed);
-            enteredPassword[cnt++] = (u8)key; //Add character to password
-
-            //Visualize character on screen
-            drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
-            charDrawPos += 2 * SPACING_X;
-
-            if(cnt >= PIN_LENGTH)
-            {
-                computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
-                unlock = memcmp(pin.hash, tmp, 32) == 0;
-
-                if(!unlock)
-                {
-                    charDrawPos = 5 * SPACING_X;
-                    cnt = 0;
-
-                    clearScreens();
-
-                    drawString("Wrong PIN, try again", 10, 10 + 4 * SPACING_Y, COLOR_RED); 
-                }
+                drawString("Wrong PIN, try again", 10, 10 + 4 * SPACING_Y, COLOR_RED); 
             }
         }
     }
