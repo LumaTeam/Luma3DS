@@ -41,7 +41,7 @@ void memset32(void *dest, u32 filler, u32 size)
 {
     u32 *dest32 = (u32 *)dest;
 
-    for (u32 i = 0; i < size / 4; i++)
+    for(u32 i = 0; i < size / 4; i++)
         dest32[i] = filler;
 }
 

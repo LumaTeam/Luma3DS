@@ -64,7 +64,9 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
 
-    if(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS) == FR_OK)
+    FRESULT result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
+
+    if(result == FR_OK)
     {
         unsigned int written;
         f_write(&file, buffer, size, &written);
@@ -72,18 +74,26 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 
         return true;
     }
+    else if(result == FR_NO_PATH)
+    {
+        char folder[256];
 
-    return false;
+        for(u32 i = 1; path[i] != 0; i++)
+           if(path[i] == '/')
+           {
+                memcpy(folder, path, i);
+                folder[i] = 0;
+                f_mkdir(folder);
+           }
+
+        return fileWrite(buffer, path, size);
+    }
+    else return false;
 }
 
 void fileDelete(const char *path)
 {
     f_unlink(path);
-}
-
-void createDirectory(const char *path)
-{
-    f_mkdir(path);
 }
 
 void loadPayload(u32 pressed)
@@ -130,27 +140,6 @@ void loadPayload(u32 pressed)
 
         ((void (*)())loaderAddress)();
     }
-}
-
-void findDumpFile(const char *path, char *fileName)
-{
-    DIR dir;
-    FILINFO info;
-    u32 n = 0;
-
-    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0])
-    {
-        u32 i = 18,
-            tmp = ++n;
-
-        while(tmp)
-        {
-            fileName[i--] = '0' + (tmp % 10);
-            tmp /= 10;
-        }
-    }
-
-    f_closedir(&dir);
 }
 
 u32 firmRead(void *dest, u32 firmType)
@@ -208,4 +197,25 @@ u32 firmRead(void *dest, u32 firmType)
     fileRead(dest, path);
 
     return firmVersion;
+}
+
+void findDumpFile(const char *path, char *fileName)
+{
+    DIR dir;
+    FILINFO info;
+    u32 n = 0;
+
+    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0])
+    {
+        u32 i = 18,
+            tmp = ++n;
+
+        while(tmp)
+        {
+            fileName[i--] = '0' + (tmp % 10);
+            tmp /= 10;
+        }
+    }
+
+    f_closedir(&dir);
 }

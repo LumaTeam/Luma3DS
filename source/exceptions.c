@@ -121,13 +121,7 @@ void detectAndProcessExceptionDumps(void)
         path[fileNameSpot] = '/';
         memcpy(&path[fileNameSpot + 1], fileName, sizeof(fileName));
 
-        if(!fileWrite((void *)dumpHeader, path, size))
-        {
-            createDirectory("/luma");
-            createDirectory("/luma/dumps");
-            createDirectory(pathFolder);
-            fileWrite((void *)dumpHeader, path, size);
-        }
+        fileWrite((void *)dumpHeader, path, size);
 
         vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
         vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
