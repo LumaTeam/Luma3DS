@@ -351,33 +351,30 @@ static inline void patch2xNativeAndSafeFirm(void)
 
 static inline void copySection0AndInjectSystemModules(void)
 {
-    u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+    u32 srcModuleSize,
+        dstModuleSize;
 
-    struct
+    for(u8 *src = (u8 *)firm + section[0].offset, *srcEnd = src + section[0].size, *dst = section[0].address;
+        src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
     {
-        u32 size;
-        const u8 *addr;
-    } modules[5];
+        srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
+        char *moduleName = (char *)(src + 0x200);
 
-    u32 n = 0,
-        loaderIndex;
-    u8 *pos = arm11Section0;
+        void *module;
 
-    for(u8 *end = pos + section[0].size; pos < end; pos += modules[n++].size)
-    {
-        modules[n].addr = pos;
-        modules[n].size = *(u32 *)(pos + 0x104) * 0x200;
+        if(memcmp(moduleName, "loader", 6) == 0)
+        {
+            module = (void *)injector;
+            dstModuleSize = injector_size;
+        }
+        else
+        {
+            module = src;
+            dstModuleSize = srcModuleSize;
+        }
 
-        if(memcmp(modules[n].addr + 0x200, "loader", 7) == 0) loaderIndex = n;
+        memcpy(dst, module, dstModuleSize);
     }
-
-    modules[loaderIndex].addr = injector;
-    modules[loaderIndex].size = injector_size;
-
-    pos = section[0].address;
-
-    for(u32 i = 0; i < n; pos += modules[i++].size)
-        memcpy(pos, modules[i].addr, modules[i].size);
 }
 
 static inline void launchFirm(FirmwareType firmType)
