@@ -25,7 +25,7 @@
 
 #define FINAL_BUFFER    0x25000000
 
-#define REG_DUMP_SIZE   (4*17)
+#define REG_DUMP_SIZE   4 * 17
 #define CODE_DUMP_SIZE  48
 
 bool cannotAccessAddress(const void *address)
@@ -37,7 +37,7 @@ bool cannotAccessAddress(const void *address)
     for(u32 i = 0; i < 8; i++)
     {
         if((dataAccessPermissions & 0xF) == 0 || (regionSettings[i] & 1) == 0)
-            continue; //no access / region not enabled
+            continue; //No access / region not enabled
 
         u32 regionAddrBase = regionSettings[i] & ~0xFFF;
         u32 regionSize = 1 << (((regionSettings[i] >> 1) & 0x1F) + 1);
@@ -88,7 +88,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     //Dump registers
     //Current order of saved regs: cpsr, pc, r8-r14, r0-r7
     u32 cpsr = regs[0];
-    u32 pc   = regs[1] - ((type < 3) ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
+    u32 pc   = regs[1] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
 
     registerDump[15] = pc;
     registerDump[16] = cpsr;

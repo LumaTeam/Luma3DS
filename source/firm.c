@@ -43,7 +43,9 @@ static const firmSectionHeader *section;
 
 u32 emuOffset;
 
-bool isN3DS, isDevUnit, isFirmlaunch;
+bool isN3DS,
+     isDevUnit,
+     isFirmlaunch;
 
 cfgData configData;
 FirmwareSource firmSource;
@@ -239,6 +241,7 @@ void main(void)
 static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 {
     section = firm->section;
+
     const char *firmwareFiles[4] = {
         "/luma/firmware.bin",
         "/luma/firmware_twl.bin",
@@ -248,13 +251,10 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
     u32 firmVersion;
 
-    if(fileRead(firm, firmwareFiles[(u32)firmType]))
-    {
-        firmVersion = 0xFFFFFFFF;
-    }
+    if(fileRead(firm, firmwareFiles[(u32)*firmType])) firmVersion = 0xFFFFFFFF;
     else
     {
-        firmVersion = firmRead(firm, (u32)firmType);
+        firmVersion = firmRead(firm, (u32)*firmType);
 
         if(!isN3DS && *firmType == NATIVE_FIRM)
         {
@@ -279,9 +279,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
                 firmVersion = 0xFFFFFFFF;
             }
         }
-    }
 
-    if(firmVersion != 0xFFFFFFFF) decryptExeFs((u8 *)firm);
+        decryptExeFs((u8 *)firm);
+    }
     
     return firmVersion;
 }
@@ -340,22 +340,23 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     }
 
     implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
-    
+
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
     
     if(DEV_OPTIONS != 2)
     {
         //Install arm11 exception handlers
-        u32 stackAddress, codeSetOffset;
+        u32 stackAddress,
+            codeSetOffset;
         getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
         installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
-        
+
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
-        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+        patchSvcBreak9(arm9Section, section[2].size, (u32)section[2].address);
         patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
-        
+
         //Stub svcBreak11 with "bkpt 65535"
         patchSvcBreak11(arm11Section1, arm11SvcTable);
 
@@ -389,7 +390,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     {
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[3].size);
-        patchSvcBreak9(arm9Section, section[3].size, (u32)(section[3].address));
+        patchSvcBreak9(arm9Section, section[3].size, (u32)section[3].address);
         patchKernel9Panic(arm9Section, section[3].size, firmType);
     }
 
@@ -416,71 +417,49 @@ static inline void patch2xNativeAndSafeFirm(void)
     {
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
-        patchSvcBreak9(arm9Section, section[2].size, (u32)(section[2].address));
+        patchSvcBreak9(arm9Section, section[2].size, (u32)section[2].address);
     }
 }
 
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 {
-    u8 *arm11Section0 = (u8 *)firm + section[0].offset;
-    char fileName[] = "/luma/sysmodules/--------.cxi";
-    const char *ext = ".cxi";
+    u32 srcModuleSize,
+        dstModuleSize;
 
-    struct
+    for(u8 *src = (u8 *)firm + section[0].offset, *srcEnd = src + section[0].size, *dst = section[0].address;
+        src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
     {
-        u32 size;
-        char name[8];
-        const u8 *addr;
-    } modules[5];
+        srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
+        char *moduleName = (char *)(src + 0x200);
 
-    u8 *pos = arm11Section0;
-    u32 n = 0;
+        char fileName[30] = "/luma/sysmodules/";
+        const char *ext = ".cxi";
 
-    u32 loaderIndex = 0;
-    
-    for(u8 *end = pos + section[0].size; pos < end; pos += modules[n++].size)
-    {
-        modules[n].addr = pos;
-        modules[n].size = *(u32 *)(pos + 0x104) * 0x200;
-        
-        memcpy(modules[n].name, pos + 0x200, 8);
-        
         //Read modules from files if they exist
         u32 nameOff;
-        for(nameOff = 0; nameOff < 8 && modules[n].name[nameOff] != 0; nameOff++);
-        memcpy(fileName + 17, modules[n].name, nameOff);
+        for(nameOff = 0; nameOff < 8 && moduleName[nameOff] != 0; nameOff++);
+        memcpy(fileName + 17, moduleName, nameOff);
         memcpy(fileName + 17 + nameOff, ext, 5);
-        
-        u32 fileSize = getFileSize(fileName);
-        if(fileSize != 0)
-        {
-            modules[n].addr = NULL;
-            modules[n].size = fileSize;
-        }
 
-        if(firmType == NATIVE_FIRM && memcmp(modules[n].name, "loader", 7) == 0) loaderIndex = n;
-    }
-
-    if(firmType == NATIVE_FIRM && modules[loaderIndex].addr != NULL)
-    {
-        modules[loaderIndex].size = injector_size;
-        modules[loaderIndex].addr = injector;
-    }
-
-    pos = section[0].address;
-    for(u32 i = 0; i < n; pos += modules[i++].size)
-    {
-        if(modules[i].addr != NULL)
-            memcpy(pos, modules[i].addr, modules[i].size);
+        u32 fileSize = fileRead(dst, fileName);
+        if(fileSize) dstModuleSize = fileSize;
         else
         {
-             //Read modules from files if they exist
-            u32 nameOff;
-            for(nameOff = 0; nameOff < 8 && modules[i].name[nameOff] != 0; nameOff++);
-            memcpy(fileName + 17, modules[i].name, nameOff);
-            memcpy(fileName + 17 + nameOff, ext, 5);
-            fileRead(pos, fileName);
-        }     
+            void *module;
+
+            if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
+            {
+                module = (void *)injector;
+                dstModuleSize = injector_size;
+            }
+            else
+            {
+                module = src;
+                dstModuleSize = srcModuleSize;
+            }
+
+            memcpy(dst, module, dstModuleSize);
+        }
     }
 }
 

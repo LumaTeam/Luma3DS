@@ -260,14 +260,12 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
         0x20, 0x10, 0x80, 0xE5, 
         0x28, 0x10, 0x80, 0xE5,
     }; //i.e when it stores ldr pc, [pc, #-4]
-    
+
     u32* off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)));
     if(off == NULL) return;
     off += sizeof(pattern)/4;
 
-    u32 r0 = 0x08000000;
-
-    for(; *off != 0xE3A01040; off++) //Until mov r1, #0x40
+    for(u32 r0 = 0x08000000; *off != 0xE3A01040; off++) //Until mov r1, #0x40
     {
         if((*off >> 26) != 0x39 || ((*off >> 16) & 0xF) != 0 || ((*off >> 25) & 1) != 0 || ((*off >> 20) & 5) != 0)
             continue; //Discard everything that's not str rX, [r0, #imm](!)
@@ -288,7 +286,7 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
     }
 }
 
-void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr)
+void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
 {
     //Stub svcBreak with "bkpt 65535" so we can debug the panic.
     //Thanks @yellows8 and others for mentioning this idea on #3dsdev.
@@ -296,14 +294,14 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9addr)
     
     u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 4);
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
-    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - k9addr);
+
+    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - k9Address);
     *addr = 0xE12FFF7F;
 }
 
 void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
 {
     //Same as above, for NFIRM arm11
-    
     u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
     *addr = 0xE12FFF7F;
 }
@@ -312,12 +310,11 @@ void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType)
 {
     if(firmType == TWL_FIRM || firmType == AGB_FIRM)
     {
-        u8 *off = pos + ((isN3DS) ? 0x723C : 0x69A8);
+        u8 *off = pos + (isN3DS ? 0x723C : 0x69A8);
         *(u16 *)off = 0x4778;           //bx pc 
         *(u16 *)(off + 2) = 0x46C0;     //nop
         *(u32 *)(off + 4) = 0xE12FFF7E; //bkpt 65534
     }
-
     else
     {
         const u8 pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x02, 0x30, 0xA0, 0xE1, 0x02, 0x10, 0xA0, 0xE1, 0x05, 0x00, 0xA0, 0xE3};
@@ -337,41 +334,34 @@ void patchKernel11Panic(u8 *pos, u32 size)
 
 void patchArm11SvcAccessChecks(u32 *arm11SvcHandler)
 {
-    u32 *off = arm11SvcHandler;
-    while(*off != 0xE11A0E1B) off++; //TST R10, R11,LSL LR
-
-    *off = 0xE3B0A001; //MOVS R10, #1
+    while(*arm11SvcHandler != 0xE11A0E1B) arm11SvcHandler++; //TST R10, R11,LSL LR
+    *arm11SvcHandler = 0xE3B0A001; //MOVS R10, #1
 }
 
 //It's mainly Subv's code here:
 void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
 {
-    // We have to detour a function in the ARM11 kernel because builtin modules
-    // are compressed in memory and are only decompressed at runtime.
-
-    u8 *freeSpace = *freeK11Space;
-    *freeK11Space += k11modules_size;
+    //We have to detour a function in the ARM11 kernel because builtin modules
+    //are compressed in memory and are only decompressed at runtime.
     
-    // Inject our code into the free space
-    memcpy(freeSpace, k11modules, k11modules_size);
+    //Inject our code into the free space
+    memcpy(*freeK11Space, k11modules, k11modules_size);
+    (*freeK11Space) += k11modules_size;
 
-    // Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
+    //Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
     const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20, 
                           0x90, 0xE5, 0x48, 0x00, 0x9D, 0xE5 };
 
-    u8 *off = memsearch(pos, pattern, size, 16);
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
 
-    // We couldn't find the code that decompresses the module
-    if (off == NULL)
-        return;
+    //We couldn't find the code that decompresses the module
+    if(off == NULL) return;
 
-    // Inject a jump instruction to our code at the offset we found
-    // Construct a jump (BL) instruction to our code
-    u32 offset = ((((u32)freeSpace) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
-    u32 instruction = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
+    //Inject a jump instruction to our code at the offset we found
+    //Construct a jump (BL) instruction to our code
+    u32 offset = ((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
 
-    // Write our jump
-    memcpy(off, &instruction, 4);
+    *off = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
 }
 
 void patchP9AccessChecks(u8 *pos, u32 size)
@@ -384,7 +374,6 @@ void patchP9AccessChecks(u8 *pos, u32 size)
     off[1] = 0x4770; //bx lr
 }
 
-
 void patchUnitInfoValueSet(u8 *pos, u32 size)
 {
     //Look for UNITINFO value being set during kernel sync
@@ -392,6 +381,6 @@ void patchUnitInfoValueSet(u8 *pos, u32 size)
 
     u8 *off = memsearch(pos, pattern, size, 4);
 
-    off[0] = (isDevUnit) ? 0 : 1;
+    off[0] = isDevUnit ? 0 : 1;
     off[3] = 0xE3;
 }

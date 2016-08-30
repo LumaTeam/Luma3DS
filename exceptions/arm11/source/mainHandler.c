@@ -24,7 +24,7 @@
 
 #define FINAL_BUFFER    0xE5000000 //0x25000000
 
-#define REG_DUMP_SIZE   (4*23)
+#define REG_DUMP_SIZE   4 * 23
 #define CODE_DUMP_SIZE  48
 
 #define CODESET_OFFSET  0xBEEFBEEF
@@ -69,13 +69,13 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     //Dump registers
     //Current order of saved regs: dfsr, ifsr, far, fpexc, fpinst, fpinst2, cpsr, pc, r8-r12, sp, lr, r0-r7
     u32 cpsr = regs[6];
-    u32 pc   = regs[7] - ((type < 3) ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
+    u32 pc   = regs[7] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
 
     registerDump[15] = pc;
     registerDump[16] = cpsr;
     for(u32 i = 0; i < 6; i++) registerDump[17 + i] = regs[i];
     for(u32 i = 0; i < 7; i++) registerDump[8 + i]  = regs[8 + i];
-    for(u32 i = 0; i < 8; i++) registerDump[i]      = regs[15 + i]; 
+    for(u32 i = 0; i < 8; i++) registerDump[i]      = regs[15 + i];
 
     //Dump code
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
@@ -90,8 +90,8 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
     final += dumpHeader.stackDumpSize;
 
-    vu8 *currentKProcess = (cannotAccessVA((u8 *)0xFFFF9004)) ? NULL : *(vu8 **)0xFFFF9004;
-    vu8 *currentKCodeSet = (currentKProcess != NULL) ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
+    vu8 *currentKProcess = cannotAccessVA((u8 *)0xFFFF9004) ? NULL : *(vu8 **)0xFFFF9004;
+    vu8 *currentKCodeSet = currentKProcess != NULL ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
     
     if(currentKCodeSet != NULL)
     {
@@ -101,8 +101,7 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
         additionalData[0] = *(vu64 *)(currentKCodeSet + 0x50); //Process name        
         additionalData[1] = *(vu64 *)(currentKCodeSet + 0x5C); //Title ID
     }
-    else
-        dumpHeader.additionalDataSize = 0;
+    else dumpHeader.additionalDataSize = 0;
 
     //Copy header (actually optimized by the compiler)
     final = (u8 *)FINAL_BUFFER;
