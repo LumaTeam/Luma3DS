@@ -34,7 +34,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/twl_k11modulespatch.h \
-		  $(dir_build)/injector.h $(dir_build)/loader.h
+          $(dir_build)/injector.h $(dir_build)/loader.h
 
 .PHONY: all
 all: launcher a9lh ninjhax
@@ -112,7 +112,7 @@ $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
 	@bin2c -o $@ -n loader $(@D)/loader.bin
 
-$(dir_build)/memory.o: CFLAGS += -O3
+$(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
