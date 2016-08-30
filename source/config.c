@@ -57,11 +57,7 @@ void writeConfig(const char *configPath, u32 configTemp)
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
 
         if(!fileWrite(&configData, configPath, sizeof(cfgData)))
-        {
-            createDirectory("luma");
-            if(!fileWrite(&configData, configPath, sizeof(cfgData)))
-                error("Error writing the configuration file");
-        }
+            error("Error writing the configuration file");
     }
 }
 

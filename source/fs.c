@@ -64,7 +64,9 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
 
-    if(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS) == FR_OK)
+    FRESULT result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
+
+    if(result == FR_OK)
     {
         unsigned int written;
         f_write(&file, buffer, size, &written);
@@ -72,18 +74,26 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 
         return true;
     }
+    else if(result == FR_NO_PATH)
+    {
+        char folder[256];
 
-    return false;
+        for(u32 i = 1; path[i] != 0; i++)
+           if(path[i] == '/')
+           {
+                memcpy(folder, path, i);
+                folder[i] = 0;
+                f_mkdir(folder);
+           }
+
+        return fileWrite(buffer, path, size);
+    }
+    else return false;
 }
 
 void fileDelete(const char *path)
 {
     f_unlink(path);
-}
-
-void createDirectory(const char *path)
-{
-    f_mkdir(path);
 }
 
 void loadPayload(u32 pressed)

@@ -96,11 +96,7 @@ void newPin(bool allowSkipping)
     memcpy(pin.hash, tmp, 32);
 
     if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
-    {
-        createDirectory("luma");
-        if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
-            error("Error writing the PIN file");
-    }
+        error("Error writing the PIN file");
 }
 
 bool verifyPin(void)
