@@ -343,10 +343,6 @@ void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
 {
     //We have to detour a function in the ARM11 kernel because builtin modules
     //are compressed in memory and are only decompressed at runtime.
-    
-    //Inject our code into the free space
-    memcpy(*freeK11Space, k11modules, k11modules_size);
-    (*freeK11Space) += k11modules_size;
 
     //Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
     const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20, 
@@ -357,11 +353,16 @@ void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
     //We couldn't find the code that decompresses the module
     if(off == NULL) return;
 
+    //Inject our code into the free space
+    memcpy(*freeK11Space, k11modules, k11modules_size);
+
     //Inject a jump instruction to our code at the offset we found
     //Construct a jump (BL) instruction to our code
     u32 offset = ((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
 
     *off = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
+
+    (*freeK11Space) += k11modules_size;
 }
 
 void patchP9AccessChecks(u8 *pos, u32 size)
