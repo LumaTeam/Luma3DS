@@ -26,19 +26,11 @@
 */
 
 #include "draw.h"
+#include "strings.h"
 #include "screen.h"
 #include "utils.h"
 #include "fs.h"
 #include "font.h"
-
-static inline int strlen(const char *string)
-{
-    char *stringEnd = (char *)string;
-
-    while(*stringEnd) stringEnd++;
-
-    return stringEnd - string;
-}
 
 bool loadSplash(void)
 {
