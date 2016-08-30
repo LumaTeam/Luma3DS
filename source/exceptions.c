@@ -80,20 +80,6 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
     }
 }
 
-static void hexItoa(u32 n, char *out)
-{
-    const char hexDigits[] = "0123456789ABCDEF";
-    u32 i = 0;
-
-    while(n > 0)
-    {
-        out[7 - i++] = hexDigits[n & 0xF];
-        n >>= 4;
-    }
-
-    for(; i < 8; i++) out[7 - i] = '0';
-}
-
 void detectAndProcessExceptionDumps(void)
 {
     volatile ExceptionDumpHeader *dumpHeader = (volatile ExceptionDumpHeader *)0x25000000;
