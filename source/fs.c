@@ -147,8 +147,9 @@ u32 firmRead(void *dest, u32 firmType)
                                     { "00000202", "20000202" },
                                     { "00000003", "20000003" }};
 
-    char path[48] = "1:/title/00040138/00000000/content";
+    char path[48] = "1:/title/00040138/";
     concatenateStrings(path, firmFolders[firmType][isN3DS ? 1 : 0]);
+    concatenateStrings(path, "/content");
 
     DIR dir;
     FILINFO info;
