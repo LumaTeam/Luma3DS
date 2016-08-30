@@ -181,17 +181,8 @@ u32 firmRead(void *dest, u32 firmType)
     //Complete the string with the .app name
     concatenateStrings(path, "/00000000.app");
 
-    //Last digit of the .app
-    u32 i = 42;
-
     //Convert back the .app name from integer to array
-    u32 tempVersion = firmVersion;
-    while(tempVersion)
-    {
-        static const char hexDigits[] = "0123456789ABCDEF";
-        path[i--] = hexDigits[tempVersion & 0xF];
-        tempVersion >>= 4;
-    }
+    hexItoa(firmVersion, &path[35]);
 
     fileRead(dest, path);
 

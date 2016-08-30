@@ -39,3 +39,17 @@ void concatenateStrings(char *destination, const char *source)
 
     memcpy(&destination[j], source, i + 1);
 }
+
+void hexItoa(u32 number, char *out)
+{
+    const char hexDigits[] = "0123456789ABCDEF";
+    u32 i = 0;
+
+    while(number > 0)
+    {
+        out[7 - i++] = hexDigits[number & 0xF];
+        number >>= 4;
+    }
+
+    for(; i < 8; i++) out[7 - i] = '0';
+}
