@@ -22,6 +22,7 @@
 
 #include "exceptions.h"
 #include "fs.h"
+#include "strings.h"
 #include "memory.h"
 #include "screen.h"
 #include "draw.h"
@@ -103,23 +104,12 @@ void detectAndProcessExceptionDumps(void)
         char fileName[] = "crash_dump_00000000.dmp";
         u32 size = dumpHeader->totalSize;
 
-        char *pathFolder;
-        u32 fileNameSpot;
-        if(dumpHeader->processor == 9)
-        {
-            pathFolder = "/luma/dumps/arm9";
-            fileNameSpot = 16;
-        }      
-        else
-        {
-            pathFolder = "/luma/dumps/arm11";
-            fileNameSpot = 17;
-        }
+        char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
 
         findDumpFile(pathFolder, fileName);
-        memcpy(path, pathFolder, 17);
-        path[fileNameSpot] = '/';
-        memcpy(&path[fileNameSpot + 1], fileName, sizeof(fileName));
+        memcpy(path, pathFolder, strlen(pathFolder));
+        concatenateStrings(path, "/");
+        concatenateStrings(path, fileName);
 
         fileWrite((void *)dumpHeader, path, size);
 

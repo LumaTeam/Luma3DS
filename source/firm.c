@@ -26,6 +26,7 @@
 #include "fs.h"
 #include "patches.h"
 #include "memory.h"
+#include "strings.h"
 #include "cache.h"
 #include "emunand.h"
 #include "crypto.h"
@@ -436,10 +437,8 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         const char *ext = ".cxi";
 
         //Read modules from files if they exist
-        u32 nameOff;
-        for(nameOff = 0; nameOff < 8 && moduleName[nameOff] != 0; nameOff++);
-        memcpy(fileName + 17, moduleName, nameOff);
-        memcpy(fileName + 17 + nameOff, ext, 5);
+        concatenateStrings(fileName, moduleName);
+        concatenateStrings(fileName, ext);
 
         u32 fileSize = fileRead(dst, fileName);
         if(fileSize) dstModuleSize = fileSize;
