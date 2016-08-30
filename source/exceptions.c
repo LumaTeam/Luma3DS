@@ -107,7 +107,7 @@ void detectAndProcessExceptionDumps(void)
         char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
 
         findDumpFile(pathFolder, fileName);
-        memcpy(path, pathFolder, strlen(pathFolder));
+        memcpy(path, pathFolder, strlen(pathFolder) + 1);
         concatenateStrings(path, "/");
         concatenateStrings(path, fileName);
 
