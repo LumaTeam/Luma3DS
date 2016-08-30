@@ -237,19 +237,19 @@ void patchTwlBg(u8 *pos)
     src2[1] = 0xE800 | ((((u32)dst - (u32)src2 - 4) & 0xFFF) >> 1);
 }
 
-void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset)
+u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
 {
     //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
     
     const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};   
     const u8 getTitleIDFromCodeSetPattern[] = {0xDC, 0x05, 0xC0, 0xE1, 0x20, 0x04, 0xA0, 0xE1};
-    
-    *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
-    
+
     u32 *loadCodeSet = (u32 *)memsearch(pos, getTitleIDFromCodeSetPattern, size, 8);
     while((*loadCodeSet >> 20) != 0xE59 || ((*loadCodeSet >> 12) & 0xF) != 0) //ldr r0, [rX, #offset]
         loadCodeSet--;
     *codeSetOffset = *loadCodeSet & 0xFFF;
+
+    return *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
 }
 
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
@@ -286,7 +286,7 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
     }
 }
 
-void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
+void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 {
     //Stub svcBreak with "bkpt 65535" so we can debug the panic.
     //Thanks @yellows8 and others for mentioning this idea on #3dsdev.
@@ -295,7 +295,7 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
     u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 4);
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
 
-    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - k9Address);
+    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
     *addr = 0xE12FFF7F;
 }
 

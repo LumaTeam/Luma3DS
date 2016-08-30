@@ -61,9 +61,9 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 void patchTwlBg(u8 *pos);
 
-void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset);
+u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
-void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address);
+void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
 void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable);
 void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType);
 void patchKernel11Panic(u8 *pos, u32 size);

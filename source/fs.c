@@ -110,8 +110,7 @@ void loadPayload(u32 pressed)
     else if(pressed & BUTTON_R1) pattern = PATTERN("r");
     else if(pressed & BUTTON_A) pattern = PATTERN("a");
     else if(pressed & BUTTON_START) pattern = PATTERN("start");
-    else if(pressed & BUTTON_SELECT) pattern = PATTERN("select");
-    else pattern = "nlc.bin";
+    else pattern = PATTERN("select");
 
     DIR dir;
     FILINFO info;
@@ -133,8 +132,6 @@ void loadPayload(u32 pressed)
         concatenateStrings(path, info.altname);
 
         loaderAddress[1] = fileRead((void *)0x24F00000, path);
-        
-        if(pattern[0] == 'n') f_unlink(path);
 
         flushDCacheRange(loaderAddress, loader_size);
         flushICacheRange(loaderAddress, loader_size);

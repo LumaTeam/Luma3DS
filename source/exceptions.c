@@ -47,7 +47,7 @@ void installArm9Handlers(void)
     }
 }
 
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
+void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset)
 {
     u32 *initFPU;
     for(initFPU = exceptionsPage; initFPU < (exceptionsPage + 0x400) && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU++);
@@ -70,7 +70,7 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
     {
         switch(*pos) //Perform relocations
         {
-            case 0xFFFF3000: *pos = stackAddr; break;
+            case 0xFFFF3000: *pos = stackAddress; break;
             case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
             case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
             case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)

@@ -348,9 +348,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(DEV_OPTIONS != 2)
     {
         //Install arm11 exception handlers
-        u32 stackAddress,
-            codeSetOffset;
-        getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
+        u32 codeSetOffset;
+        u32 stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &codeSetOffset);
         installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
 
         //Kernel9/Process9 debugging
