@@ -219,8 +219,8 @@ void main(void)
             patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
             break;
         case SAFE_FIRM:
-        case NATIVE_FIRM2X:
-            if(isA9lh) patch2xNativeAndSafeFirm();
+        case NATIVE_FIRM1X2X:
+            if(isA9lh) patch1x2xNativeAndSafeFirm();
             break;
         default:
             //Skip patching on unsupported O3DS AGB/TWL FIRMs
@@ -240,15 +240,13 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
     if(!isN3DS && *firmType == NATIVE_FIRM)
     {
-        //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
+        //We can't boot < 3.x EmuNANDs
         if(firmVersion < 0x18)
         {
-            if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9) 
-                error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
+            if(firmSource != FIRMWARE_SYSNAND) 
+                error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
 
-            if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM");
-
-            *firmType = NATIVE_FIRM2X;
+            *firmType = NATIVE_FIRM1X2X;
         }
 
         //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
@@ -334,7 +332,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     if(firmType == TWL_FIRM && CONFIG(5)) patchTwlBg((u8 *)firm + section[1].offset);
 }
 
-static inline void patch2xNativeAndSafeFirm(void)
+static inline void patch1x2xNativeAndSafeFirm(void)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
