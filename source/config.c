@@ -43,18 +43,21 @@ bool readConfig(const char *configPath)
     return true;
 }
 
-void writeConfig(const char *configPath, u32 configTemp)
+void writeConfig(const char *configPath, u32 configTemp, ConfigurationStatus needConfig)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if((configTemp & 0xFFFFFFEF) != configData.config)
+    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFFEF) != configData.config)
     {
+        if(needConfig == CREATE_CONFIGURATION)
+        {
+            memcpy(configData.magic, "CONF", 4);
+            configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
+            configData.formatVersionMinor = CONFIG_VERSIONMINOR;
+        }
+
         //Merge the new options and new boot configuration
         configData.config = (configData.config & 0xFFFFFFC0) | (configTemp & 0x3F);
-
-        memcpy(configData.magic, "CONF", 4);
-        configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
-        configData.formatVersionMinor = CONFIG_VERSIONMINOR;
 
         if(!fileWrite(&configData, configPath, sizeof(cfgData)))
             error("Error writing the configuration file");
