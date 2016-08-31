@@ -26,6 +26,7 @@
 #include "fs.h"
 #include "patches.h"
 #include "memory.h"
+#include "strings.h"
 #include "cache.h"
 #include "emunand.h"
 #include "crypto.h"
@@ -347,9 +348,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(DEV_OPTIONS != 2)
     {
         //Install arm11 exception handlers
-        u32 stackAddress,
-            codeSetOffset;
-        getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
+        u32 codeSetOffset;
+        u32 stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &codeSetOffset);
         installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
 
         //Kernel9/Process9 debugging
@@ -436,10 +436,8 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         const char *ext = ".cxi";
 
         //Read modules from files if they exist
-        u32 nameOff;
-        for(nameOff = 0; nameOff < 8 && moduleName[nameOff] != 0; nameOff++);
-        memcpy(fileName + 17, moduleName, nameOff);
-        memcpy(fileName + 17 + nameOff, ext, 5);
+        concatenateStrings(fileName, moduleName);
+        concatenateStrings(fileName, ext);
 
         u32 fileSize = fileRead(dst, fileName);
         if(fileSize) dstModuleSize = fileSize;

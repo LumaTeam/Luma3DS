@@ -22,6 +22,7 @@
 
 #include "exceptions.h"
 #include "fs.h"
+#include "strings.h"
 #include "memory.h"
 #include "screen.h"
 #include "draw.h"
@@ -46,7 +47,7 @@ void installArm9Handlers(void)
     }
 }
 
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
+void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset)
 {
     u32 *initFPU;
     for(initFPU = exceptionsPage; initFPU < (exceptionsPage + 0x400) && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU++);
@@ -69,7 +70,7 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
     {
         switch(*pos) //Perform relocations
         {
-            case 0xFFFF3000: *pos = stackAddr; break;
+            case 0xFFFF3000: *pos = stackAddress; break;
             case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
             case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
             case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)
@@ -77,20 +78,6 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
             default: break;
         }
     }
-}
-
-static void hexItoa(u32 n, char *out)
-{
-    const char hexDigits[] = "0123456789ABCDEF";
-    u32 i = 0;
-
-    while(n > 0)
-    {
-        out[7 - i++] = hexDigits[n & 0xF];
-        n >>= 4;
-    }
-
-    for(; i < 8; i++) out[7 - i] = '0';
 }
 
 void detectAndProcessExceptionDumps(void)
@@ -103,31 +90,14 @@ void detectAndProcessExceptionDumps(void)
         char fileName[] = "crash_dump_00000000.dmp";
         u32 size = dumpHeader->totalSize;
 
-        char *pathFolder;
-        u32 fileNameSpot;
-        if(dumpHeader->processor == 9)
-        {
-            pathFolder = "/luma/dumps/arm9";
-            fileNameSpot = 16;
-        }      
-        else
-        {
-            pathFolder = "/luma/dumps/arm11";
-            fileNameSpot = 17;
-        }
+        char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
 
         findDumpFile(pathFolder, fileName);
-        memcpy(path, pathFolder, 17);
-        path[fileNameSpot] = '/';
-        memcpy(&path[fileNameSpot + 1], fileName, sizeof(fileName));
+        memcpy(path, pathFolder, strlen(pathFolder) + 1);
+        concatenateStrings(path, "/");
+        concatenateStrings(path, fileName);
 
-        if(!fileWrite((void *)dumpHeader, path, size))
-        {
-            createDirectory("/luma");
-            createDirectory("/luma/dumps");
-            createDirectory(pathFolder);
-            fileWrite((void *)dumpHeader, path, size);
-        }
+        fileWrite((void *)dumpHeader, path, size);
 
         vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
         vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;

@@ -20,28 +20,36 @@
 *   Notices displayed by works containing it.
 */
 
-#pragma once
+#include "strings.h"
+#include "memory.h"
 
-#include "types.h"
-
-#define MAKE_BRANCH(src,dst) (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
-#define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
-
-typedef struct __attribute__((packed))
+int strlen(const char *string)
 {
-    u32 magic[2];
-    u16 versionMinor, versionMajor;
-    
-    u16 processor, core;
-    u32 type;
-    
-    u32 totalSize;
-    u32 registerDumpSize;
-    u32 codeDumpSize;
-    u32 stackDumpSize;
-    u32 additionalDataSize;
-} ExceptionDumpHeader;
+    char *stringEnd = (char *)string;
 
-void installArm9Handlers(void);
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset);
-void detectAndProcessExceptionDumps(void);
+    while(*stringEnd) stringEnd++;
+
+    return stringEnd - string;
+}
+
+void concatenateStrings(char *destination, const char *source)
+{
+    int i = strlen(source),
+        j = strlen(destination);
+
+    memcpy(&destination[j], source, i + 1);
+}
+
+void hexItoa(u32 number, char *out)
+{
+    const char hexDigits[] = "0123456789ABCDEF";
+    u32 i = 0;
+
+    while(number > 0)
+    {
+        out[7 - i++] = hexDigits[number & 0xF];
+        number >>= 4;
+    }
+
+    for(; i < 8; i++) out[7 - i] = '0';
+}

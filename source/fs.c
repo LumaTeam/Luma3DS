@@ -22,6 +22,7 @@
 
 #include "fs.h"
 #include "memory.h"
+#include "strings.h"
 #include "cache.h"
 #include "screen.h"
 #include "fatfs/ff.h"
@@ -64,7 +65,9 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
 
-    if(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS) == FR_OK)
+    FRESULT result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
+
+    if(result == FR_OK)
     {
         unsigned int written;
         f_write(&file, buffer, size, &written);
@@ -72,18 +75,26 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 
         return true;
     }
+    else if(result == FR_NO_PATH)
+    {
+        char folder[256];
 
-    return false;
+        for(u32 i = 1; path[i] != 0; i++)
+           if(path[i] == '/')
+           {
+                memcpy(folder, path, i);
+                folder[i] = 0;
+                f_mkdir(folder);
+           }
+
+        return fileWrite(buffer, path, size);
+    }
+    else return false;
 }
 
 void fileDelete(const char *path)
 {
     f_unlink(path);
-}
-
-void createDirectory(const char *path)
-{
-    f_mkdir(path);
 }
 
 void loadPayload(u32 pressed)
@@ -99,8 +110,7 @@ void loadPayload(u32 pressed)
     else if(pressed & BUTTON_R1) pattern = PATTERN("r");
     else if(pressed & BUTTON_A) pattern = PATTERN("a");
     else if(pressed & BUTTON_START) pattern = PATTERN("start");
-    else if(pressed & BUTTON_SELECT) pattern = PATTERN("select");
-    else pattern = "nlc.bin";
+    else pattern = PATTERN("select");
 
     DIR dir;
     FILINFO info;
@@ -118,39 +128,16 @@ void loadPayload(u32 pressed)
 
         memcpy(loaderAddress, loader, loader_size);
 
-        path[14] = '/';
-        memcpy(&path[15], info.altname, 13);
+        concatenateStrings(path, "/");
+        concatenateStrings(path, info.altname);
 
         loaderAddress[1] = fileRead((void *)0x24F00000, path);
-        
-        if(pattern[0] == 'n') f_unlink(path);
 
         flushDCacheRange(loaderAddress, loader_size);
         flushICacheRange(loaderAddress, loader_size);
 
         ((void (*)())loaderAddress)();
     }
-}
-
-void findDumpFile(const char *path, char *fileName)
-{
-    DIR dir;
-    FILINFO info;
-    u32 n = 0;
-
-    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0])
-    {
-        u32 i = 18,
-            tmp = ++n;
-
-        while(tmp)
-        {
-            fileName[i--] = '0' + (tmp % 10);
-            tmp /= 10;
-        }
-    }
-
-    f_closedir(&dir);
 }
 
 u32 firmRead(void *dest, u32 firmType)
@@ -160,8 +147,9 @@ u32 firmRead(void *dest, u32 firmType)
                                     { "00000202", "20000202" },
                                     { "00000003", "20000003" }};
 
-    char path[48] = "1:/title/00040138/00000000/content";
-    memcpy(&path[18], firmFolders[firmType][isN3DS ? 1 : 0], 8);
+    char path[48] = "1:/title/00040138/";
+    concatenateStrings(path, firmFolders[firmType][isN3DS ? 1 : 0]);
+    concatenateStrings(path, "/content");
 
     DIR dir;
     FILINFO info;
@@ -191,21 +179,33 @@ u32 firmRead(void *dest, u32 firmType)
     f_closedir(&dir);
 
     //Complete the string with the .app name
-    memcpy(&path[34], "/00000000.app", 14);
-
-    //Last digit of the .app
-    u32 i = 42;
+    concatenateStrings(path, "/00000000.app");
 
     //Convert back the .app name from integer to array
-    u32 tempVersion = firmVersion;
-    while(tempVersion)
-    {
-        static const char hexDigits[] = "0123456789ABCDEF";
-        path[i--] = hexDigits[tempVersion & 0xF];
-        tempVersion >>= 4;
-    }
+    hexItoa(firmVersion, &path[35]);
 
     fileRead(dest, path);
 
     return firmVersion;
+}
+
+void findDumpFile(const char *path, char *fileName)
+{
+    DIR dir;
+    FILINFO info;
+    u32 n = 0;
+
+    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0])
+    {
+        u32 i = 18,
+            tmp = ++n;
+
+        while(tmp)
+        {
+            fileName[i--] = '0' + (tmp % 10);
+            tmp /= 10;
+        }
+    }
+
+    f_closedir(&dir);
 }
