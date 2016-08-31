@@ -367,7 +367,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(CONFIG(9))
     {
         patchArm11SvcAccessChecks(arm11SvcHandler);
-        patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
+        if(!isN3DS) patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
         patchP9AccessChecks(process9Offset, process9Size);
     }
 }
