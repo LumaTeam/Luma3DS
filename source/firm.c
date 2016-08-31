@@ -208,7 +208,7 @@ void main(void)
     if(!isFirmlaunch)
     {
         configTemp |= (u32)nandType | ((u32)firmSource << 2);
-        writeConfig(configPath, configTemp);
+        writeConfig(configPath, configTemp, needConfig);
     }
 
     u32 firmVersion = loadFirm(&firmType, firmSource);

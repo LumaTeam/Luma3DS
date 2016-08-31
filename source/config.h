@@ -39,8 +39,15 @@ typedef struct __attribute__((packed))
     u32 config;
 } cfgData;
 
+typedef enum ConfigurationStatus
+{
+    DONT_CONFIGURE = 0,
+    MODIFY_CONFIGURATION = 1,
+    CREATE_CONFIGURATION = 2
+} ConfigurationStatus;
+
 extern cfgData configData;
 
 bool readConfig(const char *configPath);
-void writeConfig(const char *configPath, u32 configTemp);
+void writeConfig(const char *configPath, u32 configTemp, ConfigurationStatus needConfig);
 void configMenu(bool oldPinStatus);
