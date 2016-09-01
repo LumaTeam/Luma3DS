@@ -57,7 +57,7 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_injector) clean
-	@rm -rf $(dir_out) $(dir_build)
+	@rm -rf $(dir_out) $(dir_build) exceptions
 
 $(dir_out):
 	@mkdir -p "$(dir_out)"
