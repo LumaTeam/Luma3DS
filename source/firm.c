@@ -252,7 +252,10 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
     u32 firmVersion;
 
-    if(fileRead(firm, firmwareFiles[(u32)*firmType])) firmVersion = 0xFFFFFFFF;
+    //Check that the SD FIRM is right for the console from the ARM9 section address
+    if(fileRead(firm, firmwareFiles[(u32)*firmType]) &&
+       ((section[3].offset ? section[3].address : section[2].address) == (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800)))
+        firmVersion = 0xFFFFFFFF;
     else
     {
         firmVersion = firmRead(firm, (u32)*firmType);
@@ -270,15 +273,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
                 *firmType = NATIVE_FIRM1X2X;
             }
 
-            //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
+            //We can't boot a 3.x/4.x NATIVE_FIRM
             else if(firmVersion < 0x25)
-            {
-                if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
-                    error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
-
-                //No assumption regarding FIRM version
-                firmVersion = 0xFFFFFFFF;
-            }
+                error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
         }
 
         decryptExeFs((u8 *)firm);
