@@ -254,7 +254,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
         else if(firmVersion < 0x25)
         {
-            if(!fileRead(firm, "/luma/firmware.bin") || (((u32)section[2].address >> 8) & 0xFF) != 0x68)
+            if(!fileRead(firm, "/luma/firmware.bin") || section[2].address != (u8 *)0x8006800)
                 error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
 
             //No assumption regarding FIRM version
