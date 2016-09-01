@@ -267,7 +267,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
                 if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
 
-                *firmType = NATIVE_FIRM2X;
+                *firmType = NATIVE_FIRM1X2X;
             }
 
             //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
