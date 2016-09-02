@@ -2266,7 +2266,7 @@ FRESULT dir_register (	/* FR_OK:succeeded, FR_DENIED:no free entry or too many S
 		if (res != FR_OK) return res;
 		dp->blk_ofs = dp->dptr - SZDIRE * (nent - 1);			/* Set block position */
 
-		if (dp->obj.stat & 4) {			/* Has the sub-directory been stretched? */
+		if (dp->obj.sclust != 0 && (dp->obj.stat & 4)) {	/* Has the sub-directory been stretched? */
 			dp->obj.stat &= 3;
 			dp->obj.objsize += (DWORD)fs->csize * SS(fs);	/* Increase object size by cluster size */
 			res = fill_fat_chain(&dp->obj);	/* Complement FAT chain if needed */
@@ -2430,7 +2430,7 @@ void get_fileinfo (		/* No return code */
 				}
 #endif
 				if (i >= _MAX_LFN) { i = 0; break; }	/* No LFN if buffer overflow */
-				fno->fname[i++] = (char)w;
+				fno->fname[i++] = (TCHAR)w;
 			}
 			fno->fname[i] = 0;	/* Terminate the LFN */
 		}
@@ -3680,7 +3680,9 @@ FRESULT f_sync (
 	FATFS *fs;
 	DWORD tm;
 	BYTE *dir;
-
+#if _FS_EXFAT
+	DEF_NAMBUF
+#endif
 
 	res = validate(fp, &fs);	/* Check validity of the object */
 	if (res == FR_OK) {
@@ -3990,7 +3992,7 @@ FRESULT f_lseek (
 #if !_FS_TINY
 #if !_FS_READONLY
 					if (fp->flag & FA_DIRTY) {		/* Write-back dirty sector cache */
-						if (disk_write(fs->drv, fp->buf, fp->sect, 1) != RES_OK) ABORT(fp, FR_DISK_ERR);
+						if (disk_write(fs->drv, fp->buf, fp->sect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);
 						fp->flag &= ~FA_DIRTY;
 					}
 #endif
@@ -4007,6 +4009,9 @@ FRESULT f_lseek (
 
 	/* Normal Seek */
 	{
+#if _FS_EXFAT
+		if (fs->fs_type != FS_EXFAT && ofs >= 0x100000000) ofs = 0xFFFFFFFF;	/* Clip at 4GiB-1 if at FATxx */
+#endif
 		if (ofs > fp->obj.objsize && (_FS_READONLY || !(fp->flag & FA_WRITE))) {	/* In read-only mode, clip offset with the file size */
 			ofs = fp->obj.objsize;
 		}
@@ -4016,7 +4021,7 @@ FRESULT f_lseek (
 			bcs = (DWORD)fs->csize * SS(fs);	/* Cluster size (byte) */
 			if (ifptr > 0 &&
 				(ofs - 1) / bcs >= (ifptr - 1) / bcs) {	/* When seek to same or following cluster, */
-				fp->fptr = (ifptr - 1) & ~(bcs - 1);	/* start from the current cluster */
+				fp->fptr = (ifptr - 1) & ~(QWORD)(bcs - 1);	/* start from the current cluster */
 				ofs -= fp->fptr;
 				clst = fp->clust;
 			} else {									/* When seek to back cluster, */
@@ -4033,11 +4038,16 @@ FRESULT f_lseek (
 			}
 			if (clst != 0) {
 				while (ofs > bcs) {						/* Cluster following loop */
+					ofs -= bcs; fp->fptr += bcs;
 #if !_FS_READONLY
 					if (fp->flag & FA_WRITE) {			/* Check if in write mode or not */
+						if (_FS_EXFAT && fp->fptr > fp->obj.objsize) {	/* No FAT chain object needs correct objsize to generate FAT value */
+							fp->obj.objsize = fp->fptr;
+							fp->flag |= FA_MODIFIED;
+						}
 						clst = create_chain(&fp->obj, clst);	/* Force stretch if in write mode */
 						if (clst == 0) {				/* When disk gets full, clip file size */
-							ofs = bcs; break;
+							ofs = 0; break;
 						}
 					} else
 #endif
@@ -4045,8 +4055,6 @@ FRESULT f_lseek (
 					if (clst == 0xFFFFFFFF) ABORT(fs, FR_DISK_ERR);
 					if (clst <= 1 || clst >= fs->n_fatent) ABORT(fs, FR_INT_ERR);
 					fp->clust = clst;
-					fp->fptr += bcs;
-					ofs -= bcs;
 				}
 				fp->fptr += ofs;
 				if (ofs % SS(fs)) {
@@ -5298,7 +5306,7 @@ FRESULT f_mkfs (
 
 #if _FS_EXFAT
 	if (fmt == FS_EXFAT) {	/* Create an exFAT volume */
-		DWORD sum, szb_bit, szb_case;
+		DWORD szb_bit, szb_case, sum, nb, cl;
 		WCHAR ch, si;
 		UINT j, st;
 		BYTE b;
@@ -5363,32 +5371,37 @@ FRESULT f_mkfs (
 		tbl[1] = (szb_case + au * ss - 1) / (au * ss);	/* Number of up-case clusters */
 
 		/* Initialize the allocation bitmap */
-		mem_set(buf, 0, szb_buf);	/* Set in-use flags of bitmap, up-case and root dir */
-		for (i = 0, n = tbl[0] + tbl[1] + tbl[2]; n >= 8; buf[i++] = 0xFF, n -= 8) ;
-		for (b = 1; n; buf[i] |= b, b <<= 1, n--) ;
 		sect = b_data; n = (szb_bit + ss - 1) / ss;		/* Start of bitmap and number of the sectors */
-		do {	/* Fill allocation bitmap sectors */
-			ns = (n > sz_buf) ? sz_buf : n;
+		nb = tbl[0] + tbl[1] + tbl[2];					/* Number of clusters in-use by system */
+		do {
+			mem_set(buf, 0, szb_buf);
+			for (i = 0; nb >= 8 && i < szb_buf; buf[i++] = 0xFF, nb -= 8) ;
+			for (b = 1; nb && i < szb_buf; buf[i] |= b, b <<= 1, nb--) ;
+			ns = (n > sz_buf) ? sz_buf : n;				/* Write the buffered data */
 			if (disk_write(pdrv, buf, sect, ns) != RES_OK) return FR_DISK_ERR;
-			sect += ns;
-			mem_set(buf, 0, ss);
-		} while (n -= ns);
+			sect += ns; n -= ns;
+		} while (n);
 
 		/* Initialize the FAT */
-		st_qword(buf, 0xFFFFFFFFFFFFFFF8);	/* Entry 0 and 1 */
-		for (j = 0, i = 2; j < 3; j++) {	/* Set entries of bitmap, up-case and root dir */
-			for (n = tbl[j]; n; n--) {
-				st_dword(buf + i * 4, (n >= 2) ? i + 1 : 0xFFFFFFFF);
-				i++;
-			}
-		}
 		sect = b_fat; n = sz_fat;	/* Start of FAT and number of the sectors */
-		do {	/* Fill FAT sectors */
-			ns = (n > sz_buf) ? sz_buf : n;
+		j = nb = cl = 0;
+		do {
+			mem_set(buf, 0, szb_buf); i = 0;
+			if (cl == 0) {	/* Set entry 0 and 1 */
+				st_dword(buf + i, 0xFFFFFFF8); i += 4; cl++;
+				st_dword(buf + i, 0xFFFFFFFF); i += 4; cl++;
+			}
+			do {			/* Create chains of bitmap, up-case and root dir */
+				while (nb && i < szb_buf) {			/* Create a chain */
+					st_dword(buf + i, (nb > 1) ? cl + 1 : 0xFFFFFFFF);
+					i += 4; cl++; nb--;
+				}
+				if (!nb && j < 3) nb = tbl[j++];	/* Next chain */
+			} while (nb && i < szb_buf);
+			ns = (n > sz_buf) ? sz_buf : n;			/* Write the buffered data */
 			if (disk_write(pdrv, buf, sect, ns) != RES_OK) return FR_DISK_ERR;
-			sect += ns;
-			mem_set(buf, 0, ss);
-		} while (n -= ns);
+			sect += ns; n -= ns;
+		} while (n);
 
 		/* Initialize the root directory */
 		mem_set(buf, 0, ss);
