@@ -248,33 +248,33 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         "/luma/firmware_safe.bin"
     };
 
-    u32 firmVersion;
+    u32 firmVersion = firmRead(firm, (u32)*firmType);
+    bool loadFromSd = false;
+
+    if(!isN3DS && *firmType == NATIVE_FIRM)
+    {
+        //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
+        if(firmVersion < 0x18)
+        {
+            if(firmSource != FIRMWARE_SYSNAND) 
+                error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
+
+            if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
+
+            *firmType = NATIVE_FIRM1X2X;
+        }
+
+        //We can't boot a 3.x/4.x NATIVE_FIRM, load it from SD
+        else if(firmVersion < 0x25) loadFromSd = true;
+    }
 
     //Check that the SD FIRM is right for the console from the ARM9 section address
-    if(fileRead(firm, firmwareFiles[(u32)*firmType]) &&
+    if(fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType]) &&
        ((section[3].offset ? section[3].address : section[2].address) == (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800)))
         firmVersion = 0xFFFFFFFF;
     else
     {
-        firmVersion = firmRead(firm, (u32)*firmType);
-
-        if(!isN3DS && *firmType == NATIVE_FIRM)
-        {
-            //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
-            if(firmVersion < 0x18)
-            {
-                if(firmSource != FIRMWARE_SYSNAND) 
-                    error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
-
-                if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
-
-                *firmType = NATIVE_FIRM1X2X;
-            }
-
-            //We can't boot a 3.x/4.x NATIVE_FIRM
-            else if(firmVersion < 0x25)
-                error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
-        }
+        if(loadFromSd) error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
 
         decryptExeFs((u8 *)firm);
     }
