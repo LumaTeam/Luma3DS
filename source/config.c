@@ -84,7 +84,7 @@ void configMenu(bool oldPinStatus)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
                                         "( ) Use a PIN",
-                                        "( ) Disable access checks" };
+                                        "( ) Patch SVC/service/archive/ARM9 access" };
 
     struct multiOption {
         int posXs[4];
