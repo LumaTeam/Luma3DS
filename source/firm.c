@@ -69,10 +69,8 @@ void main(void)
     //Mount filesystems. CTRNAND will be mounted only if/when needed
     mountFs();
 
-    const char configPath[] = "/luma/config.bin";
-
     //Attempt to read the configuration file
-    needConfig = readConfig(configPath) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+    needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
     if(launchedFirmTidLow[5] != 0)
@@ -208,7 +206,7 @@ void main(void)
     if(!isFirmlaunch)
     {
         configTemp |= (u32)nandType | ((u32)firmSource << 2);
-        writeConfig(configPath, configTemp, needConfig);
+        writeConfig(needConfig, configTemp);
     }
 
     u32 firmVersion = loadFirm(&firmType, firmSource);

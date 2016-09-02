@@ -95,7 +95,7 @@ void newPin(bool allowSkipping)
     computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
     memcpy(pin.hash, tmp, 32);
 
-    if(!fileWrite(&pin, "/luma/pin.bin", sizeof(PINData)))
+    if(!fileWrite(&pin, PIN_PATH, sizeof(PINData)))
         error("Error writing the PIN file");
 }
 
@@ -105,7 +105,7 @@ bool verifyPin(void)
 
     PINData pin;
 
-    if(fileRead(&pin, "/luma/pin.bin") != sizeof(PINData) ||
+    if(fileRead(&pin, PIN_PATH) != sizeof(PINData) ||
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
        pin.formatVersionMinor != PIN_VERSIONMINOR)
