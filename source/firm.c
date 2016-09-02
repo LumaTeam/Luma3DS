@@ -458,9 +458,8 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 
 static inline void launchFirm(FirmwareType firmType)
 {
-    //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
-    if(firmType != SAFE_FIRM)
+    if(firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X)
     {
         copySection0AndInjectSystemModules(firmType);
         sectionNum = 1;
