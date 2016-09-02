@@ -92,29 +92,25 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 
 void patchFirmWrites(u8 *pos, u32 size)
 {
-    const u16 writeBlock[2] = {0x2000, 0x46C0};
-
     //Look for FIRM writing code
     u8 *const off1 = memsearch(pos, "exe:", size, 4);
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, 4);
 
-    off2[0] = writeBlock[0];
-    off2[1] = writeBlock[1];
+    off2[0] = 0x2000;
+    off2[1] = 0x46C0;
 }
 
 void patchOldFirmWrites(u8 *pos, u32 size)
 {
-    const u16 writeBlockOld[2] = {0x2400, 0xE01D};
-
     //Look for FIRM writing code
     const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, 4);
 
-    off[0] = writeBlockOld[0];
-    off[1] = writeBlockOld[1];
+    off[0] = 0x2400;
+    off[1] = 0xE01D;
 }
 
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)

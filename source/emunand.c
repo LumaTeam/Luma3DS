@@ -95,16 +95,14 @@ static inline void patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 
 static inline void patchMpu(u8 *pos, u32 size)
 {
-    const u32 mpuPatch[3] = {0x00360003, 0x00200603, 0x001C0603};
-
     //Look for MPU pattern
     const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
 
     u32 *off = (u32 *)memsearch(pos, pattern, size, 4);
 
-    off[0] = mpuPatch[0];
-    off[6] = mpuPatch[1];
-    off[9] = mpuPatch[2];
+    off[0] = 0x00360003;
+    off[6] = 0x00200603;
+    off[9] = 0x001C0603;
 }
 
 void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive)

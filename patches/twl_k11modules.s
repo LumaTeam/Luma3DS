@@ -35,7 +35,7 @@ patch:
     add r1, sp, #(0xb0 - 0xac)
 
     push {r0-r11, lr}
-    
+
     ldr r9, [r3]            ; load the address of the code section
     ldr r8, [r4]            ; load the address of the exheader
 
@@ -70,7 +70,7 @@ patch:
         ldr r0, [r5]
         add r0, r4
         blx memcpy
-        
+
         skipPatch:
 
         ldrh r0, [r5, #6]
@@ -100,7 +100,7 @@ memcmp:
         sub r6, r7
         cmp r6, #0
         beq cmp_loop
-    
+
     cmp_loop_end:
     mov r0, r6
     pop {r4-r7, pc}
@@ -126,7 +126,7 @@ memcpy:
 
 patchesStart:
     ; SCFG_EXT bit31 patches, based on https://github.com/ahezard/twl_firm_patcher (credits where they're due)
-    
+
     .word 0x07368                 ; offset
     .halfword 1                   ; type (0: relative to the start of TwlBg's code; 1: relative to the start of the dev SRL launcher)
     .halfword 4                   ; size (must be a multiple of 4)
