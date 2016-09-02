@@ -84,7 +84,7 @@ void configMenu(bool oldPinStatus)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
                                         "( ) Use a PIN",
-                                        "( ) Disable access checks (modules: O3DS only)" };
+                                        "( ) Disable access checks" };
 
     struct multiOption {
         int posXs[4];

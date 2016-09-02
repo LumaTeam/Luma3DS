@@ -42,10 +42,6 @@
     ; Save the value of all registers
     push {r0-r12}
 
-    ; Clear all the caches, just to be safe
-    mcr p15, 0, r6, c7, c14, 0
-    mcr p15, 0, r6, c7, c5, 0
-
     ldr r0, [r0, #(0x80 - 0x7C)] ; Load the .text address
     ldr r7, [r4]
     ldr r2, [r7, #0x18]          ; Load the size of the .text
@@ -114,10 +110,6 @@
     
     out:
     pop {r0-r12}               ; Restore the registers we used
-
-    ; Clear all the caches again, just to be safe
-    mcr p15, 0, r6, c7, c14, 0
-    mcr p15, 0, r6, c7, c5, 0
 
     ldr r0, [r4]               ; Execute the instruction we overwrote in our detour
 

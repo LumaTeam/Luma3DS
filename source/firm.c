@@ -350,19 +350,23 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)section[2].address);
-        patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
+        patchKernel9Panic(arm9Section, section[2].size);
 
         //Stub svcBreak11 with "bkpt 65535"
         patchSvcBreak11(arm11Section1, arm11SvcTable);
 
-        //Stub kernel11panic with "bkpt 65534"
+        //Stub kernel11Panic with "bkpt 65534"
         patchKernel11Panic(arm11Section1, section[1].size);
     }
 
     if(CONFIG(9))
     {
         patchArm11SvcAccessChecks(arm11SvcHandler);
-        if(!isN3DS) patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
+
+        //FIRMs between 9.3 and 10.4 don't have enough space on N3DS
+        if(!isN3DS || firmVersion <= 4 || firmVersion >= 0x21)
+            patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
+
         patchP9AccessChecks(process9Offset, process9Size);
     }
 }
@@ -380,14 +384,6 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
-
-    if(DEV_OPTIONS != 2)
-    {
-        //Kernel9/Process9 debugging
-        patchArm9ExceptionHandlersInstall(arm9Section, section[3].size);
-        patchSvcBreak9(arm9Section, section[3].size, (u32)section[3].address);
-        patchKernel9Panic(arm9Section, section[3].size, firmType);
-    }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
 
