@@ -83,9 +83,9 @@ void main(void)
     //Determine if this is a firmlaunch boot
     if(launchedFirmTidLow[5] != 0)
     {
-        if(needConfig == CREATE_CONFIGURATION) mcuReboot();
-
         isFirmlaunch = true;
+
+        if(needConfig == CREATE_CONFIGURATION) mcuReboot();
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = launchedFirmTidLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTidLow[5] - u'0');
