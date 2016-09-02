@@ -253,9 +253,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
     if(!isN3DS && *firmType == NATIVE_FIRM)
     {
-        //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
         if(firmVersion < 0x18)
         {
+            //We can't boot < 3.x EmuNANDs
             if(firmSource != FIRMWARE_SYSNAND) 
                 error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
 
@@ -458,6 +458,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 
 static inline void launchFirm(FirmwareType firmType)
 {
+    //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs
     u32 sectionNum;
     if(firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X)
     {
