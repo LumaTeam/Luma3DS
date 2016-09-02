@@ -29,9 +29,9 @@
 #include "buttons.h"
 #include "pin.h"
 
-bool readConfig(const char *configPath)
+bool readConfig(void)
 {
-    if(fileRead(&configData, configPath) != sizeof(cfgData) ||
+    if(fileRead(&configData, CONFIG_PATH) != sizeof(cfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
@@ -43,7 +43,7 @@ bool readConfig(const char *configPath)
     return true;
 }
 
-void writeConfig(const char *configPath, u32 configTemp, ConfigurationStatus needConfig)
+void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
@@ -59,7 +59,7 @@ void writeConfig(const char *configPath, u32 configTemp, ConfigurationStatus nee
         //Merge the new options and new boot configuration
         configData.config = (configData.config & 0xFFFFFFC0) | (configTemp & 0x3F);
 
-        if(!fileWrite(&configData, configPath, sizeof(cfgData)))
+        if(!fileWrite(&configData, CONFIG_PATH, sizeof(cfgData)))
             error("Error writing the configuration file");
     }
 }

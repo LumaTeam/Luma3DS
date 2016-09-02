@@ -30,7 +30,8 @@
 
 #include "types.h"
 
-#define PIN_LENGTH  4
+#define PIN_LENGTH       4
+#define PIN_PATH         "/luma/pin.bin"
 #define PIN_VERSIONMAJOR 1
 #define PIN_VERSIONMINOR 0
 

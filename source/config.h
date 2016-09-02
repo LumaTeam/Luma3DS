@@ -24,11 +24,13 @@
 
 #include "types.h"
 
-#define CONFIG(a) (((configData.config >> (a + 16)) & 1) != 0)
-#define MULTICONFIG(a) ((configData.config >> (a * 2 + 6)) & 3)
+#define CONFIG(a)        (((configData.config >> (a + 16)) & 1) != 0)
+#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
 #define DEV_OPTIONS MULTICONFIG(2)
+
+#define CONFIG_PATH         "/luma/config.bin"
 #define CONFIG_VERSIONMAJOR 1
 #define CONFIG_VERSIONMINOR 0
 
@@ -49,6 +51,6 @@ typedef enum ConfigurationStatus
 
 extern cfgData configData;
 
-bool readConfig(const char *configPath);
-void writeConfig(const char *configPath, u32 configTemp, ConfigurationStatus needConfig);
+bool readConfig(void);
+void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
 void configMenu(bool oldPinStatus);

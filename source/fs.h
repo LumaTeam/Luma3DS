@@ -24,7 +24,7 @@
 
 #include "types.h"
 
-#define PATTERN(a)      a "_*.bin"
+#define PATTERN(a) a "_*.bin"
 
 extern bool isN3DS;
 
