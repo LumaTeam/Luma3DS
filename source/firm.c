@@ -302,7 +302,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
-    //Find Kernel11 SVC table and free space locations
+    //Find Kernel11 SVC table and handler, exceptions page and free space locations
     u8 *freeK11Space;
     u32 *arm11SvcHandler, 
         *arm11ExceptionsPage,
@@ -361,11 +361,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(CONFIG(9))
     {
         patchArm11SvcAccessChecks(arm11SvcHandler);
-
-        //FIRMs between 9.3 and 10.4 don't have enough space on N3DS
-        if(!isN3DS || firmVersion <= 4 || firmVersion >= 0x21)
-            patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
-
+        patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
         patchP9AccessChecks(process9Offset, process9Size);
     }
 }

@@ -332,18 +332,22 @@ void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
     /* We have to detour a function in the ARM11 kernel because builtin modules
        are compressed in memory and are only decompressed at runtime */
 
-    //Inject our code into the free space
-    memcpy(*freeK11Space, k11modules, k11modules_size);
+    //Check that we have enough free space
+    if(*(u32 *)(*freeK11Space + k11modules_size - 4) == 0xFFFFFFFF)
+    {
+        //Inject our code into the free space
+        memcpy(*freeK11Space, k11modules, k11modules_size);
 
-    //Look for the code that decompresses the .code section of the builtin modules
-    const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};
+        //Look for the code that decompresses the .code section of the builtin modules
+        const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};
 
-    u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0xB);
+        u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0xB);
 
-    //Inject a jump (BL) instruction to our code at the offset we found
-    *off = 0xEB000000 | (((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF);
+        //Inject a jump (BL) instruction to our code at the offset we found
+        *off = 0xEB000000 | (((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF);
 
-    (*freeK11Space) += k11modules_size;
+        *freeK11Space += k11modules_size;
+    }
 }
 
 void patchUnitInfoValueSet(u8 *pos, u32 size)
