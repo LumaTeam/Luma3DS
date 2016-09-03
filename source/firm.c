@@ -88,14 +88,14 @@ void main(void)
     }
     else
     {
-        //Get pressed buttons
-        u32 pressed = HID_PAD;
-
         isFirmlaunch = false;
         firmType = NATIVE_FIRM;
 
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
+
+        //Get pressed buttons
+        u32 pressed = HID_PAD;
 
         //Save old options and begin saving the new boot configuration
         configTemp = (configData.config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
@@ -127,7 +127,7 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            bool pinExists = CONFIG(8) && verifyPin();
+            bool pinExists = CONFIG(7) && verifyPin();
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
@@ -157,7 +157,7 @@ void main(void)
             }
             else
             {
-                if(CONFIG(7) && loadSplash()) pressed = HID_PAD;
+                if(CONFIG(6) && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
@@ -165,7 +165,7 @@ void main(void)
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
-                if(!CONFIG(7)) loadSplash();
+                if(!CONFIG(6)) loadSplash();
 
                 //Determine if the user chose to use the SysNAND FIRM as default for a R boot
                 bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
@@ -328,8 +328,6 @@ static inline void patchLegacyFirm(FirmwareType firmType)
     }
 
     applyLegacyFirmPatches((u8 *)firm, firmType);
-
-    if(firmType == TWL_FIRM && CONFIG(5)) patchTwlBg((u8 *)firm + section[1].offset);
 }
 
 static inline void patch1x2xNativeAndSafeFirm(void)
