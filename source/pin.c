@@ -122,7 +122,7 @@ bool verifyPin(void)
     computePinHash(tmp, zeroes);
 
     //Test vector verification (SD card has, or hasn't been used on another console)
-    if(memcmp(pin.testHash, tmp, 32) != 0) return false;
+    if(memcmp(pin.testHash, tmp, sizeof(tmp)) != 0) return false;
 
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
