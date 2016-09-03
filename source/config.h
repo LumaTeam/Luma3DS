@@ -32,7 +32,7 @@
 
 #define CONFIG_PATH         "/luma/config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 0
+#define CONFIG_VERSIONMINOR 1
 
 typedef struct __attribute__((packed))
 {
