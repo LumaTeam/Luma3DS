@@ -142,12 +142,12 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     if(R_SUCCEEDED(ret))
     {
-        u64 fileSize, total;
-
+        u64 fileSize;
         ret = IFile_GetSize(&file, &fileSize);
 
         if(R_SUCCEEDED(ret) && fileSize <= size)
         {
+            u64 total;
             ret = IFile_Read(&file, &total, code, fileSize);
             IFile_Close(&file);
         }

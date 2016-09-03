@@ -59,7 +59,6 @@ void patchOldFirmWrites(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
 void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
-void patchTwlBg(u8 *pos);
 
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);

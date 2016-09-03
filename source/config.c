@@ -80,7 +80,6 @@ void configMenu(bool oldPinStatus)
                                         "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",
-                                        "( ) Enable experimental TwlBg patches",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
                                         "( ) Use a PIN",
@@ -234,7 +233,7 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
-    if(CONFIG(8)) newPin(oldPinStatus);
+    if(CONFIG(7)) newPin(oldPinStatus);
     else if(oldPinStatus) fileDelete("/luma/pin.bin");
 
     //Wait for the pressed buttons to change

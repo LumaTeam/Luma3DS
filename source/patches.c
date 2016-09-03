@@ -26,7 +26,6 @@
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/k11modulespatch.h"
-#include "../build/twl_k11modulespatch.h"
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -136,7 +135,6 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     }
 }
 
-
 void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
 {
     memcpy(*freeK11Space, svcGetCFWInfo, svcGetCFWInfo_size);
@@ -193,7 +191,7 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = firmType == TWL_FIRM ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
+                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(5));
     const patchData *patches = firmType == TWL_FIRM ? twlPatches : agbPatches;
 
     //Patch
@@ -211,26 +209,6 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
                 break;
         }
     }
-}
-
-void patchTwlBg(u8 *pos)
-{
-    u8 *dst = pos + (isN3DS ? 0xFEA4 : 0xFCA0);
-
-    memcpy(dst, twl_k11modules, twl_k11modules_size); //Install K11 hook
-    
-    u32 *off = (u32 *)memsearch(dst, "LAUN", twl_k11modules_size, 4);
-    *off = isN3DS ? 0xCDE88 : 0xCD5F8; //Dev SRL launcher offset
-
-    u16 *src1 = (u16 *)(pos + (isN3DS ? 0xE38 : 0xE3C)),
-        *src2 = (u16 *)(pos + (isN3DS ? 0xE54 : 0xE58));
-    
-    //Construct BLX instructions:
-    src1[0] = 0xF000 | ((((u32)dst - (u32)src1 - 4) & (0xFFF << 11)) >> 12);
-    src1[1] = 0xE800 | ((((u32)dst - (u32)src1 - 4) & 0xFFF) >> 1);
-
-    src2[0] = 0xF000 | ((((u32)dst - (u32)src2 - 4) & (0xFFF << 11)) >> 12);
-    src2[1] = 0xE800 | ((((u32)dst - (u32)src2 - 4) & 0xFFF) >> 1);
 }
 
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
