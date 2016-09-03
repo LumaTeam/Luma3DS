@@ -26,7 +26,6 @@
 #include "memory.h"
 #include "screen.h"
 #include "draw.h"
-#include "i2c.h"
 #include "utils.h"
 #include "../build/arm9_exceptions.h"
 #include "../build/arm11_exceptions.h"

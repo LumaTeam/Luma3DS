@@ -63,14 +63,14 @@ static inline void *getFreeK9Space(u8 *pos, u32 size)
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
     //Looking for the last free space before Process9
-    return memsearch(pos + 0x13500, pattern, size - 0x13500, 6) + 0x455;
+    return memsearch(pos + 0x13500, pattern, size - 0x13500, sizeof(pattern)) + 0x455;
 }
 
 static inline u32 getSdmmc(u8 *pos, u32 size)
 {
     //Look for struct code
     const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
-    const u8 *off = memsearch(pos, pattern, size, 4);
+    const u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
     return *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
 }
@@ -82,8 +82,8 @@ static inline void patchNandRw(u8 *pos, u32 size, u32 branchOffset)
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
-    u16 *readOffset = (u16 *)memsearch(pos, pattern, size, 4) - 3,
-        *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, 4) - 3;
+    u16 *readOffset = (u16 *)memsearch(pos, pattern, size, sizeof(pattern)) - 3,
+        *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, sizeof(pattern)) - 3;
 
     *readOffset = nandRedir[0];
     readOffset[1] = nandRedir[1];
@@ -98,7 +98,7 @@ static inline void patchMpu(u8 *pos, u32 size)
     //Look for MPU pattern
     const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 4);
+    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     off[0] = 0x00360003;
     off[6] = 0x00200603;

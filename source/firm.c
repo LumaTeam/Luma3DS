@@ -305,9 +305,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Find Kernel11 SVC table and free space locations
     u8 *freeK11Space;
     u32 *arm11SvcHandler, 
-        *arm11ExceptionsPage;
-
-    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+        *arm11ExceptionsPage,
+        *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);

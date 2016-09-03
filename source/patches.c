@@ -43,7 +43,7 @@ u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler
 {    
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
-    *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
+    *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern)) - 0xB;
     u32 svcOffset = (-(((*arm11ExceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
     u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
     *arm11SvcHandler = arm11SvcTable;
@@ -51,7 +51,7 @@ u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler
 
     const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-    *freeK11Space = memsearch(pos, pattern2, size, 5) + 1;
+    *freeK11Space = memsearch(pos, pattern2, size, sizeof(pattern2)) + 1;
 
     return arm11SvcTable;
 }
@@ -64,8 +64,8 @@ void patchSignatureChecks(u8 *pos, u32 size)
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4),
-        *off2 = (u16 *)(memsearch(pos, pattern2, size, 4) - 1);
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern)),
+        *off2 = (u16 *)(memsearch(pos, pattern2, size, sizeof(pattern2)) - 1);
 
     *off = sigPatch[0];
     off2[0] = sigPatch[0];
@@ -77,7 +77,7 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     //Look for firmlaunch code
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
-    u8 *off = memsearch(pos, pattern, size, 4) - 0x13;
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern)) - 0x13;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
@@ -96,7 +96,7 @@ void patchFirmWrites(u8 *pos, u32 size)
     u8 *const off1 = memsearch(pos, "exe:", size, 4);
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
-    u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, 4);
+    u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, sizeof(pattern));
 
     off2[0] = 0x2000;
     off2[1] = 0x46C0;
@@ -107,7 +107,7 @@ void patchOldFirmWrites(u8 *pos, u32 size)
     //Look for FIRM writing code
     const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4);
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     off[0] = 0x2400;
     off[1] = 0xE01D;
@@ -167,7 +167,7 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
     
-    u8 *off = memsearch(pos, pattern, size, 4);
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
     
     if(off != NULL) off[4] = 0xE0;
 }
@@ -237,7 +237,7 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x03, 0xA0, 0xE3, 0x18};
 
-    u32* off = (u32 *)(memsearch(pos, pattern, size, 4) + 0x13);
+    u32* off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) + 0x13);
 
     for(u32 r0 = 0x08000000; *off != 0xE3A01040; off++) //Until mov r1, #0x40
     {
@@ -265,11 +265,11 @@ u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
     const u8 pattern[] = {0xE3, 0xDC, 0x05, 0xC0}, //Get TitleID from CodeSet
              pattern2[] = {0xE1, 0x0F, 0x00, 0xBD}; //Call exception dispatcher
 
-    u32 *loadCodeSet = (u32 *)(memsearch(pos, pattern, size, 4) - 0xB);
+    u32 *loadCodeSet = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0xB);
 
     *codeSetOffset = *loadCodeSet & 0xFFF;
 
-    return *(u32 *)(memsearch(pos, pattern2, size, 4) + 0xD);
+    return *(u32 *)(memsearch(pos, pattern2, size, sizeof(pattern2)) + 0xD);
 }
 
 void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
@@ -280,7 +280,7 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     //Look for the svc handler
     const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
     
-    u32 *arm9SvcTable = (u32 *)memsearch(pos, pattern, size, 4);
+    u32 *arm9SvcTable = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
 
     u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
@@ -298,7 +298,7 @@ void patchKernel9Panic(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0xDF, 0xFF, 0xEA, 0x04};
 
-    u32 *off = (u32 *)(memsearch(pos, pattern, size, 4) - 0x11);
+    u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0x11);
     *off = 0xE12FFF7E;
 }
 
@@ -306,7 +306,7 @@ void patchKernel11Panic(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x02, 0x0B, 0x44, 0xE2};
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 4);
+    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
     *off = 0xE12FFF7E;
 }
 
@@ -314,7 +314,7 @@ void patchP9AccessChecks(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0xE0, 0x00, 0x40, 0x39};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4) - 7;
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern)) - 7;
 
     off[0] = 0x2001; //mov r0, #1
     off[1] = 0x4770; //bx lr
@@ -338,7 +338,7 @@ void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
     //Look for the code that decompresses the .code section of the builtin modules
     const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};
 
-    u32 *off = (u32 *)(memsearch(pos, pattern, size, 4) - 0xB);
+    u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0xB);
 
     //Inject a jump (BL) instruction to our code at the offset we found
     *off = 0xEB000000 | (((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF);
@@ -351,7 +351,7 @@ void patchUnitInfoValueSet(u8 *pos, u32 size)
     //Look for UNITINFO value being set during kernel sync
     const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
 
-    u8 *off = memsearch(pos, pattern, size, 4);
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
     off[0] = isDevUnit ? 0 : 1;
     off[3] = 0xE3;
