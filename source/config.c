@@ -231,7 +231,7 @@ void configMenu(bool oldPinStatus)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
     if(CONFIG(7)) newPin(oldPinStatus);
-    else if(oldPinStatus) fileDelete("/luma/pin.bin");
+    else if(oldPinStatus) fileDelete(PIN_PATH);
 
     //Wait for the pressed buttons to change
     while(HID_PAD & PIN_BUTTONS);
