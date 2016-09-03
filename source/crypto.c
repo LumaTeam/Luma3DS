@@ -457,14 +457,13 @@ void arm9Loader(u8 *arm9Section)
     }
 }
 
-void computePinHash(u8 *out, u8 *in, u32 blockCount)
+void computePinHash(u8 *out, u8 *in)
 {
     u8 __attribute__((aligned(4))) cid[0x10];
     u8 __attribute__((aligned(4))) cipherText[0x10];
+
     sdmmc_get_cid(1, (u32 *)cid);
-
     aes_use_keyslot(4); //Console-unique keyslot whose keys are set by the ARM9 bootROM
-    aes(cipherText, in, blockCount, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-
+    aes(cipherText, in, 1, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     sha(out, cipherText, 0x10, SHA_256_MODE);
 }
