@@ -132,7 +132,7 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
         memcpy(*freeK11Space, svcBackdoor, 40);
 
         arm11SvcTable[0x7B] = 0xFFF00000 + *freeK11Space - pos;
-        (*freeK11Space) += 40;
+        *freeK11Space += 40;
     }
 }
 
@@ -160,15 +160,15 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     info->flags = 1 /* dev branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 
     arm11SvcTable[0x2E] = 0xFFF00000 + *freeK11Space - pos; //Stubbed svc
-    (*freeK11Space) += svcGetCFWInfo_size;
+    *freeK11Space += svcGetCFWInfo_size;
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
-    
+
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
-    
+
     if(off != NULL) off[4] = 0xE0;
 }
 
