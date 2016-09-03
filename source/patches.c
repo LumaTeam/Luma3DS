@@ -42,14 +42,14 @@ u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space)
 {    
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
-    u32 *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
+    u32 *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern)) - 0xB;
     u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
     u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
 
     const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-    *freeK11Space = memsearch(pos, pattern2, size, 5) + 1;
+    *freeK11Space = memsearch(pos, pattern2, size, sizeof(pattern2)) + 1;
 
     return arm11SvcTable;
 }
@@ -62,8 +62,8 @@ void patchSignatureChecks(u8 *pos, u32 size)
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4),
-        *off2 = (u16 *)(memsearch(pos, pattern2, size, 4) - 1);
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern)),
+        *off2 = (u16 *)(memsearch(pos, pattern2, size, sizeof(pattern2)) - 1);
 
     *off = sigPatch[0];
     off2[0] = sigPatch[0];
@@ -75,7 +75,7 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     //Look for firmlaunch code
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
-    u8 *off = memsearch(pos, pattern, size, 4) - 0x13;
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern)) - 0x13;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
@@ -94,7 +94,7 @@ void patchFirmWrites(u8 *pos, u32 size)
     u8 *const off1 = memsearch(pos, "exe:", size, 4);
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
-    u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, 4);
+    u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, sizeof(pattern));
 
     off2[0] = 0x2000;
     off2[1] = 0x46C0;
@@ -105,7 +105,7 @@ void patchOldFirmWrites(u8 *pos, u32 size)
     //Look for FIRM writing code
     const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4);
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     off[0] = 0x2400;
     off[1] = 0xE01D;
@@ -130,7 +130,7 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
         memcpy(*freeK11Space, svcBackdoor, 40);
 
         arm11SvcTable[0x7B] = 0xFFF00000 + *freeK11Space - pos;
-        (*freeK11Space) += 40;
+        *freeK11Space += 40;
     }
 }
 
@@ -157,15 +157,15 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     info->flags = 0 /* master branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 
     arm11SvcTable[0x2E] = 0xFFF00000 + *freeK11Space - pos; //Stubbed svc
-    (*freeK11Space) += svcGetCFWInfo_size;
+    *freeK11Space += svcGetCFWInfo_size;
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
-    
-    u8 *off = memsearch(pos, pattern, size, 4);
-    
+
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
+
     if(off != NULL) off[4] = 0xE0;
 }
 
