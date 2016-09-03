@@ -241,19 +241,17 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 
     for(u32 r0 = 0x08000000; *off != 0xE3A01040; off++) //Until mov r1, #0x40
     {
-        if((*off >> 26) != 0x39 || ((*off >> 16) & 0xF) != 0 || ((*off >> 25) & 1) != 0 || ((*off >> 20) & 5) != 0)
-            continue; //Discard everything that's not str rX, [r0, #imm](!)
+        //Discard everything that's not str rX, [r0, #imm](!)
+        if((*off & 0xFE5F0000) != 0xE4000000) continue;
 
-        int rD = (*off >> 12) & 0xF,
-            offset = (*off & 0xFFF) * ((((*off >> 23) & 1) == 0) ? -1 : 1),
-            writeback = (*off >> 21) & 1,
-            pre = (*off >> 24) & 1;
+        u32 rD = (*off >> 12) & 0xF,
+            offset = (*off & 0xFFF) * ((((*off >> 23) & 1) == 0) ? -1 : 1);
+        bool writeback = ((*off >> 21) & 1) != 0,
+             pre = ((*off >> 24) & 1) != 0;
 
         u32 addr = r0 + ((pre || !writeback) ? offset : 0);
-        if((addr & 7) != 0 && addr != 0x08000014 && addr != 0x08000004)
-            *off = 0xE1A00000; //nop
-        else
-            *off = 0xE5800000 | (rD << 12) | (addr & 0xFFF); //Preserve IRQ and SVC handlers
+        if((addr & 7) != 0 && addr != 0x08000014 && addr != 0x08000004) *off = 0xE1A00000; //nop
+        else *off = 0xE5800000 | (rD << 12) | (addr & 0xFFF); //Preserve IRQ and SVC handlers
 
         if(!pre) addr += offset;
         if(writeback) r0 = addr;
@@ -291,7 +289,7 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 
 void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
 {
-    //Same as above, for NFIRM arm11
+    //Same as above, for NATIVE_FIRM ARM11
     u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
     *addr = 0xE12FFF7F;
 }

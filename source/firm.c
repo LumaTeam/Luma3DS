@@ -74,11 +74,7 @@ void main(void)
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
-    if(DEV_OPTIONS != 2)
-    {
-        detectAndProcessExceptionDumps();
-        installArm9Handlers();
-    }
+    detectAndProcessExceptionDumps();
 
     //Determine if this is a firmlaunch boot
     if(launchedFirmTidLow[5] != 0)
@@ -93,6 +89,8 @@ void main(void)
         nandType = (FirmwareSource)BOOTCONFIG(0, 3);
         firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
         isA9lh = BOOTCONFIG(3, 1) != 0;
+
+        if(isA9lh) installArm9Handlers();
     }
     else
     {
@@ -104,6 +102,8 @@ void main(void)
 
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
+
+        if(isA9lh) installArm9Handlers();
 
         //Save old options and begin saving the new boot configuration
         configTemp = (configData.config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
@@ -339,10 +339,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
-    
-    if(DEV_OPTIONS != 2)
+
+    if(isA9lh && DEV_OPTIONS != 2)
     {
-        //Install arm11 exception handlers
+        //Install ARM11 exception handlers
         u32 codeSetOffset;
         u32 stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &codeSetOffset);
         installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
@@ -381,7 +381,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         arm9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
-    
+
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
 
