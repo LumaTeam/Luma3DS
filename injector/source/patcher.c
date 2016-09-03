@@ -440,7 +440,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPatch), 2
             );
 
-            u32 cpuSetting = MULTICONFIG(1);
+            u32 cpuSetting = MULTICONFIG(2);
 
             if(cpuSetting)
             {

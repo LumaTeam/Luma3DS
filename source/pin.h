@@ -30,16 +30,16 @@
 
 #include "types.h"
 
-#define PIN_LENGTH       4
 #define PIN_PATH         "/luma/pin.bin"
 #define PIN_VERSIONMAJOR 1
-#define PIN_VERSIONMINOR 0
+#define PIN_VERSIONMINOR 1
 
 typedef struct __attribute__((packed))
 {
     char magic[4];
     u16 formatVersionMajor, formatVersionMinor;
 
+    u8 length;
     u8 testHash[32];
     u8 hash[32];
 } PINData;

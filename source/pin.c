@@ -26,6 +26,7 @@
 */
 
 #include "draw.h"
+#include "config.h"
 #include "screen.h"
 #include "utils.h"
 #include "memory.h"
@@ -36,7 +37,7 @@
 
 static char pinKeyToLetter(u32 pressed)
 {
-    const char keys[] = "AB--------XY";
+    const char keys[] = "AB--RLUD--XY";
 
     u32 i;
     for(i = 31; pressed > 1; i--) pressed /= 2;
@@ -53,12 +54,13 @@ void newPin(bool allowSkipping)
     drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
-    u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
+    u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
-    u32 cnt = 0;
+    u8 length = 4 + MULTICONFIG(1),
+       cnt = 0;
     int charDrawPos = 5 * SPACING_X;
 
-    while(cnt < PIN_LENGTH)
+    while(cnt < length)
     {
         u32 pressed;
         do
@@ -82,18 +84,20 @@ void newPin(bool allowSkipping)
     }
 
     PINData pin;
-    u8 __attribute__((aligned(4))) tmp[32];
-    u8 __attribute__((aligned(4))) zeroes[16] = {0};
 
     memcpy(pin.magic, "PINF", 4);
     pin.formatVersionMajor = PIN_VERSIONMAJOR;
     pin.formatVersionMinor = PIN_VERSIONMINOR;
+    pin.length = length;
 
-    computePinHash(tmp, zeroes, 1);
-    memcpy(pin.testHash, tmp, 32);
+    u8 __attribute__((aligned(4))) tmp[0x20];
+    u8 __attribute__((aligned(4))) zeroes[0x10] = {0};
 
-    computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
-    memcpy(pin.hash, tmp, 32);
+    computePinHash(tmp, zeroes);
+    memcpy(pin.testHash, tmp, sizeof(tmp));
+
+    computePinHash(tmp, enteredPassword);
+    memcpy(pin.hash, tmp, sizeof(tmp));
 
     if(!fileWrite(&pin, PIN_PATH, sizeof(PINData)))
         error("Error writing the PIN file");
@@ -108,21 +112,22 @@ bool verifyPin(void)
     if(fileRead(&pin, PIN_PATH) != sizeof(PINData) ||
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
-       pin.formatVersionMinor != PIN_VERSIONMINOR)
+       pin.formatVersionMinor != PIN_VERSIONMINOR ||
+       pin.length != 4 + MULTICONFIG(1))
         return false;
 
-    u8 __attribute__((aligned(4))) zeroes[16] = {0};
-    u8 __attribute__((aligned(4))) tmp[32];
+    u8 __attribute__((aligned(4))) zeroes[0x10] = {0};
+    u8 __attribute__((aligned(4))) tmp[0x20];
 
-    computePinHash(tmp, zeroes, 1);
+    computePinHash(tmp, zeroes);
 
     //Test vector verification (SD card has, or hasn't been used on another console)
     if(memcmp(pin.testHash, tmp, 32) != 0) return false;
 
     //Pad to AES block length with zeroes
-    u8 __attribute__((aligned(4))) enteredPassword[16 * ((PIN_LENGTH + 15) / 16)] = {0};
+    u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
-    u32 cnt = 0;
+    u8 cnt = 0;
     bool unlock = false;
     int charDrawPos = 5 * SPACING_X;
 
@@ -151,10 +156,10 @@ bool verifyPin(void)
         drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
 
-        if(cnt >= PIN_LENGTH)
+        if(cnt >= pin.length)
         {
-            computePinHash(tmp, enteredPassword, (PIN_LENGTH + 15) / 16);
-            unlock = memcmp(pin.hash, tmp, 32) == 0;
+            computePinHash(tmp, enteredPassword);
+            unlock = memcmp(pin.hash, tmp, sizeof(tmp)) == 0;
 
             if(!unlock)
             {

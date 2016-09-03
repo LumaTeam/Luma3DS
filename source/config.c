@@ -72,6 +72,7 @@ void configMenu(bool oldPinStatus)
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
     const char *multiOptionsText[]  = { "Screen brightness: 4( ) 3( ) 2( ) 1( )",
+                                        "PIN length: 4( ) 5( ) 6( ) 7( )",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
@@ -89,6 +90,7 @@ void configMenu(bool oldPinStatus)
         u32 enabled;
     } multiOptions[] = {
         { .posXs = {21, 26, 31, 36} },
+        { .posXs = {14, 19, 24, 29} },
         { .posXs = {17, 26, 32, 44} }
     };
 
@@ -221,6 +223,8 @@ void configMenu(bool oldPinStatus)
         }
     }
 
+    u32 oldPinLength = MULTICONFIG(1);
+
     //Preserve the last-used boot options (last 12 bits)
     configData.config &= 0x3F;
 
@@ -230,7 +234,7 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
 
-    if(CONFIG(7)) newPin(oldPinStatus);
+    if(CONFIG(7)) newPin(oldPinStatus && MULTICONFIG(1) == oldPinLength);
     else if(oldPinStatus) fileDelete(PIN_PATH);
 
     //Wait for the pressed buttons to change
