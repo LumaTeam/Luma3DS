@@ -95,7 +95,7 @@ static void loadCFWInfo(void)
         svcGetCFWInfo(&info);
 
         IFile file;
-        if(BOOTCONFIG(5, 1) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
+        if(BOOTCFG_SAFEMODE && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
             IFile_Close(&file);
 
         infoLoaded = true;
@@ -360,7 +360,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             );
 
             //Apply only if the updated NAND hasn't been booted
-            if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(2, 1) && CONFIG(1)))
+            if((BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0 && CONFIG_USESYSFIRM))
             {
                 static const u8 skipEshopUpdateCheckPattern[] = {
                     0x30, 0xB5, 0xF1, 0xB0
@@ -404,7 +404,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(CONFIG(4))
+            if(CONFIG_SHOWNAND)
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = BOOTCONFIG(0, 3);
@@ -440,7 +440,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPatch), 2
             );
 
-            u32 cpuSetting = MULTICONFIG(2);
+            u32 cpuSetting = CONFIG_NEWCPU;
 
             if(cpuSetting)
             {
@@ -539,7 +539,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         }
 
         default:
-            if(CONFIG(3))
+            if(CONFIG_USELANGEMUANDCODE)
             {
                 u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
 

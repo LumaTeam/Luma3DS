@@ -24,13 +24,26 @@
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 16)) & 1) != 0)
+#define CONFIG(a)        (((configData.config >> (a + 20)) & 1) != 0)
 #define MULTICONFIG(a)   ((configData.config >> (a * 2 + 6)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
 #define CONFIG_PATH         "/luma/config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 1
+#define CONFIG_VERSIONMINOR 2
+
+#define BOOTCFG_NAND         BOOTCONFIG(0, 3)
+#define BOOTCFG_FIRM         BOOTCONFIG(2, 1)
+#define BOOTCFG_A9LH         BOOTCONFIG(3, 1)
+#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(4, 1)
+#define BOOTCFG_SAFEMODE     BOOTCONFIG(5, 1)
+#define CONFIG_BRIGHTNESS    MULTICONFIG(0)
+#define CONFIG_PIN           MULTICONFIG(1)
+#define CONFIG_AUTOBOOTSYS   CONFIG(0)
+#define CONFIG_USESYSFIRM    CONFIG(1)
+#define CONFIG_USESECONDEMU  CONFIG(2)
+#define CONFIG_SHOWGBABOOT   CONFIG(5)
+#define CONFIG_PAYLOADSPLASH CONFIG(6)
 
 typedef struct __attribute__((packed))
 {

@@ -82,9 +82,9 @@ void main(void)
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = launchedFirmTidLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTidLow[5] - u'0');
 
-        nandType = (FirmwareSource)BOOTCONFIG(0, 3);
-        firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
-        isA9lh = BOOTCONFIG(3, 1) != 0;
+        nandType = (FirmwareSource)BOOTCFG_NAND;
+        firmSource = (FirmwareSource)BOOTCFG_FIRM;
+        isA9lh = BOOTCFG_A9LH != 0;
     }
     else
     {
@@ -107,7 +107,7 @@ void main(void)
             if(CFG_BOOTENV == 7)
             {
                 nandType = FIRMWARE_SYSNAND;
-                firmSource = CONFIG(1) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCONFIG(2, 1);
+                firmSource = CONFIG_USESYSFIRM ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
@@ -116,10 +116,10 @@ void main(void)
 
             /* Else, force the last used boot options unless a button is pressed
                or the no-forcing flag is set */
-            else if(needConfig != CREATE_CONFIGURATION && !pressed && !BOOTCONFIG(4, 1))
+            else if(needConfig != CREATE_CONFIGURATION && !pressed && !BOOTCFG_NOFORCEFLAG)
             {
-                nandType = (FirmwareSource)BOOTCONFIG(0, 3);
-                firmSource = (FirmwareSource)BOOTCONFIG(2, 1);
+                nandType = (FirmwareSource)BOOTCFG_NAND;
+                firmSource = (FirmwareSource)BOOTCFG_FIRM;
                 needConfig = DONT_CONFIGURE;
             }
         }
@@ -127,7 +127,7 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            bool pinExists = CONFIG(7) && verifyPin();
+            bool pinExists = CONFIG_PIN != 0 && verifyPin();
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
@@ -157,7 +157,7 @@ void main(void)
             }
             else
             {
-                if(CONFIG(6) && loadSplash()) pressed = HID_PAD;
+                if(CONFIG_PAYLOADSPLASH && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
@@ -165,10 +165,10 @@ void main(void)
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
-                if(!CONFIG(6)) loadSplash();
+                if(!CONFIG_PAYLOADSPLASH) loadSplash();
 
                 //Determine if the user chose to use the SysNAND FIRM as default for a R boot
-                bool useSysAsDefault = isA9lh ? CONFIG(1) : false;
+                bool useSysAsDefault = isA9lh ? CONFIG_USESYSFIRM : false;
 
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 if(pressed & BUTTON_R1)
@@ -181,13 +181,13 @@ void main(void)
                    with their own FIRM */
                 else
                 {
-                    nandType = (CONFIG(0) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    nandType = (CONFIG_AUTOBOOTSYS != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
                     firmSource = nandType;
                 }
 
                 /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
                    or vice-versa, boot the second emuNAND */
-                if(nandType != FIRMWARE_SYSNAND && (CONFIG(2) == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+                if(nandType != FIRMWARE_SYSNAND && (CONFIG_USESECONDEMU == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
             }
         }
     }
@@ -244,7 +244,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
             if(firmSource != FIRMWARE_SYSNAND) 
                 error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
 
-            if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
+            if(BOOTCFG_SAFEMODE) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
 
             *firmType = NATIVE_FIRM1X2X;
         }
