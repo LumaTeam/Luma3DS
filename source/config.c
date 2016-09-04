@@ -72,7 +72,7 @@ void configMenu(bool oldPinStatus)
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
     const char *multiOptionsText[]  = { "Screen brightness: 4( ) 3( ) 2( ) 1( )",
-                                        "PIN length: 4( ) 5( ) 6( ) 7( )",
+                                        "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                         "Dev. features: ErrDisp( ) UNITINFO( ) None( )" };
 
@@ -83,7 +83,6 @@ void configMenu(bool oldPinStatus)
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads",
-                                        "( ) Use a PIN",
                                         "( ) Patch SVC/service/archive/ARM9 access" };
 
     struct multiOption {
@@ -226,7 +225,7 @@ void configMenu(bool oldPinStatus)
         }
     }
 
-    u32 oldPinLength = MULTICONFIG(1);
+    u32 oldPinLength = CONFIG_PIN;
 
     //Preserve the last-used boot options (last 12 bits)
     configData.config &= 0x3F;
@@ -235,9 +234,9 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < multiOptionsAmount; i++)
         configData.config |= multiOptions[i].enabled << (i * 2 + 6);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 16);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
 
-    if(CONFIG(7)) newPin(oldPinStatus && MULTICONFIG(1) == oldPinLength);
+    if(CONFIG_PIN != 0) newPin(oldPinStatus && CONFIG_PIN == oldPinLength);
     else if(oldPinStatus) fileDelete(PIN_PATH);
 
     //Wait for the pressed buttons to change
