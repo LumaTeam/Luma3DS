@@ -133,9 +133,23 @@ bool verifyPin(void)
 
     while(!unlock)
     {
-        drawString("Press START to shutdown or enter PIN to proceed", 10, 10, COLOR_TITLE);
-        drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-
+    	int ck = 0;
+    	
+        drawString("Enter your PIN to proceed", 100, 90, COLOR_TITLE);
+		drawString("or press START to shutdown", 95, 155, COLOR_TITLE);
+		
+        while(ck < 392){
+        	drawCharacter("-", 0 + ck, 90 + 2 * SPACING_Y, COLOR_WHITE);
+        	ck++;
+        }
+        
+        ck=0;
+        
+        while(ck < 392){
+        	drawCharacter("-", 0 + ck, 120 + 2 * SPACING_Y, COLOR_WHITE);
+        	ck++;
+        }
+        
         u32 pressed;
         do
         {
@@ -153,7 +167,7 @@ bool verifyPin(void)
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
         //Visualize character on screen
-        drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawCharacter(key, 100 + charDrawPos, 105 + 2 * SPACING_Y, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
 
         if(cnt >= pin.length)
