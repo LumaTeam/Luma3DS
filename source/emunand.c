@@ -58,7 +58,7 @@ void locateEmuNand(u32 *off, u32 *head, FirmwareSource *emuNand)
     }
 }
 
-static inline void *getFreeK9Space(u8 *pos, u32 size)
+static inline u8 *getFreeK9Space(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
@@ -108,7 +108,7 @@ static inline void patchMpu(u8 *pos, u32 size)
 void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive)
 {
     //Copy emuNAND code
-    void *freeK9Space = getFreeK9Space(arm9Section, arm9SectionSize);
+    u8 *freeK9Space = getFreeK9Space(arm9Section, arm9SectionSize);
     memcpy(freeK9Space, emunand, emunand_size);
 
     //Add the data of the found emuNAND
