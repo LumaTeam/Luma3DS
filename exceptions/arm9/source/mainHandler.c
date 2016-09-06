@@ -65,7 +65,7 @@ static u32 __attribute__((noinline)) copyMemory(void *dst, const void *src, u32 
     return size;
 }
 
-void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type)
+void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type)
 {
     ExceptionDumpHeader dumpHeader;
 
@@ -107,10 +107,10 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     //Dump stack in place
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
 
-    //Copy header (actually optimized by the compiler)
-    final = (u8 *)FINAL_BUFFER;
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
-    *(ExceptionDumpHeader *)final = dumpHeader;
+
+    //Copy header (actually optimized by the compiler)
+    *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
 
     ((void (*)())0xFFFF0830)(); //Ensure that all memory transfers have completed and that the data cache has been flushed
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot

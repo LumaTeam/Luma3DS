@@ -85,19 +85,6 @@ void detectAndProcessExceptionDumps(void)
 
     if(dumpHeader->magic[0] == 0xDEADC0DE && dumpHeader->magic[1] == 0xDEADCAFE && (dumpHeader->processor == 9 || dumpHeader->processor == 11))
     {
-        char path[42];
-        char fileName[] = "crash_dump_00000000.dmp";
-        u32 size = dumpHeader->totalSize;
-
-        char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
-
-        findDumpFile(pathFolder, fileName);
-        memcpy(path, pathFolder, strlen(pathFolder) + 1);
-        concatenateStrings(path, "/");
-        concatenateStrings(path, fileName);
-
-        fileWrite((void *)dumpHeader, path, size);
-
         vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
         vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
 
@@ -111,9 +98,8 @@ void detectAndProcessExceptionDumps(void)
         };
 
         char hexstring[] = "00000000";
-
         char arm11Str[] = "Processor:       ARM11 (core X)";
-        if(dumpHeader->processor == 11) arm11Str[29] = '0' + (char)(dumpHeader->core);
+        if(dumpHeader->processor == 11) arm11Str[29] = '0' + (char)dumpHeader->core;
 
         initScreens();
 
@@ -176,14 +162,28 @@ void detectAndProcessExceptionDumps(void)
             if(dumpHeader->processor != 9) posY -= SPACING_Y;
         }
 
-        posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
-        posY = drawString(path, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
+        u32 size = dumpHeader->totalSize;
+        char path[42];
+        char fileName[] = "crash_dump_00000000.dmp";
+        char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
+
+        findDumpFile(pathFolder, fileName);
+        memcpy(path, pathFolder, strlen(pathFolder) + 1);
+        concatenateStrings(path, "/");
+        concatenateStrings(path, fileName);
+
+        if(fileWrite((void *)dumpHeader, path, size))
+        {
+            posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
+            posY = drawString(path, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
+        }
+        else posY = drawString("Error writing the dump file", 10, posY, COLOR_RED) + SPACING_Y;
+
         drawString("Press any button to shutdown", 10, posY, COLOR_WHITE);
 
+        memset32((void *)dumpHeader, 0, size);
+
         waitInput();
-
-        memset32((void *)dumpHeader, 0, size); 
-
         mcuPowerOff();
     }
 }

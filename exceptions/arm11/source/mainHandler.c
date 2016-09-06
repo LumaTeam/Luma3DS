@@ -43,7 +43,7 @@ static u32 __attribute__((noinline)) copyMemory(void *dst, const void *src, u32 
     return size;
 }
 
-void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type, u32 cpuId)
+void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
 {
     ExceptionDumpHeader dumpHeader;
 
@@ -64,7 +64,6 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
 
     dumpHeader.registerDumpSize = REG_DUMP_SIZE;
     dumpHeader.codeDumpSize = CODE_DUMP_SIZE;
-    dumpHeader.additionalDataSize = 0;
 
     //Dump registers
     //Current order of saved regs: dfsr, ifsr, far, fpexc, fpinst, fpinst2, cpsr, pc, r8-r12, sp, lr, r0-r7
@@ -90,23 +89,21 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
     final += dumpHeader.stackDumpSize;
 
-    vu8 *currentKProcess = cannotAccessVA((u8 *)0xFFFF9004) ? NULL : *(vu8 **)0xFFFF9004;
-    vu8 *currentKCodeSet = currentKProcess != NULL ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
-
-    if(currentKCodeSet != NULL)
+    if(!cannotAccessVA((u8 *)0xFFFF9004))
     {
         vu64 *additionalData = (vu64 *)final;
         dumpHeader.additionalDataSize = 16;
+        vu8 *currentKCodeSet = *(vu8 **)(*(vu8 **)0xFFFF9004 + CODESET_OFFSET); //currentKProcess + CodeSet
 
         additionalData[0] = *(vu64 *)(currentKCodeSet + 0x50); //Process name        
         additionalData[1] = *(vu64 *)(currentKCodeSet + 0x5C); //Title ID
     }
     else dumpHeader.additionalDataSize = 0;
 
-    //Copy header (actually optimized by the compiler)
-    final = (u8 *)FINAL_BUFFER;
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
-    *(ExceptionDumpHeader *)final = dumpHeader;
+
+    //Copy header (actually optimized by the compiler)
+    *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
 
     cleanInvalidateDCacheAndDMB();
     mcuReboot(); //Also contains DCache-cleaning code

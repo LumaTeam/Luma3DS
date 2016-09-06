@@ -42,7 +42,6 @@ typedef struct __attribute__((packed))
 void __attribute__((noreturn)) mcuReboot(void);
 void cleanInvalidateDCacheAndDMB(void);
 bool cannotAccessVA(const void *address);
-
 void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void dataAbortHandler(void);
