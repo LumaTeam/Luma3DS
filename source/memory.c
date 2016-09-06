@@ -66,9 +66,9 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
     //Preprocessing
     u32 table[256];
 
-    for(u32 i = 0; i < 256; ++i)
+    for(u32 i = 0; i < 256; i++)
         table[i] = patternSize + 1;
-    for(u32 i = 0; i < patternSize; ++i)
+    for(u32 i = 0; i < patternSize; i++)
         table[patternc[i]] = patternSize - i;
 
     //Searching
@@ -76,7 +76,7 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 
     while(j <= size - patternSize)
     {
-        if(memcmp(patternc, startPos + j, patternSize) == 0)
+        if(memcmp(pattern, startPos + j, patternSize) == 0)
             return startPos + j;
         j += table[startPos[j + patternSize]];
     }

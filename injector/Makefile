@@ -43,7 +43,7 @@ clean:
 $(dir_build)/$(name).elf: $(objects)
 	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
 
-$(dir_build)/memory.o : CFLAGS += -O3
+$(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"

@@ -29,9 +29,9 @@ void main(void)
 {
     void *payloadAddress = (void *)0x23F00000;
 
-    memcpy(payloadAddress, (void*)0x24F00000, payloadSize);
+    memcpy(payloadAddress, (void *)0x24F00000, payloadSize);
 
     flushCaches();
-    
+
     ((void (*)())payloadAddress)();
 }
