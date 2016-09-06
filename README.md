@@ -26,7 +26,7 @@ See https://github.com/AuroraWright/Luma3DS/wiki
 ---
 
 ## Credits
- 
+
 See https://github.com/AuroraWright/Luma3DS/wiki/Credits
 
 ---
