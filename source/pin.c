@@ -182,7 +182,7 @@ bool verifyPin(void)
 
                 clearScreens();
 
-                drawString("Wrong PIN, try again", 110, 95, COLOR_RED); 
+                drawString("Wrong PIN, try again", 117, 95, COLOR_RED);
             }
         }
     }
