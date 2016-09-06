@@ -46,11 +46,9 @@ static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSiz
     return NULL;
 }
 
-static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, int offset, const void *replace, u32 repSize, u32 count)
+static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, int offset, const void *replace, u32 repSize, u32 count)
 {
-    u32 i;
-
-    for(i = 0; i < count; i++)
+    for(u32 i = 0; i < count; i++)
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
@@ -65,8 +63,6 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
         size -= at + patSize;
         start = found + patSize;
     }
-
-    return i;
 }
 
 static inline size_t strnlen(const char *string, size_t maxlen)
