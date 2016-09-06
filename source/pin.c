@@ -135,8 +135,8 @@ bool verifyPin(void)
     {
     	int ck = 0;
     	
-        drawString("Enter your PIN to proceed", 100, 90, COLOR_TITLE);
-		drawString("or press START to shutdown", 95, 155, COLOR_TITLE);
+        drawString("Enter your PIN to proceed", 100, 80, COLOR_TITLE);
+	drawString("or press START to shutdown", 95, 155, COLOR_TITLE);
 		
         while(ck < 392){
         	drawCharacter("-", 0 + ck, 90 + 2 * SPACING_Y, COLOR_WHITE);
@@ -182,7 +182,7 @@ bool verifyPin(void)
 
                 clearScreens();
 
-                drawString("Wrong PIN, try again", 10, 10 + 4 * SPACING_Y, COLOR_RED); 
+                drawString("Wrong PIN, try again", 110, 95, COLOR_RED); 
             }
         }
     }
