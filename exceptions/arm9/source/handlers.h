@@ -21,25 +21,26 @@
 */
 
 #pragma once
-#include "types.h"
 
-u32 readMPUConfig(u32 regionSettings[8]);
-void FIQHandler(void);
-void undefinedInstructionHandler(void);
-void dataAbortHandler(void);
-void prefetchAbortHandler(void);
+#include "types.h"
 
 typedef struct __attribute__((packed))
 {
     u32 magic[2];
     u16 versionMinor, versionMajor;
-    
+
     u16 processor, core;
     u32 type;
-    
+
     u32 totalSize;
     u32 registerDumpSize;
     u32 codeDumpSize;
     u32 stackDumpSize;
     u32 additionalDataSize;
 } ExceptionDumpHeader;
+
+u32 readMPUConfig(u32 regionSettings[8]);
+void FIQHandler(void);
+void undefinedInstructionHandler(void);
+void dataAbortHandler(void);
+void prefetchAbortHandler(void);

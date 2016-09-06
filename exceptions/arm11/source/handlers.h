@@ -24,15 +24,6 @@
 
 #include "types.h"
 
-void __attribute__((noreturn)) mcuReboot(void);
-void cleanInvalidateDCacheAndDMB(void);
-bool cannotAccessVA(const void *address);
-
-void FIQHandler(void);
-void undefinedInstructionHandler(void);
-void dataAbortHandler(void);
-void prefetchAbortHandler(void);
-
 typedef struct __attribute__((packed))
 {
     u32 magic[2];
@@ -47,3 +38,12 @@ typedef struct __attribute__((packed))
     u32 stackDumpSize;
     u32 additionalDataSize;
 } ExceptionDumpHeader;
+
+void __attribute__((noreturn)) mcuReboot(void);
+void cleanInvalidateDCacheAndDMB(void);
+bool cannotAccessVA(const void *address);
+
+void FIQHandler(void);
+void undefinedInstructionHandler(void);
+void dataAbortHandler(void);
+void prefetchAbortHandler(void);
