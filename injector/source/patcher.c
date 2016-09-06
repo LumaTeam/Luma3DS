@@ -1,50 +1,11 @@
 #include <3ds.h>
-#include "memory.h"
 #include "patcher.h"
+#include "memory.h"
+#include "strings.h"
 #include "ifile.h"
 #include "CFWInfo.h"
 
 static CFWInfo info;
-
-static int memcmp(const void *buf1, const void *buf2, u32 size)
-{
-    const u8 *buf1c = (const u8 *)buf1;
-    const u8 *buf2c = (const u8 *)buf2;
-
-    for(u32 i = 0; i < size; i++)
-    {
-        int cmp = buf1c[i] - buf2c[i];
-        if(cmp) return cmp;
-    }
-
-    return 0;
-}
-
-//Quick Search algorithm, adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
-static u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
-{
-    const u8 *patternc = (const u8 *)pattern;
-
-    //Preprocessing
-    u32 table[256];
-
-    for(u32 i = 0; i < 256; ++i)
-        table[i] = patternSize + 1;
-    for(u32 i = 0; i < patternSize; ++i)
-        table[patternc[i]] = patternSize - i;
-
-    //Searching
-    u32 j = 0;
-
-    while(j <= size - patternSize)
-    {
-        if(memcmp(patternc, startPos + j, patternSize) == 0)
-            return startPos + j;
-        j += table[startPos[j + patternSize]];
-    }
-
-    return NULL;
-}
 
 static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, int offset, const void *replace, u32 repSize, u32 count)
 {
@@ -63,15 +24,6 @@ static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, i
         size -= at + patSize;
         start = found + patSize;
     }
-}
-
-static inline size_t strnlen(const char *string, size_t maxlen)
-{
-    size_t size;
-
-    for(size = 0; *string && size < maxlen; string++, size++);
-
-    return size;
 }
 
 static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
@@ -113,16 +65,6 @@ static bool secureInfoExists(void)
     }
 
     return exists;
-}
-
-static void progIdToStr(char *strEnd, u64 progId)
-{
-    while(progId)
-    {
-        static const char hexDigits[] = "0123456789ABCDEF";
-        *strEnd-- = hexDigits[(u32)(progId & 0xF)];
-        progId >>= 4;
-    }
 }
 
 static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
