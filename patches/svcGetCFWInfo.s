@@ -23,7 +23,6 @@
 .arm.little
 
 .create "build/svcGetCFWInfo.bin", 0
-
 .arm
 
     adr r1, infoStart

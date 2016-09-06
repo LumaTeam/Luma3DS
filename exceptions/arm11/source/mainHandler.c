@@ -46,22 +46,22 @@ static u32 __attribute__((noinline)) copyMemory(void *dst, const void *src, u32 
 void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type, u32 cpuId)
 {
     ExceptionDumpHeader dumpHeader;
-    
+
     u32 registerDump[REG_DUMP_SIZE / 4];
     u8 codeDump[CODE_DUMP_SIZE];
     u8 *final = (u8 *)FINAL_BUFFER;
 
     while(*(vu32 *)final == 0xDEADC0DE && *((vu32 *)final + 1) == 0xDEADCAFE);
-    
+
     dumpHeader.magic[0] = 0xDEADC0DE;
     dumpHeader.magic[1] = 0xDEADCAFE;
     dumpHeader.versionMajor = 1;
     dumpHeader.versionMinor = 2;
-    
+
     dumpHeader.processor = 11;
     dumpHeader.core = cpuId & 0xF;
     dumpHeader.type = type;
-    
+
     dumpHeader.registerDumpSize = REG_DUMP_SIZE;
     dumpHeader.codeDumpSize = CODE_DUMP_SIZE;
     dumpHeader.additionalDataSize = 0;
@@ -80,24 +80,24 @@ void __attribute__((noreturn)) mainHandler(u32 regs[REG_DUMP_SIZE / 4], u32 type
     //Dump code
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
     dumpHeader.codeDumpSize = copyMemory(codeDump, instr, dumpHeader.codeDumpSize, ((cpsr & 0x20) != 0) ? 2 : 4);
-        
+
     //Copy register dump and code dump 
     final = (u8 *)(FINAL_BUFFER + sizeof(ExceptionDumpHeader));
     final += copyMemory(final, registerDump, dumpHeader.registerDumpSize, 1);
     final += copyMemory(final, codeDump, dumpHeader.codeDumpSize, 1);
-        
+
     //Dump stack in place
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
     final += dumpHeader.stackDumpSize;
 
     vu8 *currentKProcess = cannotAccessVA((u8 *)0xFFFF9004) ? NULL : *(vu8 **)0xFFFF9004;
     vu8 *currentKCodeSet = currentKProcess != NULL ? *(vu8 **)(currentKProcess + CODESET_OFFSET) : NULL;
-    
+
     if(currentKCodeSet != NULL)
     {
         vu64 *additionalData = (vu64 *)final;
         dumpHeader.additionalDataSize = 16;
-        
+
         additionalData[0] = *(vu64 *)(currentKCodeSet + 0x50); //Process name        
         additionalData[1] = *(vu64 *)(currentKCodeSet + 0x5C); //Title ID
     }
