@@ -97,14 +97,14 @@ void detectAndProcessExceptionDumps(void)
             "SP", "LR", "PC", "CPSR", "FPEXC"
         };
 
-        char hexstring[] = "00000000";
-        char arm11Str[] = "Processor:       ARM11 (core X)";
-        if(dumpHeader->processor == 11) arm11Str[29] = '0' + (char)dumpHeader->core;
+        char hexString[] = "00000000";
+        char arm11String[] = "Processor:       ARM11 (core X)";
+        if(dumpHeader->processor == 11) arm11String[29] = '0' + (char)dumpHeader->core;
 
         initScreens();
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
-        int posY = drawString(dumpHeader->processor == 11 ? arm11Str : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
+        int posY = drawString(dumpHeader->processor == 11 ? arm11String : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
 
         posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
         posY = drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
@@ -130,9 +130,9 @@ void detectAndProcessExceptionDumps(void)
         if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
         {
             posY += SPACING_Y;
-            char processNameStr[] = "Current process: --------";
-            memcpy(processNameStr + 17, (char *)additionalData, 8);
-            posY = drawString(processNameStr, 10, posY, COLOR_WHITE);
+            char processName[] = "Current process: --------";
+            memcpy(processName + 17, (char *)additionalData, 8);
+            posY = drawString(processName, 10, posY, COLOR_WHITE);
         }
 
         posY += 3 * SPACING_Y;
@@ -140,14 +140,14 @@ void detectAndProcessExceptionDumps(void)
         for(u32 i = 0; i < 17; i += 2)
         {
             posY = drawString(registerNames[i], 10, posY, COLOR_WHITE);
-            hexItoa(regs[i], hexstring);
-            posY = drawString(hexstring, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
+            hexItoa(regs[i], hexString);
+            posY = drawString(hexString, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
 
             if(dumpHeader->processor != 9 || i != 16)
             {
                 posY = drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
-                hexItoa(i == 16 ? regs[20] : regs[i + 1], hexstring);
-                posY = drawString(hexstring, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
+                hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString);
+                posY = drawString(hexString, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
 
             posY += SPACING_Y;
@@ -158,7 +158,7 @@ void detectAndProcessExceptionDumps(void)
         u32 mode = regs[16] & 0xF;
         if(dumpHeader->type == 3 && (mode == 7 || mode == 11))
         {
-            posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, 0x00FFFF) + 2 * SPACING_Y; //In yellow
+            posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, COLOR_YELLOW) + 2 * SPACING_Y;
             if(dumpHeader->processor != 9) posY -= SPACING_Y;
         }
 

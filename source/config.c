@@ -204,8 +204,7 @@ void configMenu(bool oldPinStatus)
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
-                if(!selectedOption)
-                    updateBrightness(multiOptions[selectedOption].enabled);
+                if(!selectedOption) updateBrightness(multiOptions[0].enabled);
             }
             else
             {

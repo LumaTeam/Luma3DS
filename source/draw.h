@@ -35,10 +35,11 @@
 #define SPACING_Y 10
 #define SPACING_X 8
 
-#define COLOR_TITLE 0xFF9900
-#define COLOR_WHITE 0xFFFFFF
-#define COLOR_RED   0x0000FF
-#define COLOR_BLACK 0x000000
+#define COLOR_TITLE  0xFF9900
+#define COLOR_WHITE  0xFFFFFF
+#define COLOR_RED    0x0000FF
+#define COLOR_BLACK  0x000000
+#define COLOR_YELLOW 0x00FFFF
 
 bool loadSplash(void);
 void drawCharacter(char character, int posX, int posY, u32 color);
