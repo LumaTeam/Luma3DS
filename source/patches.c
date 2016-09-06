@@ -257,7 +257,7 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 
     //Look for the svc handler
     const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
-    
+
     u32 *arm9SvcTable = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
 
@@ -274,9 +274,9 @@ void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
 
 void patchKernel9Panic(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0xDF, 0xFF, 0xEA, 0x04};
+    const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
 
-    u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0x11);
+    u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) - 0x12);
     *off = 0xE12FFF7E;
 }
 
