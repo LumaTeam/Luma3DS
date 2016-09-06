@@ -75,7 +75,8 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 
         return true;
     }
-    else if(result == FR_NO_PATH)
+
+    if(result == FR_NO_PATH)
     {
         char folder[256];
 
@@ -89,7 +90,8 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 
         return fileWrite(buffer, path, size);
     }
-    else return false;
+
+    return false;
 }
 
 void fileDelete(const char *path)
