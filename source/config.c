@@ -71,14 +71,14 @@ void configMenu(bool oldPinStatus)
     drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
     drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
-    const char *multiOptionsText[]  = { "Screen brightness: 4( ) 3( ) 2( ) 1( )",
+    const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
+                                        "Screen brightness: 4( ) 3( ) 2( ) 1( )",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                         "Dev. features: ErrDisp( ) UNITINFO( ) None( )" };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
-                                        "( ) Use second EmuNAND as default",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
@@ -90,6 +90,7 @@ void configMenu(bool oldPinStatus)
         int posY;
         u32 enabled;
     } multiOptions[] = {
+        { .posXs = {19, 24, 29, 34} },
         { .posXs = {21, 26, 31, 36} },
         { .posXs = {14, 19, 24, 29} },
         { .posXs = {17, 26, 32, 44} },
@@ -204,7 +205,7 @@ void configMenu(bool oldPinStatus)
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
-                if(!selectedOption) updateBrightness(multiOptions[0].enabled);
+                if(selectedOption == 1) updateBrightness(multiOptions[1].enabled);
             }
             else
             {
@@ -231,9 +232,9 @@ void configMenu(bool oldPinStatus)
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        configData.config |= multiOptions[i].enabled << (i * 2 + 6);
+        configData.config |= multiOptions[i].enabled << (i * 2 + 7);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 21);
 
     if(CONFIG_PIN != 0) newPin(oldPinStatus && CONFIG_PIN == oldPinLength);
     else if(oldPinStatus) fileDelete(PIN_PATH);

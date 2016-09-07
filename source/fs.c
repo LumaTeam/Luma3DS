@@ -103,15 +103,16 @@ void loadPayload(u32 pressed)
 {
     const char *pattern;
 
-    if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
-    else if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
+    if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
+    else if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
     else if(pressed & BUTTON_UP) pattern = PATTERN("up");
     else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
+    else if(pressed & BUTTON_START) pattern = PATTERN("start");
+    else if(pressed & BUTTON_B) pattern = PATTERN("b");
     else if(pressed & BUTTON_X) pattern = PATTERN("x");
     else if(pressed & BUTTON_Y) pattern = PATTERN("y");
     else if(pressed & BUTTON_R1) pattern = PATTERN("r");
     else if(pressed & BUTTON_A) pattern = PATTERN("a");
-    else if(pressed & BUTTON_START) pattern = PATTERN("start");
     else pattern = PATTERN("select");
 
     DIR dir;

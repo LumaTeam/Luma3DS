@@ -345,15 +345,34 @@ void patchCode(u64 progId, u8 *code, u32 size)
             if(CONFIG_SHOWNAND)
             {
                 static const u16 verPattern[] = u"Ver.";
-                const u32 currentNand = BOOTCONFIG(0, 3);
-                const u32 matchingFirm = BOOTCONFIG(2, 1) == (currentNand != 0);
+                const u32 currentNand = BOOTCFG_NAND;
+                const u32 matchingFirm = BOOTCFG_FIRM == (currentNand != 0);
+
+                u16 *verString;
+                switch(currentNand)
+                {
+                    case 1:
+                        verString = matchingFirm ? u" Emu" : u"EmuS";
+                        break;
+                    case 2:
+                        verString = matchingFirm ? u"Emu2" : u"Em2S";
+                        break;
+                    case 3:
+                        verString = matchingFirm ? u"Emu3" : u"Em3S";
+                        break;
+                    case 4:
+                        verString = matchingFirm ? u"Emu4" : u"Em4S";
+                        break;
+                    default:
+                        verString = matchingFirm ? u" Sys" : u"SysE";
+                        break;
+                }
 
                 //Patch Ver. string
                 patchMemory(code, size,
                     verPattern,
                     sizeof(verPattern) - sizeof(u16), 0,
-                    !currentNand ? ((matchingFirm) ? u" Sys" : u"SysE") :
-                                   ((currentNand == 1) ? (matchingFirm ? u" Emu" : u"EmuS") : ((matchingFirm) ? u"Emu2" : u"Em2S")),
+                    verString,
                     sizeof(verPattern) - sizeof(u16), 1
                 );
             }

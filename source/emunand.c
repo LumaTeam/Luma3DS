@@ -25,36 +25,59 @@
 #include "fatfs/sdmmc/sdmmc.h"
 #include "../build/emunandpatch.h"
 
-void locateEmuNand(u32 *off, u32 *head, FirmwareSource *emuNand)
+void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
 {
     static u8 temp[0x200];
-
     const u32 nandSize = getMMCDevice(0)->total_size;
-    u32 nandOffset = *emuNand == FIRMWARE_EMUNAND ? 0 :
-                                  (nandSize > 0x200000 ? 0x400000 : 0x200000);
+    bool found = false;
 
-    //Check for RedNAND
-    if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) &&
-       *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+    for (u32 i = 0; i < 3 && !found; i++)
     {
-        *off = nandOffset + 1;
-        *head = nandOffset + 1;
-    }
+        u32 nandOffset;
+        switch(i)
+        {
+            case 1:
+                nandOffset = ROUND_TO_4MB(nandSize + 1); //"Default" layout
+                break;
+            case 2:
+                nandOffset = isN3DS ? 0x26E000 : 0x1D8000; //"Minsize" layout
+                break;
+            default:
+                nandOffset = *emuNand == FIRMWARE_EMUNAND ? 0 : (nandSize > 0x200000 ? 0x400000 : 0x200000); //"Legacy" layout
+                break;
+        }
 
-    //Check for Gateway emuNAND
-    else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) &&
-            *(u32 *)(temp + 0x100) == NCSD_MAGIC)
-    {
-        *off = nandOffset;
-        *head = nandOffset + nandSize;
+        if(*emuNand != FIRMWARE_EMUNAND) nandOffset *= ((u32)*emuNand - 1);
+
+        //Check for RedNAND
+        if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+        {
+            emuOffset = nandOffset + 1;
+            *emuHeader = nandOffset + 1;
+            found = true;
+        }
+
+        //Check for Gateway emuNAND
+        else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+        {
+            emuOffset = nandOffset;
+            *emuHeader = nandOffset + nandSize;
+            found = true;
+        }
+
+        if(*emuNand == FIRMWARE_EMUNAND) break;
     }
 
     /* Fallback to the first emuNAND if there's no second one,
        or to SysNAND if there isn't any */
-    else
+    if(!found)
     {
-        *emuNand = (*emuNand == FIRMWARE_EMUNAND2) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-        if(*emuNand) locateEmuNand(off, head, emuNand);
+        if(*emuNand != FIRMWARE_EMUNAND)
+        {
+            *emuNand = FIRMWARE_EMUNAND;
+            locateEmuNand(emuHeader, emuNand);
+        }
+        else *emuNand = FIRMWARE_SYSNAND;
     }
 }
 

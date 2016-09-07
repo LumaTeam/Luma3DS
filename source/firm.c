@@ -106,7 +106,7 @@ void main(void)
         u32 pressed = HID_PAD;
 
         //Save old options and begin saving the new boot configuration
-        configTemp = (configData.config & 0xFFFFFFC0) | ((u32)isA9lh << 3);
+        configTemp = (configData.config & 0xFFFFFFC0) | ((u32)isA9lh << 4);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
@@ -119,7 +119,7 @@ void main(void)
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
-                configTemp |= 1 << 4;
+                configTemp |= 1 << 5;
             }
 
             /* Else, force the last used boot options unless a button is pressed
@@ -154,7 +154,7 @@ void main(void)
                 firmSource = FIRMWARE_SYSNAND;
 
                 //Flag to tell loader to init SD
-                configTemp |= 1 << 5;
+                configTemp |= 1 << 6;
 
                 //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
                 if(pinExists && !shouldLoadConfigMenu)
@@ -169,7 +169,8 @@ void main(void)
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
-                bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
+                bool shouldLoadPayload = ((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
+                                         ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1));
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
@@ -195,7 +196,24 @@ void main(void)
 
                 /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
                    or vice-versa, boot the second emuNAND */
-                if(nandType != FIRMWARE_SYSNAND && (CONFIG_USESECONDEMU == !(pressed & BUTTON_B))) nandType = FIRMWARE_EMUNAND2;
+                if(nandType == FIRMWARE_EMUNAND)
+                    switch(pressed & EMUNAND_BUTTONS)
+                    {
+                        case BUTTON_UP:
+                            break;
+                        case BUTTON_RIGHT:
+                            nandType = FIRMWARE_EMUNAND2;
+                            break;
+                        case BUTTON_DOWN:
+                            nandType = FIRMWARE_EMUNAND3;
+                            break;
+                        case BUTTON_LEFT:
+                            nandType = FIRMWARE_EMUNAND4;
+                            break;
+                        default:
+                            nandType = (FirmwareSource)(1 + CONFIG_DEFAULTEMU);
+                            break;
+                    }
             }
         }
     }
@@ -203,17 +221,17 @@ void main(void)
     //If we need to boot emuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNand(&emuOffset, &emuHeader, &nandType);
+        locateEmuNand(&emuHeader, &nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
     //Same if we're using emuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNand(&emuOffset, &emuHeader, &firmSource);
+        locateEmuNand(&emuHeader, &firmSource);
 
     if(!isFirmlaunch)
     {
-        configTemp |= (u32)nandType | ((u32)firmSource << 2);
+        configTemp |= (u32)nandType | ((u32)firmSource << 3);
         writeConfig(needConfig, configTemp);
     }
 
