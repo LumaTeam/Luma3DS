@@ -25,37 +25,64 @@
 #include "fatfs/sdmmc/sdmmc.h"
 #include "../build/emunandpatch.h"
 
+#define O3DS_TOSHIBA_NAND	0x1DD000
+
+#define O3DS_LEGACY_FAT		0x200000
+#define O3DS_DEFAULT_FAT	0x1DE000
+#define O3DS_MINIMUM_FAT	0x1D8000
+
+#define N3DS_LEGACY_FAT		0x400000
+#define N3DS_DEFAULT_FAT	0x3B2000
+#define N3DS_MINIMUM_FAT	0x26E000
+
 void locateEmuNand(u32 *off, u32 *head, FirmwareSource *emuNand)
 {
     static u8 temp[0x200];
-
+	
     const u32 nandSize = getMMCDevice(0)->total_size;
-    u32 nandOffset = *emuNand == FIRMWARE_EMUNAND ? 0 :
-                                  (nandSize > 0x200000 ? 0x400000 : 0x200000);
-
-    //Check for RedNAND
-    if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) &&
-       *(u32 *)(temp + 0x100) == NCSD_MAGIC)
-    {
-        *off = nandOffset + 1;
-        *head = nandOffset + 1;
-    }
-
-    //Check for Gateway emuNAND
-    else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) &&
-            *(u32 *)(temp + 0x100) == NCSD_MAGIC)
-    {
-        *off = nandOffset;
-        *head = nandOffset + nandSize;
-    }
-
+	const u32 nandLayoutO3DS[3] = { O3DS_LEGACY_FAT, O3DS_DEFAULT_FAT, O3DS_MINIMUM_FAT }; // Legacy, Default, Minimum
+	const u32 nandLayoutN3DS[3] = { N3DS_LEGACY_FAT, N3DS_DEFAULT_FAT, N3DS_MINIMUM_FAT }; // Legacy, Default, Minimum
+	
+	u8 i;
+	u32 nandOffset;
+	bool found = false;
+	
+	for (i = 0; i < 3; i++)
+	{
+		 if (i > 0 && *emuNand != FIRMWARE_EMUNAND2) break;
+		
+		// Check for 'Legacy', 'Default' and 'Minimum' partition layouts when checking for the 2nd EmuNAND
+		nandOffset = (*emuNand == FIRMWARE_EMUNAND ? 0 : ((isN3DS || nandSize > O3DS_TOSHIBA_NAND) ? nandLayoutN3DS[i] : nandLayoutO3DS[i]));
+		
+		// Exception for 2DS
+		if (i == 2 && !isN3DS && nandOffset == N3DS_MINIMUM_FAT) nandOffset = O3DS_MINIMUM_FAT;
+		
+		//Check for RedNAND
+		if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+		{
+			*off = nandOffset + 1;
+			*head = nandOffset + 1;
+			found = true;
+			break;
+		}
+		
+		//Check for Gateway emuNAND
+		else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+		{
+			*off = nandOffset;
+			*head = nandOffset + nandSize;
+			found = true;
+			break;
+		}
+	}
+	
     /* Fallback to the first emuNAND if there's no second one,
        or to SysNAND if there isn't any */
-    else
-    {
+	if (!found)
+	{
         *emuNand = (*emuNand == FIRMWARE_EMUNAND2) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
         if(*emuNand) locateEmuNand(off, head, emuNand);
-    }
+	}
 }
 
 static inline u8 *getFreeK9Space(u8 *pos, u32 size)
