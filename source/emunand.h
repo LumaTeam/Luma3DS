@@ -24,7 +24,8 @@
 
 #include "types.h"
 
-#define NCSD_MAGIC 0x4453434E
+#define NCSD_MAGIC      0x4453434E
+#define ROUND_TO_4MB(x) (((x) + 0x2000 - 1) & (~(0x2000 - 1)))
 
 extern u32 emuOffset;
 extern bool isN3DS;

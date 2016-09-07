@@ -34,11 +34,10 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
     for (u32 i = 0; i < 3 && !found; i++)
     {
         u32 nandOffset;
-
         switch(i)
         {
             case 1:
-                nandOffset = nandSize + 1; //"Default" layout
+                nandOffset = ROUND_TO_4MB(nandSize + 1); //"Default" layout
                 break;
             case 2:
                 nandOffset = isN3DS ? 0x26E000 : 0x1D8000; //"Minsize" layout
