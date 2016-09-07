@@ -29,5 +29,5 @@
 extern u32 emuOffset;
 extern bool isN3DS;
 
-void locateEmuNand(u32 *off, u32 *head, FirmwareSource *emuNand);
+void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand);
 void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive);

@@ -341,34 +341,34 @@ static int Nand_Init()
     while((handleNAND.ret[0] & 0x80000000) == 0);
 
     sdmmc_send_command(&handleNAND, 0x10602, 0x0);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     sdmmc_send_command(&handleNAND, 0x10403, handleNAND.initarg << 0x10);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     sdmmc_send_command(&handleNAND, 0x10609, handleNAND.initarg << 0x10);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     handleNAND.total_size = calcSDSize((u8*)&handleNAND.ret[0], 0);
     handleNAND.clk = 1;
     setckl(1);
 
     sdmmc_send_command(&handleNAND, 0x10407, handleNAND.initarg << 0x10);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     handleNAND.SDOPT = 1;
 
     sdmmc_send_command(&handleNAND, 0x10506, 0x3B70100);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     sdmmc_send_command(&handleNAND, 0x10506, 0x3B90100);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     sdmmc_send_command(&handleNAND, 0x1040D, handleNAND.initarg << 0x10);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     sdmmc_send_command(&handleNAND, 0x10410, 0x200);
-    if((handleNAND.error & 0x4))return -1;
+    if((handleNAND.error & 0x4)) return -1;
 
     handleNAND.clk |= 0x200;
 

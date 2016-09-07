@@ -195,13 +195,13 @@ void main(void)
     //If we need to boot emuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNand(&emuOffset, &emuHeader, &nandType);
+        locateEmuNand(&emuHeader, &nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
     //Same if we're using emuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNand(&emuOffset, &emuHeader, &firmSource);
+        locateEmuNand(&emuHeader, &firmSource);
 
     if(!isFirmlaunch)
     {
