@@ -54,6 +54,9 @@ void locateEmuNand(u32 *off, u32 *head, FirmwareSource *emuNand)
 		// Check for 'Legacy', 'Default' and 'Minimum' partition layouts when checking for the 2nd EmuNAND
 		nandOffset = (*emuNand == FIRMWARE_EMUNAND ? 0 : ((isN3DS || nandSize > O3DS_TOSHIBA_NAND) ? nandLayoutN3DS[i] : nandLayoutO3DS[i]));
 		
+		// Exception for 2DS
+		if (i == 2 && !isN3DS && nandOffset == N3DS_MINIMUM_FAT) nandOffset = O3DS_MINIMUM_FAT;
+		
 		//Check for RedNAND
 		if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
 		{
