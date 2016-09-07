@@ -41,7 +41,9 @@ typedef enum FirmwareSource
 {
     FIRMWARE_SYSNAND = 0,
     FIRMWARE_EMUNAND = 1,
-    FIRMWARE_EMUNAND2 = 2
+    FIRMWARE_EMUNAND2 = 2,
+    FIRMWARE_EMUNAND3 = 3,
+    FIRMWARE_EMUNAND4 = 4
 } FirmwareSource;
 
 typedef enum FirmwareType

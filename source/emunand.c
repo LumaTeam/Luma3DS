@@ -47,6 +47,8 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
                 break;
         }
 
+        if(*emuNand != FIRMWARE_EMUNAND) nandOffset *= ((u32)*emuNand - 1);
+
         //Check for RedNAND
         if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
         {
