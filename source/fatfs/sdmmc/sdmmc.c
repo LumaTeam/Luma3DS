@@ -25,8 +25,8 @@
 #include "sdmmc.h"
 #include "delay.h"
 
-struct mmcdevice handleNAND;
-struct mmcdevice handleSD;
+static struct mmcdevice handleNAND;
+static struct mmcdevice handleSD;
 
 static inline u16 sdmmc_read16(u16 reg)
 {

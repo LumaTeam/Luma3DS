@@ -242,7 +242,7 @@ void initScreens(void)
 
     if(PDN_GPU_CNT == 1)
     {
-        flushDCacheRange(&configData, sizeof(cfgData));
+        flushDCacheRange(&configData, sizeof(CfgData));
         flushDCacheRange((void *)fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 

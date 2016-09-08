@@ -42,7 +42,7 @@ typedef struct __attribute__((packed))
     u8 length;
     u8 testHash[32];
     u8 hash[32];
-} PINData;
+} PinData;
 
 void newPin(bool allowSkipping);
 bool verifyPin(void);

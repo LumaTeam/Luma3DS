@@ -25,7 +25,7 @@
 #include "fatfs/sdmmc/sdmmc.h"
 #include "../build/emunandpatch.h"
 
-void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
+void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
 {
     static u8 temp[0x200];
     const u32 nandSize = getMMCDevice(0)->total_size;
@@ -43,11 +43,11 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
                 nandOffset = isN3DS ? 0x26E000 : 0x1D8000; //"Minsize" layout
                 break;
             default:
-                nandOffset = *emuNand == FIRMWARE_EMUNAND ? 0 : (nandSize > 0x200000 ? 0x400000 : 0x200000); //"Legacy" layout
+                nandOffset = *nandType == FIRMWARE_EMUNAND ? 0 : (nandSize > 0x200000 ? 0x400000 : 0x200000); //"Legacy" layout
                 break;
         }
 
-        if(*emuNand != FIRMWARE_EMUNAND) nandOffset *= ((u32)*emuNand - 1);
+        if(*nandType != FIRMWARE_EMUNAND) nandOffset *= ((u32)*nandType - 1);
 
         //Check for RedNAND
         if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
@@ -57,7 +57,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
             found = true;
         }
 
-        //Check for Gateway emuNAND
+        //Check for Gateway EmuNAND
         else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
         {
             emuOffset = nandOffset;
@@ -65,19 +65,18 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *emuNand)
             found = true;
         }
 
-        if(*emuNand == FIRMWARE_EMUNAND) break;
+        if(*nandType == FIRMWARE_EMUNAND) break;
     }
 
-    /* Fallback to the first emuNAND if there's no second one,
-       or to SysNAND if there isn't any */
+    //Fallback to the first EmuNAND if there's no second/third/fourth one, or to SysNAND if there isn't any
     if(!found)
     {
-        if(*emuNand != FIRMWARE_EMUNAND)
+        if(*nandType != FIRMWARE_EMUNAND)
         {
-            *emuNand = FIRMWARE_EMUNAND;
-            locateEmuNand(emuHeader, emuNand);
+            *nandType = FIRMWARE_EMUNAND;
+            locateEmuNand(emuHeader, nandType);
         }
-        else *emuNand = FIRMWARE_SYSNAND;
+        else *nandType = FIRMWARE_SYSNAND;
     }
 }
 
@@ -130,11 +129,11 @@ static inline void patchMpu(u8 *pos, u32 size)
 
 void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive)
 {
-    //Copy emuNAND code
+    //Copy EmuNAND code
     u8 *freeK9Space = getFreeK9Space(arm9Section, arm9SectionSize);
     memcpy(freeK9Space, emunand, emunand_size);
 
-    //Add the data of the found emuNAND
+    //Add the data of the found EmuNAND
     u32 *posOffset = (u32 *)memsearch(freeK9Space, "NAND", emunand_size, 4),
         *posHeader = (u32 *)memsearch(freeK9Space, "NCSD", emunand_size, 4);
     *posOffset = emuOffset;
@@ -144,10 +143,10 @@ void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 
     u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_size, 4);
     *posSdmmc = getSdmmc(process9Offset, process9Size);
 
-    //Add emuNAND hooks
+    //Add EmuNAND hooks
     u32 branchOffset = (u32)freeK9Space - branchAdditive;
     patchNandRw(process9Offset, process9Size, branchOffset);
 
-    //Set MPU for emu code region
+    //Set MPU
     patchMpu(arm9Section, arm9SectionSize);
 }
