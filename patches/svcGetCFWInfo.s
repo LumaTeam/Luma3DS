@@ -34,6 +34,7 @@
         cmp r0, r2
         blo loop
 
+    mov r0, #0
     bx lr
 
 .pool
