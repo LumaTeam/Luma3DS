@@ -12,8 +12,11 @@
 #define BOOTCFG_FIRM               BOOTCONFIG(3, 1)
 #define BOOTCFG_SAFEMODE           BOOTCONFIG(6, 1)
 #define CONFIG_NEWCPU              MULTICONFIG(3)
-#define CONFIG_DEVOPTIONS          MULTICONFIG(4)
 #define CONFIG_USELANGEMUANDCODE   CONFIG(2)
 #define CONFIG_SHOWNAND            CONFIG(3)
+
+#ifdef DEV
+#define CONFIG_DEVOPTIONS          MULTICONFIG(4)
+#endif
 
 void patchCode(u64 progId, u8 *code, u32 size);
