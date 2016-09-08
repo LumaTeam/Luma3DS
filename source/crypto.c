@@ -22,6 +22,7 @@
 
 /*
 *   Crypto libs from http://github.com/b1l1s/ctr
+*   ARM9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 */
 
 #include "crypto.h"
@@ -383,8 +384,7 @@ void decryptExeFs(u8 *inbuf)
     aes(inbuf - 0x200, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
-/* ARM9Loader replacement
-   Originally adapted from: https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233 */
+//ARM9Loader replacement
 void arm9Loader(u8 *arm9Section)
 {
     //Determine the arm9loader version

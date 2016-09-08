@@ -20,6 +20,10 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   ARM11 modules patching code originally by Subv
+*/
+
 #include "patches.h"
 #include "memory.h"
 #include "config.h"
@@ -330,7 +334,6 @@ void patchArm11SvcAccessChecks(u32 *arm11SvcHandler)
     *arm11SvcHandler = 0xE3B0A001; //MOVS R10, #1
 }
 
-//It's mainly Subv's code here
 void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
 {
     /* We have to detour a function in the ARM11 kernel because builtin modules

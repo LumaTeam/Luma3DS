@@ -21,8 +21,7 @@
 */
 
 /*
-*   pin.c
-*   Code to manage pin locking for 3ds. By reworks.
+*   Code originally by reworks
 */
 
 #include "draw.h"

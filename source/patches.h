@@ -20,6 +20,10 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   ARM11 modules patching code originally by Subv
+*/
+
 #pragma once
 
 #include "types.h"

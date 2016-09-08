@@ -21,8 +21,8 @@
 */
 
 /*
-*   Screen init code by dark_samus, bil1s, Normmatt, delebile and others.
-*   Screen deinit code by tiniVi.
+*   Screen init code by dark_samus, bil1s, Normmatt, delebile and others
+*   Screen deinit code by tiniVi
 */
 
 #include "screen.h"

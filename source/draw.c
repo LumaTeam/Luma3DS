@@ -22,7 +22,7 @@
 
 /*
 *   Code to print to the screen by mid-kid @CakesFW
-*      https://github.com/mid-kid/CakesForeveryWan/
+*   https://github.com/mid-kid/CakesForeveryWan
 */
 
 #include "draw.h"

@@ -22,6 +22,7 @@
 
 /*
 *   Crypto libs from http://github.com/b1l1s/ctr
+*   ARM9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 */
 
 #pragma once

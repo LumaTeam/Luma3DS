@@ -21,9 +21,7 @@
 */
 
 /*
-*   pin.h
-*
-*   Code to manage pin locking for 3ds. By reworks.
+*   Code originally by reworks
 */
 
 #pragma once
