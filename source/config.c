@@ -31,7 +31,7 @@
 
 bool readConfig(void)
 {
-    if(fileRead(&configData, CONFIG_PATH) != sizeof(cfgData) ||
+    if(fileRead(&configData, CONFIG_PATH) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
@@ -59,7 +59,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         //Merge the new options and new boot configuration
         configData.config = (configData.config & 0xFFFFFFC0) | (configTemp & 0x3F);
 
-        if(!fileWrite(&configData, CONFIG_PATH, sizeof(cfgData)))
+        if(!fileWrite(&configData, CONFIG_PATH, sizeof(CfgData)))
             error("Error writing the configuration file");
     }
 }

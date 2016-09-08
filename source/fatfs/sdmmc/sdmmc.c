@@ -25,8 +25,8 @@
 #include "sdmmc.h"
 #include "delay.h"
 
-struct mmcdevice handleNAND;
-struct mmcdevice handleSD;
+static struct mmcdevice handleNAND;
+static struct mmcdevice handleSD;
 
 static inline u16 sdmmc_read16(u16 reg)
 {
@@ -107,8 +107,8 @@ static void __attribute__ ((noinline)) sdmmc_send_command(struct mmcdevice *ctx,
     u8 *rDataPtr = ctx->rData;
     const u8 *tDataPtr = ctx->tData;
 
-    int rUseBuf = NULL != rDataPtr;
-    int tUseBuf = NULL != tDataPtr;
+    bool rUseBuf = rDataPtr != NULL;
+    bool tUseBuf = tDataPtr != NULL;
 
     u16 status0 = 0;
     while(true)

@@ -53,7 +53,7 @@ typedef struct __attribute__((packed))
     u16 formatVersionMajor, formatVersionMinor;
 
     u32 config;
-} cfgData;
+} CfgData;
 
 typedef enum ConfigurationStatus
 {
@@ -62,7 +62,7 @@ typedef enum ConfigurationStatus
     CREATE_CONFIGURATION = 2
 } ConfigurationStatus;
 
-extern cfgData configData;
+extern CfgData configData;
 
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);

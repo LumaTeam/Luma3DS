@@ -83,7 +83,7 @@ void newPin(bool allowSkipping)
         charDrawPos += 2 * SPACING_X;
     }
 
-    PINData pin;
+    PinData pin;
 
     memcpy(pin.magic, "PINF", 4);
     pin.formatVersionMajor = PIN_VERSIONMAJOR;
@@ -99,7 +99,7 @@ void newPin(bool allowSkipping)
     computePinHash(tmp, enteredPassword);
     memcpy(pin.hash, tmp, sizeof(tmp));
 
-    if(!fileWrite(&pin, PIN_PATH, sizeof(PINData)))
+    if(!fileWrite(&pin, PIN_PATH, sizeof(PinData)))
         error("Error writing the PIN file");
 }
 
@@ -107,9 +107,9 @@ bool verifyPin(void)
 {
     initScreens();
 
-    PINData pin;
+    PinData pin;
 
-    if(fileRead(&pin, PIN_PATH) != sizeof(PINData) ||
+    if(fileRead(&pin, PIN_PATH) != sizeof(PinData) ||
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
        pin.formatVersionMinor != PIN_VERSIONMINOR ||

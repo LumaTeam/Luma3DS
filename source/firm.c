@@ -43,21 +43,17 @@ static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
 u32 emuOffset;
-
 bool isN3DS,
      isDevUnit,
      isFirmlaunch;
-
-cfgData configData;
+CfgData configData;
 FirmwareSource firmSource;
 
 void main(void)
 {
     bool isA9lh;
-
     u32 configTemp,
         emuHeader;
-
     FirmwareType firmType;
     FirmwareSource nandType;
     ConfigurationStatus needConfig;
@@ -194,8 +190,7 @@ void main(void)
                     firmSource = nandType;
                 }
 
-                /* If we're booting emuNAND the second emuNAND is set as default and B isn't pressed,
-                   or vice-versa, boot the second emuNAND */
+                //If we're booting EmuNAND, determine which one from the directional pad buttons, or otherwise from the config
                 if(nandType == FIRMWARE_EMUNAND)
                     switch(pressed & EMUNAND_BUTTONS)
                     {
@@ -218,14 +213,14 @@ void main(void)
         }
     }
 
-    //If we need to boot emuNAND, make sure it exists
+    //If we need to boot EmuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
         locateEmuNand(&emuHeader, &nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
-    //Same if we're using emuNAND as the FIRM source
+    //Same if we're using EmuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&emuHeader, &firmSource);
 
@@ -329,7 +324,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
-    //Apply emuNAND patches
+    //Apply EmuNAND patches
     if(nandType != FIRMWARE_SYSNAND)
     {
         u32 branchAdditive = (u32)firm + section[2].offset - (u32)section[2].address;
