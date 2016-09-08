@@ -192,6 +192,7 @@ u32 firmRead(void *dest, u32 firmType)
     return firmVersion;
 }
 
+#ifdef DEV
 void findDumpFile(const char *path, char *fileName)
 {
     DIR dir;
@@ -203,7 +204,7 @@ void findDumpFile(const char *path, char *fileName)
         u32 i = 18,
             tmp = ++n;
 
-        while(tmp)
+        while(tmp > 0)
         {
             fileName[i--] = '0' + (tmp % 10);
             tmp /= 10;
@@ -212,3 +213,4 @@ void findDumpFile(const char *path, char *fileName)
 
     f_closedir(&dir);
 }
+#endif

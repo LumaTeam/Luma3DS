@@ -20,6 +20,7 @@
 *   Notices displayed by works containing it.
 */
 
+#ifdef DEV
 #pragma once
 
 #include "types.h"
@@ -45,3 +46,4 @@ typedef struct __attribute__((packed))
 void installArm9Handlers(void);
 void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset);
 void detectAndProcessExceptionDumps(void);
+#endif

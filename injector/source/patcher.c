@@ -495,6 +495,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             break;
         }
 
+#ifdef DEV
         case 0x0004003000008A02LL: // ErrDisp
         {
             if(CONFIG_DEVOPTIONS == 0)
@@ -528,6 +529,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             break;
         }
+#endif
 
         default:
             if(CONFIG_USELANGEMUANDCODE)

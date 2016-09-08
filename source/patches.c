@@ -25,7 +25,10 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
+
+#ifdef DEV
 #include "../build/k11modulespatch.h"
+#endif
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -38,6 +41,7 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
+#ifdef DEV
 u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {    
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
@@ -54,6 +58,23 @@ u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler
 
     return arm11SvcTable;
 }
+#else
+u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space)
+{    
+    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
+
+    u32 *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern)) - 0xB;
+    u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
+    u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+    while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
+
+    const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+    *freeK11Space = memsearch(pos, pattern2, size, sizeof(pattern2)) + 1;
+
+    return arm11SvcTable;
+}
+#endif
 
 void patchSignatureChecks(u8 *pos, u32 size)
 {
@@ -155,7 +176,12 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     }
     else isRelease = rev[4] == 0;
 
-    info->flags = 1 /* dev branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
+#ifdef DEV
+    info->flags = 1 /* dev branch */ |
+#else
+    info->flags = 0 /* master branch */ |
+#endif
+                  ((isRelease ? 1 : 0) << 1) /* is release */;
 
     arm11SvcTable[0x2E] = 0xFFF00000 + *freeK11Space - pos; //Stubbed svc
     *freeK11Space += svcGetCFWInfo_size;
@@ -211,6 +237,7 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
     }
 }
 
+#ifdef DEV
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x03, 0xA0, 0xE3, 0x18};
@@ -338,3 +365,4 @@ void patchUnitInfoValueSet(u8 *pos, u32 size)
     off[0] = isDevUnit ? 0 : 1;
     off[3] = 0xE3;
 }
+#endif

@@ -30,12 +30,15 @@
 #include "cache.h"
 #include "emunand.h"
 #include "crypto.h"
-#include "exceptions.h"
 #include "draw.h"
 #include "screen.h"
 #include "buttons.h"
 #include "pin.h"
 #include "../build/injector.h"
+
+#ifdef DEV
+#include "exceptions.h"
+#endif
 
 extern u16 launchedFirmTidLow[8]; //Defined in start.s
 
@@ -70,7 +73,9 @@ void main(void)
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
+#ifdef DEV
     detectAndProcessExceptionDumps();
+#endif
 
     //Determine if this is a firmlaunch boot
     if(launchedFirmTidLow[5] != 0)
@@ -86,7 +91,9 @@ void main(void)
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
         isA9lh = BOOTCFG_A9LH != 0;
 
+#ifdef DEV
         if(isA9lh) installArm9Handlers();
+#endif
     }
     else
     {
@@ -96,7 +103,9 @@ void main(void)
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
 
+#ifdef DEV
         if(isA9lh) installArm9Handlers();
+#endif
 
         //Get pressed buttons
         u32 pressed = HID_PAD;
@@ -250,6 +259,7 @@ void main(void)
     launchFirm(firmType);
 }
 
+#ifdef DEV
 static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 {
     section = firm->section;
@@ -294,6 +304,43 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
     
     return firmVersion;
 }
+#else
+static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
+{
+    section = firm->section;
+
+    //Load FIRM from CTRNAND
+    u32 firmVersion = firmRead(firm, (u32)*firmType);
+
+    if(!isN3DS && *firmType == NATIVE_FIRM)
+    {
+        if(firmVersion < 0x18)
+        {
+            //We can't boot < 3.x EmuNANDs
+            if(firmSource != FIRMWARE_SYSNAND) 
+                error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
+
+            if(BOOTCFG_SAFEMODE != 0) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
+
+            *firmType = NATIVE_FIRM1X2X;
+        }
+
+        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
+        else if(firmVersion < 0x25)
+        {
+            if(!fileRead(firm, "/luma/firmware.bin") || section[2].address != (u8 *)0x8006800)
+                error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+
+            //No assumption regarding FIRM version
+            firmVersion = 0xFFFFFFFF;
+        }
+    }
+
+    if(firmVersion != 0xFFFFFFFF) decryptExeFs((u8 *)firm);
+
+    return firmVersion;
+}
+#endif
 
 static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh)
 {
@@ -315,11 +362,17 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
+#ifdef DEV
     //Find Kernel11 SVC table and handler, exceptions page and free space locations
     u8 *freeK11Space;
     u32 *arm11SvcHandler, 
         *arm11ExceptionsPage,
         *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+#else
+    //Find Kernel11 SVC table and free space locations
+    u8 *freeK11Space;
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space);
+#endif
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
@@ -349,6 +402,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
 
+#ifdef DEV
     //Apply UNITINFO patch
     if(CONFIG_DEVOPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
 
@@ -377,6 +431,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
         patchP9AccessChecks(process9Offset, process9Size);
     }
+#endif
 }
 
 static inline void patchLegacyFirm(FirmwareType firmType)
@@ -390,10 +445,12 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
+    applyLegacyFirmPatches((u8 *)firm, firmType);
+
+#ifdef DEV
     //Apply UNITINFO patch
     if(CONFIG_DEVOPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
-
-    applyLegacyFirmPatches((u8 *)firm, firmType);
+#endif
 }
 
 static inline void patch1x2xNativeAndSafeFirm(void)
@@ -410,14 +467,17 @@ static inline void patch1x2xNativeAndSafeFirm(void)
     }
     else patchOldFirmWrites(arm9Section, section[2].size);
 
+#ifdef DEV
     if(CONFIG_DEVOPTIONS != 2)
     {
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)section[2].address);
     }
+#endif
 }
 
+#ifdef DEV
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 {
     u32 srcModuleSize,
@@ -457,14 +517,51 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         }
     }
 }
+#else
+static inline void copySection0AndInjectSystemModules(void)
+{
+    u32 srcModuleSize,
+        dstModuleSize;
+
+    for(u8 *src = (u8 *)firm + section[0].offset, *srcEnd = src + section[0].size, *dst = section[0].address;
+        src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
+    {
+        srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
+        char *moduleName = (char *)(src + 0x200);
+
+        void *module;
+
+        if(memcmp(moduleName, "loader", 6) == 0)
+        {
+            module = (void *)injector;
+            dstModuleSize = injector_size;
+        }
+        else
+        {
+            module = src;
+            dstModuleSize = srcModuleSize;
+        }
+
+        memcpy(dst, module, dstModuleSize);
+    }
+}
+#endif
 
 static inline void launchFirm(FirmwareType firmType)
 {
+#ifdef DEV
     //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs
     u32 sectionNum;
     if(firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X)
     {
         copySection0AndInjectSystemModules(firmType);
+#else
+    //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
+    u32 sectionNum;
+    if(firmType == NATIVE_FIRM)
+    {
+        copySection0AndInjectSystemModules();
+#endif
         sectionNum = 1;
     }
     else sectionNum = 0;

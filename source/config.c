@@ -74,16 +74,22 @@ void configMenu(bool oldPinStatus)
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
-                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
-                                        "Dev. features: ErrDisp( ) UNITINFO( ) None( )" };
+                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )"
+#ifdef DEV
+                                      , "Dev. features: ErrDisp( ) UNITINFO( ) None( )"
+#endif
+                                      };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show current NAND in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Display splash screen before payloads",
-                                        "( ) Patch SVC/service/archive/ARM9 access" };
+                                        "( ) Display splash screen before payloads"
+#ifdef DEV
+                                      , "( ) Patch SVC/service/archive/ARM9 access"
+#endif
+                                      };
 
     struct multiOption {
         int posXs[4];
@@ -93,8 +99,10 @@ void configMenu(bool oldPinStatus)
         { .posXs = {19, 24, 29, 34} },
         { .posXs = {21, 26, 31, 36} },
         { .posXs = {14, 19, 24, 29} },
-        { .posXs = {17, 26, 32, 44} },
-        { .posXs = {23, 35, 43, 0} }
+        { .posXs = {17, 26, 32, 44} }
+#ifdef DEV
+      , { .posXs = {23, 35, 43, 0} }
+#endif
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

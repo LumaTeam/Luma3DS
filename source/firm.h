@@ -51,5 +51,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource);
 static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh);
 static inline void patchLegacyFirm(FirmwareType firmType);
 static inline void patch1x2xNativeAndSafeFirm(void);
+#ifdef DEV
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType);
+#else
+static inline void copySection0AndInjectSystemModules(void);
+#endif
 static inline void launchFirm(FirmwareType firmType);
