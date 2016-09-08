@@ -102,7 +102,7 @@ void main(void)
         u32 pressed = HID_PAD;
 
         //Save old options and begin saving the new boot configuration
-        configTemp = (configData.config & 0xFFFFFFC0) | ((u32)isA9lh << 4);
+        configTemp = (configData.config & 0xFFFFFF80) | ((u32)isA9lh << 4);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
