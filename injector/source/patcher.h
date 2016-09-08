@@ -12,7 +12,6 @@
 #define BOOTCFG_FIRM               BOOTCONFIG(3, 1)
 #define BOOTCFG_SAFEMODE           BOOTCONFIG(6, 1)
 #define CONFIG_NEWCPU              MULTICONFIG(3)
-#define CONFIG_USESYSFIRM          CONFIG(1)
 #define CONFIG_USELANGEMUANDCODE   CONFIG(2)
 #define CONFIG_SHOWNAND            CONFIG(3)
 
