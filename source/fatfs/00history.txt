@@ -260,8 +260,20 @@ R0.12a (July 10, 2016)
   Added support for creating exFAT volume with some changes of f_mkfs().
   Added a file open method FA_OPEN_APPEND. An f_lseek() following f_open() is no longer needed.
   f_forward() is available regardless of _FS_TINY.
-  Fixed f_mkfs() creates wrong volume.
+  Fixed f_mkfs() creates wrong volume. (appeared at R0.12)
+  Fixed wrong memory read in create_name(). (appeared at R0.12)
   Fixed compilation fails at some configurations, _USE_FASTSEEK and _USE_FORWARD.
-  Fixed wrong memory read in create_name().
 
+
+
+R0.12b (September 04, 2016)
+
+  Improved f_rename() to be able to rename objects with the same name but case.
+  Fixed an error in the case conversion teble of code page 866. (ff.c)
+  Fixed writing data is truncated at the file offset 4GiB on the exFAT volume. (appeared at R0.12)
+  Fixed creating a file in the root directory of exFAT volume can fail. (appeared at R0.12)
+  Fixed f_mkfs() creating exFAT volume with too small cluster size can collapse unallocated memory. (appeared at R0.12)
+  Fixed wrong object name can be returned when read directory at Unicode cfg. (appeared at R0.12)
+  Fixed large file allocation/removing on the exFAT volume collapses allocation bitmap. (appeared at R0.12)
+  Fixed some internal errors in f_expand() and f_lseek(). (appeared at R0.12)
 

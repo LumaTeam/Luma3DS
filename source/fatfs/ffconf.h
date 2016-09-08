@@ -2,7 +2,7 @@
 /  FatFs - FAT file system module configuration file
 /---------------------------------------------------------------------------*/
 
-#define _FFCONF 80186	/* Revision ID */
+#define _FFCONF 68020	/* Revision ID */
 
 /*---------------------------------------------------------------------------/
 / Function Configurations
@@ -204,14 +204,14 @@
 
 #define	_FS_TINY	0
 /* This option switches tiny buffer configuration. (0:Normal or 1:Tiny)
-/  At the tiny configuration, size of the file object (FIL) is reduced _MAX_SS bytes.
+/  At the tiny configuration, size of file object (FIL) is reduced _MAX_SS bytes.
 /  Instead of private sector buffer eliminated from the file object, common sector
 /  buffer in the file system object (FATFS) is used for the file data transfer. */
 
 
 #define _FS_EXFAT	0
-/* This option switches support of exFAT file system in addition to the traditional
-/  FAT file system. (0:Disable or 1:Enable) To enable exFAT, also LFN must be enabled.
+/* This option switches support of exFAT file system. (0:Disable or 1:Enable)
+/  When enable exFAT, also LFN needs to be enabled. (_USE_LFN >= 1)
 /  Note that enabling exFAT discards C89 compatibility. */
 
 
@@ -259,7 +259,9 @@
 /  The _FS_TIMEOUT defines timeout period in unit of time tick.
 /  The _SYNC_t defines O/S dependent sync object type. e.g. HANDLE, ID, OS_EVENT*,
 /  SemaphoreHandle_t and etc.. A header file for O/S definitions needs to be
-/  included somewhere in the scope of ff.c. */
+/  included somewhere in the scope of ff.h. */
+
+/* #include <windows.h>	// O/S definitions  */
 
 
 /*--- End of configuration options ---*/
