@@ -18,6 +18,7 @@ commit := $(shell git rev-parse --short=8 HEAD)
 dir_source := source
 dir_patches := patches
 dir_loader := loader
+dir_exceptions := exceptions
 dir_arm9_exceptions := exceptions/arm9
 dir_arm11_exceptions := exceptions/arm11
 dir_injector := injector
@@ -58,7 +59,11 @@ a9lh: $(dir_out)/arm9loaderhax.bin
 ninjhax: $(dir_out)/3ds/$(name)
 
 .PHONY: release
+ifeq ($(strip $(BUILD)),DEV)
+release: $(dir_out)/$(name)$(revision)-dev.7z
+else
 release: $(dir_out)/$(name)$(revision).7z
+endif
 
 .PHONY: clean
 clean:
@@ -87,6 +92,9 @@ $(dir_out)/3ds/$(name): $(dir_out)
 
 $(dir_out)/$(name)$(revision).7z: launcher a9lh ninjhax
 	@7z a -mx $@ ./$(@D)/*
+
+$(dir_out)/$(name)$(revision)-dev.7z: launcher a9lh ninjhax
+	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
