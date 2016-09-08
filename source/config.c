@@ -47,7 +47,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFFEF) != configData.config)
+    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFFDF) != configData.config)
     {
         if(needConfig == CREATE_CONFIGURATION)
         {
@@ -57,7 +57,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         }
 
         //Merge the new options and new boot configuration
-        configData.config = (configData.config & 0xFFFFFFC0) | (configTemp & 0x3F);
+        configData.config = (configData.config & 0xFFFFFF80) | (configTemp & 0x7F);
 
         if(!fileWrite(&configData, CONFIG_PATH, sizeof(CfgData)))
             error("Error writing the configuration file");

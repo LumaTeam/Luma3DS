@@ -297,8 +297,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(blockAutoUpdatesPatch), 1
             );
 
-            //Apply only if the updated NAND hasn't been booted
-            if((BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0 && CONFIG_USESYSFIRM))
+            //Apply only if the user booted with R
+            if((BOOTCFG_NAND != 0) != (BOOTCFG_FIRM != 0))
             {
                 static const u8 skipEshopUpdateCheckPattern[] = {
                     0x30, 0xB5, 0xF1, 0xB0
