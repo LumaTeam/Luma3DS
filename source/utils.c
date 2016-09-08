@@ -43,7 +43,7 @@ u32 waitInput(void)
         key = HID_PAD;
 
         //Make sure it's pressed
-        for(u32 i = 0x13000; i; i--)
+        for(u32 i = 0x13000; i > 0; i--)
         {
             if(key != HID_PAD) break;
             if(i == 1) pressedKey = 1;
