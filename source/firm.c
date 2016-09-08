@@ -271,7 +271,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         "/luma/firmware_safe.bin"
     };
 
+    //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
+
     bool loadFromSd = false;
 
     if(!isN3DS && *firmType == NATIVE_FIRM)
@@ -287,7 +289,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
             *firmType = NATIVE_FIRM1X2X;
         }
 
-        //We can't boot a 3.x/4.x NATIVE_FIRM, load it from SD
+        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
         else if(firmVersion < 0x25) loadFromSd = true;
     }
 
@@ -298,10 +300,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
     else
     {
         if(loadFromSd) error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
-
         decryptExeFs((u8 *)firm);
     }
-    
+
     return firmVersion;
 }
 #else
@@ -555,16 +556,19 @@ static inline void launchFirm(FirmwareType firmType)
     if(firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X)
     {
         copySection0AndInjectSystemModules(firmType);
+        sectionNum = 1;
+    }
+    else sectionNum = 0;
 #else
     //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
     u32 sectionNum;
     if(firmType == NATIVE_FIRM)
     {
         copySection0AndInjectSystemModules();
-#endif
         sectionNum = 1;
     }
     else sectionNum = 0;
+#endif
 
     //Copy FIRM sections to respective memory locations
     for(; sectionNum < 4 && section[sectionNum].size; sectionNum++)

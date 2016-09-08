@@ -177,11 +177,10 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     else isRelease = rev[4] == 0;
 
 #ifdef DEV
-    info->flags = 1 /* dev branch */ |
+    info->flags = 1 /* dev branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 #else
-    info->flags = 0 /* master branch */ |
+    info->flags = 0 /* master branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 #endif
-                  ((isRelease ? 1 : 0) << 1) /* is release */;
 
     arm11SvcTable[0x2E] = 0xFFF00000 + *freeK11Space - pos; //Stubbed svc
     *freeK11Space += svcGetCFWInfo_size;

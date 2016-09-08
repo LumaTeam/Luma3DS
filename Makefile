@@ -18,10 +18,10 @@ commit := $(shell git rev-parse --short=8 HEAD)
 dir_source := source
 dir_patches := patches
 dir_loader := loader
+dir_injector := injector
 dir_exceptions := exceptions
 dir_arm9_exceptions := exceptions/arm9
 dir_arm11_exceptions := exceptions/arm11
-dir_injector := injector
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
 dir_build := build
@@ -36,7 +36,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h  $(dir_build)/loader.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h $(dir_build)/loader.h
 
 ifeq ($(strip $(BUILD)),DEV)
 CFLAGS += -DDEV
@@ -102,7 +102,7 @@ $(dir_build)/main.bin: $(dir_build)/main.elf
 $(dir_build)/main.elf: $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/emunandpatch.h: $(dir_patches)/emunand.s $(dir_injector)/Makefile
+$(dir_build)/emunandpatch.h: $(dir_patches)/emunand.s
 	@mkdir -p "$(@D)"
 	@armips $<
 	@bin2c -o $@ -n emunand $(@D)/emunand.bin
@@ -111,11 +111,6 @@ $(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
 	@mkdir -p "$(@D)"
 	@armips $<
 	@bin2c -o $@ -n reboot $(@D)/reboot.bin
-
-$(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
 
 $(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
 	@mkdir -p "$(@D)"
@@ -130,6 +125,11 @@ $(dir_build)/injector.h: $(dir_injector)/Makefile
 $(dir_build)/loader.h: $(dir_loader)/Makefile
 	@$(MAKE) -C $(dir_loader)
 	@bin2c -o $@ -n loader $(@D)/loader.bin
+
+$(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
 
 $(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
 	@$(MAKE) -C $(dir_arm9_exceptions)
