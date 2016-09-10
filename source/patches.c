@@ -37,13 +37,17 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space)
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space)
 {    
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
     u32 *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern)) - 0xB;
     u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-    u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
+  
+    u32 pointedInstructionVA = 0xFFFF0008 - svcOffset;
+    *baseK11VA = pointedInstructionVA & 0xFFFF0000; //this assumes that the pointed instruction has an offset < 0x10000; iirc that's always the case
+    
+    u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA); //SVC handler address
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
 
     const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -110,7 +114,7 @@ void patchOldFirmWrites(u8 *pos, u32 size)
     off[1] = 0xE01D;
 }
 
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
+void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
 {
     //Official implementation of svcBackdoor
     const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
@@ -128,12 +132,12 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     {
         memcpy(*freeK11Space, svcBackdoor, 40);
 
-        arm11SvcTable[0x7B] = 0xFFF00000 + *freeK11Space - pos;
+        arm11SvcTable[0x7B] = baseK11VA + *freeK11Space - pos;
         *freeK11Space += 40;
     }
 }
 
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
+void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
 {
     memcpy(*freeK11Space, svcGetCFWInfo, svcGetCFWInfo_size);
 
@@ -155,7 +159,7 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
 
     info->flags = 0 /* master branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 
-    arm11SvcTable[0x2E] = 0xFFF00000 + *freeK11Space - pos; //Stubbed svc
+    arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
     *freeK11Space += svcGetCFWInfo_size;
 }
 
