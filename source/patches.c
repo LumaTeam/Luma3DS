@@ -45,7 +45,6 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-#ifdef DEV
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {    
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
@@ -65,26 +64,6 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
     return arm11SvcTable;
 }
-#else
-u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space)
-{    
-    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
-
-    u32 *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern)) - 0xB;
-
-    u32 svcOffset = (-((arm11ExceptionsPage[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-    u32 pointedInstructionVA = 0xFFFF0008 - svcOffset;
-    *baseK11VA = pointedInstructionVA & 0xFFFF0000; //This assumes that the pointed instruction has an offset < 0x10000, iirc that's always the case
-    u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA); //SVC handler address
-    while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
-
-    const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-    *freeK11Space = memsearch(pos, pattern2, size, sizeof(pattern2)) + 1;
-
-    return arm11SvcTable;
-}
-#endif
 
 void patchSignatureChecks(u8 *pos, u32 size)
 {
@@ -187,9 +166,9 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **fre
     else isRelease = rev[4] == 0;
 
 #ifdef DEV
-    info->flags = 1 /* dev branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
+    info->flags = 1 /* dev build */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 #else
-    info->flags = 0 /* master branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
+    info->flags = 0 /* non-dev build */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 #endif
 
     arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc

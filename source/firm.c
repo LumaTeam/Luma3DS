@@ -35,10 +35,7 @@
 #include "buttons.h"
 #include "pin.h"
 #include "../build/injector.h"
-
-#ifdef DEV
 #include "exceptions.h"
-#endif
 
 extern u16 launchedFirmTidLow[8]; //Defined in start.s
 
@@ -363,19 +360,12 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         process9MemAddr;
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
-#ifdef DEV
     //Find Kernel11 SVC table and handler, exceptions page and free space locations
     u32 baseK11VA;
     u8 *freeK11Space;
     u32 *arm11SvcHandler, 
         *arm11ExceptionsPage,
         *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
-#else
-    //Find Kernel11 SVC table and free space locations
-    u32 baseK11VA;
-    u8 *freeK11Space;
-    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space);
-#endif
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
@@ -521,7 +511,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
     }
 }
 #else
-static inline void copySection0AndInjectSystemModules(void)
+static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
 {
     u32 srcModuleSize,
         dstModuleSize;
@@ -534,7 +524,7 @@ static inline void copySection0AndInjectSystemModules(void)
 
         void *module;
 
-        if(memcmp(moduleName, "loader", 6) == 0)
+        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
         {
             module = (void *)injector;
             dstModuleSize = injector_size;
@@ -552,8 +542,7 @@ static inline void copySection0AndInjectSystemModules(void)
 
 static inline void launchFirm(FirmwareType firmType)
 {
-#ifdef DEV
-    //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs
+    //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs (with DEV set)
     u32 sectionNum;
     if(firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X)
     {
@@ -561,16 +550,6 @@ static inline void launchFirm(FirmwareType firmType)
         sectionNum = 1;
     }
     else sectionNum = 0;
-#else
-    //If we're booting NATIVE_FIRM, section0 needs to be copied separately to inject 3ds_injector
-    u32 sectionNum;
-    if(firmType == NATIVE_FIRM)
-    {
-        copySection0AndInjectSystemModules();
-        sectionNum = 1;
-    }
-    else sectionNum = 0;
-#endif
 
     //Copy FIRM sections to respective memory locations
     for(; sectionNum < 4 && section[sectionNum].size; sectionNum++)

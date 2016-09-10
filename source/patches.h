@@ -51,19 +51,11 @@ typedef struct __attribute__((packed))
     u32 config;
 } CFWInfo;
 
-extern bool isN3DS;
-
-#ifdef DEV
-extern bool isDevUnit;
-#endif
+extern bool isN3DS, isDevUnit;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 
-#ifdef DEV
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
-#else
-u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space);
-#endif
 
 void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
