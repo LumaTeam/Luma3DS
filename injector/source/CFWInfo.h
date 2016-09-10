@@ -16,4 +16,4 @@ typedef struct __attribute__((packed))
     u32 config;
 } CFWInfo;
 
-void svcGetCFWInfo(CFWInfo *info);
+int svcGetCFWInfo(CFWInfo *info);

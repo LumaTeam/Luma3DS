@@ -316,10 +316,11 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     u8 *process9Offset = getProcess9(arm9Section + 0x15000, section[2].size - 0x15000, &process9Size, &process9MemAddr);
 
     //Find Kernel11 SVC table and handler, exceptions page and free space locations
+    u32 baseK11VA;
     u8 *freeK11Space;
     u32 *arm11SvcHandler, 
         *arm11ExceptionsPage,
-        *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+        *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
@@ -344,10 +345,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
+        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
 
-    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
+    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
 
     //Apply UNITINFO patch
     if(CONFIG_DEVOPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
