@@ -38,7 +38,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h $(dir_build)/loader.h
 
-ifeq ($(strip $(BUILD)),DEV)
+ifeq ($(strip $(DEV)),TRUE)
 CFLAGS += -DDEV
 bundled += $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h
 title := \"$(name) $(revision) (dev) configuration\"
@@ -59,7 +59,7 @@ a9lh: $(dir_out)/arm9loaderhax.bin
 ninjhax: $(dir_out)/3ds/$(name)
 
 .PHONY: release
-ifeq ($(strip $(BUILD)),DEV)
+ifeq ($(strip $(DEV)),TRUE)
 release: $(dir_out)/$(name)$(revision)-dev.7z
 else
 release: $(dir_out)/$(name)$(revision).7z
@@ -119,7 +119,7 @@ $(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
 
 $(dir_build)/injector.h: $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_injector) BUILD=$(BUILD)
+	@$(MAKE) -C $(dir_injector) DEV=$(DEV)
 	@bin2c -o $@ -n injector $(@D)/injector.cxi
 
 $(dir_build)/loader.h: $(dir_loader)/Makefile

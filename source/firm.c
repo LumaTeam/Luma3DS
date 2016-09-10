@@ -365,14 +365,16 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
 #ifdef DEV
     //Find Kernel11 SVC table and handler, exceptions page and free space locations
+    u32 baseK11VA;
     u8 *freeK11Space;
     u32 *arm11SvcHandler, 
         *arm11ExceptionsPage,
-        *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+        *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 #else
     //Find Kernel11 SVC table and free space locations
+    u32 baseK11VA;
     u8 *freeK11Space;
-    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space);
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space);
 #endif
 
     //Apply signature patches
@@ -398,10 +400,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
+        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
 
-    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
+    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
 
 #ifdef DEV
     //Apply UNITINFO patch

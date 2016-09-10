@@ -60,9 +60,9 @@ extern bool isDevUnit;
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 
 #ifdef DEV
-u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
 #else
-u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space);
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space);
 #endif
 
 void patchSignatureChecks(u8 *pos, u32 size);
@@ -70,8 +70,8 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchOldFirmWrites(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
+void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
+void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 
 #ifdef DEV
