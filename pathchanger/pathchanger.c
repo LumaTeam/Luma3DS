@@ -8,24 +8,23 @@ typedef uint8_t u8;
 static u8 *memsearch(u8 *startPos, const void *pattern, int size, int patternSize)
 {
     const u8 *patternc = (const u8 *)pattern;
-
-    //Preprocessing
     int table[256];
 
+    //Preprocessing
     int i;
-    for(i = 0; i < 256; ++i)
-        table[i] = patternSize + 1;
-    for(i = 0; i < patternSize; ++i)
-        table[patternc[i]] = patternSize - i;
+    for(i = 0; i < 256; i++)
+        table[i] = patternSize;
+    for(i = 0; i < patternSize - 1; i++)
+        table[patternc[i]] = patternSize - i - 1;
 
     //Searching
     int j = 0;
-
     while(j <= size - patternSize)
     {
-        if(memcmp(patternc, startPos + j, patternSize) == 0)
+        u8 c = startPos[j + patternSize - 1];
+        if(patternc[patternSize - 1] == c && memcmp(pattern, startPos + j, patternSize - 1) == 0)
             return startPos + j;
-        j += table[startPos[j + patternSize]];
+        j += table[c];
     }
 
     return NULL;
