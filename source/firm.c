@@ -120,7 +120,7 @@ void main(void)
             if(CFG_BOOTENV == 7)
             {
                 nandType = FIRMWARE_SYSNAND;
-                firmSource = CONFIG_USESYSFIRM ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
+                firmSource = CONFIG(USESYSFIRM) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
@@ -140,7 +140,7 @@ void main(void)
         //Boot options aren't being forced
         if(needConfig != DONT_CONFIGURE)
         {
-            bool pinExists = CONFIG_PIN != 0 && verifyPin();
+            bool pinExists = MULTICONFIG(PIN) != 0 && verifyPin();
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
@@ -170,7 +170,7 @@ void main(void)
             }
             else
             {
-                if(CONFIG_PAYLOADSPLASH && loadSplash()) pressed = HID_PAD;
+                if(CONFIG(PAYLOADSPLASH) && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
@@ -179,10 +179,10 @@ void main(void)
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
-                if(!CONFIG_PAYLOADSPLASH) loadSplash();
+                if(!CONFIG(PAYLOADSPLASH)) loadSplash();
 
                 //Determine if the user chose to use the SysNAND FIRM as default for a R boot
-                bool useSysAsDefault = isA9lh ? CONFIG_USESYSFIRM : false;
+                bool useSysAsDefault = isA9lh ? CONFIG(USESYSFIRM) : false;
 
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 if(pressed & BUTTON_R1)
@@ -195,7 +195,7 @@ void main(void)
                    with their own FIRM */
                 else
                 {
-                    nandType = (CONFIG_AUTOBOOTSYS != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+                    nandType = (CONFIG(AUTOBOOTSYS) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
                     firmSource = nandType;
                 }
 
@@ -215,7 +215,7 @@ void main(void)
                             nandType = FIRMWARE_EMUNAND4;
                             break;
                         default:
-                            nandType = (FirmwareSource)(1 + CONFIG_DEFAULTEMU);
+                            nandType = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
                             break;
                     }
             }
@@ -407,9 +407,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
 #ifdef DEV
     //Apply UNITINFO patch
-    if(CONFIG_DEVOPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
+    if(MULTICONFIG(DEVOPTIONS) == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
 
-    if(isA9lh && CONFIG_DEVOPTIONS != 2)
+    if(isA9lh && MULTICONFIG(DEVOPTIONS) != 2)
     {
         //Install ARM11 exception handlers
         u32 codeSetOffset;
@@ -428,7 +428,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchKernel11Panic(arm11Section1, section[1].size);
     }
 
-    if(CONFIG_PATCHACCESS)
+    if(CONFIG(PATCHACCESS))
     {
         patchArm11SvcAccessChecks(arm11SvcHandler);
         patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
@@ -452,7 +452,7 @@ static inline void patchLegacyFirm(FirmwareType firmType)
 
 #ifdef DEV
     //Apply UNITINFO patch
-    if(CONFIG_DEVOPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
+    if(MULTICONFIG(DEVOPTIONS) == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
 #endif
 }
 
@@ -471,7 +471,7 @@ static inline void patch1x2xNativeAndSafeFirm(void)
     else patchOldFirmWrites(arm9Section, section[2].size);
 
 #ifdef DEV
-    if(CONFIG_DEVOPTIONS != 2)
+    if(MULTICONFIG(DEVOPTIONS) != 2)
     {
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);

@@ -40,17 +40,17 @@ typedef volatile u64 vu64;
 typedef enum FirmwareSource
 {
     FIRMWARE_SYSNAND = 0,
-    FIRMWARE_EMUNAND = 1,
-    FIRMWARE_EMUNAND2 = 2,
-    FIRMWARE_EMUNAND3 = 3,
-    FIRMWARE_EMUNAND4 = 4
+    FIRMWARE_EMUNAND,
+    FIRMWARE_EMUNAND2,
+    FIRMWARE_EMUNAND3,
+    FIRMWARE_EMUNAND4
 } FirmwareSource;
 
 typedef enum FirmwareType
 {
     NATIVE_FIRM = 0,
-    TWL_FIRM = 1,
-    AGB_FIRM = 2,
-    SAFE_FIRM = 3,
-    NATIVE_FIRM1X2X = 4
+    TWL_FIRM,
+    AGB_FIRM,
+    SAFE_FIRM,
+    NATIVE_FIRM1X2X
 } FirmwareType;

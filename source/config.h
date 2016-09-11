@@ -32,26 +32,35 @@
 #define CONFIG_VERSIONMAJOR 1
 #define CONFIG_VERSIONMINOR 3
 
-#define CONFIG_BRIGHTNESSINDEX 1
-#define CONFIG_NEWCPUINDEX     3
-
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 1)
 #define BOOTCFG_A9LH         BOOTCONFIG(4, 1)
 #define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(5, 1)
 #define BOOTCFG_SAFEMODE     BOOTCONFIG(6, 1)
-#define CONFIG_DEFAULTEMU    MULTICONFIG(0)
-#define CONFIG_BRIGHTNESS    MULTICONFIG(CONFIG_BRIGHTNESSINDEX)
-#define CONFIG_PIN           MULTICONFIG(2)
-#define CONFIG_AUTOBOOTSYS   CONFIG(0)
-#define CONFIG_USESYSFIRM    CONFIG(1)
-#define CONFIG_SHOWGBABOOT   CONFIG(4)
-#define CONFIG_PAYLOADSPLASH CONFIG(5)
 
+enum multiOptions
+{
+    DEFAULTEMU = 0,
+    BRIGHTNESS,
+    PIN,
+    NEWCPU
 #ifdef DEV
-#define CONFIG_DEVOPTIONS    MULTICONFIG(4)
-#define CONFIG_PATCHACCESS   CONFIG(6)
+  , DEVOPTIONS
 #endif
+};
+
+enum singleOptions
+{
+    AUTOBOOTSYS = 0,
+    USESYSFIRM,
+    USELANGEMUANDCODE,
+    SHOWNAND,
+    SHOWGBABOOT,
+    PAYLOADSPLASH
+#ifdef DEV
+  , PATCHACCESS
+#endif
+};
 
 typedef struct __attribute__((packed))
 {
@@ -64,8 +73,8 @@ typedef struct __attribute__((packed))
 typedef enum ConfigurationStatus
 {
     DONT_CONFIGURE = 0,
-    MODIFY_CONFIGURATION = 1,
-    CREATE_CONFIGURATION = 2
+    MODIFY_CONFIGURATION,
+    CREATE_CONFIGURATION
 } ConfigurationStatus;
 
 extern CfgData configData;

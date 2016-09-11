@@ -130,7 +130,7 @@ void configMenu(bool oldPinStatus)
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
     {
-        if(!(i == CONFIG_NEWCPUINDEX && !isN3DS))
+        if(!(i == NEWCPU && !isN3DS))
         {
             multiOptions[i].posY = endPos + SPACING_Y;
             endPos = drawString(multiOptionsText[i], 10, multiOptions[i].posY, COLOR_WHITE);
@@ -170,11 +170,11 @@ void configMenu(bool oldPinStatus)
             {
                 case BUTTON_UP:
                     if(!selectedOption) selectedOption = totalIndexes;
-                    else selectedOption = (selectedOption == CONFIG_NEWCPUINDEX + 1 && !isN3DS) ? selectedOption - 2 : selectedOption - 1;
+                    else selectedOption = (selectedOption == NEWCPU + 1 && !isN3DS) ? selectedOption - 2 : selectedOption - 1;
                     break;
                 case BUTTON_DOWN:
                     if(selectedOption == totalIndexes) selectedOption = 0;
-                    else selectedOption = (selectedOption == CONFIG_NEWCPUINDEX - 1 && !isN3DS) ? selectedOption + 2 : selectedOption + 1;
+                    else selectedOption = (selectedOption == NEWCPU - 1 && !isN3DS) ? selectedOption + 2 : selectedOption + 1;
                     break;
                 case BUTTON_LEFT:
                     selectedOption = 0;
@@ -218,7 +218,7 @@ void configMenu(bool oldPinStatus)
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
-                if(selectedOption == CONFIG_BRIGHTNESSINDEX) updateBrightness(multiOptions[CONFIG_BRIGHTNESSINDEX].enabled);
+                if(selectedOption == BRIGHTNESS) updateBrightness(multiOptions[BRIGHTNESS].enabled);
             }
             else
             {
@@ -238,7 +238,7 @@ void configMenu(bool oldPinStatus)
         }
     }
 
-    u32 oldPinLength = CONFIG_PIN;
+    u32 oldPinLength = MULTICONFIG(PIN);
 
     //Preserve the last-used boot options (last 12 bits)
     configData.config &= 0x3F;
@@ -249,7 +249,7 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 21);
 
-    if(CONFIG_PIN != 0) newPin(oldPinStatus && CONFIG_PIN == oldPinLength);
+    if(MULTICONFIG(PIN) != 0) newPin(oldPinStatus && MULTICONFIG(PIN) == oldPinLength);
     else if(oldPinStatus) fileDelete(PIN_PATH);
 
     //Wait for the pressed buttons to change

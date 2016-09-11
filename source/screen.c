@@ -147,7 +147,7 @@ void initScreens(void)
         //Disable interrupts
         __asm(".word 0xF10C01C0");
 
-        u32 brightnessLevel = brightness[CONFIG_BRIGHTNESS];
+        u32 brightnessLevel = brightness[MULTICONFIG(BRIGHTNESS)];
         
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
@@ -254,6 +254,6 @@ void initScreens(void)
     else
     {
         clearScreens();
-        updateBrightness(CONFIG_BRIGHTNESS);
+        updateBrightness(MULTICONFIG(BRIGHTNESS));
     }
 }

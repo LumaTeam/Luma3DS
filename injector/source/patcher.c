@@ -28,7 +28,7 @@ static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, i
 
 static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
 {
-    FS_Path filePath = {PATH_ASCII, strnlen(path, PATH_MAX) + 1, path},
+    FS_Path filePath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
@@ -342,7 +342,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(CONFIG_SHOWNAND)
+            if(CONFIG(SHOWNAND))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = BOOTCFG_NAND;
@@ -397,7 +397,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 sizeof(stopCartUpdatesPatch), 2
             );
 
-            u32 cpuSetting = CONFIG_NEWCPU;
+            u32 cpuSetting = MULTICONFIG(NEWCPU);
 
             if(cpuSetting != 0)
             {
@@ -498,7 +498,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 #ifdef DEV
         case 0x0004003000008A02LL: // ErrDisp
         {
-            if(CONFIG_DEVOPTIONS == 0)
+            if(MULTICONFIG(DEVOPTIONS) == 0)
             {
                 static const u8 unitinfoCheckPattern1[] = { 
                     0x14, 0x00, 0xD0, 0xE5, 0xDB
@@ -532,7 +532,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 #endif
 
         default:
-            if(CONFIG_USELANGEMUANDCODE)
+            if(CONFIG(USELANGEMUANDCODE))
             {
                 u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
 

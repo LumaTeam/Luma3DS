@@ -55,7 +55,7 @@ void newPin(bool allowSkipping)
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
-    u8 length = 4 + 2 * (CONFIG_PIN - 1),
+    u8 length = 4 + 2 * (MULTICONFIG(PIN) - 1),
        cnt = 0;
     int charDrawPos = 5 * SPACING_X;
 
@@ -112,7 +112,7 @@ bool verifyPin(void)
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
        pin.formatVersionMinor != PIN_VERSIONMINOR ||
-       pin.length != 4 + 2 * (CONFIG_PIN - 1))
+       pin.length != 4 + 2 * (MULTICONFIG(PIN) - 1))
         return false;
 
     u8 __attribute__((aligned(4))) zeroes[0x10] = {0};

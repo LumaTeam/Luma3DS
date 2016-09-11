@@ -226,7 +226,7 @@ void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
     /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
        if the matching option was enabled (keep it as last) */
     u32 numPatches = firmType == TWL_FIRM ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG_SHOWGBABOOT);
+                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(SHOWGBABOOT));
     const patchData *patches = firmType == TWL_FIRM ? twlPatches : agbPatches;
 
     //Patch
