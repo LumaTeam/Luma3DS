@@ -23,27 +23,26 @@ int memcmp(const void *buf1, const void *buf2, u32 size)
     return 0;
 }
 
-//Quick Search algorithm, adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
+//Boyer-Moore Horspool algorithm, adapted from http://www-igm.univ-mlv.fr/~lecroq/string/node18.html#SECTION00180
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 {
     const u8 *patternc = (const u8 *)pattern;
-
-    //Preprocessing
     u32 table[256];
 
+    //Preprocessing
     for(u32 i = 0; i < 256; i++)
-        table[i] = patternSize + 1;
-    for(u32 i = 0; i < patternSize; i++)
-        table[patternc[i]] = patternSize - i;
+        table[i] = patternSize;
+    for(u32 i = 0; i < patternSize - 1; i++)
+        table[patternc[i]] = patternSize - i - 1;
 
     //Searching
     u32 j = 0;
-
     while(j <= size - patternSize)
     {
-        if(memcmp(pattern, startPos + j, patternSize) == 0)
+        u8 c = startPos[j + patternSize - 1];
+        if(patternc[patternSize - 1] == c && memcmp(pattern, startPos + j, patternSize - 1) == 0)
             return startPos + j;
-        j += table[startPos[j + patternSize]];
+        j += table[c];
     }
 
     return NULL;
