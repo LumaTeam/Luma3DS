@@ -51,8 +51,6 @@ typedef struct __attribute__((packed))
     u32 config;
 } CFWInfo;
 
-extern bool isN3DS;
-
 #ifdef DEV
 extern bool isDevUnit;
 #endif

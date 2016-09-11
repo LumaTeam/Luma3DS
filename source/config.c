@@ -130,9 +130,12 @@ void configMenu(bool oldPinStatus)
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
     {
-        multiOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(multiOptionsText[i], 10, multiOptions[i].posY, COLOR_WHITE);
-        drawCharacter(selected, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+        if(!(i == CONFIG_NEWCPUINDEX && !isN3DS))
+        {
+            multiOptions[i].posY = endPos + SPACING_Y;
+            endPos = drawString(multiOptionsText[i], 10, multiOptions[i].posY, COLOR_WHITE);
+            drawCharacter(selected, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+        }
     }
 
     endPos += SPACING_Y / 2;
@@ -166,10 +169,12 @@ void configMenu(bool oldPinStatus)
             switch(pressed)
             {
                 case BUTTON_UP:
-                    selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
+                    if(!selectedOption) selectedOption = totalIndexes;
+                    else selectedOption = (selectedOption == CONFIG_NEWCPUINDEX + 1 && !isN3DS) ? selectedOption - 2 : selectedOption - 1;
                     break;
                 case BUTTON_DOWN:
-                    selectedOption = selectedOption == totalIndexes ? 0 : selectedOption + 1;
+                    if(selectedOption == totalIndexes) selectedOption = 0;
+                    else selectedOption = (selectedOption == CONFIG_NEWCPUINDEX - 1 && !isN3DS) ? selectedOption + 2 : selectedOption + 1;
                     break;
                 case BUTTON_LEFT:
                     selectedOption = 0;
@@ -213,7 +218,7 @@ void configMenu(bool oldPinStatus)
                 drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
-                if(selectedOption == 1) updateBrightness(multiOptions[1].enabled);
+                if(selectedOption == CONFIG_BRIGHTNESSINDEX) updateBrightness(multiOptions[CONFIG_BRIGHTNESSINDEX].enabled);
             }
             else
             {

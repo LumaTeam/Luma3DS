@@ -32,13 +32,16 @@
 #define CONFIG_VERSIONMAJOR 1
 #define CONFIG_VERSIONMINOR 3
 
+#define CONFIG_BRIGHTNESSINDEX 1
+#define CONFIG_NEWCPUINDEX     3
+
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 1)
 #define BOOTCFG_A9LH         BOOTCONFIG(4, 1)
 #define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(5, 1)
 #define BOOTCFG_SAFEMODE     BOOTCONFIG(6, 1)
 #define CONFIG_DEFAULTEMU    MULTICONFIG(0)
-#define CONFIG_BRIGHTNESS    MULTICONFIG(1)
+#define CONFIG_BRIGHTNESS    MULTICONFIG(CONFIG_BRIGHTNESSINDEX)
 #define CONFIG_PIN           MULTICONFIG(2)
 #define CONFIG_AUTOBOOTSYS   CONFIG(0)
 #define CONFIG_USESYSFIRM    CONFIG(1)
@@ -66,6 +69,7 @@ typedef enum ConfigurationStatus
 } ConfigurationStatus;
 
 extern CfgData configData;
+extern bool isN3DS;
 
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
