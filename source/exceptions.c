@@ -87,7 +87,8 @@ void detectAndProcessExceptionDumps(void)
     if(dumpHeader->magic[0] == 0xDEADC0DE && dumpHeader->magic[1] == 0xDEADCAFE && (dumpHeader->processor == 9 || dumpHeader->processor == 11))
     {
         const vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
-        const vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
+        const vu8 *stackDump = (vu8 *)regs + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize;
+        const vu8 *additionalData = stackDump + dumpHeader->stackDumpSize;
 
         const char *handledExceptionNames[] = { 
             "FIQ", "undefined instruction", "prefetch abort", "data abort"
@@ -163,19 +164,19 @@ void detectAndProcessExceptionDumps(void)
         }
 
         selectScreen(true);
-        
+
         int posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + 2 * SPACING_Y;
-        vu8 *stackDump = (vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize + dumpHeader->stackDumpSize + dumpHeader->additionalDataSize;
-        u32 stackBytePos = 0;
-        for(u32 line = 0; line < 19 && stackBytePos < dumpHeader->stackDumpSize; line++)
+
+        for(u32 line = 0; line < 19 && stackDump < additionalData; line++)
         {
             hexItoa(regs[13] + 8 * line, hexString, 8);
             drawString(hexString, 10, posYBottom, COLOR_WHITE);
             drawCharacter(':', 10 + 8 * SPACING_X, posYBottom, COLOR_WHITE);
-            for(u32 i = 0; i < 8 && stackBytePos < dumpHeader->stackDumpSize; i++)
+
+            for(u32 i = 0; i < 8 && stackDump < additionalData; i++, stackDump++)
             {
                 char byteString[] = "00";
-                hexItoa(*stackDump++, byteString, 2);
+                hexItoa(*stackDump, byteString, 2);
                 drawString(byteString, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
             }
 
