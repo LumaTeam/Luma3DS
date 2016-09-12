@@ -32,6 +32,8 @@
 #include "fs.h"
 #include "font.h"
 
+static bool bottomScreenSelected = false;
+
 bool loadSplash(void)
 {
     //Don't delay boot nor init the screens if no splash image is on the SD
@@ -48,9 +50,14 @@ bool loadSplash(void)
     return true;
 }
 
+void selectScreen(bool isBottomScreen)
+{
+    bottomScreenSelected = isBottomScreen;
+}
+
 void drawCharacter(char character, int posX, int posY, u32 color)
 {
-    u8 *const select = fb->top_left;
+    u8 *const select = (bottomScreenSelected) ? fb->bottom : fb->top_left;
 
     for(int y = 0; y < 8; y++)
     {
@@ -59,7 +66,7 @@ void drawCharacter(char character, int posX, int posY, u32 color)
         for(int x = 7; x >= 0; x--)
             if ((charPos >> x) & 1)
             {
-                int screenPos = (posX * SCREEN_TOP_HEIGHT * 3 + (SCREEN_TOP_HEIGHT - y - posY - 1) * 3) + (7 - x) * 3 * SCREEN_TOP_HEIGHT;
+                int screenPos = (posX * SCREEN_HEIGHT * 3 + (SCREEN_HEIGHT - y - posY - 1) * 3) + (7 - x) * 3 * SCREEN_HEIGHT;
 
                 select[screenPos] = color >> 16;
                 select[screenPos + 1] = color >> 8;
@@ -78,7 +85,7 @@ int drawString(const char *string, int posX, int posY, u32 color)
             line_i = 0;
             i++;
         }
-        else if(line_i >= (SCREEN_TOP_WIDTH - posX) / SPACING_X)
+        else if(line_i >= ((bottomScreenSelected ? SCREEN_BOTTOM_WIDTH : SCREEN_TOP_WIDTH)- posX) / SPACING_X)
         {
             // Make sure we never get out of the screen.
             posY += SPACING_Y;

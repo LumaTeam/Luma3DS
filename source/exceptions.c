@@ -140,13 +140,13 @@ void detectAndProcessExceptionDumps(void)
         for(u32 i = 0; i < 17; i += 2)
         {
             posY = drawString(registerNames[i], 10, posY, COLOR_WHITE);
-            hexItoa(regs[i], hexString);
+            hexItoa(regs[i], hexString, 8);
             posY = drawString(hexString, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
 
             if(dumpHeader->processor != 9 || i != 16)
             {
                 posY = drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
-                hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString);
+                hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8);
                 posY = drawString(hexString, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
 
@@ -161,6 +161,28 @@ void detectAndProcessExceptionDumps(void)
             posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, COLOR_YELLOW) + 2 * SPACING_Y;
             if(dumpHeader->processor != 9) posY -= SPACING_Y;
         }
+
+        selectScreen(true);
+        
+        int posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + 2 * SPACING_Y;
+        vu8 *stackDump = (vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize + dumpHeader->stackDumpSize + dumpHeader->additionalDataSize;
+        u32 stackBytePos = 0;
+        for(u32 line = 0; line < 19 && stackBytePos < dumpHeader->stackDumpSize; line++)
+        {
+            hexItoa(regs[13] + 8 * line, hexString, 8);
+            drawString(hexString, 10, posYBottom, COLOR_WHITE);
+            drawCharacter(':', 10 + 8 * SPACING_X, posYBottom, COLOR_WHITE);
+            for(u32 i = 0; i < 8 && stackBytePos < dumpHeader->stackDumpSize; i++)
+            {
+                char byteString[] = "00";
+                hexItoa(*stackDump++, byteString, 2);
+                drawString(byteString, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
+            }
+
+            posYBottom += SPACING_Y;
+        }
+
+        selectScreen(false);
 
         u32 size = dumpHeader->totalSize;
         char path[42];

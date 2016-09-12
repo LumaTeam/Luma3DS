@@ -26,4 +26,4 @@
 
 int strlen(const char *string);
 void concatenateStrings(char *destination, const char *source);
-void hexItoa(u32 number, char *out);
+void hexItoa(u32 number, char *out, u32 nbDigits);

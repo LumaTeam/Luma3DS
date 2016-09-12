@@ -29,8 +29,9 @@
 
 #include "types.h"
 
-#define SCREEN_TOP_WIDTH  400
-#define SCREEN_TOP_HEIGHT 240
+#define SCREEN_TOP_WIDTH        400
+#define SCREEN_BOTTOM_WIDTH     320
+#define SCREEN_HEIGHT           240
 
 #define SPACING_Y 10
 #define SPACING_X 8
@@ -42,5 +43,6 @@
 #define COLOR_YELLOW 0x00FFFF
 
 bool loadSplash(void);
+void selectScreen(bool isBottomScreen);
 void drawCharacter(char character, int posX, int posY, u32 color);
 int drawString(const char *string, int posX, int posY, u32 color);
