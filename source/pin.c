@@ -50,14 +50,16 @@ void newPin(bool allowSkipping)
 
     char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
     drawString(title, 10, 10, COLOR_TITLE);
-    drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+    drawString("PIN (  digits): ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
     u8 length = 4 + 2 * (MULTICONFIG(PIN) - 1),
        cnt = 0;
-    int charDrawPos = 5 * SPACING_X;
+    int charDrawPos = 16 * SPACING_X;
+
+    drawCharacter('0' + length, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     while(cnt < length)
     {
@@ -128,12 +130,13 @@ bool verifyPin(void)
 
     u8 cnt = 0;
     bool unlock = false;
-    int charDrawPos = 5 * SPACING_X;
+    int charDrawPos = 16 * SPACING_X;
 
     while(!unlock)
     {
         drawString("Press START to shutdown or enter PIN to proceed", 10, 10, COLOR_TITLE);
-        drawString("PIN: ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawString("PIN (  digits): ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawCharacter('0' + pin.length, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
         u32 pressed;
         do
