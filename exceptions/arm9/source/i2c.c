@@ -21,7 +21,7 @@
 */
 
 /*
-*   Thanks to the everyone who contributed in the development of this file 
+*   Thanks to the everyone who contributed in the development of this file
 */
 
 #include "i2c.h"
@@ -79,7 +79,7 @@ static inline void i2cWaitBusy(u8 bus_id)
     while (*i2cGetCntReg(bus_id) & 0x80);
 }
 
-static inline u32 i2cGetResult(u8 bus_id)
+static inline bool i2cGetResult(u8 bus_id)
 {
     i2cWaitBusy(bus_id);
 
@@ -95,7 +95,7 @@ static void i2cStop(u8 bus_id, u8 arg0)
 
 //-----------------------------------------------------------------------------
 
-static u32 i2cSelectDevice(u8 bus_id, u8 dev_reg)
+static bool i2cSelectDevice(u8 bus_id, u8 dev_reg)
 {
     i2cWaitBusy(bus_id);
     *i2cGetDataReg(bus_id) = dev_reg;
@@ -104,7 +104,7 @@ static u32 i2cSelectDevice(u8 bus_id, u8 dev_reg)
     return i2cGetResult(bus_id);
 }
 
-static u32 i2cSelectRegister(u8 bus_id, u8 reg)
+static bool i2cSelectRegister(u8 bus_id, u8 reg)
 {
     i2cWaitBusy(bus_id);
     *i2cGetDataReg(bus_id) = reg;
@@ -115,7 +115,7 @@ static u32 i2cSelectRegister(u8 bus_id, u8 reg)
 
 //-----------------------------------------------------------------------------
 
-u32 i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
+bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
 {
     u8 bus_id = i2cGetDeviceBusId(dev_id);
     u8 dev_addr = i2cGetDeviceRegAddr(dev_id);
@@ -129,12 +129,11 @@ u32 i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
             *i2cGetCntReg(bus_id) = 0xC1;
             i2cStop(bus_id, 0);
 
-            if(i2cGetResult(bus_id))
-                return 1;
+            if(i2cGetResult(bus_id)) return true;
         }
         *i2cGetCntReg(bus_id) = 0xC5;
         i2cWaitBusy(bus_id);
     }
 
-    return 0;
+    return false;
 }

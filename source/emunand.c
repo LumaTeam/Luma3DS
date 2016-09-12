@@ -31,7 +31,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
     const u32 nandSize = getMMCDevice(0)->total_size;
     bool found = false;
 
-    for (u32 i = 0; i < 3 && !found; i++)
+    for(u32 i = 0; i < 3 && !found; i++)
     {
         u32 nandOffset;
         switch(i)
