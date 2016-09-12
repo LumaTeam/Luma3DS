@@ -66,11 +66,6 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
 
 void configMenu(bool oldPinStatus)
 {
-    initScreens();
-
-    drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
-
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
@@ -121,6 +116,11 @@ void configMenu(bool oldPinStatus)
         multiOptions[i].enabled = MULTICONFIG(i);
     for(u32 i = 0; i < singleOptionsAmount; i++)
         singleOptions[i].enabled = CONFIG(i);
+
+    initScreens();
+
+    drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
+    drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
 
     //Character to display a selected option
     char selected = 'x';

@@ -48,18 +48,18 @@ void newPin(bool allowSkipping)
 {
     clearScreens();
 
+    u8 length = 4 + 2 * (MULTICONFIG(PIN) - 1);
+
     char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
     drawString(title, 10, 10, COLOR_TITLE);
     drawString("PIN (  digits): ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+    drawCharacter('0' + length, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
-    u8 length = 4 + 2 * (MULTICONFIG(PIN) - 1),
-       cnt = 0;
+    u8 cnt = 0;
     int charDrawPos = 16 * SPACING_X;
-
-    drawCharacter('0' + length, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     while(cnt < length)
     {
@@ -106,8 +106,6 @@ void newPin(bool allowSkipping)
 
 bool verifyPin(void)
 {
-    initScreens();
-
     PinData pin;
 
     if(fileRead(&pin, PIN_PATH) != sizeof(PinData) ||
@@ -125,11 +123,13 @@ bool verifyPin(void)
     //Test vector verification (SD card has, or hasn't been used on another console)
     if(memcmp(pin.testHash, tmp, sizeof(tmp)) != 0) return false;
 
+    initScreens();
+
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
-    u8 cnt = 0;
     bool unlock = false;
+    u8 cnt = 0;
     int charDrawPos = 16 * SPACING_X;
 
     while(!unlock)
@@ -165,7 +165,7 @@ bool verifyPin(void)
 
             if(!unlock)
             {
-                charDrawPos = 5 * SPACING_X;
+                charDrawPos = 16 * SPACING_X;
                 cnt = 0;
 
                 clearScreens();
