@@ -99,13 +99,12 @@ void detectAndProcessExceptionDumps(void)
         };
 
         char hexString[] = "00000000";
-        char arm11String[] = "Processor:       ARM11 (core X)";
-        if(dumpHeader->processor == 11) arm11String[29] = '0' + (char)dumpHeader->core;
 
         initScreens();
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
-        int posY = drawString(dumpHeader->processor == 11 ? arm11String : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
+        int posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
+        if(dumpHeader->processor == 11) drawCharacter('0' + dumpHeader->core, 10 + 29 * SPACING_X, 30, COLOR_WHITE);
 
         posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
         posY = drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
@@ -131,8 +130,8 @@ void detectAndProcessExceptionDumps(void)
         if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
         {
             posY += SPACING_Y;
-            char processName[] = "Current process: --------";
-            memcpy(processName + 17, (void *)additionalData, 8);
+            char processName[] = "Current process:         ";
+            memcpy(processName + sizeof(processName) - 9, (void *)additionalData, 8);
             posY = drawString(processName, 10, posY, COLOR_WHITE);
         }
 
