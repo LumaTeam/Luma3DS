@@ -42,7 +42,7 @@
 
 extern u16 launchedFirmTidLow[8]; //Defined in start.s
 
-static firmHeader *const firm = (firmHeader *)0x24000000;
+static firmHeader *firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
 u32 emuOffset;
@@ -490,7 +490,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
     {
         srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
-        char *moduleName = (char *)(src + 0x200);
+        const char *moduleName = (char *)(src + 0x200);
 
         char fileName[30] = "/luma/sysmodules/";
         const char *ext = ".cxi";
@@ -503,11 +503,11 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         if(fileSize) dstModuleSize = fileSize;
         else
         {
-            void *module;
+            const void *module;
 
             if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
             {
-                module = (void *)injector;
+                module = injector;
                 dstModuleSize = injector_size;
             }
             else
@@ -530,13 +530,13 @@ static inline void copySection0AndInjectSystemModules(void)
         src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
     {
         srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
-        char *moduleName = (char *)(src + 0x200);
+        const char *moduleName = (const char *)(src + 0x200);
 
-        void *module;
+        const void *module;
 
         if(memcmp(moduleName, "loader", 6) == 0)
         {
-            module = (void *)injector;
+            module = injector;
             dstModuleSize = injector_size;
         }
         else

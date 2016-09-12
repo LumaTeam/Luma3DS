@@ -127,7 +127,7 @@ void loadPayload(u32 pressed)
     {
         initScreens();
 
-        u32 *const loaderAddress = (u32 *)0x24FFFF00;
+        u32 *loaderAddress = (u32 *)0x24FFFF00;
 
         memcpy(loaderAddress, loader, loader_size);
 

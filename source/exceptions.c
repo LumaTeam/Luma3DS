@@ -86,8 +86,8 @@ void detectAndProcessExceptionDumps(void)
 
     if(dumpHeader->magic[0] == 0xDEADC0DE && dumpHeader->magic[1] == 0xDEADCAFE && (dumpHeader->processor == 9 || dumpHeader->processor == 11))
     {
-        vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
-        vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
+        const vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
+        const vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
 
         const char *handledExceptionNames[] = { 
             "FIQ", "undefined instruction", "prefetch abort", "data abort"
@@ -132,7 +132,7 @@ void detectAndProcessExceptionDumps(void)
         {
             posY += SPACING_Y;
             char processName[] = "Current process: --------";
-            memcpy(processName + 17, (char *)additionalData, 8);
+            memcpy(processName + 17, (void *)additionalData, 8);
             posY = drawString(processName, 10, posY, COLOR_WHITE);
         }
 
@@ -166,7 +166,7 @@ void detectAndProcessExceptionDumps(void)
         u32 size = dumpHeader->totalSize;
         char path[42];
         char fileName[] = "crash_dump_00000000.dmp";
-        char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
+        const char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
 
         findDumpFile(pathFolder, fileName);
         memcpy(path, pathFolder, strlen(pathFolder) + 1);

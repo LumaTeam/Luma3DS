@@ -123,7 +123,7 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 void patchFirmWrites(u8 *pos, u32 size)
 {
     //Look for FIRM writing code
-    u8 *const off1 = memsearch(pos, "exe:", size, 4);
+    u8 *off1 = memsearch(pos, "exe:", size, 4);
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, sizeof(pattern));
@@ -251,7 +251,7 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x03, 0xA0, 0xE3, 0x18};
 
-    u32* off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) + 0x13);
+    u32 *off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)) + 0x13);
 
     for(u32 r0 = 0x08000000; *off != 0xE3A01040; off++) //Until mov r1, #0x40
     {
