@@ -111,13 +111,13 @@ void clearScreens(void)
         //Setting up two simultaneous memory fills using the GPU
         vu32 *REGs_PSC0 = (vu32 *)0x10400010;
         REGs_PSC0[0] = (u32)fb->top_left >> 3; //Start address
-        REGs_PSC0[1] = (u32)(fb->top_left + 0x46500) >> 3; //End address
+        REGs_PSC0[1] = (u32)(fb->top_left + SCREEN_TOP_FBSIZE) >> 3; //End address
         REGs_PSC0[2] = 0; //Fill value
         REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
 
         vu32 *REGs_PSC1 = (vu32 *)0x10400020;
         REGs_PSC1[0] = (u32)fb->bottom >> 3; //Start address
-        REGs_PSC1[1] = (u32)(fb->bottom + 0x38400) >> 3; //End address
+        REGs_PSC1[1] = (u32)(fb->bottom + SCREEN_BOTTOM_FBSIZE) >> 3; //End address
         REGs_PSC1[2] = 0; //Fill value
         REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
 
@@ -126,7 +126,7 @@ void clearScreens(void)
         if(fb->top_right != fb->top_left)
         {
             REGs_PSC0[0] = (u32)fb->top_right >> 3; //Start address
-            REGs_PSC0[1] = (u32)(fb->top_right + 0x46500) >> 3; //End address
+            REGs_PSC0[1] = (u32)(fb->top_right + SCREEN_TOP_FBSIZE) >> 3; //End address
             REGs_PSC0[2] = 0; //Fill value
             REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
 

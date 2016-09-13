@@ -294,12 +294,12 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
     }
 
     //Check that the SD FIRM is right for the console from the ARM9 section address
-    if(fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType]) &&
+    if(fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000) &&
        ((section[3].offset ? section[3].address : section[2].address) == (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800)))
         firmVersion = 0xFFFFFFFF;
     else
     {
-        if(loadFromSd) error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+        if(loadFromSd) error("An old unsupported FIRM has been detected.\nCopy a valid firmware.bin in /luma to boot");
         decryptExeFs((u8 *)firm);
     }
 
@@ -329,8 +329,8 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
         else if(firmVersion < 0x25)
         {
-            if(!fileRead(firm, "/luma/firmware.bin") || section[2].address != (u8 *)0x8006800)
-                error("An old unsupported FIRM has been detected.\nCopy firmware.bin in /luma to boot");
+            if(!fileRead(firm, "/luma/firmware.bin", 0x400000) || section[2].address != (u8 *)0x8006800)
+                error("An old unsupported FIRM has been detected.\nCopy a valid firmware.bin in /luma to boot");
 
             //No assumption regarding FIRM version
             firmVersion = 0xFFFFFFFF;
@@ -499,7 +499,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
         concatenateStrings(fileName, moduleName);
         concatenateStrings(fileName, ext);
 
-        u32 fileSize = fileRead(dst, fileName);
+        u32 fileSize = fileRead(dst, fileName, 2 * srcModuleSize);
         if(fileSize) dstModuleSize = fileSize;
         else
         {

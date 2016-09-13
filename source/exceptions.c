@@ -108,7 +108,7 @@ void detectAndProcessExceptionDumps(void)
         initScreens();
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
-        int posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", 10, 30, COLOR_WHITE);
+        u32 posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", 10, 30, COLOR_WHITE);
         if(dumpHeader->processor == 11) drawCharacter('0' + dumpHeader->core, 10 + 29 * SPACING_X, 30, COLOR_WHITE);
 
         posY = drawString("Exception type:  ", 10, posY + SPACING_Y, COLOR_WHITE);
@@ -160,7 +160,7 @@ void detectAndProcessExceptionDumps(void)
 
         selectScreen(true);
 
-        int posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + SPACING_Y;
+        u32 posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + SPACING_Y;
 
         for(u32 line = 0; line < 19 && stackDump < additionalData; line++)
         {

@@ -116,7 +116,7 @@ void error(const char *message)
     initScreens();
 
     drawString("An error has occurred:", 10, 10, COLOR_RED);
-    int posY = drawString(message, 10, 30, COLOR_WHITE);
+    u32 posY = drawString(message, 10, 30, COLOR_WHITE);
     drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
 
     waitInput();

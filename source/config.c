@@ -31,7 +31,7 @@
 
 bool readConfig(void)
 {
-    if(fileRead(&configData, CONFIG_PATH) != sizeof(CfgData) ||
+    if(fileRead(&configData, CONFIG_PATH, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
@@ -87,8 +87,8 @@ void configMenu(bool oldPinStatus)
                                       };
 
     struct multiOption {
-        int posXs[4];
-        int posY;
+        u32 posXs[4];
+        u32 posY;
         u32 enabled;
     } multiOptions[] = {
         { .posXs = {19, 24, 29, 34} },
@@ -107,7 +107,7 @@ void configMenu(bool oldPinStatus)
         selectedOption = multiOptionsAmount;
 
     struct singleOption {
-        int posY;
+        u32 posY;
         bool enabled;
     } singleOptions[singleOptionsAmount];
 
@@ -125,7 +125,7 @@ void configMenu(bool oldPinStatus)
     //Character to display a selected option
     char selected = 'x';
 
-    int endPos = 42;
+    u32 endPos = 42;
 
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)

@@ -108,7 +108,7 @@ bool verifyPin(void)
 {
     PinData pin;
 
-    if(fileRead(&pin, PIN_PATH) != sizeof(PinData) ||
+    if(fileRead(&pin, PIN_PATH, sizeof(PinData)) != sizeof(PinData) ||
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
        pin.formatVersionMinor != PIN_VERSIONMINOR ||

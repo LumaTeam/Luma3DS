@@ -38,27 +38,26 @@ void mountFs(void)
     f_mount(&nandFs, "1:", 0);
 }
 
-u32 fileRead(void *dest, const char *path)
+u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
-    u32 size;
+    u32 ret = 0;
 
     if(f_open(&file, path, FA_READ) == FR_OK)
     {
-        unsigned int read;
-        size = f_size(&file);
-        if(dest != NULL)
-            f_read(&file, dest, size, &read);
+        u32 size = f_size(&file);
+        if(dest == NULL) ret = size;
+        else if(!(maxSize > 0 && size > maxSize))
+            f_read(&file, dest, size, (unsigned int *)&ret);
         f_close(&file);
     }
-    else size = 0;
 
-    return size;
+    return ret;
 }
 
 u32 getFileSize(const char *path)
 {
-    return fileRead(NULL, path);
+    return fileRead(NULL, path, 0);
 }
 
 bool fileWrite(const void *buffer, const char *path, u32 size)
@@ -125,21 +124,27 @@ void loadPayload(u32 pressed)
 
     if(result == FR_OK && info.fname[0])
     {
-        initScreens();
-
         u32 *loaderAddress = (u32 *)0x24FFFF00;
+        u8 *payloadAddress = (u8 *)0x24F00000;
 
         memcpy(loaderAddress, loader, loader_size);
 
         concatenateStrings(path, "/");
         concatenateStrings(path, info.altname);
 
-        loaderAddress[1] = fileRead((void *)0x24F00000, path);
+        u32 payloadSize = fileRead(payloadAddress, path, (u8 *)loaderAddress - payloadAddress);
 
-        flushDCacheRange(loaderAddress, loader_size);
-        flushICacheRange(loaderAddress, loader_size);
+        if(payloadSize > 0)
+        {
+            loaderAddress[1] = payloadSize;
 
-        ((void (*)())loaderAddress)();
+            initScreens();
+
+            flushDCacheRange(loaderAddress, loader_size);
+            flushICacheRange(loaderAddress, loader_size);
+
+            ((void (*)())loaderAddress)();
+        }
     }
 }
 
@@ -187,7 +192,7 @@ u32 firmRead(void *dest, u32 firmType)
     //Convert back the .app name from integer to array
     hexItoa(firmVersion, &path[35], 8);
 
-    fileRead(dest, path);
+    fileRead(dest, path, 0);
 
     return firmVersion;
 }

@@ -29,7 +29,7 @@
 extern bool isN3DS;
 
 void mountFs(void);
-u32 fileRead(void *dest, const char *path);
+u32 fileRead(void *dest, const char *path, u32 maxSize);
 u32 getFileSize(const char *path);
 bool fileWrite(const void *buffer, const char *path, u32 size);
 void fileDelete(const char *path);
