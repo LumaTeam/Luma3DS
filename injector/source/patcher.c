@@ -435,6 +435,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                                     verString = verStringSysEmu;
                                 }
                             }
+                            break;
                     }
                 }
 

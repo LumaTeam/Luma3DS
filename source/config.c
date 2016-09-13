@@ -111,7 +111,7 @@ void configMenu(bool oldPinStatus)
                                           "detected as a development unit (which\n"
                                           "breaks online features and allows\n"
                                           "booting some developer software).\n"
-                                          "'None' disables exception handlers\n"
+                                          "'Off' disables exception handlers\n"
                                           "in FIRM",
 #endif
                                           "If enabled SysNAND will be launched on\n"
