@@ -46,14 +46,14 @@ static char pinKeyToLetter(u32 pressed)
 
 void newPin(bool allowSkipping)
 {
-    clearScreens();
+    clearScreens(true, true);
 
     u8 length = 4 + 2 * (MULTICONFIG(PIN) - 1);
 
     char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
-    drawString(title, 10, 10, COLOR_TITLE);
-    drawString("PIN (  digits): ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-    drawCharacter('0' + length, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
+    drawString(title, true, 10, 10, COLOR_TITLE);
+    drawString("PIN (  digits): ", true, 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+    drawCharacter('0' + length, true, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
@@ -80,7 +80,7 @@ void newPin(bool allowSkipping)
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
         //Visualize character on screen
-        drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawCharacter(key, true, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
     }
 
@@ -132,11 +132,24 @@ bool verifyPin(void)
     u8 cnt = 0;
     int charDrawPos = 16 * SPACING_X;
 
+    const char *messagePath = "/luma/pinmessage.txt";
+
+    u32 messageSize = getFileSize(messagePath);
+    if(messageSize > 0 && messageSize < 800)
+    {
+        char message[messageSize + 1];
+
+        fileRead(message, messagePath, 0);
+        message[messageSize] = 0;
+
+        drawString(message, false, 10, 10, COLOR_WHITE);
+    }
+
     while(!unlock)
     {
-        drawString("Press START to shutdown or enter PIN to proceed", 10, 10, COLOR_TITLE);
-        drawString("PIN (  digits): ", 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-        drawCharacter('0' + pin.length, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawString("Press START to shutdown or enter PIN to proceed", true, 10, 10, COLOR_TITLE);
+        drawString("PIN (  digits): ", true, 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawCharacter('0' + pin.length, true, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
         u32 pressed;
         do
@@ -155,7 +168,7 @@ bool verifyPin(void)
         enteredPassword[cnt++] = (u8)key; //Add character to password
 
         //Visualize character on screen
-        drawCharacter(key, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        drawCharacter(key, true, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
         charDrawPos += 2 * SPACING_X;
 
         if(cnt >= pin.length)
@@ -168,9 +181,9 @@ bool verifyPin(void)
                 charDrawPos = 16 * SPACING_X;
                 cnt = 0;
 
-                clearScreens();
+                clearScreens(true, false);
 
-                drawString("Wrong PIN, try again", 10, 10 + 4 * SPACING_Y, COLOR_RED); 
+                drawString("Wrong PIN, try again", true, 10, 10 + 4 * SPACING_Y, COLOR_RED); 
             }
         }
     }

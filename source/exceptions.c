@@ -107,25 +107,25 @@ void detectAndProcessExceptionDumps(void)
 
         initScreens();
 
-        drawString("An exception occurred", 10, 10, COLOR_RED);
-        u32 posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", 10, 30, COLOR_WHITE);
-        if(dumpHeader->processor == 11) drawCharacter('0' + dumpHeader->core, 10 + 29 * SPACING_X, 30, COLOR_WHITE);
+        drawString("An exception occurred", true, 10, 10, COLOR_RED);
+        u32 posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", true, 10, 30, COLOR_WHITE);
+        if(dumpHeader->processor == 11) drawCharacter('0' + dumpHeader->core, true, 10 + 29 * SPACING_X, 30, COLOR_WHITE);
 
-        posY = drawString("Exception type:  ", 10, posY + SPACING_Y, COLOR_WHITE);
-        drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
+        posY = drawString("Exception type:  ", true, 10, posY + SPACING_Y, COLOR_WHITE);
+        drawString(handledExceptionNames[dumpHeader->type], true, 10 + 17 * SPACING_X, posY, COLOR_WHITE);
 
         if(dumpHeader->type == 2)
         {
             if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 4)
             {
                 u32 instr = *(vu32 *)(stackDump - 4);
-                if(instr == 0xE12FFF7E) drawString(specialExceptions[0], 10 + 32 * SPACING_X, posY, COLOR_WHITE);
-                else if(instr == 0xEF00003C) drawString(specialExceptions[1], 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                if(instr == 0xE12FFF7E) drawString(specialExceptions[0], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                else if(instr == 0xEF00003C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
             }
             else if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 2)
             {
                 u16 instr = *(vu16 *)(stackDump - 2);
-                if(instr == 0xDF3C) drawString(specialExceptions[1], 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                if(instr == 0xDF3C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
             }
         }
 
@@ -133,22 +133,22 @@ void detectAndProcessExceptionDumps(void)
         {
             char processName[] = "Current process:         ";
             memcpy(processName + sizeof(processName) - 9, (void *)additionalData, 8);
-            posY = drawString(processName, 10, posY + SPACING_Y, COLOR_WHITE);
+            posY = drawString(processName, true, 10, posY + SPACING_Y, COLOR_WHITE);
         }
 
         posY += SPACING_Y;
 
         for(u32 i = 0; i < 17; i += 2)
         {
-            posY = drawString(registerNames[i], 10, posY + SPACING_Y, COLOR_WHITE);
+            posY = drawString(registerNames[i], true, 10, posY + SPACING_Y, COLOR_WHITE);
             hexItoa(regs[i], hexString, 8);
-            drawString(hexString, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
+            drawString(hexString, true, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
 
             if(i != 16 || dumpHeader->processor != 9)
             {
-                drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
+                drawString(registerNames[i + 1], true, 10 + 22 * SPACING_X, posY, COLOR_WHITE);
                 hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8);
-                drawString(hexString, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
+                drawString(hexString, true, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
         }
 
@@ -156,27 +156,23 @@ void detectAndProcessExceptionDumps(void)
 
         u32 mode = regs[16] & 0xF;
         if(dumpHeader->type == 3 && (mode == 7 || mode == 11))
-            posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY + SPACING_Y, COLOR_YELLOW) + SPACING_Y;
+            posY = drawString("Incorrect dump: failed to dump code and/or stack", true, 10, posY + SPACING_Y, COLOR_YELLOW) + SPACING_Y;
 
-        selectScreen(true);
-
-        u32 posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + SPACING_Y;
+        u32 posYBottom = drawString("Stack dump:", false, 10, 10, COLOR_WHITE) + SPACING_Y;
 
         for(u32 line = 0; line < 19 && stackDump < additionalData; line++)
         {
             hexItoa(regs[13] + 8 * line, hexString, 8);
-            posYBottom = drawString(hexString, 10, posYBottom + SPACING_Y, COLOR_WHITE);
-            drawCharacter(':', 10 + 8 * SPACING_X, posYBottom, COLOR_WHITE);
+            posYBottom = drawString(hexString, false, 10, posYBottom + SPACING_Y, COLOR_WHITE);
+            drawCharacter(':', false, 10 + 8 * SPACING_X, posYBottom, COLOR_WHITE);
 
             for(u32 i = 0; i < 8 && stackDump < additionalData; i++, stackDump++)
             {
                 char byteString[] = "00";
                 hexItoa(*stackDump, byteString, 2);
-                drawString(byteString, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
+                drawString(byteString, false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
             }
         }
-
-        selectScreen(false);
 
         char path[42];
         char fileName[] = "crash_dump_00000000.dmp";
@@ -189,12 +185,12 @@ void detectAndProcessExceptionDumps(void)
 
         if(fileWrite((void *)dumpHeader, path, dumpHeader->totalSize))
         {
-            posY = drawString("You can find a dump in the following file:", 10, posY + SPACING_Y, COLOR_WHITE);
-            posY = drawString(path, 10, posY + SPACING_Y, COLOR_WHITE) + SPACING_Y;
+            posY = drawString("You can find a dump in the following file:", true, 10, posY + SPACING_Y, COLOR_WHITE);
+            posY = drawString(path, true, 10, posY + SPACING_Y, COLOR_WHITE) + SPACING_Y;
         }
-        else posY = drawString("Error writing the dump file", 10, posY + SPACING_Y, COLOR_RED);
+        else posY = drawString("Error writing the dump file", true, 10, posY + SPACING_Y, COLOR_RED);
 
-        drawString("Press any button to shutdown", 10, posY + SPACING_Y, COLOR_WHITE);
+        drawString("Press any button to shutdown", true, 10, posY + SPACING_Y, COLOR_WHITE);
 
         memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
 

@@ -56,7 +56,7 @@ u32 waitInput(void)
 
 void mcuReboot(void)
 {
-    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens();
+    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens(true, true);
 
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 
@@ -66,7 +66,7 @@ void mcuReboot(void)
 
 void mcuPowerOff(void)
 {
-    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens();
+    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens(true, true);
 
     flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
     
@@ -115,9 +115,9 @@ void error(const char *message)
 {
     initScreens();
 
-    drawString("An error has occurred:", 10, 10, COLOR_RED);
-    u32 posY = drawString(message, 10, 30, COLOR_WHITE);
-    drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+    drawString("An error has occurred:", true, 10, 10, COLOR_RED);
+    u32 posY = drawString(message, true, 10, 30, COLOR_WHITE);
+    drawString("Press any button to shutdown", true, 10, posY + 2 * SPACING_Y, COLOR_WHITE);
 
     waitInput();
     mcuPowerOff();

@@ -42,5 +42,5 @@ static volatile struct fb {
 
 void deinitScreens(void);
 void updateBrightness(u32 brightnessIndex);
-void clearScreens(void);
+void clearScreens(bool clearTop, bool clearBottom);
 void initScreens(void);

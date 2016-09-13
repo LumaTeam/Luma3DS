@@ -119,8 +119,8 @@ void configMenu(bool oldPinStatus)
 
     initScreens();
 
-    drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
+    drawString(CONFIG_TITLE, true, 10, 10, COLOR_TITLE);
+    drawString("Press A to select, START to save", true, 10, 30, COLOR_WHITE);
 
     //Character to display a selected option
     char selected = 'x';
@@ -133,8 +133,8 @@ void configMenu(bool oldPinStatus)
         if(!(i == NEWCPU && !isN3DS))
         {
             multiOptions[i].posY = endPos + SPACING_Y;
-            endPos = drawString(multiOptionsText[i], 10, multiOptions[i].posY, COLOR_WHITE);
-            drawCharacter(selected, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+            endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
+            drawCharacter(selected, true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
         }
     }
 
@@ -145,8 +145,8 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < singleOptionsAmount; i++)
     {
         singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], 10, singleOptions[i].posY, color);
-        if(singleOptions[i].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[i].posY, color);
+        endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
+        if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
         color = COLOR_WHITE;
     }
 
@@ -191,22 +191,22 @@ void configMenu(bool oldPinStatus)
             //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
             {
-                drawString(multiOptionsText[oldSelectedOption], 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
-                drawCharacter(selected, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
+                drawString(multiOptionsText[oldSelectedOption], true, 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
+                drawCharacter(selected, true, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
             }
             else
             {
                 u32 singleOldSelected = oldSelectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleOldSelected], 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
-                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
+                drawString(singleOptionsText[singleOldSelected], true, 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
+                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
             }
 
             if(selectedOption < multiOptionsAmount)
-                drawString(multiOptionsText[selectedOption], 10, multiOptions[selectedOption].posY, COLOR_RED);
+                drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
             else
             {
                 u32 singleSelected = selectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleSelected], 10, singleOptions[singleSelected].posY, COLOR_RED);
+                drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
             }
         }
         else
@@ -215,7 +215,7 @@ void configMenu(bool oldPinStatus)
             if(selectedOption < multiOptionsAmount)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
-                drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
+                drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
                 if(selectedOption == BRIGHTNESS) updateBrightness(multiOptions[BRIGHTNESS].enabled);
@@ -224,17 +224,17 @@ void configMenu(bool oldPinStatus)
             {
                 bool oldEnabled = singleOptions[selectedOption - multiOptionsAmount].enabled;
                 singleOptions[selectedOption - multiOptionsAmount].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
+                if(oldEnabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
             }
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
         if(selectedOption < multiOptionsAmount)
-            drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
+            drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
         else
         {
             u32 singleSelected = selectedOption - multiOptionsAmount;
-            if(singleOptions[singleSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
+            if(singleOptions[singleSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
         }
     }
 

@@ -101,29 +101,42 @@ void updateBrightness(u32 brightnessIndex)
     invokeArm11Function(ARM11);
 }
 
-void clearScreens(void)
-{   
+void clearScreens(bool clearTop, bool clearBottom)
+{
+    static bool clearTopTmp,
+                clearBottomTmp;
+    clearTopTmp = clearTop;
+    clearBottomTmp = clearBottom;
+
     void __attribute__((naked)) ARM11(void)
     {
         //Disable interrupts
         __asm(".word 0xF10C01C0");
 
         //Setting up two simultaneous memory fills using the GPU
-        vu32 *REGs_PSC0 = (vu32 *)0x10400010;
-        REGs_PSC0[0] = (u32)fb->top_left >> 3; //Start address
-        REGs_PSC0[1] = (u32)(fb->top_left + SCREEN_TOP_FBSIZE) >> 3; //End address
-        REGs_PSC0[2] = 0; //Fill value
-        REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
 
-        vu32 *REGs_PSC1 = (vu32 *)0x10400020;
-        REGs_PSC1[0] = (u32)fb->bottom >> 3; //Start address
-        REGs_PSC1[1] = (u32)(fb->bottom + SCREEN_BOTTOM_FBSIZE) >> 3; //End address
-        REGs_PSC1[2] = 0; //Fill value
-        REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
+        vu32 *REGs_PSC0 = (vu32 *)0x10400010,
+             *REGs_PSC1 = (vu32 *)0x10400020;
 
-        while(!((REGs_PSC0[3] & 2) && (REGs_PSC1[3] & 2)));
+        if(clearTopTmp)
+        {
+            REGs_PSC0[0] = (u32)fb->top_left >> 3; //Start address
+            REGs_PSC0[1] = (u32)(fb->top_left + SCREEN_TOP_FBSIZE) >> 3; //End address
+            REGs_PSC0[2] = 0; //Fill value
+            REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
+        }
 
-        if(fb->top_right != fb->top_left)
+        if(clearBottomTmp)
+        {
+            REGs_PSC1[0] = (u32)fb->bottom >> 3; //Start address
+            REGs_PSC1[1] = (u32)(fb->bottom + SCREEN_BOTTOM_FBSIZE) >> 3; //End address
+            REGs_PSC1[2] = 0; //Fill value
+            REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
+        }
+
+        while(!((!clearTopTmp || (REGs_PSC0[3] & 2)) && (!clearBottomTmp || (REGs_PSC1[3] & 2))));
+
+        if(fb->top_right != fb->top_left && clearTopTmp)
         {
             REGs_PSC0[0] = (u32)fb->top_right >> 3; //Start address
             REGs_PSC0[1] = (u32)(fb->top_right + SCREEN_TOP_FBSIZE) >> 3; //End address
@@ -136,6 +149,8 @@ void clearScreens(void)
         WAIT_FOR_ARM9();
     }
 
+    flushDCacheRange(&clearTopTmp, 1);
+    flushDCacheRange(&clearBottomTmp, 1);
     flushDCacheRange((void *)fb, sizeof(struct fb));
     invokeArm11Function(ARM11);
 }
@@ -246,14 +261,14 @@ void initScreens(void)
         flushDCacheRange((void *)fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 
-        clearScreens();
+        clearScreens(true, true);
 
         //Turn on backlight
         i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
     }
     else
     {
-        clearScreens();
+        clearScreens(true, true);
         updateBrightness(MULTICONFIG(BRIGHTNESS));
     }
 }
