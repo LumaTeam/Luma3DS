@@ -111,7 +111,7 @@ void main(void)
         u32 pressed = HID_PAD;
 
         //Save old options and begin saving the new boot configuration
-        configTemp = (configData.config & 0xFFFFFF80) | ((u32)isA9lh << 4);
+        configTemp = (configData.config & 0xFFFFFE00) | ((u32)isA9lh << 6);
 
         //If it's a MCU reboot, try to force boot options
         if(isA9lh && CFG_BOOTENV)
@@ -124,7 +124,7 @@ void main(void)
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
-                configTemp |= 1 << 5;
+                configTemp |= 1 << 7;
             }
 
             /* Else, force the last used boot options unless a button is pressed
@@ -159,7 +159,7 @@ void main(void)
                 firmSource = FIRMWARE_SYSNAND;
 
                 //Flag to tell loader to init SD
-                configTemp |= 1 << 6;
+                configTemp |= 1 << 8;
 
                 //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
                 if(pinExists && !shouldLoadConfigMenu)
@@ -199,25 +199,32 @@ void main(void)
                     firmSource = nandType;
                 }
 
-                //If we're booting EmuNAND, determine which one from the directional pad buttons, or otherwise from the config
-                if(nandType == FIRMWARE_EMUNAND)
+                //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
+                if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
+                {
+                    FirmwareSource temp;
                     switch(pressed & EMUNAND_BUTTONS)
                     {
                         case BUTTON_UP:
+                            temp = FIRMWARE_EMUNAND;
                             break;
                         case BUTTON_RIGHT:
-                            nandType = FIRMWARE_EMUNAND2;
+                            temp = FIRMWARE_EMUNAND2;
                             break;
                         case BUTTON_DOWN:
-                            nandType = FIRMWARE_EMUNAND3;
+                            temp = FIRMWARE_EMUNAND3;
                             break;
                         case BUTTON_LEFT:
-                            nandType = FIRMWARE_EMUNAND4;
+                            temp = FIRMWARE_EMUNAND4;
                             break;
                         default:
-                            nandType = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
+                            temp = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
                             break;
                     }
+
+                    if(nandType == FIRMWARE_EMUNAND) nandType = temp;
+                    else firmSource = temp;
+                }
             }
         }
     }

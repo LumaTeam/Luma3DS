@@ -47,7 +47,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFFDF) != configData.config)
+    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFF7F) != configData.config)
     {
         if(needConfig == CREATE_CONFIGURATION)
         {
@@ -57,7 +57,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         }
 
         //Merge the new options and new boot configuration
-        configData.config = (configData.config & 0xFFFFFF80) | (configTemp & 0x7F);
+        configData.config = (configData.config & 0xFFFFFE00) | (configTemp & 0x1FF);
 
         if(!fileWrite(&configData, CONFIG_PATH, sizeof(CfgData)))
             error("Error writing the configuration file");
@@ -71,20 +71,97 @@ void configMenu(bool oldPinStatus)
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )"
 #ifdef DEV
-                                      , "Dev. features: ErrDisp( ) UNITINFO( ) None( )"
+                                      , "Dev. features: ErrDisp( ) UNITINFO( ) Off( )"
 #endif
                                       };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
                                         "( ) Enable region/language emu. and ext. .code",
-                                        "( ) Show current NAND in System Settings",
+                                        "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Display splash screen before payloads"
 #ifdef DEV
                                       , "( ) Patch SVC/service/archive/ARM9 access"
 #endif
                                       };
+
+    const char *optionsDescription[]  = { "Select the default EmuNAND.\n"
+                                          "It will booted with no directional pad\n"
+                                          "buttons pressed",
+
+                                          "Select the screen brightness",
+
+                                          "Activate a PIN lock.\n"
+                                          "The PIN will be asked each time\n"
+                                          "Luma3DS boots.\n"
+                                          "4, 6 or 8 digits can be selected.\n"
+                                          "The ABXY buttons and the directional\n"
+                                          "pad can be used as keys",
+
+                                          "Select the New 3DS CPU mode.\n"
+                                          "It will be always enabled.\n"
+                                          "'Clock+L2' can cause issues with some\n"
+                                          "games",
+#ifdef DEV
+                                          "Select the developer features.\n"
+                                          "'ErrDisp' displays debug information\n"
+                                          "on the 'An error has occurred' screen.\n"
+                                          "'UNITINFO' makes the console be always\n"
+                                          "detected as a development unit (which\n"
+                                          "breaks online features and allows\n"
+                                          "booting some developer software).\n"
+                                          "'None' disables exception handlers\n"
+                                          "in FIRM",
+#endif
+                                          "If enabled SysNAND will be launched on\n"
+                                          "boot. Otherwise, an EmuNAND will.\n"
+                                          "Hold L on boot to switch NAND.\n"
+                                          "To use a different EmuNAND from the\n"
+                                          "default, hold a directional pad button\n"
+                                          "(Up/Right/Down/Left equal EmuNANDs\n"
+                                          "1/2/3/4)",
+
+                                          "If enabled, when holding R on boot\n"
+                                          "EmuNAND will be booted with the\n"
+                                          "SysNAND FIRM. Otherwise, SysNAND will\n"
+                                          "be booted with an EmuNAND FIRM.\n"
+                                          "To use a different EmuNAND from the\n"
+                                          "default, hold a directional pad button\n"
+                                          "(Up/Right/Down/Left equal EmuNANDs\n"
+                                          "1/2/3/4)",
+
+                                          "Enable overriding the region and\n"
+                                          "language configuration and the usage\n"
+                                          "of patched code binaries for specific\n"
+                                          "games.\n"
+                                          "Also makes certain DLCs for\n"
+                                          "out-of-region games work.\n"
+                                          "Refer to the wiki for instructions",
+
+                                          "Show the currently booted NAND in\n"
+                                          "System Settings (Sys = SysNAND,\n"
+                                          "Emu = EmuNAND 1, EmuX = EmuNAND X,\n"
+                                          "SysE = SysNAND with EmuNAND 1 FIRM,\n"
+                                          "SyEX = SysNAND with EmuNAND X FIRM,\n"
+                                          "EmXS = EmuNAND X with SysNAND FIRM)\n"
+                                          "or an user-defined custom string\n"
+                                          "(refer to the wiki for instructions)",
+
+                                          "Show the GBA boot screen when\n"
+                                          "launching GBA games",
+
+                                          "If enabled, the splash screen will be\n"
+                                          "displayed before launching payloads,\n"
+                                          "otherwise it will be displayed\n"
+                                          "afterwards.\n"
+                                          "Intended for splash screens that\n"
+                                          "display button hints"
+#ifdef DEV
+                                        , "Disable SVC, service, archive and ARM9\n"
+                                          "exheader access checks"
+#endif
+                                       };
 
     struct multiOption {
         u32 posXs[4];
@@ -150,6 +227,8 @@ void configMenu(bool oldPinStatus)
         color = COLOR_WHITE;
     }
 
+    drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
+
     u32 pressed = 0;
 
     //Boring configuration menu
@@ -208,6 +287,9 @@ void configMenu(bool oldPinStatus)
                 u32 singleSelected = selectedOption - multiOptionsAmount;
                 drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
             }
+
+            clearScreens(false, true);
+            drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
         }
         else
         {
@@ -240,12 +322,12 @@ void configMenu(bool oldPinStatus)
 
     u32 oldPinLength = MULTICONFIG(PIN);
 
-    //Preserve the last-used boot options (last 12 bits)
-    configData.config &= 0x3F;
+    //Preserve the last-used boot options (first 9 bits)
+    configData.config &= 0x1FF;
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        configData.config |= multiOptions[i].enabled << (i * 2 + 7);
+        configData.config |= multiOptions[i].enabled << (i * 2 + 9);
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 21);
 

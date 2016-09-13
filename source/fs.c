@@ -77,11 +77,10 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 
     if(result == FR_NO_PATH)
     {
-        char folder[256];
-
         for(u32 i = 1; path[i] != 0; i++)
            if(path[i] == '/')
            {
+                char folder[i + 1];
                 memcpy(folder, path, i);
                 folder[i] = 0;
                 f_mkdir(folder);

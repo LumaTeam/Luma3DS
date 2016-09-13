@@ -25,18 +25,18 @@
 #include "types.h"
 
 #define CONFIG(a)        (((configData.config >> (a + 21)) & 1) != 0)
-#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 7)) & 3)
+#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 9)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
 #define CONFIG_PATH         "/luma/config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 3
+#define CONFIG_VERSIONMINOR 4
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
-#define BOOTCFG_FIRM         BOOTCONFIG(3, 1)
-#define BOOTCFG_A9LH         BOOTCONFIG(4, 1)
-#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(5, 1)
-#define BOOTCFG_SAFEMODE     BOOTCONFIG(6, 1)
+#define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
+#define BOOTCFG_A9LH         BOOTCONFIG(6, 1)
+#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(7, 1)
+#define BOOTCFG_SAFEMODE     BOOTCONFIG(8, 1)
 
 enum multiOptions
 {
@@ -54,7 +54,7 @@ enum singleOptions
     AUTOBOOTSYS = 0,
     USESYSFIRM,
     USELANGEMUANDCODE,
-    SHOWNAND,
+    PATCHVERSTRING,
     SHOWGBABOOT,
     PAYLOADSPLASH
 #ifdef DEV

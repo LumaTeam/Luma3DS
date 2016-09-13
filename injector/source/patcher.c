@@ -67,6 +67,38 @@ static bool secureInfoExists(void)
     return exists;
 }
 
+static int loadCustomVerString(u16 *out, u32 *verStringSize)
+{
+    static const char path[] = "/luma/customversion.txt";
+
+    IFile file;
+    Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+    if(R_SUCCEEDED(ret))
+    {
+        u64 fileSize;
+        ret = IFile_GetSize(&file, &fileSize);
+
+        if(R_SUCCEEDED(ret) && fileSize <= 19)
+        {
+            *verStringSize = (u32)fileSize;
+            u8 buf[19];
+            u64 total;
+
+            ret = IFile_Read(&file, &total, buf, *verStringSize);
+
+            for(u32 i = 0; i < *verStringSize; i++)
+                ((u8 *)out)[2 * i] = buf[i];
+
+            *verStringSize *= 2;
+        }
+        else ret = -1;
+
+        IFile_Close(&file);
+    }
+
+    return ret;
+}
+
 static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/code_sections/[u64 titleID in hex, uppercase].bin"
@@ -87,8 +119,9 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
         {
             u64 total;
             ret = IFile_Read(&file, &total, code, fileSize);
-            IFile_Close(&file);
         }
+
+        IFile_Close(&file);
     }
 }
 
@@ -104,35 +137,44 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
     Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
     if(R_SUCCEEDED(ret))
     {
-        char buf[6];
-        u64 total;
+        u64 fileSize;
+        ret = IFile_GetSize(&file, &fileSize);
 
-        ret = IFile_Read(&file, &total, buf, 6);
-        IFile_Close(&file);
-
-        if(!R_SUCCEEDED(ret) || total < 6) return -1;
-
-        for(u32 i = 0; i < 7; ++i)
+        if(R_SUCCEEDED(ret) && fileSize == 6)
         {
-            static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
+            char buf[6];
+            u64 total;
 
-            if(memcmp(buf, regions[i], 3) == 0)
+            ret = IFile_Read(&file, &total, buf, 6);
+
+            if(R_SUCCEEDED(ret))
             {
-                *regionId = (u8)i;
-                break;
-            }
-        }
+                for(u32 i = 0; i < 7; ++i)
+                {
+                    static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
+
+                    if(memcmp(buf, regions[i], 3) == 0)
+                    {
+                        *regionId = (u8)i;
+                        break;
+                    }
+                }
         
-        for(u32 i = 0; i < 12; ++i)
-        {
-            static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
+                for(u32 i = 0; i < 12; ++i)
+                {
+                    static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
 
-            if(memcmp(buf + 4, languages[i], 2) == 0)
-            {
-                *languageId = (u8)i;
-                break;
+                    if(memcmp(buf + 4, languages[i], 2) == 0)
+                    {
+                        *languageId = (u8)i;
+                        break;
+                    }
+                }
             }
         }
+        else ret = -1;
+
+        IFile_Close(&file);
     }
 
     return ret;
@@ -325,7 +367,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01
             };
 
-            u8 mostRecentFpdVer = 0x06;
+            u8 mostRecentFpdVer = 0x07;
 
             u8 *fpdVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
 
@@ -342,30 +384,58 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(CONFIG(SHOWNAND))
+            if(CONFIG(PATCHVERSTRING))
             {
                 static const u16 verPattern[] = u"Ver.";
-                const u32 currentNand = BOOTCFG_NAND;
-                const u32 matchingFirm = BOOTCFG_FIRM == (currentNand != 0);
+                static u16 *verString;
+                u32 verStringSize;
 
-                static const u16 *verString;
-                switch(currentNand)
+                u16 customVerString[19] = {0};
+                if(R_SUCCEEDED(loadCustomVerString(customVerString, &verStringSize))) verString = customVerString;
+                else
                 {
-                    case 1:
-                        verString = matchingFirm ? u" Emu" : u"EmuS";
-                        break;
-                    case 2:
-                        verString = matchingFirm ? u"Emu2" : u"Em2S";
-                        break;
-                    case 3:
-                        verString = matchingFirm ? u"Emu3" : u"Em3S";
-                        break;
-                    case 4:
-                        verString = matchingFirm ? u"Emu4" : u"Em4S";
-                        break;
-                    default:
-                        verString = matchingFirm ? u" Sys" : u"SysE";
-                        break;
+                    verStringSize = 8;
+                    u32 currentNand = BOOTCFG_NAND,
+                        currentFirm = BOOTCFG_FIRM;
+                    bool matchingFirm = (currentFirm != 0) == (currentNand != 0);
+
+                    static u16 verStringEmu[] = u"Emu ",
+                               verStringEmuSys[] = u"Em S",
+                               verStringSysEmu[] = u"SyE ";
+
+                    switch(currentNand)
+                    {
+                        case 1:
+                            verString = matchingFirm ? u" Emu" : u"EmuS";
+                            break;
+                        case 2:
+                        case 3:
+                        case 4:
+                        {
+                            if(matchingFirm)
+                            {
+                                verStringEmu[3] = '0' + currentNand;
+                                verString = verStringEmu;
+                            }
+                            else
+                            {
+                                verStringEmuSys[2] = '0' + currentNand;
+                                verString = verStringEmuSys;
+                            }
+                            break;
+                        }
+                        default:
+                            if(matchingFirm) verString = u" Sys";
+                            else
+                            {
+                                if(currentFirm == 1) verString = u"SysE";
+                                else
+                                {
+                                    verStringSysEmu[3] = '0' + currentFirm;
+                                    verString = verStringSysEmu;
+                                }
+                            }
+                    }
                 }
 
                 //Patch Ver. string
@@ -373,7 +443,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     verPattern,
                     sizeof(verPattern) - sizeof(u16), 0,
                     verString,
-                    sizeof(verPattern) - sizeof(u16), 1
+                    verStringSize, 1
                 );
             }
 

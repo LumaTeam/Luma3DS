@@ -138,10 +138,8 @@ bool verifyPin(void)
     if(messageSize > 0 && messageSize < 800)
     {
         char message[messageSize + 1];
-
         fileRead(message, messagePath, 0);
         message[messageSize] = 0;
-
         drawString(message, false, 10, 10, COLOR_WHITE);
     }
 
