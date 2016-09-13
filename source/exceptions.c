@@ -94,6 +94,10 @@ void detectAndProcessExceptionDumps(void)
             "FIQ", "undefined instruction", "prefetch abort", "data abort"
         };
 
+        const char *specialExceptions[] = {
+            "(kernel panic)", "(svcBreak)"
+        };
+
         const char *registerNames[] = {
             "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "SP", "LR", "PC", "CPSR", "FPEXC"
@@ -104,73 +108,64 @@ void detectAndProcessExceptionDumps(void)
         initScreens();
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
-        int posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
+        int posY = drawString(dumpHeader->processor == 11 ? "Processor:       ARM11 (core  )" : "Processor:       ARM9", 10, 30, COLOR_WHITE);
         if(dumpHeader->processor == 11) drawCharacter('0' + dumpHeader->core, 10 + 29 * SPACING_X, 30, COLOR_WHITE);
 
-        posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
-        posY = drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
+        posY = drawString("Exception type:  ", 10, posY + SPACING_Y, COLOR_WHITE);
+        drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
 
         if(dumpHeader->type == 2)
         {
             if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 4)
             {
-                u32 instr = *(vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize - 4);
-                if(instr == 0xE12FFF7E)
-                    posY = drawString("(kernel panic)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
-                else if(instr == 0xEF00003C)
-                    posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                u32 instr = *(vu32 *)(stackDump - 4);
+                if(instr == 0xE12FFF7E) drawString(specialExceptions[0], 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                else if(instr == 0xEF00003C) drawString(specialExceptions[1], 10 + 32 * SPACING_X, posY, COLOR_WHITE);
             }
             else if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 2)
             {
-                u16 instr = *(vu16 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader) + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize - 2);
-                if(instr == 0xDF3C)
-                    posY = drawString("(svcBreak)", 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+                u16 instr = *(vu16 *)(stackDump - 2);
+                if(instr == 0xDF3C) drawString(specialExceptions[1], 10 + 32 * SPACING_X, posY, COLOR_WHITE);
             }
         }
 
         if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
         {
-            posY += SPACING_Y;
             char processName[] = "Current process:         ";
             memcpy(processName + sizeof(processName) - 9, (void *)additionalData, 8);
-            posY = drawString(processName, 10, posY, COLOR_WHITE);
+            posY = drawString(processName, 10, posY + SPACING_Y, COLOR_WHITE);
         }
 
-        posY += 3 * SPACING_Y;
+        posY += SPACING_Y;
 
         for(u32 i = 0; i < 17; i += 2)
         {
-            posY = drawString(registerNames[i], 10, posY, COLOR_WHITE);
+            posY = drawString(registerNames[i], 10, posY + SPACING_Y, COLOR_WHITE);
             hexItoa(regs[i], hexString, 8);
-            posY = drawString(hexString, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
+            drawString(hexString, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
 
-            if(dumpHeader->processor != 9 || i != 16)
+            if(i != 16 || dumpHeader->processor != 9)
             {
-                posY = drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
+                drawString(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
                 hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8);
-                posY = drawString(hexString, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
+                drawString(hexString, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
-
-            posY += SPACING_Y;
         }
 
-        posY += 2 * SPACING_Y;
+        posY += SPACING_Y;
 
         u32 mode = regs[16] & 0xF;
         if(dumpHeader->type == 3 && (mode == 7 || mode == 11))
-        {
-            posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, COLOR_YELLOW) + 2 * SPACING_Y;
-            if(dumpHeader->processor != 9) posY -= SPACING_Y;
-        }
+            posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY + SPACING_Y, COLOR_YELLOW) + SPACING_Y;
 
         selectScreen(true);
 
-        int posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + 2 * SPACING_Y;
+        int posYBottom = drawString("Stack dump:", 10, 10, COLOR_WHITE) + SPACING_Y;
 
         for(u32 line = 0; line < 19 && stackDump < additionalData; line++)
         {
             hexItoa(regs[13] + 8 * line, hexString, 8);
-            drawString(hexString, 10, posYBottom, COLOR_WHITE);
+            posYBottom = drawString(hexString, 10, posYBottom + SPACING_Y, COLOR_WHITE);
             drawCharacter(':', 10 + 8 * SPACING_X, posYBottom, COLOR_WHITE);
 
             for(u32 i = 0; i < 8 && stackDump < additionalData; i++, stackDump++)
@@ -179,13 +174,10 @@ void detectAndProcessExceptionDumps(void)
                 hexItoa(*stackDump, byteString, 2);
                 drawString(byteString, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
             }
-
-            posYBottom += SPACING_Y;
         }
 
         selectScreen(false);
 
-        u32 size = dumpHeader->totalSize;
         char path[42];
         char fileName[] = "crash_dump_00000000.dmp";
         const char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
@@ -195,16 +187,16 @@ void detectAndProcessExceptionDumps(void)
         concatenateStrings(path, "/");
         concatenateStrings(path, fileName);
 
-        if(fileWrite((void *)dumpHeader, path, size))
+        if(fileWrite((void *)dumpHeader, path, dumpHeader->totalSize))
         {
-            posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
-            posY = drawString(path, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
+            posY = drawString("You can find a dump in the following file:", 10, posY + SPACING_Y, COLOR_WHITE);
+            posY = drawString(path, 10, posY + SPACING_Y, COLOR_WHITE) + SPACING_Y;
         }
-        else posY = drawString("Error writing the dump file", 10, posY, COLOR_RED) + SPACING_Y;
+        else posY = drawString("Error writing the dump file", 10, posY + SPACING_Y, COLOR_RED);
 
-        drawString("Press any button to shutdown", 10, posY, COLOR_WHITE);
+        drawString("Press any button to shutdown", 10, posY + SPACING_Y, COLOR_WHITE);
 
-        memset32((void *)dumpHeader, 0, size);
+        memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
 
         waitInput();
         mcuPowerOff();
