@@ -58,7 +58,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
         }
 
         //Check for Gateway EmuNAND
-        else if(!sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+        else if(i != 2 && !sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
         {
             emuOffset = nandOffset;
             *emuHeader = nandOffset + nandSize;
