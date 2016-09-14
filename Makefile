@@ -24,6 +24,8 @@ dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
+dir_menuhax := menuhax
+dir_pathchanger := pathchanger
 dir_build := build
 dir_out := out
 
@@ -47,7 +49,7 @@ title := \"$(name) $(revision) configuration\"
 endif
 
 .PHONY: all
-all: launcher a9lh ninjhax
+all: launcher a9lh ninjhax menuhax
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat
@@ -57,6 +59,9 @@ a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
+
+.PHONY: menuhax
+menuhax: $(dir_out)/menuhax/boot.3dsx
 
 .PHONY: release
 ifeq ($(strip $(DEV)),TRUE)
@@ -82,6 +87,12 @@ $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
 
+$(dir_out)/menuhax/boot.3dsx: $(dir_menuhax)/menuhax.diff $(dir_out)
+	@mkdir -p "$(@D)"
+	@cd $(dir_ninjhax); patch -p1 < ../$(dir_menuhax)/menuhax.diff; $(MAKE) $(FLAGS); git reset --hard
+	@mv $(dir_out)/$(name).3dsx $@
+	@rm $(dir_out)/$(name).smdh
+
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
@@ -90,10 +101,15 @@ $(dir_out)/3ds/$(name): $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
-$(dir_out)/$(name)$(revision).7z: launcher a9lh ninjhax
+$(dir_out)/pathchanger: $(dir_pathchanger)/pathchanger.py $(dir_pathchanger)/prebuilt $(dir_out)
+	@mkdir -p "$@"
+	@cp $(dir_pathchanger)/pathchanger.py $@
+	@cp -rfT $(dir_pathchanger)/prebuilt $@
+
+$(dir_out)/$(name)$(revision).7z: all $(dir_out)/pathchanger
 	@7z a -mx $@ ./$(@D)/*
 
-$(dir_out)/$(name)$(revision)-dev.7z: launcher a9lh ninjhax
+$(dir_out)/$(name)$(revision)-dev.7z: all $(dir_out)/pathchanger
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
