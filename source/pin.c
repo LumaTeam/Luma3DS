@@ -59,7 +59,7 @@ void newPin(bool allowSkipping)
     u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
 
     u8 cnt = 0;
-    int charDrawPos = 16 * SPACING_X;
+    u32 charDrawPos = 16 * SPACING_X;
 
     while(cnt < length)
     {
@@ -130,12 +130,12 @@ bool verifyPin(void)
 
     bool unlock = false;
     u8 cnt = 0;
-    int charDrawPos = 16 * SPACING_X;
+    u32 charDrawPos = 16 * SPACING_X;
 
     const char *messagePath = "/luma/pinmessage.txt";
 
     u32 messageSize = getFileSize(messagePath);
-    if(messageSize > 0 && messageSize < 800)
+    if(messageSize > 0 && messageSize <= 800)
     {
         char message[messageSize + 1];
         fileRead(message, messagePath, 0);

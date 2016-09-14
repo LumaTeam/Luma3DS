@@ -46,13 +46,13 @@ void memset32(void *dest, u32 filler, u32 size)
 
 int memcmp(const void *buf1, const void *buf2, u32 size)
 {
-    const u8 *buf1c = (const u8 *)buf1;
-    const u8 *buf2c = (const u8 *)buf2;
+    const u8 *buf1c = (const u8 *)buf1,
+             *buf2c = (const u8 *)buf2;
 
     for(u32 i = 0; i < size; i++)
     {
         int cmp = buf1c[i] - buf2c[i];
-        if(cmp) return cmp;
+        if(cmp != 0) return cmp;
     }
 
     return 0;

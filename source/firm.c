@@ -580,7 +580,7 @@ static inline void launchFirm(FirmwareType firmType)
 #endif
 
     //Copy FIRM sections to respective memory locations
-    for(; sectionNum < 4 && section[sectionNum].size; sectionNum++)
+    for(; sectionNum < 4 && section[sectionNum].size != 0; sectionNum++)
         memcpy(section[sectionNum].address, (u8 *)firm + section[sectionNum].offset, section[sectionNum].size);
 
     //Determine the ARM11 entry to use

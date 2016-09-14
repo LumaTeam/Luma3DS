@@ -139,14 +139,15 @@ void configMenu(bool oldPinStatus)
                                           "out-of-region games work.\n"
                                           "Refer to the wiki for instructions",
 
-                                          "Show the currently booted NAND in\n"
-                                          "System Settings (Sys = SysNAND,\n"
-                                          "Emu = EmuNAND 1, EmuX = EmuNAND X,\n"
+                                          "Show the currently booted NAND\n"
+                                          "(Sys = SysNAND, Emu = EmuNAND 1,\n"
+                                          "EmuX = EmuNAND X,\n"
                                           "SysE = SysNAND with EmuNAND 1 FIRM,\n"
                                           "SyEX = SysNAND with EmuNAND X FIRM,\n"
                                           "EmXS = EmuNAND X with SysNAND FIRM)\n"
-                                          "or an user-defined custom string\n"
-                                          "(refer to the wiki for instructions)",
+                                          "or an user-defined custom string in\n"
+                                          "System Settings.\n"
+                                          "Refer to the wiki for instructions",
 
                                           "Show the GBA boot screen when\n"
                                           "launching GBA games",

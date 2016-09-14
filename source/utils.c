@@ -29,8 +29,8 @@
 
 u32 waitInput(void)
 {
-    u32 pressedKey = 0,
-        key;
+    bool pressedKey = false;
+    u32 key;
 
     //Wait for no keys to be pressed
     while(HID_PAD);
@@ -46,7 +46,7 @@ u32 waitInput(void)
         for(u32 i = 0x13000; i > 0; i--)
         {
             if(key != HID_PAD) break;
-            if(i == 1) pressedKey = 1;
+            if(i == 1) pressedKey = true;
         }
     }
     while(!pressedKey);

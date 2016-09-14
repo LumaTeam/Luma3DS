@@ -405,7 +405,7 @@ void arm9Loader(u8 *arm9Section)
     //Firm keys
     u8 __attribute__((aligned(4))) keyY[0x10];
     u8 __attribute__((aligned(4))) arm9BinCTR[0x10];
-    u8 arm9BinSlot = a9lVersion ? 0x16 : 0x15;
+    u8 arm9BinSlot = a9lVersion != 0 ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, arm9Section + 0x10, 0x10);
@@ -414,7 +414,7 @@ void arm9Loader(u8 *arm9Section)
     //Calculate the size of the ARM9 binary
     u32 arm9BinSize = 0;
     //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
-    for(u8 *tmp = arm9Section + 0x30; *tmp; tmp++)
+    for(u8 *tmp = arm9Section + 0x30; *tmp != 0; tmp++)
         arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
 
     if(a9lVersion)

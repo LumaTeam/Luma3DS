@@ -187,9 +187,9 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **fre
     else isRelease = rev[4] == 0;
 
 #ifdef DEV
-    info->flags = 1 /* dev branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
+    info->flags = 1 /* dev build */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 #else
-    info->flags = 0 /* master branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
+    info->flags = 0 /* regular build */ | ((isRelease ? 1 : 0) << 1) /* is release */;
 #endif
 
     arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc

@@ -34,7 +34,7 @@ u32 strlen(const char *string)
 
 void concatenateStrings(char *destination, const char *source)
 {
-    int i = strlen(source),
+    u32 i = strlen(source),
         j = strlen(destination);
 
     memcpy(&destination[j], source, i + 1);
@@ -51,5 +51,5 @@ void hexItoa(u32 number, char *out, u32 digits)
         number >>= 4;
     }
 
-    for(; i < digits; i++) out[digits - 1 - i] = '0';
+    while(i < digits) out[digits - 1 - i++] = '0';
 }

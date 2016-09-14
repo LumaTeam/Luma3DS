@@ -117,8 +117,8 @@ static bool i2cSelectRegister(u8 bus_id, u8 reg)
 
 bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
 {
-    u8 bus_id = i2cGetDeviceBusId(dev_id);
-    u8 dev_addr = i2cGetDeviceRegAddr(dev_id);
+    u8 bus_id = i2cGetDeviceBusId(dev_id),
+       dev_addr = i2cGetDeviceRegAddr(dev_id);
 
     for(u32 i = 0; i < 8; i++)
     {
