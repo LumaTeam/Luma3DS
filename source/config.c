@@ -97,7 +97,7 @@ void configMenu(bool oldPinStatus)
                                           "Luma3DS boots.\n"
                                           "4, 6 or 8 digits can be selected.\n"
                                           "The ABXY buttons and the directional\n"
-                                          "pad can be used as keys",
+                                          "pad buttons can be used as keys",
 
                                           "Select the New 3DS CPU mode.\n"
                                           "It will be always enabled.\n"
@@ -149,11 +149,11 @@ void configMenu(bool oldPinStatus)
                                           "System Settings.\n"
                                           "Refer to the wiki for instructions",
 
-                                          "Show the GBA boot screen when\n"
-                                          "launching GBA games",
+                                          "Show the GBA boot screen when booting\n"
+                                          "GBA games",
 
                                           "If enabled, the splash screen will be\n"
-                                          "displayed before launching payloads,\n"
+                                          "displayed before booting payloads,\n"
                                           "otherwise it will be displayed\n"
                                           "afterwards.\n"
                                           "Intended for splash screens that\n"
