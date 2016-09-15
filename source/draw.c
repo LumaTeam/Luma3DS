@@ -34,8 +34,8 @@
 
 bool loadSplash(void)
 {
-    const char *topSplashPath = "/luma/splash.bin",
-               *bottomSplashPath = "/luma/splashbottom.bin";
+    const char topSplashPath[] = "/luma/splash.bin",
+               bottomSplashPath[] = "/luma/splashbottom.bin";
 
     bool isTopSplashValid = getFileSize(topSplashPath) == SCREEN_TOP_FBSIZE,
          isBottomSplashValid = getFileSize(bottomSplashPath) == SCREEN_BOTTOM_FBSIZE;

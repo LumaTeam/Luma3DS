@@ -58,7 +58,8 @@ void mcuReboot(void)
 {
     if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens(true, true);
 
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
+    //Ensure that all memory transfers have completed and that the data cache has been flushed
+    flushEntireDCache();
 
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(true);
@@ -68,17 +69,15 @@ void mcuPowerOff(void)
 {
     if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens(true, true);
 
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
+    //Ensure that all memory transfers have completed and that the data cache has been flushed
+    flushEntireDCache();
     
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
     while(true);
 }
 
-//TODO: add support for TIMER IRQ
 static inline void startChrono(u64 initialTicks)
 {
-    //Based on a NATIVE_FIRM disassembly
-
     REG_TIMER_CNT(0) = 0; //67MHz
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
 

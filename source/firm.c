@@ -339,7 +339,6 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
             if(!fileRead(firm, "/luma/firmware.bin", 0x400000) || section[2].address != (u8 *)0x8006800)
                 error("An old unsupported FIRM has been detected.\nCopy a valid firmware.bin in /luma to boot");
 
-            //No assumption regarding FIRM version
             firmVersion = 0xFFFFFFFF;
         }
     }
@@ -595,7 +594,8 @@ static inline void launchFirm(FirmwareType firmType)
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
 
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
+    //Ensure that all memory transfers have completed and that the caches have been flushed
+    flushEntireDCache();
     flushEntireICache();
 
     //Final jump to ARM9 kernel

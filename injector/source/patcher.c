@@ -67,36 +67,34 @@ static bool secureInfoExists(void)
     return exists;
 }
 
-static int loadCustomVerString(u16 *out, u32 *verStringSize)
+static void loadCustomVerString(u16 *out, u32 *verStringSize)
 {
     static const char path[] = "/luma/customversion.txt";
 
     IFile file;
-    Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
-    if(R_SUCCEEDED(ret))
+
+    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)))
     {
         u64 fileSize;
-        ret = IFile_GetSize(&file, &fileSize);
 
-        if(R_SUCCEEDED(ret) && fileSize <= 19)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 19)
         {
-            *verStringSize = (u32)fileSize;
             u8 buf[19];
             u64 total;
 
-            ret = IFile_Read(&file, &total, buf, *verStringSize);
+            if(R_SUCCEEDED(IFile_Read(&file, &total, buf, fileSize)))
+            {
+                *verStringSize = (u32)fileSize;
 
-            for(u32 i = 0; i < *verStringSize; i++)
-                ((u8 *)out)[2 * i] = buf[i];
+                for(u32 i = 0; i < *verStringSize; i++)
+                    ((u8 *)out)[2 * i] = buf[i];
 
-            *verStringSize *= 2;
+                *verStringSize *= 2;
+            }
         }
-        else ret = -1;
 
         IFile_Close(&file);
     }
-
-    return ret;
 }
 
 static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
@@ -108,24 +106,22 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
     progIdToStr(path + 35, progId);
 
     IFile file;
-    Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
 
-    if(R_SUCCEEDED(ret))
+    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)))
     {
         u64 fileSize;
-        ret = IFile_GetSize(&file, &fileSize);
 
-        if(R_SUCCEEDED(ret) && fileSize <= size)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= size)
         {
             u64 total;
-            ret = IFile_Read(&file, &total, code, fileSize);
+            IFile_Read(&file, &total, code, fileSize);
         }
 
         IFile_Close(&file);
     }
 }
 
-static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
+static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
@@ -134,22 +130,19 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
     progIdToStr(path + 29, progId);
 
     IFile file;
-    Result ret = fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ);
-    if(R_SUCCEEDED(ret))
+
+    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)))
     {
         u64 fileSize;
-        ret = IFile_GetSize(&file, &fileSize);
 
-        if(R_SUCCEEDED(ret) && fileSize == 6)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize == 6)
         {
             char buf[6];
             u64 total;
 
-            ret = IFile_Read(&file, &total, buf, 6);
-
-            if(R_SUCCEEDED(ret))
+            if(R_SUCCEEDED(IFile_Read(&file, &total, buf, 6)))
             {
-                for(u32 i = 0; i < 7; ++i)
+                for(u32 i = 0; i < 7; i++)
                 {
                     static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
 
@@ -160,7 +153,7 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
                     }
                 }
         
-                for(u32 i = 0; i < 12; ++i)
+                for(u32 i = 0; i < 12; i++)
                 {
                     static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
 
@@ -172,12 +165,9 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
                 }
             }
         }
-        else ret = -1;
 
         IFile_Close(&file);
     }
-
-    return ret;
 }
 
 static u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
@@ -367,11 +357,11 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01
             };
 
-            u8 mostRecentFpdVer = 0x07;
+            u8 mostRecentFpdVer = 7;
 
             u8 *fpdVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
 
-            //Allow online access to work with old friends modules, without breaking newer firmwares
+            //Allow online access to work with old friends modules
             if(fpdVer != NULL && fpdVer[9] < mostRecentFpdVer) fpdVer[9] = mostRecentFpdVer;
 
             break;
@@ -391,7 +381,9 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 u32 verStringSize;
 
                 u16 customVerString[19] = {0};
-                if(R_SUCCEEDED(loadCustomVerString(customVerString, &verStringSize))) verString = customVerString;
+                loadCustomVerString(customVerString, &verStringSize);
+
+                if(customVerString[0] != 0) verString = customVerString;
                 else
                 {
                     verStringSize = 8;
@@ -442,7 +434,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 //Patch Ver. string
                 patchMemory(code, size,
                     verPattern,
-                    sizeof(verPattern) - sizeof(u16), 0,
+                    sizeof(verPattern) - 2, 0,
                     verString,
                     verStringSize, 1
                 );
@@ -514,10 +506,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 //Use SecureInfo_C
                 patchMemory(code, size, 
                     secureinfoFilenamePattern, 
-                    sizeof(secureinfoFilenamePattern) - sizeof(u16),
-                    sizeof(secureinfoFilenamePattern) - sizeof(u16), 
+                    sizeof(secureinfoFilenamePattern) - 2,
+                    sizeof(secureinfoFilenamePattern) - 2, 
                     secureinfoFilenamePatch, 
-                    sizeof(secureinfoFilenamePatch) - sizeof(u16), 2
+                    sizeof(secureinfoFilenamePatch) - 2, 2
                 );
             }
 
@@ -605,9 +597,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         default:
             if(CONFIG(USELANGEMUANDCODE))
             {
-                u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
-
-                if(tidHigh == 0x0004000)
+                if((u32)((progId & 0xFFFFFFF000000000LL) >> 0x24) == 0x0004000)
                 {
                     //External .code section loading
                     loadTitleCodeSection(progId, code, size);
@@ -615,11 +605,11 @@ void patchCode(u64 progId, u8 *code, u32 size)
                     //Language emulation
                     u8 regionId = 0xFF,
                        languageId = 0xFF;
+                    loadTitleLocaleConfig(progId, &regionId, &languageId);
 
-                    if(R_SUCCEEDED(loadTitleLocaleConfig(progId, &regionId, &languageId)))
+                    if(regionId != 0xFF || regionId != 0xFF)
                     {
                         u32 CFGUHandleOffset;
-
                         u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
 
                         if(CFGU_GetConfigInfoBlk2_endPos != NULL)
