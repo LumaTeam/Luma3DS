@@ -174,7 +174,7 @@ void main(void)
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
-                bool shouldLoadPayload = ((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
+                bool shouldLoadPayload = ((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
                                          ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1));
 
                 if(shouldLoadPayload) loadPayload(pressed);
