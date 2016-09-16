@@ -102,12 +102,12 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize)
                     else if((buf[i] & 0xF0) == 0xE0 && i + 2 < fileSizeTmp && (buf[i + 1] & 0xC0) == 0x80 && (buf[i + 2] & 0xC0) == 0x80)
                     {
                         increase = 3;
-                        out[finalSize++] = (u16)(((buf[i] & 0x1F) << 12) | ((buf[i + 1] & 0x3F) << 6) | (buf[i + 2] & 0x3F));
+                        out[finalSize++] = (u16)(((buf[i] & 0xF) << 12) | ((buf[i + 1] & 0x3F) << 6) | (buf[i + 2] & 0x3F));
                     }
                     else if((buf[i] & 0xF8) == 0xF0 && i + 3 < fileSizeTmp && finalSize <= 17 && (buf[i + 1] & 0xC0) == 0x80 && (buf[i + 2] & 0xC0) == 0x80 && (buf[i + 3] & 0xC0) == 0x80)
                     {
                         increase = 4;
-                        u32 value = (u32)(((buf[i] & 0x1F) << 18) | ((buf[i + 1] & 0x3F) << 12) | ((buf[i + 2] & 0x3F) << 6) | (buf[i + 3] & 0x3F)) - 0x10000;
+                        u32 value = (u32)(((buf[i] & 7) << 18) | ((buf[i + 1] & 0x3F) << 12) | ((buf[i + 2] & 0x3F) << 6) | (buf[i + 3] & 0x3F)) - 0x10000;
                         out[finalSize++] = 0xD800 | (u16)(value >> 10);
                         out[finalSize++] = 0xDC00 | (u16)(value & 0x3FF);
                     }
