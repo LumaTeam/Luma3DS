@@ -77,19 +77,44 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize)
     {
         u64 fileSize;
 
-        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 19)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 76)
         {
-            u8 buf[19];
+            u8 buf[76];
             u64 total;
 
             if(R_SUCCEEDED(IFile_Read(&file, &total, buf, fileSize)))
             {
-                *verStringSize = (u32)fileSize;
+                u32 fileSizeTmp = (u32)fileSize,
+                    finalSize = 0;
 
-                for(u32 i = 0; i < *verStringSize; i++)
-                    ((u8 *)out)[2 * i] = buf[i];
+                for(u32 i = 0, increase; i < fileSizeTmp && finalSize <= 18; i += increase)
+                {
+                    if((buf[i] & 0x80) == 0)
+                    {
+                        increase = 1;
+                        out[finalSize++] = (u16)buf[i];
+                    }
+                    else if((buf[i] & 0xE0) == 0xC0 && i + 1 < fileSizeTmp && (buf[i + 1] & 0xC0) == 0x80)
+                    {
+                        increase = 2;
+                        out[finalSize++] = (u16)(((buf[i] & 0x1F) << 6) | (buf[i + 1] & 0x3F));
+                    }
+                    else if((buf[i] & 0xF0) == 0xE0 && i + 2 < fileSizeTmp && (buf[i + 1] & 0xC0) == 0x80 && (buf[i + 2] & 0xC0) == 0x80)
+                    {
+                        increase = 3;
+                        out[finalSize++] = (u16)(((buf[i] & 0x1F) << 12) | ((buf[i + 1] & 0x3F) << 6) | (buf[i + 2] & 0x3F));
+                    }
+                    else if((buf[i] & 0xF8) == 0xF0 && i + 3 < fileSizeTmp && finalSize <= 17 && (buf[i + 1] & 0xC0) == 0x80 && (buf[i + 2] & 0xC0) == 0x80 && (buf[i + 3] & 0xC0) == 0x80)
+                    {
+                        increase = 4;
+                        u32 value = (u32)(((buf[i] & 0x1F) << 18) | ((buf[i + 1] & 0x3F) << 12) | ((buf[i + 2] & 0x3F) << 6) | (buf[i + 3] & 0x3F)) - 0x10000;
+                        out[finalSize++] = 0xD800 | (u16)(value >> 10);
+                        out[finalSize++] = 0xDC00 | (u16)(value & 0x3FF);
+                    }
+                    else break;
+                }
 
-                *verStringSize *= 2;
+                if(finalSize > 0) *verStringSize = finalSize * 2;
             }
         }
 
