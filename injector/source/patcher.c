@@ -77,16 +77,18 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize)
     {
         u64 fileSize;
 
-        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 57)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 60)
         {
-            u8 buf[57];
+            u8 buf[fileSize];
             u64 total;
 
             if(R_SUCCEEDED(IFile_Read(&file, &total, buf, fileSize)))
             {
+                static const u8 bom[] = {0xEF, 0xBB, 0xBF};
                 u32 finalSize = 0;
 
-                for(u32 i = 0, fileSizeTmp = (u32)fileSize, increase; i < fileSizeTmp && finalSize <= 18; i += increase)
+                for(u32 increase, fileSizeTmp = (u32)fileSize, i = (fileSizeTmp > 2 && memcmp(buf, bom, sizeof(bom)) == 0) ? 3 : 0;
+                    i < fileSizeTmp && finalSize < 19; i += increase)
                 {
                     if((buf[i] & 0x80) == 0)
                     {
