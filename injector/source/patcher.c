@@ -87,23 +87,24 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize)
                 static const u8 bom[] = {0xEF, 0xBB, 0xBF};
                 u32 finalSize = 0;
 
-                for(u32 increase, fileSizeTmp = (u32)fileSize, i = (fileSizeTmp > 2 && memcmp(buf, bom, sizeof(bom)) == 0) ? 3 : 0;
-                    i < fileSizeTmp && finalSize < 19; i += increase)
+                //Convert from UTF-8 to UTF-16 (Nintendo doesn't support 4-byte UTF-16, so 4-byte UTF-8 is unsupported)
+                for(u32 increase, fileSizeTmp = (u32)fileSize, i = (fileSizeTmp > 2 && memcmp(buf, bom, 3) == 0) ? 3 : 0;
+                    i < fileSizeTmp && finalSize < 19; i += increase, finalSize++)
                 {
                     if((buf[i] & 0x80) == 0)
                     {
                         increase = 1;
-                        out[finalSize++] = (u16)buf[i];
+                        out[finalSize] = (u16)buf[i];
                     }
                     else if((buf[i] & 0xE0) == 0xC0 && i + 1 < fileSizeTmp && (buf[i + 1] & 0xC0) == 0x80)
                     {
                         increase = 2;
-                        out[finalSize++] = (u16)(((buf[i] & 0x1F) << 6) | (buf[i + 1] & 0x3F));
+                        out[finalSize] = (u16)(((buf[i] & 0x1F) << 6) | (buf[i + 1] & 0x3F));
                     }
                     else if((buf[i] & 0xF0) == 0xE0 && i + 2 < fileSizeTmp && (buf[i + 1] & 0xC0) == 0x80 && (buf[i + 2] & 0xC0) == 0x80)
                     {
                         increase = 3;
-                        out[finalSize++] = (u16)(((buf[i] & 0xF) << 12) | ((buf[i + 1] & 0x3F) << 6) | (buf[i + 2] & 0x3F));
+                        out[finalSize] = (u16)(((buf[i] & 0xF) << 12) | ((buf[i + 1] & 0x3F) << 6) | (buf[i + 2] & 0x3F));
                     }
                     else break;
                 }
@@ -171,7 +172,7 @@ static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
                         break;
                     }
                 }
-        
+
                 for(u32 i = 0; i < 12; i++)
                 {
                     static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
