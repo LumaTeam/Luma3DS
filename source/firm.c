@@ -395,7 +395,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     }
 
     //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH
-    else if(!isA9lh && firmVersion >= 0x29) setRSAMod0DerivedKeys();
+    else if(!isA9lh && firmVersion >= 0x29) set6x7xKeys();
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,

@@ -77,7 +77,6 @@ void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 col
 u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color)
 {
     for(u32 i = 0, line_i = 0; i < strlen(string); i++)
-    {
         switch(string[i])
         {
             case '\n':
@@ -103,8 +102,6 @@ u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 col
                 line_i++;
                 break;
         }
-
-    }
 
     return posY;
 }

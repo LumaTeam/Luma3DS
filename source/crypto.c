@@ -292,16 +292,12 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
     memcpy(res, (void *)REG_SHA_HASH, hashSize);
 }
 
-/****************************************************************
-*                  NAND/FIRM crypto
-****************************************************************/
+/*****************************************************************/
 
 static u8 __attribute__((aligned(4))) nandCTR[0x10];
 static u8 nandSlot;
-
 static u32 fatStart;
 
-//Initialize the CTRNAND crypto
 void ctrNandInit(void)
 {
     u8 __attribute__((aligned(4))) cid[0x10];
@@ -326,7 +322,6 @@ void ctrNandInit(void)
     }
 }
 
-//Read and decrypt from the selected CTRNAND
 u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 {
     u8 __attribute__((aligned(4))) tmpCTR[0x10];
@@ -350,8 +345,7 @@ u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
     return result;
 }
 
-//Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY
-void setRSAMod0DerivedKeys(void)
+void set6x7xKeys(void)
 {
     if(!isDevUnit)
     {
@@ -404,7 +398,6 @@ void decryptNusFirm(u8 *inbuf, u8 *outbuf, u32 ncchSize)
     decryptExeFs(outbuf);
 }
 
-//ARM9Loader replacement
 void arm9Loader(u8 *arm9Section)
 {
 #ifdef DEV
@@ -430,7 +423,7 @@ void arm9Loader(u8 *arm9Section)
     //Firm keys
     u8 __attribute__((aligned(4))) keyY[0x10];
     u8 __attribute__((aligned(4))) arm9BinCTR[0x10];
-    u8 arm9BinSlot = a9lVersion != 0 ? 0x16 : 0x15;
+    u8 arm9BinSlot = a9lVersion > 0 ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, arm9Section + 0x10, 0x10);
@@ -442,7 +435,7 @@ void arm9Loader(u8 *arm9Section)
     for(u8 *tmp = arm9Section + 0x30; *tmp != 0; tmp++)
         arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
 
-    if(a9lVersion)
+    if(a9lVersion > 0)
     {
         u8 __attribute__((aligned(4))) keyX[0x10];
 
