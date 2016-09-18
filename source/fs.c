@@ -121,7 +121,7 @@ void loadPayload(u32 pressed)
 
     f_closedir(&dir);
 
-    if(result == FR_OK && info.fname[0])
+    if(result == FR_OK && info.fname[0] != 0)
     {
         u32 *loaderAddress = (u32 *)0x24FFFF00;
         u8 *payloadAddress = (u8 *)0x24F00000;
@@ -166,7 +166,7 @@ u32 firmRead(void *dest, u32 firmType)
     u32 firmVersion = 0xFFFFFFFF;
 
     //Parse the target directory
-    while(f_readdir(&dir, &info) == FR_OK && info.fname[0])
+    while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
     {
         //Not a cxi
         if(info.fname[9] != 'a') continue;
@@ -203,7 +203,7 @@ void findDumpFile(const char *path, char *fileName)
     FILINFO info;
     u32 n = 0;
 
-    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0])
+    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0] != 0)
     {
         u32 i = 18,
             tmp = ++n;

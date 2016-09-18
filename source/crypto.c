@@ -387,6 +387,11 @@ void decryptExeFs(u8 *inbuf)
 //ARM9Loader replacement
 void arm9Loader(u8 *arm9Section)
 {
+#ifdef DEV
+    //Check if FIRM is already decrypted
+    if(*(u32 *)(arm9Section + 0x800) == 0x47704770) return;
+#endif
+
     //Determine the arm9loader version
     u32 a9lVersion;
     switch(arm9Section[0x53])

@@ -584,11 +584,11 @@ static inline void launchFirm(FirmwareType firmType)
 
     //Determine the ARM11 entry to use
     vu32 *arm11;
-    if(isFirmlaunch) arm11 = (u32 *)0x1FFFFFFC;
+    if(isFirmlaunch) arm11 = (vu32 *)0x1FFFFFFC;
     else
     {
         deinitScreens();
-        arm11 = (u32 *)0x1FFFFFF8;
+        arm11 = (vu32 *)BRAHMA_ARM11_ENTRY;
     }
 
     //Set ARM11 kernel entrypoint

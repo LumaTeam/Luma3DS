@@ -37,6 +37,8 @@ typedef volatile u32 vu32;
 typedef volatile u64 vu64;
 
 //Used by multiple files
+#define BRAHMA_ARM11_ENTRY 0x1FFFFFF8
+
 typedef enum FirmwareSource
 {
     FIRMWARE_SYSNAND = 0,
