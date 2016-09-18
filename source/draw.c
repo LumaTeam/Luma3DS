@@ -76,23 +76,32 @@ void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 col
 
 u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color)
 {
-    for(u32 i = 0, line_i = 0; i < strlen(string); i++, line_i++)
+    for(u32 i = 0, line_i = 0; i < strlen(string); i++)
     {
-        if(string[i] == '\n')
+        switch(string[i])
         {
-            posY += SPACING_Y;
-            line_i = 0;
-            i++;
-        }
-        else if(line_i >= ((isTopScreen ? SCREEN_TOP_WIDTH : SCREEN_BOTTOM_WIDTH) - posX) / SPACING_X)
-        {
-            //Make sure we never get out of the screen
-            posY += SPACING_Y;
-            line_i = 1; //Little offset so we know the same string continues
-            if(string[i] == ' ') i++; //Spaces at the start look weird
+            case '\n':
+                posY += SPACING_Y;
+                line_i = 0;
+                break;
+
+            case '\t':
+                line_i += 2;
+                break;
+
+            default:
+                //Make sure we never get out of the screen
+                if(line_i >= ((isTopScreen ? SCREEN_TOP_WIDTH : SCREEN_BOTTOM_WIDTH) - posX) / SPACING_X)
+                {
+                    posY += SPACING_Y;
+                    line_i = 0;
+                }
+                
+                drawCharacter(string[i], isTopScreen, posX + line_i * SPACING_X, posY, color);
+                line_i++;
+                break;
         }
 
-        drawCharacter(string[i], isTopScreen, posX + line_i * SPACING_X, posY, color);
     }
 
     return posY;

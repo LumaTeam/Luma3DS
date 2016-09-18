@@ -86,68 +86,69 @@ void configMenu(bool oldPinStatus)
 #endif
                                       };
 
-    const char *optionsDescription[]  = { "Select the default EmuNAND.\n"
+    const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
                                           "It will booted with no directional pad\n"
-                                          "buttons pressed",
+                                          "buttons pressed.",
 
                                           "Select the screen brightness",
 
-                                          "Activate a PIN lock.\n"
+                                          "Activate a PIN lock.\n\n"
                                           "The PIN will be asked each time\n"
-                                          "Luma3DS boots.\n"
-                                          "4, 6 or 8 digits can be selected.\n"
+                                          "Luma3DS boots.\n\n"
+                                          "4, 6 or 8 digits can be selected.\n\n"
                                           "The ABXY buttons and the directional\n"
-                                          "pad buttons can be used as keys",
+                                          "pad buttons can be used as keys.",
 
-                                          "Select the New 3DS CPU mode.\n"
-                                          "It will be always enabled.\n"
+                                          "Select the New 3DS CPU mode.\n\n"
+                                          "It will be always enabled.\n\n"
                                           "'Clock+L2' can cause issues with some\n"
-                                          "games",
+                                          "games.",
 #ifdef DEV
-                                          "Select the developer features.\n"
-                                          "'ErrDisp' displays debug information\n"
+                                          "Select the developer features.\n\n"
+                                          "\t* 'ErrDisp' displays debug info. "
                                           "on the 'An error has occurred' screen.\n"
-                                          "'UNITINFO' makes the console be always\n"
-                                          "detected as a development unit (which\n"
-                                          "breaks online features and allows\n"
-                                          "booting some developer software).\n"
-                                          "'Off' disables exception handlers\n"
-                                          "in FIRM",
+                                          "\t* 'UNITINFO' makes the console be\n"
+                                          "always detected as a development unit (which "
+                                          "breaks online features and\n"
+                                          "allows booting some developer software).\n"
+                                          "\t* 'Off' disables exception handlers\n"
+                                          "in FIRM.",
 #endif
                                           "If enabled SysNAND will be launched on\n"
-                                          "boot. Otherwise, an EmuNAND will.\n"
-                                          "Hold L on boot to switch NAND.\n"
+                                          "boot. Otherwise, an EmuNAND will.\n\n"
+                                          "Hold L on boot to switch NAND.\n\n"
                                           "To use a different EmuNAND from the\n"
                                           "default, hold a directional pad button\n"
                                           "(Up/Right/Down/Left equal EmuNANDs\n"
-                                          "1/2/3/4)",
+                                          "1/2/3/4).",
 
                                           "If enabled, when holding R on boot\n"
                                           "EmuNAND will be booted with the\n"
                                           "SysNAND FIRM. Otherwise, SysNAND will\n"
-                                          "be booted with an EmuNAND FIRM.\n"
+                                          "be booted with an EmuNAND FIRM.\n\n"
                                           "To use a different EmuNAND from the\n"
                                           "default, hold a directional pad button\n"
                                           "(Up/Right/Down/Left equal EmuNANDs\n"
-                                          "1/2/3/4)",
+                                          "1/2/3/4).",
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
                                           "of patched code binaries for specific\n"
-                                          "games.\n"
+                                          "games.\n\n"
                                           "Also makes certain DLCs for\n"
-                                          "out-of-region games work.\n"
-                                          "Refer to the wiki for instructions",
+                                          "out-of-region games work.\n\n"
+                                          "Refer to the wiki for instructions.",
 
-                                          "Show the currently booted NAND\n"
-                                          "(Sys = SysNAND, Emu = EmuNAND 1,\n"
-                                          "EmuX = EmuNAND X,\n"
-                                          "SysE = SysNAND with EmuNAND 1 FIRM,\n"
-                                          "SyEX = SysNAND with EmuNAND X FIRM,\n"
-                                          "EmXS = EmuNAND X with SysNAND FIRM)\n"
+                                          "Show the currently booted NAND.\n\n"
+                                          "\t* Sys  = SysNAND\n"
+                                          "\t* Emu  = EmuNAND 1\n"
+                                          "\t* EmuX = EmuNAND X\n"
+                                          "\t* SysE = SysNAND with EmuNAND 1 FIRM\n"
+                                          "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
+                                          "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
                                           "or an user-defined custom string in\n"
-                                          "System Settings.\n"
-                                          "Refer to the wiki for instructions",
+                                          "System Settings.\n\n"
+                                          "Refer to the wiki for instructions.",
 
                                           "Show the GBA boot screen when booting\n"
                                           "GBA games",
@@ -155,9 +156,9 @@ void configMenu(bool oldPinStatus)
                                           "If enabled, the splash screen will be\n"
                                           "displayed before booting payloads,\n"
                                           "otherwise it will be displayed\n"
-                                          "afterwards.\n"
+                                          "afterwards.\n\n"
                                           "Intended for splash screens that\n"
-                                          "display button hints"
+                                          "display button hints."
 #ifdef DEV
                                         , "Disable SVC, service, archive and ARM9\n"
                                           "exheader access checks"
