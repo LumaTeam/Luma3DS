@@ -149,7 +149,7 @@ void loadPayload(u32 pressed)
 
 u32 firmRead(void *dest, u32 firmType)
 {
-    const char *firmFolders[4][2] = {{ "00000002", "20000002" },
+    const char *firmFolders[][2] = {{ "00000002", "20000002" },
                                     { "00000102", "20000102" },
                                     { "00000202", "20000202" },
                                     { "00000003", "20000003" }};

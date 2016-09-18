@@ -271,11 +271,17 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 {
     section = firm->section;
 
-    const char *firmwareFiles[4] = {
+    const char *firmwareFiles[] = {
         "/luma/firmware.bin",
         "/luma/firmware_twl.bin",
         "/luma/firmware_agb.bin",
         "/luma/firmware_safe.bin"
+    },
+               *cetkFiles[] = {
+        "/luma/cetk",
+        "/luma/cetk_twl",
+        "/luma/cetk_agb",
+        "/luma/cetk_safe"
     };
 
     //Load FIRM from CTRNAND
@@ -300,11 +306,26 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         else if(firmVersion < 0x25) loadFromSd = true;
     }
 
-    //Check that the SD FIRM is right for the console from the ARM9 section address
-    if(fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000) &&
-       ((section[3].offset ? section[3].address : section[2].address) == (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800)))
+    u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000);
+
+    if(firmSize > 0)
+    {
+        if(memcmp(firm, "FIRM", 4) != 0)
+        {
+            u8 cetk[0xA50];
+
+            if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)))
+                decryptNusFirm(cetk, (u8 *)firm, firmSize);
+        }
+
+        //Check that the SD FIRM is right for the console from the ARM9 section address
+        if((section[3].offset ? section[3].address : section[2].address) != (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
+            error("The firmware.bin in /luma is not valid for your\nconsole, or corrupted");
+
         firmVersion = 0xFFFFFFFF;
-    else
+    }
+
+    if(firmVersion != 0xFFFFFFFF)
     {
         if(loadFromSd) error("An old unsupported FIRM has been detected.\nCopy a valid firmware.bin in /luma to boot");
         decryptExeFs((u8 *)firm);
@@ -336,10 +357,22 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
         //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
         else if(firmVersion < 0x25)
         {
-            if(!fileRead(firm, "/luma/firmware.bin", 0x400000) || section[2].address != (u8 *)0x8006800)
-                error("An old unsupported FIRM has been detected.\nCopy a valid firmware.bin in /luma to boot");
+            u32 firmSize = fileRead(firm, "/luma/firmware.bin", 0x400000);
 
-            firmVersion = 0xFFFFFFFF;
+            if(firmSize > 0)
+            {
+                if(memcmp(firm, "FIRM", 4) != 0)
+                {
+                    u8 cetk[0xA50];
+
+                    if(fileRead(cetk, "/luma/cetk", sizeof(cetk)))
+                        decryptNusFirm(cetk, (u8 *)firm, firmSize);
+                }
+
+                if(section[2].address != (u8 *)0x8006800) firmVersion = 0xFFFFFFFF;
+            }
+
+            if(firmVersion != 0xFFFFFFFF) error("An old unsupported FIRM has been detected.\nCopy a valid firmware.bin in /luma to boot");
         }
     }
 

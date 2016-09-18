@@ -23,6 +23,7 @@
 /*
 *   Crypto libs from http://github.com/b1l1s/ctr
 *   ARM9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
+*   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
 */
 
 #include "crypto.h"
@@ -367,21 +368,40 @@ void setRSAMod0DerivedKeys(void)
     }
 }
 
-//Decrypt a FIRM ExeFS
 void decryptExeFs(u8 *inbuf)
 {
     u8 *exeFsOffset = inbuf + *(u32 *)(inbuf + 0x1A0) * 0x200;
     u32 exeFsSize = *(u32 *)(inbuf + 0x1A4) * 0x200;
-    u8 ncchCTR[0x10] = {0};
+    u8 __attribute__((aligned(4))) ncchCTR[0x10] = {0};
 
     for(u32 i = 0; i < 8; i++)
         ncchCTR[7 - i] = *(inbuf + 0x108 + i);
     ncchCTR[8] = 2;
 
     aes_setkey(0x2C, inbuf, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setiv(ncchCTR, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x2C);
     aes(inbuf - 0x200, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+}
+
+void decryptNusFirm(u8 *inbuf, u8 *outbuf, u32 ncchSize)
+{
+    const u8 keyY0x3D[0x10] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
+    u8 __attribute__((aligned(4))) cetkIv[0x10] = {0};
+    u8 __attribute__((aligned(4))) titleKey[0x10];
+    memcpy(titleKey, inbuf + 0x1BF, 0x10);
+    memcpy(cetkIv, inbuf + 0x1DC, 8);
+
+    aes_setkey(0x3D, keyY0x3D, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x3D);
+    aes(titleKey, titleKey, 1, cetkIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    u8 ncchIv[0x10] = {0};
+
+    aes_setkey(0x16, titleKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x16);
+    aes(outbuf, outbuf, ncchSize / AES_BLOCK_SIZE, ncchIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    decryptExeFs(outbuf);
 }
 
 //ARM9Loader replacement
@@ -440,7 +460,6 @@ void arm9Loader(u8 *arm9Section)
     }
 
     aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setiv(arm9BinCTR, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(arm9BinSlot);
 
     //Decrypt arm9bin

@@ -23,6 +23,7 @@
 /*
 *   Crypto libs from http://github.com/b1l1s/ctr
 *   ARM9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
+*   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
 */
 
 #pragma once
@@ -108,5 +109,6 @@ void ctrNandInit(void);
 u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 void setRSAMod0DerivedKeys(void);
 void decryptExeFs(u8 *inbuf);
+void decryptNusFirm(u8 *inbuf, u8 *outbuf, u32 ncchSize);
 void arm9Loader(u8 *arm9Section);
 void computePinHash(u8 *out, u8 *in);
