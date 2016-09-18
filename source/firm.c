@@ -373,7 +373,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Find Kernel11 SVC table and handler, exceptions page and free space locations
     u32 baseK11VA;
     u8 *freeK11Space;
-    u32 *arm11SvcHandler, 
+    u32 *arm11SvcHandler,
         *arm11ExceptionsPage,
         *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 #else

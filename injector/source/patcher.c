@@ -109,7 +109,11 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize)
                     else break;
                 }
 
-                if(finalSize > 0) *verStringSize = finalSize * 2;
+                if(finalSize > 0)
+                {
+                    if(finalSize > 5 && finalSize < 19) out[finalSize++] = 0;
+                    *verStringSize = finalSize * 2;
+                }
             }
         }
 
