@@ -94,10 +94,12 @@ u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 col
                 if(line_i >= ((isTopScreen ? SCREEN_TOP_WIDTH : SCREEN_BOTTOM_WIDTH) - posX) / SPACING_X)
                 {
                     posY += SPACING_Y;
-                    line_i = 0;
+                    line_i = 1; //Little offset so we know the same string continues
+                    if(string[i] == ' ') break; //Spaces at the start look weird
                 }
-                
+
                 drawCharacter(string[i], isTopScreen, posX + line_i * SPACING_X, posY, color);
+
                 line_i++;
                 break;
         }

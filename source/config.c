@@ -87,10 +87,10 @@ void configMenu(bool oldPinStatus)
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
-                                          "It will booted with no directional pad\n"
-                                          "buttons pressed.",
+                                          "It will booted when no directional pad\n"
+                                          "buttons are pressed.",
 
-                                          "Select the screen brightness",
+                                          "Select the screen brightness.",
 
                                           "Activate a PIN lock.\n\n"
                                           "The PIN will be asked each time\n"
@@ -105,12 +105,13 @@ void configMenu(bool oldPinStatus)
                                           "games.",
 #ifdef DEV
                                           "Select the developer features.\n\n"
-                                          "\t* 'ErrDisp' displays debug info. "
+                                          "\t* 'ErrDisp' displays debug info\n"
                                           "on the 'An error has occurred' screen.\n"
                                           "\t* 'UNITINFO' makes the console be\n"
-                                          "always detected as a development unit (which "
-                                          "breaks online features and\n"
-                                          "allows booting some developer software).\n"
+                                          "always detected as a development unit\n"
+                                          "(which breaks online features and\n"
+                                          "allows booting some developer\n"
+                                          "software).\n"
                                           "\t* 'Off' disables exception handlers\n"
                                           "in FIRM.",
 #endif
@@ -139,7 +140,7 @@ void configMenu(bool oldPinStatus)
                                           "out-of-region games work.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Show the currently booted NAND.\n\n"
+                                          "Show the currently booted NAND:\n\n"
                                           "\t* Sys  = SysNAND\n"
                                           "\t* Emu  = EmuNAND 1\n"
                                           "\t* EmuX = EmuNAND X\n"
@@ -151,7 +152,7 @@ void configMenu(bool oldPinStatus)
                                           "Refer to the wiki for instructions.",
 
                                           "Show the GBA boot screen when booting\n"
-                                          "GBA games",
+                                          "GBA games.",
 
                                           "If enabled, the splash screen will be\n"
                                           "displayed before booting payloads,\n"
@@ -161,7 +162,7 @@ void configMenu(bool oldPinStatus)
                                           "display button hints."
 #ifdef DEV
                                         , "Disable SVC, service, archive and ARM9\n"
-                                          "exheader access checks"
+                                          "exheader access checks."
 #endif
                                        };
 
