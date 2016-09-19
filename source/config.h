@@ -30,7 +30,7 @@
 
 #define CONFIG_PATH         "/luma/config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 4
+#define CONFIG_VERSIONMINOR 5
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -42,24 +42,21 @@ enum multiOptions
 {
     DEFAULTEMU = 0,
     BRIGHTNESS,
+    SPLASH,
     PIN,
-    NEWCPU
-#ifdef DEV
-  , DEVOPTIONS
-#endif
+    NEWCPU,
+    DEVOPTIONS
 };
 
 enum singleOptions
 {
     AUTOBOOTSYS = 0,
     USESYSFIRM,
+    SDFIRMSANDMODULES,
     USELANGEMUANDCODE,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PAYLOADSPLASH
-#ifdef DEV
-  , PATCHACCESS
-#endif
+    PATCHACCESS
 };
 
 typedef struct __attribute__((packed))

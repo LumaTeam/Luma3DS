@@ -30,10 +30,6 @@ LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS)
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
 
-ifeq ($(strip $(DEV)),TRUE)
-CFLAGS += -DDEV
-endif
-
 .PHONY: all
 all: ../$(dir_build)/$(name).cxi
 

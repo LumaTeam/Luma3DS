@@ -20,7 +20,6 @@
 *   Notices displayed by works containing it.
 */
 
-#ifdef DEV
 #include "exceptions.h"
 #include "fs.h"
 #include "strings.h"
@@ -198,4 +197,3 @@ void detectAndProcessExceptionDumps(void)
         mcuPowerOff();
     }
 }
-#endif

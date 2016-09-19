@@ -582,10 +582,9 @@ void patchCode(u64 progId, u8 *code, u32 size)
             break;
         }
 
-#ifdef DEV
         case 0x0004003000008A02LL: // ErrDisp
         {
-            if(MULTICONFIG(DEVOPTIONS) == 0)
+            if(MULTICONFIG(DEVOPTIONS) == 1)
             {
                 static const u8 unitinfoCheckPattern1[] = { 
                     0x14, 0x00, 0xD0, 0xE5, 0xDB
@@ -616,7 +615,6 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             break;
         }
-#endif
 
         default:
             if(CONFIG(USELANGEMUANDCODE))

@@ -38,15 +38,8 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h $(dir_build)/loader.h
-
-ifeq ($(strip $(DEV)),TRUE)
-CFLAGS += -DDEV
-bundled += $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h
-title := \"$(name) $(revision) (dev) configuration\"
-else
-title := \"$(name) $(revision) configuration\"
-endif
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h $(dir_build)/loader.h \
+          $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h
 
 .PHONY: all
 all: launcher a9lh ninjhax menuhax
@@ -64,11 +57,7 @@ ninjhax: $(dir_out)/3ds/$(name)
 menuhax: $(dir_out)/menuhax/boot.3dsx
 
 .PHONY: release
-ifeq ($(strip $(DEV)),TRUE)
-release: $(dir_out)/$(name)$(revision)-dev.7z
-else
 release: $(dir_out)/$(name)$(revision).7z
-endif
 
 .PHONY: clean
 clean:
@@ -107,9 +96,6 @@ $(dir_out)/pathchanger: $(dir_pathchanger)/pathchanger.py $(dir_pathchanger)/pre
 	@cp -rfT $(dir_pathchanger)/prebuilt $@
 
 $(dir_out)/$(name)$(revision).7z: all $(dir_out)/pathchanger
-	@7z a -mx $@ ./$(@D)/*
-
-$(dir_out)/$(name)$(revision)-dev.7z: all $(dir_out)/pathchanger
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
@@ -135,7 +121,7 @@ $(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
 
 $(dir_build)/injector.h: $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_injector) DEV=$(DEV)
+	@$(MAKE) -C $(dir_injector)
 	@bin2c -o $@ -n injector $(@D)/injector.cxi
 
 $(dir_build)/loader.h: $(dir_loader)/Makefile
@@ -156,7 +142,7 @@ $(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
 	@bin2c -o $@ -n arm11_exceptions $(@D)/arm11_exceptions.bin
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
-$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="$(title)"
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)

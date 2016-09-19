@@ -35,7 +35,4 @@ bool fileWrite(const void *buffer, const char *path, u32 size);
 void fileDelete(const char *path);
 void loadPayload(u32 pressed);
 u32 firmRead(void *dest, u32 firmType);
-
-#ifdef DEV
 void findDumpFile(const char *path, char *fileName);
-#endif

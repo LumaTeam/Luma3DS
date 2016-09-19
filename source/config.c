@@ -68,22 +68,19 @@ void configMenu(bool oldPinStatus)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
+                                        "Splash: Off( ) Before( ) After( ) payloads",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
-                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )"
-#ifdef DEV
-                                      , "Dev. features: ErrDisp( ) UNITINFO( ) Off( )"
-#endif
+                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
+                                        "Dev. features: Off( ) ErrDisp( ) UNITINFO( )"
                                       };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
+                                        "( ) Enable FIRMs and modules loading from SD",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Display splash screen before payloads"
-#ifdef DEV
-                                      , "( ) Patch SVC/service/archive/ARM9 access"
-#endif
+                                        "( ) Patch SVC/service/archive/ARM9 access"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -91,6 +88,13 @@ void configMenu(bool oldPinStatus)
                                           "buttons are pressed.",
 
                                           "Select the screen brightness.",
+
+                                          "Enable splash screen support.\n\n"
+                                          "\t* 'After payloads' displays it\n"
+                                          "before booting payloads.\n\n"
+                                          "\t* 'Before payloads' displays it\n"
+                                          "afterwards (intended for splashes\n"
+                                          "that display button hints).",
 
                                           "Activate a PIN lock.\n\n"
                                           "The PIN will be asked each time\n"
@@ -103,18 +107,20 @@ void configMenu(bool oldPinStatus)
                                           "It will be always enabled.\n\n"
                                           "'Clock+L2' can cause issues with some\n"
                                           "games.",
-#ifdef DEV
+
                                           "Select the developer features.\n\n"
+                                          "\t* 'Off' disables exception handlers\n"
+                                          "in FIRM.\n"
                                           "\t* 'ErrDisp' displays debug info\n"
                                           "on the 'An error has occurred' screen.\n"
                                           "\t* 'UNITINFO' makes the console be\n"
                                           "always detected as a development unit\n"
                                           "(which breaks online features and\n"
                                           "allows booting some developer\n"
-                                          "software).\n"
-                                          "\t* 'Off' disables exception handlers\n"
-                                          "in FIRM.",
-#endif
+                                          "software).\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!",
+
                                           "If enabled SysNAND will be launched on\n"
                                           "boot. Otherwise, an EmuNAND will.\n\n"
                                           "Hold L on boot to switch NAND.\n\n"
@@ -131,6 +137,11 @@ void configMenu(bool oldPinStatus)
                                           "default, hold a directional pad button\n"
                                           "(Up/Right/Down/Left equal EmuNANDs\n"
                                           "1/2/3/4).",
+
+                                          "If enabled, you will be able to load\n"
+                                          "FIRMs and system modules from the SD\n"
+                                          "card.\n\n"
+                                          "This isn't needed in most cases,",
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
@@ -154,16 +165,10 @@ void configMenu(bool oldPinStatus)
                                           "Show the GBA boot screen when booting\n"
                                           "GBA games.",
 
-                                          "If enabled, the splash screen will be\n"
-                                          "displayed before booting payloads,\n"
-                                          "otherwise it will be displayed\n"
-                                          "afterwards.\n\n"
-                                          "Intended for splash screens that\n"
-                                          "display button hints."
-#ifdef DEV
-                                        , "Disable SVC, service, archive and ARM9\n"
-                                          "exheader access checks."
-#endif
+                                          "Disable SVC, service, archive and ARM9\n"
+                                          "exheader access checks.\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!",
                                        };
 
     struct multiOption {
@@ -173,11 +178,10 @@ void configMenu(bool oldPinStatus)
     } multiOptions[] = {
         { .posXs = {19, 24, 29, 34} },
         { .posXs = {21, 26, 31, 36} },
+        { .posXs = {12, 22, 31, 0}  },
         { .posXs = {14, 19, 24, 29} },
-        { .posXs = {17, 26, 32, 44} }
-#ifdef DEV
-      , { .posXs = {23, 35, 43, 0} }
-#endif
+        { .posXs = {17, 26, 32, 44} },
+        { .posXs = {19, 30, 42, 0}  }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
