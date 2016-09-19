@@ -389,7 +389,7 @@ void decryptNusFirm(u8 *inbuf, u8 *outbuf, u32 ncchSize)
     aes_use_keyslot(0x3D);
     aes(titleKey, titleKey, 1, cetkIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    u8 ncchIv[AES_BLOCK_SIZE] = {0};
+    u8 __attribute__((aligned(4))) ncchIv[AES_BLOCK_SIZE] = {0};
 
     aes_setkey(0x16, titleKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x16);
