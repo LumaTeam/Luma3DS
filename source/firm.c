@@ -322,7 +322,10 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
             //Check that the SD FIRM is right for the console from the ARM9 section address
             if((section[3].offset ? section[3].address : section[2].address) != (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-                error("The firmware.bin in /luma is not valid for your\nconsole, or corrupted");
+            {
+                if(isFirmlaunch) mcuReboot();
+                error("The firmware.bin in /luma is not valid for your\nconsole, or corrupted"); 
+            }
 
             firmVersion = 0xFFFFFFFF;
         }
