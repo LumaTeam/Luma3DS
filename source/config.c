@@ -167,6 +167,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                           "Disable SVC, service, archive and ARM9\n"
                                           "exheader access checks.\n\n"
+                                          "The service and archive patches\n"
+                                          "don't work on New 3DS FIRMs between\n"
+                                          "9.3 and 10.4.\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
                                        };
