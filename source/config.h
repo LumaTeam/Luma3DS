@@ -79,4 +79,4 @@ extern bool isN3DS;
 
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(bool oldPinStatus);
+void configMenu(bool oldPinStatus, u32 oldPinMode);

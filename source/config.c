@@ -64,7 +64,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
     }
 }
 
-void configMenu(bool oldPinStatus)
+void configMenu(bool oldPinStatus, u32 oldPinMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -327,8 +327,6 @@ void configMenu(bool oldPinStatus)
         }
     }
 
-    u32 oldPinLength = MULTICONFIG(PIN);
-
     //Preserve the last-used boot options (first 9 bits)
     configData.config &= 0x1FF;
 
@@ -338,7 +336,9 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 21);
 
-    if(MULTICONFIG(PIN) != 0) newPin(oldPinStatus && MULTICONFIG(PIN) == oldPinLength);
+    u32 newPinMode = MULTICONFIG(PIN);
+
+    if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
     else if(oldPinStatus) fileDelete(PIN_PATH);
 
     //Wait for the pressed buttons to change

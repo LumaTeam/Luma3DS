@@ -70,6 +70,8 @@ void main(void)
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
+    u32 devMode = MULTICONFIG(DEVOPTIONS);
+
     //Determine if this is a firmlaunch boot
     if(launchedFirmTidLow[5] != 0)
     {
@@ -126,26 +128,29 @@ void main(void)
 
         if(needConfig == DONT_CONFIGURE)
         {
-            if(MULTICONFIG(DEVOPTIONS) != 0 && isA9lh) installArm9Handlers();
+            if(devMode != 0 && isA9lh) installArm9Handlers();
         }
 
         //Boot options aren't being forced
         else
         {
-            bool pinExists = MULTICONFIG(PIN) != 0 && verifyPin();
+            u32 pinMode = MULTICONFIG(PIN);
+            bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
             //If no configuration file exists or SELECT is held, load configuration menu
             bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
 
             if(shouldLoadConfigMenu)
             {
-                configMenu(pinExists);
+                configMenu(pinExists, pinMode);
 
                 //Update pressed buttons
                 pressed = HID_PAD;
+
+                devMode = MULTICONFIG(DEVOPTIONS);
             }
 
-            if(MULTICONFIG(DEVOPTIONS) != 0 && isA9lh) installArm9Handlers();
+            if(devMode != 0 && isA9lh) installArm9Handlers();
 
             if(isA9lh && !CFG_BOOTENV && pressed == SAFE_MODE)
             {
@@ -164,7 +169,9 @@ void main(void)
             }
             else
             {
-                if(MULTICONFIG(SPLASH) == 1 && loadSplash()) pressed = HID_PAD;
+                u32 splashMode = MULTICONFIG(SPLASH);
+
+                if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
@@ -173,7 +180,7 @@ void main(void)
 
                 if(shouldLoadPayload) loadPayload(pressed);
 
-                if(MULTICONFIG(SPLASH) == 2) loadSplash();
+                if(splashMode == 2) loadSplash();
 
                 //Determine if the user chose to use the SysNAND FIRM as default for a R boot
                 bool useSysAsDefault = isA9lh ? CONFIG(USESYSFIRM) : false;
@@ -246,15 +253,14 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh);
+            patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh, devMode);
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM1X2X:
-            if(isA9lh) patch1x2xNativeAndSafeFirm();
+            if(isA9lh) patch1x2xNativeAndSafeFirm(devMode);
             break;
         default:
-            //Skip patching on unsupported O3DS AGB/TWL FIRMs
-            if(isN3DS || firmVersion >= (firmType == TWL_FIRM ? 0x16 : 0xB)) patchLegacyFirm(firmType);
+            patchLegacyFirm(firmType, firmVersion, devMode);
             break;
     }
 
@@ -331,7 +337,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
     return firmVersion;
 }
 
-static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh)
+static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset,
        *arm11Section1 = (u8 *)firm + section[1].offset;
@@ -387,9 +393,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
 
     //Apply UNITINFO patch
-    if(MULTICONFIG(DEVOPTIONS) == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
+    if(devMode == 2) patchUnitInfoValueSet(arm9Section, section[2].size);
 
-    if(isA9lh && MULTICONFIG(DEVOPTIONS) != 0)
+    if(devMode != 0 && isA9lh)
     {
         //ARM11 exception handlers
         u32 codeSetOffset,
@@ -412,7 +418,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     }
 }
 
-static inline void patchLegacyFirm(FirmwareType firmType)
+static inline void patchLegacyFirm(FirmwareType firmType, u32 firmVersion, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + section[3].offset;
     
@@ -423,13 +429,14 @@ static inline void patchLegacyFirm(FirmwareType firmType)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
-    applyLegacyFirmPatches((u8 *)firm, firmType);
+    if(isN3DS || firmVersion >= (firmType == TWL_FIRM ? 0x16 : 0xB)) 
+        applyLegacyFirmPatches((u8 *)firm, firmType);
 
     //Apply UNITINFO patch
-    if(MULTICONFIG(DEVOPTIONS) == 2) patchUnitInfoValueSet(arm9Section, section[3].size);
+    if(devMode == 2) patchUnitInfoValueSet(arm9Section, section[3].size);
 }
 
-static inline void patch1x2xNativeAndSafeFirm(void)
+static inline void patch1x2xNativeAndSafeFirm(u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset;
 
@@ -443,7 +450,7 @@ static inline void patch1x2xNativeAndSafeFirm(void)
     }
     else patchOldFirmWrites(arm9Section, section[2].size);
 
-    if(MULTICONFIG(DEVOPTIONS) != 0)
+    if(devMode != 0)
     {
         //ARM9 exception handlers
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);

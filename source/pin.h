@@ -42,5 +42,5 @@ typedef struct __attribute__((packed))
     u8 hash[32];
 } PinData;
 
-void newPin(bool allowSkipping);
-bool verifyPin(void);
+void newPin(bool allowSkipping, u32 pinMode);
+bool verifyPin(u32 pinMode);

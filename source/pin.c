@@ -44,11 +44,11 @@ static char pinKeyToLetter(u32 pressed)
     return keys[31 - i];
 }
 
-void newPin(bool allowSkipping)
+void newPin(bool allowSkipping, u32 pinMode)
 {
     clearScreens(true, true);
 
-    u8 length = 4 + 2 * (MULTICONFIG(PIN) - 1);
+    u8 length = 4 + 2 * (pinMode - 1);
 
     char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
     drawString(title, true, 10, 10, COLOR_TITLE);
@@ -56,7 +56,7 @@ void newPin(bool allowSkipping)
     drawCharacter('0' + length, true, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
-    u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
+    u8 __attribute__((aligned(4))) enteredPassword[AES_BLOCK_SIZE] = {0};
 
     u8 cnt = 0;
     u32 charDrawPos = 16 * SPACING_X;
@@ -91,8 +91,8 @@ void newPin(bool allowSkipping)
     pin.formatVersionMinor = PIN_VERSIONMINOR;
     pin.length = length;
 
-    u8 __attribute__((aligned(4))) tmp[0x20];
-    u8 __attribute__((aligned(4))) zeroes[0x10] = {0};
+    u8 __attribute__((aligned(4))) tmp[SHA_256_HASH_SIZE];
+    u8 __attribute__((aligned(4))) zeroes[AES_BLOCK_SIZE] = {0};
 
     computePinHash(tmp, zeroes);
     memcpy(pin.testHash, tmp, sizeof(tmp));
@@ -104,7 +104,7 @@ void newPin(bool allowSkipping)
         error("Error writing the PIN file");
 }
 
-bool verifyPin(void)
+bool verifyPin(u32 pinMode)
 {
     PinData pin;
 
@@ -112,11 +112,11 @@ bool verifyPin(void)
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
        pin.formatVersionMinor != PIN_VERSIONMINOR ||
-       pin.length != 4 + 2 * (MULTICONFIG(PIN) - 1))
+       pin.length != 4 + 2 * (pinMode - 1))
         return false;
 
-    u8 __attribute__((aligned(4))) zeroes[0x10] = {0};
-    u8 __attribute__((aligned(4))) tmp[0x20];
+    u8 __attribute__((aligned(4))) zeroes[AES_BLOCK_SIZE] = {0};
+    u8 __attribute__((aligned(4))) tmp[SHA_256_HASH_SIZE];
 
     computePinHash(tmp, zeroes);
 
@@ -126,7 +126,7 @@ bool verifyPin(void)
     initScreens();
 
     //Pad to AES block length with zeroes
-    u8 __attribute__((aligned(4))) enteredPassword[0x10] = {0};
+    u8 __attribute__((aligned(4))) enteredPassword[AES_BLOCK_SIZE] = {0};
 
     bool unlock = false;
     u8 cnt = 0;
