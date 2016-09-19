@@ -149,12 +149,14 @@ void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **fre
     CFWInfo *info = (CFWInfo *)memsearch(*freeK11Space, "LUMA", svcGetCFWInfo_size, 4);
 
     const char *rev = REVISION;
-    bool isRelease;
 
     info->commitHash = COMMIT_HASH;
     info->config = configData.config;
     info->versionMajor = (u8)(rev[1] - '0');
     info->versionMinor = (u8)(rev[3] - '0');
+
+    bool isRelease;
+
     if(rev[4] == '.')
     {
         info->versionBuild = (u8)(rev[5] - '0');
@@ -245,8 +247,6 @@ void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 
 u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
 {
-    //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
-
     const u8 pattern[] = {0xE3, 0xDC, 0x05, 0xC0}, //Get TitleID from CodeSet
              pattern2[] = {0xE1, 0x0F, 0x00, 0xBD}; //Call exception dispatcher
 

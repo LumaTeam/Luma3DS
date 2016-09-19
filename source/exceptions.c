@@ -32,12 +32,12 @@
 
 void installArm9Handlers(void)
 {
-    const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
-
     memcpy((void *)0x01FF8000, arm9_exceptions + 32, arm9_exceptions_size - 32);
 
     /* IRQHandler is at 0x08000000, but we won't handle it for some reasons
        svcHandler is at 0x08000010, but we won't handle svc either */
+
+    const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
 
     for(u32 i = 0; i < 4; i++)
     {
