@@ -84,8 +84,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
-                                          "It will booted when no directional pad\n"
-                                          "buttons are pressed.",
+                                          "It will be booted when no\n"
+                                          "directional pad buttons are pressed.",
 
                                           "Select the screen brightness.",
 
@@ -109,8 +109,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "games.",
 
                                           "Select the developer features.\n\n"
-                                          "\t* 'Off' disables exception handlers\n"
-                                          "in FIRM.\n"
+                                          "\t* 'Off' disables exception handlers.\n"
                                           "\t* 'ErrDisp' displays debug info\n"
                                           "on the 'An error has occurred' screen.\n"
                                           "\t* 'UNITINFO' makes the console be\n"
@@ -121,8 +120,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "Only change this if you know what you\n"
                                           "are doing!",
 
-                                          "If enabled SysNAND will be launched on\n"
-                                          "boot. Otherwise, an EmuNAND will.\n\n"
+                                          "If enabled, SysNAND will be launched\n"
+                                          "on boot.\n\n"
+                                          "Otherwise, an EmuNAND will.\n\n"
                                           "Hold L on boot to switch NAND.\n\n"
                                           "To use a different EmuNAND from the\n"
                                           "default, hold a directional pad button\n"
@@ -131,17 +131,18 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                           "If enabled, when holding R on boot\n"
                                           "EmuNAND will be booted with the\n"
-                                          "SysNAND FIRM. Otherwise, SysNAND will\n"
-                                          "be booted with an EmuNAND FIRM.\n\n"
+                                          "SysNAND FIRM.\n\n"
+                                          "Otherwise, SysNAND will be booted\n"
+                                          "with an EmuNAND FIRM.\n\n"
                                           "To use a different EmuNAND from the\n"
                                           "default, hold a directional pad button\n"
                                           "(Up/Right/Down/Left equal EmuNANDs\n"
-                                          "1/2/3/4).",
+                                          "1/2/3/4), also add A if you have\n"
+                                          "a matching payload.",
 
-                                          "If enabled, you will be able to load\n"
-                                          "FIRMs and system modules from the SD\n"
-                                          "card.\n\n"
-                                          "This isn't needed in most cases,",
+                                          "Enable loading FIRMs and\n"
+                                          "system modules from the SD card.\n\n"
+                                          "This isn't needed in most cases.",
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
@@ -151,7 +152,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "out-of-region games work.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Show the currently booted NAND:\n\n"
+                                          "Enable showing the current NAND:\n\n"
                                           "\t* Sys  = SysNAND\n"
                                           "\t* Emu  = EmuNAND 1\n"
                                           "\t* EmuX = EmuNAND X\n"
@@ -162,8 +163,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "System Settings.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Show the GBA boot screen when booting\n"
-                                          "GBA games.",
+                                          "Enable showing the GBA boot screen\n"
+                                          "when booting GBA games.",
 
                                           "Disable SVC, service, archive and ARM9\n"
                                           "exheader access checks.\n\n"

@@ -94,7 +94,7 @@ void main(void)
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
 
-        if(isA9lh) detectAndProcessExceptionDumps();
+        if(devMode != 0 && isA9lh) detectAndProcessExceptionDumps();
 
         //Get pressed buttons
         u32 pressed = HID_PAD;
