@@ -37,8 +37,8 @@ bool loadSplash(void)
     const char topSplashPath[] = "/luma/splash.bin",
                bottomSplashPath[] = "/luma/splashbottom.bin";
 
-    bool isTopSplashValid = getFileSize(topSplashPath) == SCREEN_TOP_FBSIZE,
-         isBottomSplashValid = getFileSize(bottomSplashPath) == SCREEN_BOTTOM_FBSIZE;
+    bool isTopSplashValid = verifyImage(topSplashPath, false);
+    bool isBottomSplashValid = verifyImage(bottomSplashPath, true);
 
     //Don't delay boot nor init the screens if no splash images or invalid splash images are on the SD
     if(!isTopSplashValid && !isBottomSplashValid)
@@ -46,12 +46,25 @@ bool loadSplash(void)
 
     initScreens();
 
-    if(isTopSplashValid) fileRead(fb->top_left, topSplashPath, 0);
-    if(isBottomSplashValid) fileRead(fb->bottom, bottomSplashPath, 0);
-
+    drawImages(topSplashPath, bottomSplashPath);
+    
     chrono(3);
 
     return true;
+}
+
+bool verifyImage(char* imagePath, bool bottomScreen)
+{
+  if (bottomScreen)
+    return getFileSize(imagePath) == SCREEN_BOTTOM_FBSIZE;
+  else
+    return getFileSize(imagePath) == SCREEN_TOP_FBSIZE;
+}
+
+void drawImages(char* topImagePath, char* bottomImagePath)
+{
+  fileRead(fb->top_left, topImagePath, 0);
+  fileRead(fb->bottom, bottomImagePath, 0);
 }
 
 void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color)

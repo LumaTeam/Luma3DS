@@ -45,5 +45,7 @@
 #define COLOR_YELLOW 0x00FFFF
 
 bool loadSplash(void);
+bool verifyImage(char* imagePath, bool bottomScreen);
+void drawImages(char* topImagePath, char* bottomImagePath);
 void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color);
 u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color);

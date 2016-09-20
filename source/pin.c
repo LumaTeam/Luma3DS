@@ -124,7 +124,13 @@ bool verifyPin(u32 pinMode)
     if(memcmp(pin.testHash, tmp, sizeof(tmp)) != 0) return false;
 
     initScreens();
-
+    
+    const char bottomSplashPath[] = "/luma/pinsplashbottom.bin", topSplashPath[] = "/luma/pinsplash.bin";
+    bool isTopSplashValid = verifyImage(topSplashPath, false);
+    bool isBottomSplashValid = verifyImage(bottomSplashPath, true);
+    if (isTopSplashValid && isBottomSplashValid)
+        drawImages(topSplashPath, bottomSplashPath);
+    
     //Pad to AES block length with zeroes
     u8 __attribute__((aligned(4))) enteredPassword[AES_BLOCK_SIZE] = {0};
 
