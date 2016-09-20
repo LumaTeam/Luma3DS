@@ -77,7 +77,7 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize)
     {
         u64 fileSize;
 
-        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 60)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize <= 61)
         {
             u8 buf[fileSize];
             u64 total;
@@ -159,12 +159,12 @@ static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
     {
         u64 fileSize;
 
-        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && fileSize == 6)
+        if(R_SUCCEEDED(IFile_GetSize(&file, &fileSize)) && (fileSize == 6 || fileSize == 7))
         {
-            char buf[6];
+            char buf[fileSize];
             u64 total;
 
-            if(R_SUCCEEDED(IFile_Read(&file, &total, buf, 6)))
+            if(R_SUCCEEDED(IFile_Read(&file, &total, buf, fileSize)))
             {
                 for(u32 i = 0; i < 7; i++)
                 {
