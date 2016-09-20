@@ -377,7 +377,7 @@ void decryptExeFs(u8 *inbuf)
     aes(inbuf - 0x200, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
-void decryptNusFirm(u8 *inbuf, u8 *outbuf, u32 ncchSize)
+void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize)
 {
     const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
     u8 __attribute__((aligned(4))) cetkIv[AES_BLOCK_SIZE] = {0};
@@ -477,7 +477,7 @@ void arm9Loader(u8 *arm9Section)
     }
 }
 
-void computePinHash(u8 *out, u8 *in)
+void computePinHash(u8 *outbuf, const u8 *inbuf)
 {
     u8 __attribute__((aligned(4))) cid[AES_BLOCK_SIZE];
     u8 __attribute__((aligned(4))) cipherText[AES_BLOCK_SIZE];
