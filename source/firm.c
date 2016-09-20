@@ -347,8 +347,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     if(isN3DS)
     {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section);
+        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
+        kernel9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
 
@@ -425,10 +425,10 @@ static inline void patchLegacyFirm(FirmwareType firmType, u32 firmVersion, u32 d
 {
     u8 *arm9Section = (u8 *)firm + section[3].offset;
     
-    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
+    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
     if(isN3DS)
     {
-        arm9Loader(arm9Section);
+        kernel9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
@@ -445,8 +445,8 @@ static inline void patch1x2xNativeAndSafeFirm(u32 devMode)
 
     if(isN3DS)
     {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
-        arm9Loader(arm9Section);
+        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
+        kernel9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
 
         patchFirmWrites(arm9Section, section[2].size);
