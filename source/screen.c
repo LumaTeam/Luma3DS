@@ -151,7 +151,6 @@ void clearScreens(bool clearTop, bool clearBottom)
 
     flushDCacheRange(&clearTopTmp, 1);
     flushDCacheRange(&clearBottomTmp, 1);
-    flushDCacheRange((void *)fb, sizeof(struct fb));
     invokeArm11Function(ARM11);
 }
 
@@ -172,7 +171,7 @@ void initScreens(void)
         *(vu32 *)0x10202244 = 0x1023E;
         *(vu32 *)0x10202A44 = 0x1023E;
 
-        // Top screen
+        //Top screen
         *(vu32 *)0x10400400 = 0x000001c2;
         *(vu32 *)0x10400404 = 0x000000d1;
         *(vu32 *)0x10400408 = 0x000001c1;
@@ -202,11 +201,11 @@ void initScreens(void)
         *(vu32 *)0x10400490 = 0x000002D0;
         *(vu32 *)0x1040049C = 0x00000000;
 
-        // Disco register
+        //Disco register
         for(u32 i = 0; i < 256; i++)
            *(vu32 *)0x10400484 = 0x10101 * i;
 
-        // Bottom screen
+        //Bottom screen
         *(vu32 *)0x10400500 = 0x000001c2;
         *(vu32 *)0x10400504 = 0x000000d1;
         *(vu32 *)0x10400508 = 0x000001c1;
@@ -236,7 +235,7 @@ void initScreens(void)
         *(vu32 *)0x10400590 = 0x000002D0;
         *(vu32 *)0x1040059C = 0x00000000;
 
-        // Disco register
+        //Disco register
         for(u32 i = 0; i < 256; i++)
            *(vu32 *)0x10400584 = 0x10101 * i;
 
@@ -258,7 +257,6 @@ void initScreens(void)
     if(PDN_GPU_CNT == 1)
     {
         flushDCacheRange(&configData, sizeof(CfgData));
-        flushDCacheRange((void *)fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 
         clearScreens(true, true);
