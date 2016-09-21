@@ -47,6 +47,16 @@ void  __attribute__((naked)) arm11Stub(void)
     ((void (*)())*arm11Entry)();
 }
 
+/*
+About cache coherency:
+
+    Flushing the data cache for **ALL** memory regions read from/written to by _both_ processors is mandatory on the arm9 processor.
+    Thus, we make sure there'll be a cache miss on the arm9 next time it's read.
+    Otherwise the arm9 won't see the changes made and things will break.
+    
+    On the arm11, in the environment we're in, the MMU isn't enabled and nothing is cached.
+*/
+        
 static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
@@ -151,6 +161,7 @@ void clearScreens(bool clearTop, bool clearBottom)
 
     flushDCacheRange(&clearTopTmp, 1);
     flushDCacheRange(&clearBottomTmp, 1);
+    flushDCacheRange((void *)fb, sizeof(struct fb));
     invokeArm11Function(ARM11);
 }
 
@@ -257,6 +268,7 @@ void initScreens(void)
     if(PDN_GPU_CNT == 1)
     {
         flushDCacheRange(&configData, sizeof(CfgData));
+        flushDCacheRange((void *)fb, sizeof(struct fb));
         invokeArm11Function(ARM11);
 
         clearScreens(true, true);
