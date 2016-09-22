@@ -49,7 +49,7 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 +	if (p) {
 +		fseek(p , 0, SEEK_END);
 +		psize = ftell(p);
-+		if (psize < 39 && psize > 5) {
++		if (psize > 5 && psize < 39) {
 +			char path[psize + 1];
 +
 +			fseek(p, 0, SEEK_SET);

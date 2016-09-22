@@ -127,14 +127,14 @@ static void aes_setiv(const void *iv, u32 mode)
 static void aes_advctr(void *ctr, u32 val, u32 mode)
 {
     u32 *ctr32 = (u32 *)ctr;
-    
+
     int i;
     if(mode & AES_INPUT_BE)
     {
         for(i = 0; i < 4; ++i) // Endian swap
             BSWAP32(ctr32[i]);
     }
-    
+
     if(mode & AES_INPUT_NORMAL)
     {
         ADD_u128_u32(ctr32[3], ctr32[2], ctr32[1], ctr32[0], val);
@@ -143,7 +143,7 @@ static void aes_advctr(void *ctr, u32 val, u32 mode)
     {
         ADD_u128_u32(ctr32[0], ctr32[1], ctr32[2], ctr32[3], val);
     }
-    
+
     if(mode & AES_INPUT_BE)
     {
         for(i = 0; i < 4; ++i) // Endian swap
@@ -177,13 +177,13 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
 {
     *REG_AESBLKCNT = blockCount << 16;
     *REG_AESCNT |=  AES_CNT_START;
-    
+
     const u32 *src32    = (const u32 *)src;
     u32 *dst32          = (u32 *)dst;
-    
+
     u32 wbc = blockCount;
     u32 rbc = blockCount;
-    
+
     while(rbc)
     {
         if(wbc && ((*REG_AESCNT & 0x1F) <= 0xC)) // There's space for at least 4 ints
@@ -194,7 +194,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
             *REG_AESWRFIFO = *src32++;
             wbc--;
         }
-        
+
         if(rbc && ((*REG_AESCNT & (0x1F << 0x5)) >= (0x4 << 0x5))) // At least 4 ints available for read
         {
             *dst32++ = *REG_AESRDFIFO;
@@ -238,7 +238,7 @@ static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, 
             memcpy(iv, dst + (blocks - 1) * AES_BLOCK_SIZE, AES_BLOCK_SIZE);
             aes_change_ctrmode(iv, AES_INPUT_BE | AES_INPUT_NORMAL, ivMode);
         }
-        
+
         // Advance counter for CTR mode
         else if((mode & AES_ALL_MODES) == AES_CTR_MODE)
             aes_advctr(iv, blocks, ivMode);
@@ -258,7 +258,7 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 {
     sha_wait_idle();
     *REG_SHA_CNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
-    
+
     const u32 *src32 = (const u32 *)src;
     int i;
     while(size >= 0x40)
@@ -274,12 +274,12 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 
         size -= 0x40;
     }
-    
+
     sha_wait_idle();
     memcpy((void *)REG_SHA_INFIFO, src32, size);
-    
+
     *REG_SHA_CNT = (*REG_SHA_CNT & ~SHA_NORMAL_ROUND) | SHA_FINAL_ROUND;
-    
+
     while(*REG_SHA_CNT & SHA_FINAL_ROUND);
     sha_wait_idle();
 
@@ -297,8 +297,8 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 static u8 __attribute__((aligned(4))) nandCtr[AES_BLOCK_SIZE];
 static u8 nandSlot;
 static u32 fatStart;
-static bool didShaHashBackup = false;
 static u8 __attribute__((aligned(4))) shaHashBackup[SHA_256_HASH_SIZE];
+static bool didShaHashBackup = false;
 
 void ctrNandInit(void)
 {

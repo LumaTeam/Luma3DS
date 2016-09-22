@@ -71,8 +71,8 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-fname:  .dcw "sdmc:/arm9loaderhax.bin"
-        .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+fname: .dcw "sdmc:/arm9loaderhax.bin"
+       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 .align 4
     kernelcode_start:
