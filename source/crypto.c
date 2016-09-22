@@ -486,8 +486,8 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
 
     if(!didShaHashBackup)
     {
-        didShaHashBackup = true;
         memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
+        didShaHashBackup = true;
     }
 
     sdmmc_get_cid(1, (u32 *)cid);

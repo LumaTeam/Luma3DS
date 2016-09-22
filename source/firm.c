@@ -295,9 +295,9 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
         {
             //We can't boot < 3.x EmuNANDs
             if(firmSource != FIRMWARE_SYSNAND) 
-                error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it");
+                error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
-            if(BOOTCFG_SAFEMODE != 0) error("SAFE_MODE is not supported on 1.x/2.x FIRM");
+            if(BOOTCFG_SAFEMODE != 0) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
             *firmType = NATIVE_FIRM1X2X;
         }
@@ -312,23 +312,18 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
         if(firmSize > 0)
         {
-            bool isValidFirm = true;
-
             if(memcmp(firm, "FIRM", 4) != 0)
             {
                 u8 cetk[0xA50];
 
                 if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) == sizeof(cetk))
                     decryptNusFirm(cetk, (u8 *)firm, firmSize);
-                else isValidFirm = false;
+                else error("The firmware.bin in /luma is encrypted\nor corrupted.");
             }
 
-            //Check that the SD FIRM is decrypted and is right for the console from the ARM9 section address
-            if(isValidFirm && (section[3].offset ? section[3].address : section[2].address) != (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-            {
-                if(isFirmlaunch) mcuReboot();
-                error("The firmware.bin in /luma is not valid for your\nconsole, or corrupted"); 
-            }
+            //Check that the SD FIRM is right for the console from the ARM9 section address
+            if((section[3].offset ? section[3].address : section[2].address) != (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
+                error("The firmware.bin in /luma is not valid for this\nconsole.");
 
             firmVersion = 0xFFFFFFFF;
         }
@@ -336,7 +331,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
     if(firmVersion != 0xFFFFFFFF)
     {
-        if(mustLoadFromSd) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot");
+        if(mustLoadFromSd) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot.");
         decryptExeFs((u8 *)firm);
     }
 

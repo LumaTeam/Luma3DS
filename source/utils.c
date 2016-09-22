@@ -112,6 +112,8 @@ void chrono(u32 seconds)
 
 void error(const char *message)
 {
+    if(isFirmlaunch) mcuReboot();
+
     initScreens();
 
     drawString("An error has occurred:", true, 10, 10, COLOR_RED);
