@@ -32,9 +32,10 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
                fatStart;
     bool found = false;
 
-    if(!nandSize && !sdmmc_sdcard_readsectors(0, 1, temp))
+    if(!nandSize)
     {
         nandSize = getMMCDevice(0)->total_size;
+        sdmmc_sdcard_readsectors(0, 1, temp);
         fatStart = *(u32 *)(temp + 0x1C6); //First sector of the FAT partition
     }
 
