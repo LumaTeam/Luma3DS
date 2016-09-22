@@ -27,12 +27,21 @@
 
 void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
 {
-    static u8 temp[0x200];
-    const u32 nandSize = getMMCDevice(0)->total_size;
+    static u8 __attribute__((aligned(4))) temp[0x200];
+    static u32 nandSize = 0,
+               fatStart;
     bool found = false;
+
+    if(!nandSize && !sdmmc_sdcard_readsectors(0, 1, temp))
+    {
+        nandSize = getMMCDevice(0)->total_size;
+        fatStart = *(u32 *)(temp + 0x1C6); //First sector of the FAT partition
+    }
 
     for(u32 i = 0; i < 3 && !found; i++)
     {
+        static const u32 roundedMinsizes[] = {0x1D8000, 0x26E000};
+
         u32 nandOffset;
         switch(i)
         {
@@ -40,7 +49,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
                 nandOffset = ROUND_TO_4MB(nandSize + 1); //"Default" layout
                 break;
             case 2:
-                nandOffset = isN3DS ? 0x26E000 : 0x1D8000; //"Minsize" layout
+                nandOffset = roundedMinsizes[isN3DS ? 1 : 0]; //"Minsize" layout
                 break;
             default:
                 nandOffset = *nandType == FIRMWARE_EMUNAND ? 0 : (nandSize > 0x200000 ? 0x400000 : 0x200000); //"Legacy" layout
@@ -49,20 +58,23 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
 
         if(*nandType != FIRMWARE_EMUNAND) nandOffset *= ((u32)*nandType - 1);
 
-        //Check for RedNAND
-        if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+        if(fatStart >= nandOffset + roundedMinsizes[isN3DS ? 1 : 0])
         {
-            emuOffset = nandOffset + 1;
-            *emuHeader = nandOffset + 1;
-            found = true;
-        }
+            //Check for RedNAND
+            if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+            {
+                emuOffset = nandOffset + 1;
+                *emuHeader = nandOffset + 1;
+                found = true;
+            }
 
-        //Check for Gateway EmuNAND
-        else if(i != 2 && !sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
-        {
-            emuOffset = nandOffset;
-            *emuHeader = nandOffset + nandSize;
-            found = true;
+            //Check for Gateway EmuNAND
+            else if(i != 2 && !sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && *(u32 *)(temp + 0x100) == NCSD_MAGIC)
+            {
+                emuOffset = nandOffset;
+                *emuHeader = nandOffset + nandSize;
+                found = true;
+            }
         }
 
         if(*nandType == FIRMWARE_EMUNAND) break;
