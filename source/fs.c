@@ -23,6 +23,7 @@
 #include "fs.h"
 #include "memory.h"
 #include "strings.h"
+#include "crypto.h"
 #include "cache.h"
 #include "screen.h"
 #include "fatfs/ff.h"
@@ -70,6 +71,7 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
     {
         unsigned int written;
         f_write(&file, buffer, size, &written);
+        f_truncate(&file);
         f_close(&file);
 
         return true;
@@ -137,6 +139,7 @@ void loadPayload(u32 pressed)
         {
             loaderAddress[1] = payloadSize;
 
+            restoreShaHashBackup();
             initScreens();
 
             flushDCacheRange(loaderAddress, loader_size);

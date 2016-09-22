@@ -22,10 +22,8 @@ dir_injector := injector
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
-dir_mset := CakeHax
 dir_ninjhax := CakeBrah
-dir_menuhax := menuhax
-dir_pathchanger := pathchanger
+dir_diffs := diffs
 dir_build := build
 dir_out := out
 
@@ -42,10 +40,7 @@ bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/sv
           $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h
 
 .PHONY: all
-all: launcher a9lh ninjhax menuhax
-
-.PHONY: launcher
-launcher: $(dir_out)/$(name).dat
+all: a9lh ninjhax menuhax
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
@@ -61,7 +56,6 @@ release: $(dir_out)/$(name)$(revision).7z
 
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
@@ -72,30 +66,21 @@ clean:
 $(dir_out):
 	@mkdir -p "$(dir_out)"
 
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
-	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
-	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
-
-$(dir_out)/menuhax/boot.3dsx: $(dir_menuhax)/menuhax.diff $(dir_out)
+$(dir_out)/menuhax/boot.3dsx: $(dir_diffs) $(dir_out)
 	@mkdir -p "$(@D)"
-	@cd $(dir_ninjhax); patch -p1 < ../$(dir_menuhax)/menuhax.diff; $(MAKE) $(FLAGS); git reset --hard
+	@cd $(dir_ninjhax); patch -p1 < ../$(dir_diffs)/1.diff; patch -p1 < ../$(dir_diffs)/2.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $@
 	@rm $(dir_out)/$(name).smdh
 
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
-$(dir_out)/3ds/$(name): $(dir_out)
+$(dir_out)/3ds/$(name): $(dir_diffs) $(dir_out)
 	@mkdir -p "$@"
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
+	@cd $(dir_ninjhax); patch -p1 < ../$(dir_diffs)/1.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
-$(dir_out)/pathchanger: $(dir_pathchanger)/pathchanger.py $(dir_pathchanger)/prebuilt $(dir_out)
-	@mkdir -p "$@"
-	@cp $(dir_pathchanger)/pathchanger.py $@
-	@cp -rfT $(dir_pathchanger)/prebuilt $@
-
-$(dir_out)/$(name)$(revision).7z: all $(dir_out)/pathchanger
+$(dir_out)/$(name)$(revision).7z: all
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
 $(dir_build)/main.bin: $(dir_build)/main.elf

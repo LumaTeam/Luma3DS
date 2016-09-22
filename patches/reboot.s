@@ -1,7 +1,7 @@
 .arm.little
 
 payload_addr equ 0x23F00000   ; Brahma payload address.
-payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeBrah supports).
+payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeBrah supports).
 
 .create "build/reboot.bin", 0
 .arm
@@ -25,38 +25,22 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
         cmp r0, r2
         bne pxi_wait_recv
 
-        mov r4, #0
-        adr r1, bin_fname
-        b open_payload
+    ; Open file
+    add r0, r7, #8
+    adr r1, fname
+    mov r2, #1
+    ldr r6, [fopen]
+    orr r6, 1
+    blx r6
 
-    fallback:
-        mov r4, #1
-        adr r1, dat_fname
-
-    open_payload:
-        ; Open file
-        add r0, r7, #8
-        mov r2, #1
-        ldr r6, [fopen]
-        orr r6, 1
-        blx r6
-        cmp r0, #0
-        bne fallback ; If the .bin is not found, try the .dat.
-
-    read_payload:
-        ; Read file
-        mov r0, r7
-        adr r1, bytes_read
-        ldr r2, =payload_addr
-        cmp r4, #0
-        movne r3, #0x12000 ; Skip the first 0x12000 bytes.
-        moveq r3, payload_maxsize
-        ldr r6, [r7]
-        ldr r6, [r6, #0x28]
-        blx r6
-        cmp r4, #0
-        movne r4, #0
-        bne read_payload ; Go read the real payload.
+    ; Read file
+    mov r0, r7
+    adr r1, bytes_read
+    ldr r2, =payload_addr
+    mov r3, payload_maxsize
+    ldr r6, [r7]
+    ldr r6, [r6, #0x28]
+    blx r6
 
     ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
     add r0, r8, 0x1A
@@ -87,10 +71,8 @@ payload_maxsize equ 0x10000   ; Maximum size for the payload (maximum that CakeB
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-bin_fname:  .dcw "sdmc:/arm9loaderhax.bin"
-            .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname: .dcw "sdmc:/Luma3DS.dat"
-           .word 0
+fname:  .dcw "sdmc:/arm9loaderhax.bin"
+        .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 .align 4
     kernelcode_start:

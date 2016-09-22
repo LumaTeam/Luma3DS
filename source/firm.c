@@ -247,7 +247,7 @@ void main(void)
         writeConfig(needConfig, configTemp);
     }
 
-    bool loadFromSd = CONFIG(SDFIRMSANDMODULES);
+    bool loadFromSd = CONFIG(LOADSDFIRMSANDMODULES);
     u32 firmVersion = loadFirm(&firmType, firmSource, loadFromSd);
 
     switch(firmType)
@@ -316,7 +316,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
             {
                 u8 cetk[0xA50];
 
-                if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)))
+                if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) == sizeof(cetk))
                     decryptNusFirm(cetk, (u8 *)firm, firmSize);
             }
 

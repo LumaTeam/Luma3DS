@@ -77,6 +77,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
                                         "( ) Enable FIRMs and modules loading from SD",
+                                        "( ) Use custom path",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
@@ -143,6 +144,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "Enable loading FIRMs and\n"
                                           "system modules from the SD card.\n\n"
                                           "This isn't needed in most cases.",
+
+                                          "Use a custom path for the\n"
+                                          "Luma3DS payload.\n\n"
+                                          "Refer to the wiki for instructions.",
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
@@ -299,7 +304,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                 drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
             }
 
-            clearScreens(false, true);
+            clearScreens(false, true, false);
             drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
         }
         else

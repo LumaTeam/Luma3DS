@@ -282,7 +282,7 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
     
     while(*REG_SHA_CNT & SHA_FINAL_ROUND);
     sha_wait_idle();
-    
+
     u32 hashSize = SHA_256_HASH_SIZE;
     if(mode == SHA_224_MODE)
         hashSize = SHA_224_HASH_SIZE;
@@ -297,6 +297,8 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 static u8 __attribute__((aligned(4))) nandCtr[AES_BLOCK_SIZE];
 static u8 nandSlot;
 static u32 fatStart;
+static bool didShaHashBackup = false;
+static u8 __attribute__((aligned(4))) shaHashBackup[SHA_256_HASH_SIZE];
 
 void ctrNandInit(void)
 {
@@ -482,8 +484,19 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
     u8 __attribute__((aligned(4))) cid[AES_BLOCK_SIZE];
     u8 __attribute__((aligned(4))) cipherText[AES_BLOCK_SIZE];
 
+    if(!didShaHashBackup)
+    {
+        didShaHashBackup = true;
+        memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
+    }
+
     sdmmc_get_cid(1, (u32 *)cid);
     aes_use_keyslot(4); //Console-unique keyslot whose keys are set by the ARM9 bootROM
     aes(cipherText, inbuf, 1, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     sha(outbuf, cipherText, sizeof(cipherText), SHA_256_MODE);
+}
+
+void restoreShaHashBackup(void)
+{
+    if(didShaHashBackup) memcpy((void *)REG_SHA_HASH, shaHashBackup, sizeof(shaHashBackup));
 }

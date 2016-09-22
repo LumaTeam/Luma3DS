@@ -25,6 +25,7 @@
 */
 
 #include "patches.h"
+#include "fs.h"
 #include "memory.h"
 #include "config.h"
 #include "../build/rebootpatch.h"
@@ -94,6 +95,32 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     //Put the fOpen offset in the right location
     u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_size, 4);
     *pos_fopen = fOpenOffset;
+
+    if(CONFIG(USECUSTOMPATH))
+    {
+        const char pathPath[] = "/luma/path.txt";
+
+        u32 pathSize = getFileSize(pathPath);
+
+        if(pathSize > 5 && pathSize < 39)
+        {
+            u8 path[pathSize];
+            fileRead(path, pathPath, 0);
+            if(path[pathSize - 1] == 0xA) pathSize--;
+            if(path[pathSize - 1] == 0xD) pathSize--;
+
+            if(pathSize > 5 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
+            {
+                u16 finalPath[pathSize + 1];
+                for(u32 i = 0; i < pathSize; i++)
+                    finalPath[i] = (u16)path[i];
+                finalPath[pathSize] = 0;
+
+                u8 *pos_path = memsearch(off, u"sd", reboot_size, 4) + 0xA;
+                memcpy(pos_path, finalPath, pathSize);
+            }
+        }
+    }
 }
 
 void patchFirmWrites(u8 *pos, u32 size)

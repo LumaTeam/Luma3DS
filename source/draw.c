@@ -45,9 +45,12 @@ bool loadSplash(void)
         return false;
 
     initScreens();
+    clearScreens(true, true, true);
 
-    if(isTopSplashValid) fileRead(fb->top_left, topSplashPath, 0);
-    if(isBottomSplashValid) fileRead(fb->bottom, bottomSplashPath, 0);
+    if(isTopSplashValid) fileRead(fbs[1].top_left, topSplashPath, 0);
+    if(isBottomSplashValid) fileRead(fbs[1].bottom, bottomSplashPath, 0);
+
+    swapFramebuffers(true);
 
     chrono(3);
 
@@ -56,7 +59,7 @@ bool loadSplash(void)
 
 void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color)
 {
-    u8 *select = isTopScreen ? fb->top_left : fb->bottom;
+    u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
 
     for(u32 y = 0; y < 8; y++)
     {
