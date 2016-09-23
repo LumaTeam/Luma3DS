@@ -1,5 +1,5 @@
 /*
-*   This pathFile is part of Luma3DS
+*   This file is part of Luma3DS
 *   Copyright (C) 2016 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this pathFile: Requiring preservation of specified
+*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
 *   reasonable legal notices or author attributions in that material or in the Appropriate Legal
 *   Notices displayed by works containing it.
 */
@@ -32,13 +32,9 @@ void main()
 {
     if(f_mount(&fs, "0:", 0) == FR_OK)
     {
-        u32 *loaderAddress = (u32 *)0x24FFFF00;
-        u8 *payloadAddress = (u8 *)0x24F00000;
         FIL pathFile,
             payload;
-        bool useDefault = true;
-
-        memcpy(loaderAddress, loader_bin, loader_bin_size);
+        bool foundPayload = false;
 
         if(f_open(&pathFile, "/luma/path.txt", FA_READ) == FR_OK)
         {
@@ -55,22 +51,27 @@ void main()
                 if(pathSize > 5 && pathSize < 38 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
                 {
                     path[pathSize] = 0;
-                    useDefault = f_open(&payload, path, FA_READ) == FR_OK;
+                    foundPayload = f_open(&payload, path, FA_READ) == FR_OK;
                 }
             }
 
             f_close(&pathFile);
         }
 
-        if(!useDefault) f_open(&payload, "arm9loaderhax.bin", FA_READ);
+        if(!foundPayload) foundPayload = f_open(&payload, "arm9loaderhax.bin", FA_READ);
 
-        u32 payloadSize = f_size(&payload);
-
-        if(payloadSize > 0)
+        if(foundPayload)
         {
+            u32 *loaderAddress = (u32 *)0x24FFFF00;
+            void *payloadAddress = (void *)0x24F00000;
+            u32 payloadSize = f_size(&payload);
+
+            memcpy(loaderAddress, loader_bin, loader_bin_size);
+            loaderAddress[1] = payloadSize;
+
             unsigned int read;
             f_read(&payload, payloadAddress, payloadSize, &read);
-            loaderAddress[1] = payloadSize;
+            f_close(&payload);
 
             flushDCacheRange(loaderAddress, loader_bin_size);
             flushICacheRange(loaderAddress, loader_bin_size);
