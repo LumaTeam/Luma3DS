@@ -317,6 +317,6 @@ void initScreens(void)
         needToSetup = false;
     }
 
-    swapFramebuffers(false);
     clearScreens(true, true, false);
+    swapFramebuffers(false);
 }

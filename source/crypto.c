@@ -417,7 +417,8 @@ void kernel9Loader(u8 *arm9Section)
             break;
     }
 
-    bool needToDecrypt = *(u32 *)(arm9Section + 0x800) != 0x47704770;
+    u32 startOfArm9Bin = *(u32 *)(arm9Section + 0x800);
+    bool needToDecrypt = startOfArm9Bin != 0x47704770 && startOfArm9Bin != 0xB0862000;
 
     if(!isDevUnit && (k9lVersion == 2 || (k9lVersion == 1 && needToDecrypt)))
     {
@@ -431,7 +432,7 @@ void kernel9Loader(u8 *arm9Section)
     {
         u8 arm9BinSlot;
 
-        if(k9lVersion == 0) arm9BinSlot = 0x15;
+        if(!k9lVersion) arm9BinSlot = 0x15;
         else
         {
             arm9BinSlot = 0x16;
