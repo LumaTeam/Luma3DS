@@ -11,8 +11,6 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := Luma3DS
-
 dir_source := source
 dir_cakebrah := CakeBrah
 dir_cakehax := CakeHax
