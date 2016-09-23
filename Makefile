@@ -54,7 +54,6 @@ a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: haxloader
 haxloader: a9lh
-	@mkdir -p $(dir_out)
 	@$(MAKE) name=$(name) -C $(dir_haxloader)
 
 .PHONY: clean
