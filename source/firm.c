@@ -35,7 +35,7 @@
 #include "screen.h"
 #include "buttons.h"
 #include "pin.h"
-#include "../build/injector.h"
+#include "../build/bundled.h"
 
 extern u16 launchedFirmTidLow[8]; //Defined in start.s
 
@@ -492,8 +492,8 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
             if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
             {
-                module = injector;
-                dstModuleSize = injector_size;
+                module = injector_bin;
+                dstModuleSize = injector_bin_size;
             }
             else
             {

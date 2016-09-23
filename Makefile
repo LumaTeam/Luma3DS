@@ -22,7 +22,7 @@ dir_injector := injector
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
-dir_ninjhax := CakeBrah
+dir_cakebrah := CakeBrah
 dir_diffs := diffs
 dir_build := build
 dir_out := out
@@ -36,8 +36,14 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h $(dir_build)/loader.h \
-          $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/svcGetCFWInfo.bin.o $(dir_build)/injector.bin.o $(dir_build)/loader.bin.o \
+          $(dir_build)/k11modules.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
+
+define bin2o
+	bin2s $< | $(AS) -o $(@)
+	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $(dir_build)/bundled.h
+	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $(dir_build)/bundled.h
+endef
 
 .PHONY: all
 all: a9lh ninjhax menuhax
@@ -56,75 +62,64 @@ release: $(dir_out)/$(name)$(revision).7z
 
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
+	@$(MAKE) $(FLAGS) -C $(dir_cakebrah) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean	
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
+.PRECIOUS: $(dir_build)/%.bin
+
 $(dir_out):
 	@mkdir -p "$(dir_out)"
-
-$(dir_out)/menuhax/boot.3dsx: $(dir_diffs) $(dir_out)
-	@mkdir -p "$(@D)"
-	@cd $(dir_ninjhax); patch -p1 < ../$(dir_diffs)/1.diff; patch -p1 < ../$(dir_diffs)/2.diff; $(MAKE) $(FLAGS); git reset --hard
-	@mv $(dir_out)/$(name).3dsx $@
-	@rm $(dir_out)/$(name).smdh
-
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
-	@cp -a $(dir_build)/main.bin $@
-
-$(dir_out)/3ds/$(name): $(dir_diffs) $(dir_out)
-	@mkdir -p "$@"
-	@cd $(dir_ninjhax); patch -p1 < ../$(dir_diffs)/1.diff; $(MAKE) $(FLAGS); git reset --hard
-	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
 $(dir_out)/$(name)$(revision).7z: all
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
+$(dir_out)/menuhax/boot.3dsx: $(dir_diffs) $(dir_out)
+	@mkdir -p "$(@D)"
+	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; patch -p1 < ../$(dir_diffs)/2.diff; $(MAKE) $(FLAGS); git reset --hard
+	@mv $(dir_out)/$(name).3dsx $@
+	@rm $(dir_out)/$(name).smdh
+
+$(dir_out)/3ds/$(name): $(dir_diffs) $(dir_out)
+	@mkdir -p "$@"
+	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; $(MAKE) $(FLAGS); git reset --hard
+	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
+
+$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
+	@cp -a $(dir_build)/main.bin $@
+
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
 
-$(dir_build)/main.elf: $(objects)
+$(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/emunandpatch.h: $(dir_patches)/emunand.s
+$(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n emunand $(@D)/emunand.bin
+	@$(bin2o)
 
-$(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n reboot $(@D)/reboot.bin
-
-$(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n svcGetCFWInfo $(@D)/svcGetCFWInfo.bin
-
-$(dir_build)/injector.h: $(dir_injector)/Makefile
+$(dir_build)/injector.bin: $(dir_injector)/Makefile
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $(dir_injector)
-	@bin2c -o $@ -n injector $(@D)/injector.cxi
 
-$(dir_build)/loader.h: $(dir_loader)/Makefile
+$(dir_build)/loader.bin: $(dir_loader)/Makefile
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $(dir_loader)
-	@bin2c -o $@ -n loader $(@D)/loader.bin
 
-$(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
+$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)/Makefile
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $(dir_arm9_exceptions)
+
+$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions)/Makefile
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $(dir_arm11_exceptions)
+
+$(dir_build)/%.bin: $(dir_patches)/%.s
 	@mkdir -p "$(@D)"
 	@armips $<
-	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
-
-$(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
-	@$(MAKE) -C $(dir_arm9_exceptions)
-	@bin2c -o $@ -n arm9_exceptions $(@D)/arm9_exceptions.bin
-
-$(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
-	@$(MAKE) -C $(dir_arm11_exceptions)
-	@bin2c -o $@ -n arm11_exceptions $(@D)/arm11_exceptions.bin
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""

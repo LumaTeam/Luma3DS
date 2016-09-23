@@ -28,7 +28,7 @@
 #include "screen.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
-#include "../build/loader.h"
+#include "../build/bundled.h"
 
 static FATFS sdFs,
              nandFs;
@@ -128,7 +128,7 @@ void loadPayload(u32 pressed)
         u32 *loaderAddress = (u32 *)0x24FFFF00;
         u8 *payloadAddress = (u8 *)0x24F00000;
 
-        memcpy(loaderAddress, loader, loader_size);
+        memcpy(loaderAddress, loader_bin, loader_bin_size);
 
         concatenateStrings(path, "/");
         concatenateStrings(path, info.altname);
@@ -142,8 +142,8 @@ void loadPayload(u32 pressed)
             restoreShaHashBackup();
             initScreens();
 
-            flushDCacheRange(loaderAddress, loader_size);
-            flushICacheRange(loaderAddress, loader_size);
+            flushDCacheRange(loaderAddress, loader_bin_size);
+            flushICacheRange(loaderAddress, loader_bin_size);
 
             ((void (*)())loaderAddress)();
         }

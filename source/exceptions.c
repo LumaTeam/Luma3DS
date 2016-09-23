@@ -27,12 +27,11 @@
 #include "screen.h"
 #include "draw.h"
 #include "utils.h"
-#include "../build/arm9_exceptions.h"
-#include "../build/arm11_exceptions.h"
+#include "../build/bundled.h"
 
 void installArm9Handlers(void)
 {
-    memcpy((void *)0x01FF8000, arm9_exceptions + 32, arm9_exceptions_size - 32);
+    memcpy((void *)0x01FF8000, arm9_exceptions_bin + 32, arm9_exceptions_bin_size - 32);
 
     /* IRQHandler is at 0x08000000, but we won't handle it for some reasons
        svcHandler is at 0x08000010, but we won't handle svc either */
@@ -42,7 +41,7 @@ void installArm9Handlers(void)
     for(u32 i = 0; i < 4; i++)
     {
         *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
-        *(vu32 *)(0x08000000 + offsets[i] + 4) = *((u32 *)arm9_exceptions + 1 + i);
+        *(vu32 *)(0x08000000 + offsets[i] + 4) = *((u32 *)arm9_exceptions_bin + 1 + i);
     }
 }
 
@@ -58,14 +57,14 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffs
     u32 *freeSpace;
     for(freeSpace = initFPU; freeSpace < (exceptionsPage + 0x400) && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF); freeSpace++);
 
-    memcpy(freeSpace, arm11_exceptions + 32, arm11_exceptions_size - 32);
+    memcpy(freeSpace, arm11_exceptions_bin + 32, arm11_exceptions_bin_size - 32);
 
-    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 8)  - 32);    //Undefined Instruction
-    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 12) - 32);    //Prefetch Abort
-    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 16) - 32);    //Data Abort
-    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 4)  - 32);    //FIQ
+    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32);    //Undefined Instruction
+    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32);    //Prefetch Abort
+    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 16) - 32);    //Data Abort
+    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32);    //FIQ
 
-    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_size - 32); pos++)
+    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 32); pos++)
     {
         switch(*pos) //Perform relocations
         {

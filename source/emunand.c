@@ -23,7 +23,7 @@
 #include "emunand.h"
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
-#include "../build/emunandpatch.h"
+#include "../build/bundled.h"
 
 void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
 {
@@ -144,16 +144,16 @@ void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 
 {
     //Copy EmuNAND code
     u8 *freeK9Space = getFreeK9Space(arm9Section, arm9SectionSize);
-    memcpy(freeK9Space, emunand, emunand_size);
+    memcpy(freeK9Space, emunand_bin, emunand_bin_size);
 
     //Add the data of the found EmuNAND
-    u32 *posOffset = (u32 *)memsearch(freeK9Space, "NAND", emunand_size, 4),
-        *posHeader = (u32 *)memsearch(freeK9Space, "NCSD", emunand_size, 4);
+    u32 *posOffset = (u32 *)memsearch(freeK9Space, "NAND", emunand_bin_size, 4),
+        *posHeader = (u32 *)memsearch(freeK9Space, "NCSD", emunand_bin_size, 4);
     *posOffset = emuOffset;
     *posHeader = emuHeader;
 
     //Find and add the SDMMC struct
-    u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_size, 4);
+    u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
     *posSdmmc = getSdmmc(process9Offset, process9Size);
 
     //Add EmuNAND hooks
