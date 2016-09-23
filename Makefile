@@ -22,15 +22,13 @@ dir_injector := injector
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
-dir_cakebrah := CakeBrah
-dir_diffs := diffs
+dir_haxloader := haxloader
 dir_build := build
 dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Aurora Wright/TuxSH" --no-print-directory
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -46,23 +44,22 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh cakebrah menuhax
+all: a9lh haxloader
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
 
-.PHONY: menuhax
-menuhax: $(dir_out)/menuhax/boot.3dsx
-
-.PHONY: cakebrah
-cakebrah: $(dir_out)/3ds/$(name)
-
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
 
+.PHONY: haxloader
+haxloader: a9lh
+	@mkdir -p $(dir_out)
+	@$(MAKE) -C $(dir_haxloader)
+
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_cakebrah) clean
+	@$(MAKE) $(FLAGS) -C $(dir_haxloader) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean	
@@ -71,22 +68,11 @@ clean:
 
 .PRECIOUS: $(dir_build)/%.bin
 
-$(dir_out):
-	@mkdir -p "$(dir_out)"
+$(dir_out) $(dir_build):
+	@mkdir -p "$@"
 
 $(dir_out)/$(name)$(revision).7z: all
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
-
-$(dir_out)/menuhax/boot.3dsx: $(dir_diffs) $(dir_out)
-	@mkdir -p "$(@D)"
-	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; patch -p1 < ../$(dir_diffs)/2.diff; $(MAKE) $(FLAGS); git reset --hard
-	@mv $(dir_out)/$(name).3dsx $@
-	@rm $(dir_out)/$(name).smdh
-
-$(dir_out)/3ds/$(name): $(dir_diffs) $(dir_out)
-	@mkdir -p "$@"
-	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; $(MAKE) $(FLAGS); git reset --hard
-	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
@@ -98,27 +84,21 @@ $(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
-	@mkdir -p "$(@D)"
 	@$(bin2o)
 
-$(dir_build)/injector.bin: $(dir_injector)/Makefile
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_injector)
+$(dir_build)/injector.bin: $(dir_injector) $(dir_build)
+	@$(MAKE) -C $<
 
-$(dir_build)/loader.bin: $(dir_loader)/Makefile
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_loader)
+$(dir_build)/loader.bin: $(dir_loader) $(dir_build)
+	@$(MAKE) -C $<
 
-$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)/Makefile
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_arm9_exceptions)
+$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions) $(dir_build)
+	@$(MAKE) -C $<
 
-$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions)/Makefile
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_arm11_exceptions)
+$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions) $(dir_build)
+	@$(MAKE) -C $<
 
-$(dir_build)/%.bin: $(dir_patches)/%.s
-	@mkdir -p "$(@D)"
+$(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
 	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3

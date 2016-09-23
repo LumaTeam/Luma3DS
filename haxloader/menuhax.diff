@@ -7,5 +7,5 @@ diff -uNr a/source/main.c b/source/main.c
  int main (void) {
 +    svcSleepThread(2500 * 1000000ULL);
      if (brahma_init()) {
-         if (load_arm9_payload_offset() != 1)
+         if (load_arm9_payload_offset("/" LAUNCHER_PATH, 0x12000, 0x10000) != 1)
              goto error;
