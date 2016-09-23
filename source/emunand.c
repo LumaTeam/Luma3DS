@@ -112,20 +112,15 @@ static inline u32 getSdmmc(u8 *pos, u32 size)
 
 static inline void patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 {
-    const u16 nandRedir[2] = {0x4C00, 0x47A0};
-
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
     u16 *readOffset = (u16 *)memsearch(pos, pattern, size, sizeof(pattern)) - 3,
         *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, sizeof(pattern)) - 3;
 
-    *readOffset = nandRedir[0];
-    readOffset[1] = nandRedir[1];
-    ((u32 *)readOffset)[1] = branchOffset;
-    *writeOffset = nandRedir[0];
-    writeOffset[1] = nandRedir[1];
-    ((u32 *)writeOffset)[1] = branchOffset;
+    *readOffset = *writeOffset = 0x4C00;
+    readOffset[1] = writeOffset[1] = 0x47A0;
+    ((u32 *)writeOffset)[1] = ((u32 *)readOffset)[1] = branchOffset;
 }
 
 static inline void patchMpu(u8 *pos, u32 size)

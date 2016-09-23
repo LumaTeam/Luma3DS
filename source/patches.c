@@ -63,8 +63,6 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
 void patchSignatureChecks(u8 *pos, u32 size)
 {
-    const u16 sigPatch[2] = {0x2000, 0x4770};
-
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
@@ -72,9 +70,8 @@ void patchSignatureChecks(u8 *pos, u32 size)
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern)),
         *off2 = (u16 *)(memsearch(pos, pattern2, size, sizeof(pattern2)) - 1);
 
-    *off = sigPatch[0];
-    off2[0] = sigPatch[0];
-    off2[1] = sigPatch[1];
+    *off = off2[0] = 0x2000;
+    off2[1] = 0x4770;
 }
 
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)

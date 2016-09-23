@@ -417,46 +417,25 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 {
                     verStringSize = 8;
                     u32 currentFirm = BOOTCFG_FIRM;
-                    bool matchingFirm = (currentFirm != 0) == (currentNand != 0);
 
-                    static u16 verStringEmu[] = u"Emu ",
-                               verStringEmuSys[] = u"Em S",
-                               verStringSysEmu[] = u"SyE ";
+                    static u16 *verStringsNands[] = { u" Sys",
+                                                      u" Emu",
+                                                      u"Emu2",
+                                                      u"Emu3",
+                                                      u"Emu4" },
 
-                    switch(currentNand)
-                    {
-                        case 1:
-                            verString = matchingFirm ? u" Emu" : u"EmuS";
-                            break;
-                        case 2:
-                        case 3:
-                        case 4:
-                        {
-                            if(matchingFirm)
-                            {
-                                verStringEmu[3] = '0' + currentNand;
-                                verString = verStringEmu;
-                            }
-                            else
-                            {
-                                verStringEmuSys[2] = '0' + currentNand;
-                                verString = verStringEmuSys;
-                            }
-                            break;
-                        }
-                        default:
-                            if(matchingFirm) verString = u" Sys";
-                            else
-                            {
-                                if(currentFirm == 1) verString = u"SysE";
-                                else
-                                {
-                                    verStringSysEmu[3] = '0' + currentFirm;
-                                    verString = verStringSysEmu;
-                                }
-                            }
-                            break;
-                    }
+                               *verStringsEmuSys[] = { u"EmuS",
+                                                       u"Em2S",
+                                                       u"Em3S",
+                                                       u"Em4S" },
+
+                               *verStringsSysEmu[] = { u"SysE",
+                                                       u"SyE2",
+                                                       u"SyE3",
+                                                       u"SyE4" };
+
+                    verString = (currentFirm != 0) == (currentNand != 0) ? verStringsNands[currentNand] :
+                                                                           (!currentNand ? verStringsSysEmu[currentFirm - 1] : verStringsEmuSys[currentNand - 1]);
                 }
 
                 //Patch Ver. string
