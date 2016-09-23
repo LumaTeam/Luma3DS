@@ -488,7 +488,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
         if(fileSize > 0) dstModuleSize = fileSize;
         else
         {
-            const void *module;
+            const u8 *module;
 
             if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
             {
