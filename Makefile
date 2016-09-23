@@ -46,13 +46,13 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh ninjhax menuhax
+all: a9lh cakebrah menuhax
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
 
-.PHONY: ninjhax
-ninjhax: $(dir_out)/3ds/$(name)
+.PHONY: cakebrah
+cakebrah: $(dir_out)/3ds/$(name)
 
 .PHONY: menuhax
 menuhax: $(dir_out)/menuhax/boot.3dsx
