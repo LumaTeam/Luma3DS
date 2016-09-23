@@ -4,15 +4,13 @@
 
 .global waitcycles
 .type waitcycles, %function
-
-@waitcycles ( u32 us )
 waitcycles:
-	PUSH    {R0-R2,LR}
-	STR     R0, [SP,#4]
-	waitcycles_loop:
-		LDR     R3, [SP,#4]
-		SUBS    R2, R3, #1
-		STR     R2, [SP,#4]
-		CMP     R3, #0
-		BNE     waitcycles_loop
-	POP     {R0-R2,PC}
+    push {r0-r2, lr}
+    str r0, [sp, #4]
+    waitcycles_loop:
+        ldr r3, [sp, #4]
+        subs r2, r3, #1
+        str r2, [sp, #4]
+        cmp r3, #0
+        bne waitcycles_loop
+    pop {r0-r2, pc}

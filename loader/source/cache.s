@@ -18,10 +18,12 @@
 @   reasonable legal notices or author attributions in that material or in the Appropriate Legal
 @   Notices displayed by works containing it.
 
+.text
 .arm
-.global flushCaches
-.type   flushCaches STT_FUNC
+.align 4
 
+.global flushCaches
+.type flushCaches, %function
 flushCaches:
     @ Clean and flush data cache
     @ Adpated from http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0155a/ch03s03s05.html ,
