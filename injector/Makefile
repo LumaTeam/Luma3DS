@@ -15,6 +15,7 @@ name := $(shell basename $(CURDIR))
 
 dir_source := source
 dir_build := build
+dir_out := ../$(dir_build)
 
 LIBS := -lctru
 LIBDIRS	:= $(CTRULIB)
@@ -31,13 +32,13 @@ objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
 
 .PHONY: all
-all: ../$(dir_build)/$(name).bin
+all: $(dir_out)/$(name).bin
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-../$(dir_build)/$(name).bin: $(dir_build)/$(name).elf
+$(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
 
 $(dir_build)/$(name).elf: $(objects)

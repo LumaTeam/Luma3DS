@@ -15,6 +15,7 @@ name := $(shell basename $(CURDIR))
 
 dir_source := source
 dir_build := build
+dir_out := ../$(dir_build)
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
@@ -25,13 +26,13 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: ../$(dir_build)/$(name).bin
+all: $(dir_out)/$(name).bin
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-../$(dir_build)/$(name).bin: $(dir_build)/$(name).elf
+$(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	$(OC) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
