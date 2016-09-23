@@ -42,7 +42,7 @@ void main()
 
             if(pathSize > 5 && pathSize < 40)
             {
-                char path[pathSize];
+                char path[pathSize + 1];
                 unsigned int read;
                 f_read(&pathFile, path, pathSize, &read);
                 if(path[pathSize - 1] == 0xA) pathSize--;
@@ -58,7 +58,7 @@ void main()
             f_close(&pathFile);
         }
 
-        if(!foundPayload) foundPayload = f_open(&payload, "arm9loaderhax.bin", FA_READ);
+        if(!foundPayload) foundPayload = f_open(&payload, "arm9loaderhax.bin", FA_READ) == FR_OK;
 
         if(foundPayload)
         {
