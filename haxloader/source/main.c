@@ -22,13 +22,14 @@
 
 #include "memory.h"
 #include "cache.h"
+#include "i2c.h"
 #include "types.h"
 #include "fatfs/ff.h"
 #include "../../build/bundled.h"
 
 static FATFS fs;
 
-void main()
+void main(void)
 {
     if(f_mount(&fs, "0:", 0) == FR_OK)
     {
@@ -80,5 +81,9 @@ void main()
         }
     }
 
+    //Ensure that all memory transfers have completed and that the data cache has been flushed
+    flushEntireDCache();
+
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
     while(true);
 }

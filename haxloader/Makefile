@@ -47,7 +47,7 @@ $(dir_out)/3ds/$(name):
 	@$(MAKE) $(FLAGS) -C $(dir_cakebrah)
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
-$(dir_out)/menuhax/boot.3dsx: menuhax.diff
+$(dir_out)/menuhax/boot.3dsx:
 	@mkdir -p "$(@D)"
 	@cd $(dir_cakebrah); patch -p1 < ../menuhax.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $@
