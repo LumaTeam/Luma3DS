@@ -91,11 +91,12 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "Select the screen brightness.",
 
                                           "Enable splash screen support.\n\n"
-                                          "\t* 'After payloads' displays it\n"
-                                          "before booting payloads.\n\n"
                                           "\t* 'Before payloads' displays it\n"
-                                          "afterwards (intended for splashes\n"
-                                          "that display button hints).",
+                                          "before booting payloads.\n"
+                                          "(intended for splashes that display\n"
+                                          "button hints).\n\n"
+                                          "\t* 'After payloads' displays it\n"
+                                          "afterwards.",
 
                                           "Activate a PIN lock.\n\n"
                                           "The PIN will be asked each time\n"
