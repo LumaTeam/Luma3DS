@@ -92,7 +92,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable splash screen support.\n\n"
                                           "\t* 'Before payloads' displays it\n"
-                                          "before booting payloads.\n"
+                                          "before booting payloads\n"
                                           "(intended for splashes that display\n"
                                           "button hints).\n\n"
                                           "\t* 'After payloads' displays it\n"

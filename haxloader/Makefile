@@ -12,6 +12,7 @@ LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
 dir_source := source
+dir_diffs := diffs
 dir_cakebrah := CakeBrah
 dir_cakehax := CakeHax
 dir_cakesrop := CakesROP
@@ -29,7 +30,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: $(dir_out)/$(name).dat $(dir_out)/hax/3ds/$(name) $(dir_out)/menuhax/boot.3dsx $(dir_out)/mset/$(name).nds
+all: $(dir_out)/mset-spider/$(name).dat $(dir_out)/hax/3ds/$(name) $(dir_out)/menuhax/boot.3dsx $(dir_out)/mset/$(name).nds
 
 .PHONY: clean
 clean:
@@ -38,18 +39,20 @@ clean:
 	@$(MAKE) $(ROPFLAGS) -C $(dir_cakesrop) clean
 	@rm -rf $(dir_build)
 
-$(dir_out)/$(name).dat: $(dir_build)/main.bin
+$(dir_out)/mset-spider/$(name).dat: $(dir_build)/main.bin
+	@mkdir -p "$(@D)"
 	@$(MAKE) $(FLAGS) -C $(dir_cakehax) launcher
-	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
+	@dd if=$(dir_build)/main.bin of=$(dir_out)/$(name).dat bs=512 seek=144
+	@mv $(dir_out)/$(name).dat $@
 
 $(dir_out)/hax/3ds/$(name):
 	@mkdir -p "$@"
-	@$(MAKE) $(FLAGS) -C $(dir_cakebrah)
+	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
 $(dir_out)/menuhax/boot.3dsx: $(dir_out)/hax/3ds/$(name)
 	@mkdir -p "$(@D)"
-	@cd $(dir_cakebrah); patch -p1 < ../menuhax.diff; $(MAKE) $(FLAGS); git reset --hard
+	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; patch -p1 < ../$(dir_diffs)/2.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $@
 	@rm $(dir_out)/$(name).smdh
 
