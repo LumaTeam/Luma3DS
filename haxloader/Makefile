@@ -34,6 +34,7 @@ all: $(dir_out)/mset-spider/$(name).dat $(dir_out)/hax/3ds/$(name) $(dir_out)/me
 
 .PHONY: clean
 clean:
+	@cd $(dir_cakebrah); git reset --hard
 	@$(MAKE) $(FLAGS) -C $(dir_cakebrah) clean
 	@$(MAKE) $(FLAGS) -C $(dir_cakehax) clean
 	@$(MAKE) $(ROPFLAGS) -C $(dir_cakesrop) clean
