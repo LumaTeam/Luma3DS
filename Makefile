@@ -58,7 +58,7 @@ haxloader: a9lh
 
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_haxloader) clean
+	@$(MAKE) -C $(dir_haxloader) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean	
