@@ -23,7 +23,7 @@ ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Aurora Wright/TuxSH" --no-print-directory
-ROPFLAGS := DATNAME=$(name).dat DISPNAME=$(name)
+ROPFLAGS := DATNAME=$(name).dat DISPNAME=$(name) GRAPHICS=../graphics/
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
