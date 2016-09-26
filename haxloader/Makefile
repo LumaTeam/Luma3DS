@@ -30,7 +30,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: $(dir_out)/mset-spider/$(name).dat $(dir_out)/hax/3ds/$(name) $(dir_out)/menuhax/boot.3dsx $(dir_out)/mset/$(name).nds
+all: $(dir_out)/hax/3ds/$(name) $(dir_out)/menuhax/boot.3dsx $(dir_out)/mset-spider/$(name).dat $(dir_out)/mset/$(name).nds
 
 .PHONY: clean
 clean:
@@ -51,7 +51,7 @@ $(dir_out)/hax/3ds/$(name):
 	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
 
-$(dir_out)/menuhax/boot.3dsx: $(dir_out)/hax/3ds/$(name)
+$(dir_out)/menuhax/boot.3dsx:
 	@mkdir -p "$(@D)"
 	@cd $(dir_cakebrah); patch -p1 < ../$(dir_diffs)/1.diff; patch -p1 < ../$(dir_diffs)/2.diff; $(MAKE) $(FLAGS); git reset --hard
 	@mv $(dir_out)/$(name).3dsx $@
