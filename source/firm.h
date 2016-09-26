@@ -48,7 +48,7 @@ typedef struct firmHeader {
 } firmHeader;
  
 static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromSd);
-static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh, u32 devMode);
+static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32 devMode);
 static inline void patchLegacyFirm(FirmwareType firmType, u32 firmVersion, u32 devMode);
 static inline void patch1x2xNativeAndSafeFirm(u32 devMode);
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromSd);

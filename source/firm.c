@@ -45,13 +45,13 @@ static const firmSectionHeader *section;
 u32 emuOffset;
 bool isN3DS,
      isDevUnit,
+     isA9lh,
      isFirmlaunch;
 CfgData configData;
 FirmwareSource firmSource;
 
 void main(void)
 {
-    bool isA9lh;
     u32 configTemp,
         emuHeader;
     FirmwareType firmType;
@@ -253,7 +253,7 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            patchNativeFirm(firmVersion, nandType, emuHeader, isA9lh, devMode);
+            patchNativeFirm(firmVersion, nandType, emuHeader, devMode);
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM1X2X:
@@ -338,7 +338,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
     return firmVersion;
 }
 
-static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lh, u32 devMode)
+static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + section[2].offset,
        *arm11Section1 = (u8 *)firm + section[1].offset;
@@ -350,8 +350,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         firm->arm9Entry = (u8 *)0x801B01C;
     }
 
-    //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH
-    else if(!isA9lh && firmVersion >= 0x29) set6x7xKeys();
+    //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH or a dev unit
+    else if(!isA9lh && firmVersion >= 0x29 && !isDevUnit) set6x7xKeys();
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,

@@ -349,19 +349,16 @@ u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 
 void set6x7xKeys(void)
 {
-    if(!isDevUnit)
-    {
-        const u8 __attribute__((aligned(4))) keyX0x25[AES_BLOCK_SIZE] = {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3};
-        const u8 __attribute__((aligned(4))) keyY0x2F[AES_BLOCK_SIZE] = {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16};
+    const u8 __attribute__((aligned(4))) keyX0x25[AES_BLOCK_SIZE] = {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3};
+    const u8 __attribute__((aligned(4))) keyY0x2F[AES_BLOCK_SIZE] = {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16};
 
-        aes_setkey(0x25, keyX0x25, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_setkey(0x2F, keyY0x2F, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x25, keyX0x25, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x2F, keyY0x2F, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-        /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function, 
-                    when non-zero it clears this block and continues to do the key generation.
-                    Otherwise when this block was already all-zero, it immediately returns. */
-        memset32((void *)0x01FFCD00, 0, 0x10);
-    }
+    /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function, 
+        when non-zero it clears this block and continues to do the key generation.
+        Otherwise when this block was already all-zero, it immediately returns. */
+    memset32((void *)0x01FFCD00, 0, 0x10);
 }
 
 void decryptExeFs(u8 *inbuf)
@@ -382,8 +379,8 @@ void decryptExeFs(u8 *inbuf)
 void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize)
 {
     const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
-    u8 __attribute__((aligned(4))) cetkIv[AES_BLOCK_SIZE] = {0};
     u8 __attribute__((aligned(4))) titleKey[AES_BLOCK_SIZE];
+    u8 __attribute__((aligned(4))) cetkIv[AES_BLOCK_SIZE] = {0};
     memcpy(titleKey, inbuf + 0x1BF, sizeof(titleKey));
     memcpy(cetkIv, inbuf + 0x1DC, 8);
 
@@ -485,7 +482,7 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
     u8 __attribute__((aligned(4))) cid[AES_BLOCK_SIZE];
     u8 __attribute__((aligned(4))) cipherText[AES_BLOCK_SIZE];
 
-    if(!didShaHashBackup)
+    if(isA9lh && !didShaHashBackup)
     {
         memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
         didShaHashBackup = true;

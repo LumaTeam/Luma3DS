@@ -139,7 +139,7 @@ void loadPayload(u32 pressed)
         {
             loaderAddress[1] = payloadSize;
 
-            restoreShaHashBackup();
+            if(isA9lh) restoreShaHashBackup();
             initScreens();
 
             flushDCacheRange(loaderAddress, loader_bin_size);
