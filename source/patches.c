@@ -97,14 +97,14 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 
         u32 pathSize = getFileSize(pathPath);
 
-        if(pathSize > 5 && pathSize < 40)
+        if(pathSize > 5 && pathSize < 58)
         {
             u8 path[pathSize];
             fileRead(path, pathPath, 0);
             if(path[pathSize - 1] == 0xA) pathSize--;
             if(path[pathSize - 1] == 0xD) pathSize--;
 
-            if(pathSize > 5 && pathSize < 38 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
+            if(pathSize > 5 && pathSize < 56 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
             {
                 u16 finalPath[pathSize + 1];
                 for(u32 i = 0; i < pathSize; i++)

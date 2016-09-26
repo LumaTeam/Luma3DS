@@ -72,7 +72,7 @@ bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
 fname: .dcw "sdmc:/arm9loaderhax.bin"
-       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 .align 4
     kernelcode_start:

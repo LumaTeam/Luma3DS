@@ -49,7 +49,7 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 +	if (p) {
 +		fseek(p , 0, SEEK_END);
 +		psize = ftell(p);
-+		if (psize > 5 && psize < 40) {
++		if (psize > 5 && psize < 58) {
 +			char path[psize + 1];
 +
 +			fseek(p, 0, SEEK_SET);
@@ -58,7 +58,7 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 +			if (bytes_read == psize) {
 +				if (path[psize - 1] == 0xA) psize--;
 +				if (path[psize - 1] == 0xD) psize--;
-+				if (psize > 5 && psize < 38 && path[0] == '/' && memcmp(&path[psize - 4], ".bin", 4)) {
++				if (psize > 5 && psize < 56 && path[0] == '/' && memcmp(&path[psize - 4], ".bin", 4)) {
 +					path[psize] = 0;
 +					f = fopen(path, "rb");
 +					use_default = false;

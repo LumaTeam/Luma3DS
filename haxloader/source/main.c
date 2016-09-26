@@ -41,7 +41,7 @@ void main(void)
         {
             u32 pathSize = f_size(&pathFile);
 
-            if(pathSize > 5 && pathSize < 40)
+            if(pathSize > 5 && pathSize < 58)
             {
                 char path[pathSize + 1];
                 unsigned int read;
@@ -49,7 +49,7 @@ void main(void)
                 if(path[pathSize - 1] == 0xA) pathSize--;
                 if(path[pathSize - 1] == 0xD) pathSize--;
 
-                if(pathSize > 5 && pathSize < 38 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
+                if(pathSize > 5 && pathSize < 56 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
                 {
                     path[pathSize] = 0;
                     foundPayload = f_open(&payload, path, FA_READ) == FR_OK;
