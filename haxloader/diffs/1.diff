@@ -1,6 +1,6 @@
 diff -uNr a/include/brahma.h b/include/brahma.h
---- a/include/brahma.h	2016-09-21 16:18:56.246840000 +0200
-+++ b/include/brahma.h	2016-09-21 16:20:28.975957322 +0200
+--- a/include/brahma.h	2016-09-26 16:05:36.363067000 +0200
++++ b/include/brahma.h	2016-09-26 21:35:14.800519000 +0200
 @@ -4,7 +4,7 @@
  
  u32 brahma_init (void);
@@ -20,9 +20,9 @@ diff -uNr a/include/brahma.h b/include/brahma.h
  
  #define ARM_JUMPOUT 0xE51FF004 // LDR PC, [PC, -#04]
 diff -uNr a/source/brahma.c b/source/brahma.c
---- a/source/brahma.c	2016-09-21 16:18:56.246840000 +0200
-+++ b/source/brahma.c	2016-09-21 16:21:33.240730777 +0200
-@@ -179,39 +179,56 @@
+--- a/source/brahma.c	2016-09-26 16:05:36.363067000 +0200
++++ b/source/brahma.c	2016-09-26 21:37:58.660516468 +0200
+@@ -179,39 +179,54 @@
  	return g_ext_arm9_loaded;
  }
  
@@ -61,7 +61,7 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 +				if (psize > 5 && psize < 56 && path[0] == '/' && memcmp(&path[psize - 4], ".bin", 4)) {
 +					path[psize] = 0;
 +					f = fopen(path, "rb");
-+					use_default = false;
++					if (f) use_default = false;
 +				}
 +			}
 +		}
@@ -69,8 +69,6 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 +	}
 +
 +	if (use_default) f = fopen("/arm9loaderhax.bin", "rb");
-+
-+	u32 max_size = ARM9_PAYLOAD_MAX_SIZE;
  
 -	FILE *f = fopen(filename, "rb");
  	if (f) {
@@ -90,8 +88,8 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 -				u32 bytes_read = fread(g_ext_arm9_buf, 1, psize, f);
 -				result = (g_ext_arm9_loaded = (bytes_read == psize));
 -			}
-+		if (fsize > max_size)
-+			fsize = max_size;
++		if (fsize > ARM9_PAYLOAD_MAX_SIZE)
++			fsize = ARM9_PAYLOAD_MAX_SIZE;
 +
 +		g_ext_arm9_size = fsize;
 +
@@ -103,8 +101,8 @@ diff -uNr a/source/brahma.c b/source/brahma.c
  		fclose(f);
  	}
 diff -uNr a/source/main.c b/source/main.c
---- a/source/main.c	2016-09-21 16:18:56.246840000 +0200
-+++ b/source/main.c	2016-09-21 16:20:28.979957377 +0200
+--- a/source/main.c	2016-09-26 16:05:36.363067000 +0200
++++ b/source/main.c	2016-09-26 21:40:35.202513018 +0200
 @@ -10,7 +10,7 @@
  
  int main (void) {
@@ -114,3 +112,12 @@ diff -uNr a/source/main.c b/source/main.c
              goto error;
          firm_reboot();
          brahma_exit();
+@@ -22,7 +22,7 @@
+ error:
+     gfxInitDefault();
+     consoleInit(GFX_BOTTOM, NULL);
+-    printf("An error occurred while loading the payload.\nMake sure your launcher is located at:\n/" LAUNCHER_PATH);
++    printf("An error occurred while loading the payload.");
+     wait_any_key();
+ 
+     gfxExit();
