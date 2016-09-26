@@ -103,7 +103,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "Luma3DS boots.\n\n"
                                           "4, 6 or 8 digits can be selected.\n\n"
                                           "The ABXY buttons and the directional\n"
-                                          "pad buttons can be used as keys.",
+                                          "pad buttons can be used as keys.\n\n"
+                                          "A message can also be displayed\n"
+                                          "(refer to the wiki for instructions).",
 
                                           "Select the New 3DS CPU mode.\n\n"
                                           "It will be always enabled.\n\n"
@@ -144,7 +146,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable loading FIRMs and\n"
                                           "system modules from the SD card.\n\n"
-                                          "This isn't needed in most cases.",
+                                          "This isn't needed in most cases.\n\n"
+                                          "Refer to the wiki for instructions.",
 
                                           "Use a custom path for the\n"
                                           "Luma3DS payload.\n\n"
@@ -158,12 +161,13 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "out-of-region games work.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Enable showing the current NAND:\n\n"
+                                          "Enable showing the current NAND/FIRM:\n\n"
                                           "\t* Sys  = SysNAND\n"
                                           "\t* Emu  = EmuNAND 1\n"
                                           "\t* EmuX = EmuNAND X\n"
                                           "\t* SysE = SysNAND with EmuNAND 1 FIRM\n"
                                           "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
+                                          "\t* EmuS = EmuNAND 1 with SysNAND FIRM\n"
                                           "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
                                           "or an user-defined custom string in\n"
                                           "System Settings.\n\n"
