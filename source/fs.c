@@ -203,10 +203,15 @@ void findDumpFile(const char *path, char *fileName)
 {
     DIR dir;
     FILINFO info;
+    FRESULT result;
     u32 n = 0;
 
-    while(f_findfirst(&dir, &info, path, fileName) == FR_OK && info.fname[0] != 0)
+    while(true)
     {
+        result = f_findfirst(&dir, &info, path, fileName);
+
+        if(result != FR_OK || !info.fname[0]) break;
+
         u32 i = 18,
             tmp = ++n;
 
@@ -217,5 +222,5 @@ void findDumpFile(const char *path, char *fileName)
         }
     }
 
-    f_closedir(&dir);
+    if(result == FR_OK) f_closedir(&dir);
 }
