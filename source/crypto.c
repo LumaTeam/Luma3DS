@@ -372,8 +372,9 @@ void decryptExeFs(u8 *inbuf)
     ncchCtr[8] = 2;
 
     aes_setkey(0x2C, inbuf, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_advctr(ncchCtr, 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x2C);
-    aes(inbuf - 0x200, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(inbuf, exeFsOffset + 0x200, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
 void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize)
