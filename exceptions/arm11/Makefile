@@ -18,7 +18,7 @@ dir_build := build
 dir_out := ../../$(dir_build)
 
 ASFLAGS := -mcpu=mpcore -mfpu=vfp
-CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -Os -flto -ffast-math
 LDFLAGS := -nostdlib
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \

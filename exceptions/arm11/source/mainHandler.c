@@ -22,8 +22,6 @@
 
 #include "handlers.h"
 
-#define FINAL_BUFFER    0xE5000000 //0x25000000
-
 #define REG_DUMP_SIZE   4 * 23
 #define CODE_DUMP_SIZE  48
 
@@ -49,7 +47,8 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
 
     u32 registerDump[REG_DUMP_SIZE / 4];
     u8 codeDump[CODE_DUMP_SIZE];
-    u8 *final = (u8 *)FINAL_BUFFER;
+    u8 *const finalBuffer = cannotAccessVA((const void *)0xE5000000) ? (u8 *)0xF5000000 : (u8 *)0xE5000000; //VA for 0x25000000
+    u8 *final = finalBuffer;
 
     while(*(vu32 *)final == 0xDEADC0DE && *((vu32 *)final + 1) == 0xDEADCAFE);
 
@@ -80,8 +79,8 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
     dumpHeader.codeDumpSize = copyMemory(codeDump, instr, dumpHeader.codeDumpSize, ((cpsr & 0x20) != 0) ? 2 : 4);
 
-    //Copy register dump and code dump 
-    final = (u8 *)(FINAL_BUFFER + sizeof(ExceptionDumpHeader));
+    //Copy register dump and code dump
+    final = (u8 *)(finalBuffer + sizeof(ExceptionDumpHeader));
     final += copyMemory(final, registerDump, dumpHeader.registerDumpSize, 1);
     final += copyMemory(final, codeDump, dumpHeader.codeDumpSize, 1);
 
@@ -95,7 +94,7 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
         dumpHeader.additionalDataSize = 16;
         vu8 *currentKCodeSet = *(vu8 **)(*(vu8 **)0xFFFF9004 + CODESET_OFFSET); //currentKProcess + CodeSet
 
-        additionalData[0] = *(vu64 *)(currentKCodeSet + 0x50); //Process name        
+        additionalData[0] = *(vu64 *)(currentKCodeSet + 0x50); //Process name
         additionalData[1] = *(vu64 *)(currentKCodeSet + 0x5C); //Title ID
     }
     else dumpHeader.additionalDataSize = 0;
@@ -103,7 +102,7 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
 
     //Copy header (actually optimized by the compiler)
-    *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
+    *(ExceptionDumpHeader *)finalBuffer = dumpHeader;
 
     cleanInvalidateDCacheAndDMB();
     mcuReboot(); //Also contains DCache-cleaning code
