@@ -22,9 +22,9 @@
 #   Notices displayed by works containing it.
 
 __author__    = "TuxSH"
-__copyright__ = "Copyright (c) 2016 TuxSH" 
+__copyright__ = "Copyright (c) 2016 TuxSH"
 __license__   = "GPLv3"
-__version__   = "v1.0"
+__version__   = "v1.2"
 
 """
 Parses Luma3DS exception dumps
@@ -32,6 +32,9 @@ Parses Luma3DS exception dumps
 
 import argparse
 from struct import unpack_from
+
+import os
+import subprocess
 
 # Source of hexdump: https://gist.github.com/ImmortalPC/c340564823f283fe530b
 # Credits for hexdump go to the original authors
@@ -76,14 +79,14 @@ def hexdump(addr, src, length=16, sep='.' ):
                 text += chr(c)
             else:
                 text += sep
-        result.append(('%08X:  %-'+str(length*(2+1)+1)+'s  |%s|') % (addr + i, hexa, text))
+        result.append(('%08x:  %-'+str(length*(2+1)+1)+'s  |%s|') % (addr + i, hexa, text))
 
     return '\n'.join(result)
-    
+
 
 def makeRegisterLine(A, rA, B, rB):
     return "{0:<15}{1:<20}{2:<15}{3:<20}".format(A, "{0:08x}".format(rA), B, "{0:08x}".format(rB))
-    
+
 handledExceptionNames = ("FIQ", "undefined instruction", "prefetch abort", "data abort")
 registerNames = tuple("r{0}".format(i) for i in range(13)) + ("sp", "lr", "pc", "cpsr") + ("dfsr", "ifsr", "far") + ("fpexc", "fpinst", "fpinst2")
 svcBreakReasons = ("(svcBreak: panic)", "(svcBreak: assertion failed)", "(svcBreak: user-related)")
@@ -96,23 +99,24 @@ if __name__ == "__main__":
     with open(args.filename, "rb") as f: data = f.read()
     if unpack_from("<2I", data) != (0xdeadc0de, 0xdeadcafe):
         raise SystemExit("Invalid file format")
-    
+
     version, processor, exceptionType, _, nbRegisters, codeDumpSize, stackDumpSize, additionalDataSize = unpack_from("<8I", data, 8)
     nbRegisters //= 4
-    
+
     if version < (1 << 16) | 2:
         raise SystemExit("Incompatible format version, please use the appropriate parser.")
-    
+
     registers = unpack_from("<{0}I".format(nbRegisters), data, 40)
-    codeDump = data[40 + 4 * nbRegisters : 40 + 4 * nbRegisters + codeDumpSize]
-    stackOffset = 40 + 4 * nbRegisters + codeDumpSize
+    codeOffset = 40 + 4 * nbRegisters
+    codeDump = data[codeOffset : codeOffset + codeDumpSize]
+    stackOffset = codeOffset + codeDumpSize
     stackDump = data[stackOffset : stackOffset + stackDumpSize]
     addtionalDataOffset = stackOffset + stackDumpSize
     additionalData = data[addtionalDataOffset : addtionalDataOffset + additionalDataSize]
-    
+
     if processor == 9: print("Processor: ARM9")
     else: print("Processor: ARM11 (core {0})".format(processor >> 16))
-    
+
     typeDetailsStr = ""
     if exceptionType == 2:
         if (registers[16] & 0x20) == 0 and codeDumpSize >= 4:
@@ -125,23 +129,41 @@ if __name__ == "__main__":
             instr = unpack_from("<I", codeDump[-4:])[0]
             if instr == 0xdf3c:
                 typeDetailsStr = " " + (svcBreakReasons[registers[0]] if registers[0] < 3 else "(svcBreak)")
-    
+
     elif processor != 9 and (registers[20] & 0x80000000) != 0:
         typeDetailsStr = " (VFP exception)"
-    
+
     print("Exception type: {0}{1}".format("unknown" if exceptionType >= len(handledExceptionNames) else handledExceptionNames[exceptionType], typeDetailsStr))
     if additionalDataSize != 0:
         print("Current process: {0} ({1:016x})".format(additionalData[:8].decode("ascii"), unpack_from("<Q", additionalData, 8)[0]))
-    
+
     print("\nRegister dump:\n")
     for i in range(0, nbRegisters - (nbRegisters % 2), 2):
         if i == 16: print("")
         print(makeRegisterLine(registerNames[i], registers[i], registerNames[i+1], registers[i+1]))
     if nbRegisters % 2 == 1: print("{0:<15}{1:<20}".format(registerNames[nbRegisters - 1], "{0:08x}".format(registers[nbRegisters - 1])))
-    
+
+    thumb = registers[16] & 0x20 != 0
+    addr = registers[15] - codeDumpSize + (2 if thumb else 4)
+
     print("\nCode dump:\n")
-    print(hexdump(registers[15] - codeDumpSize + (4 if (registers[16] & 0x20 == 0) else 2), codeDump))
-    
+
+    objdump_res = ""
+    try:
+        path = os.path.join(os.environ["DEVKITARM"], "bin", "arm-none-eabi-objdump")
+        if os.name == "nt":
+            path = ''.join((path[1], ':', path[2:])).replace('/', '\\')
+
+        objdump_res = subprocess.check_output((
+                                                    path, "-marm", "-b", "binary",
+                                                     "--adjust-vma="+hex(addr - codeOffset), "--start-address="+hex(addr),
+                                                     "--stop-address="+hex(addr + codeDumpSize), "-D", "-z", "-M",
+                                                     "reg-names-std" + (",force-thumb" if thumb else ""), args.filename
+                                             )).decode("utf-8")
+        objdump_res = '\n'.join(objdump_res[objdump_res.find('<.data+'):].split('\n')[1:])
+    except: objdump_res = ""
+
+    print(objdump_res if objdump_res != "" else hexdump(addr, codeDump))
+
     print("\nStack dump:\n")
     print(hexdump(registers[13], stackDump))
-    
