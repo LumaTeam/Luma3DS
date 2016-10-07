@@ -132,7 +132,7 @@ bool verifyPin(u32 pinMode)
     u8 cnt = 0;
     u32 charDrawPos = 16 * SPACING_X;
 
-    const char messagePath[] = "/luma/pinmessage.txt";
+    const char messagePath[] = "luma/pinmessage.txt";
 
     u32 messageSize = getFileSize(messagePath);
 

@@ -172,9 +172,9 @@ void detectAndProcessExceptionDumps(void)
             }
         }
 
-        char path[42];
+        char path[41];
         char fileName[] = "crash_dump_00000000.dmp";
-        const char *pathFolder = dumpHeader->processor == 9 ? "/luma/dumps/arm9" : "/luma/dumps/arm11";
+        const char *pathFolder = dumpHeader->processor == 9 ? "luma/dumps/arm9" : "luma/dumps/arm11";
 
         findDumpFile(pathFolder, fileName);
         memcpy(path, pathFolder, strlen(pathFolder) + 1);

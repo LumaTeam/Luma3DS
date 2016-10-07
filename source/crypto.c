@@ -347,6 +347,20 @@ int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
     return result;
 }
 
+int ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf)
+{
+    u8 __attribute__((aligned(4))) tmpCtr[sizeof(nandCtr)];
+    memcpy(tmpCtr, nandCtr, sizeof(nandCtr));
+    aes_advctr(tmpCtr, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    //Encrypt
+    aes_use_keyslot(nandSlot);
+    aes(inbuf, inbuf, sectorCount * 0x200 / AES_BLOCK_SIZE, tmpCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    //Write
+    return sdmmc_nand_writesectors(sector + fatStart, sectorCount, inbuf);
+}
+
 void set6x7xKeys(void)
 {
     const u8 __attribute__((aligned(4))) keyX0x25[AES_BLOCK_SIZE] = {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3};

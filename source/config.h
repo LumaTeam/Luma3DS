@@ -28,7 +28,7 @@
 #define MULTICONFIG(a)   ((configData.config >> (a * 2 + 9)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
-#define CONFIG_PATH         "/luma/config.bin"
+#define CONFIG_PATH         "luma/config.bin"
 #define CONFIG_VERSIONMAJOR 1
 #define CONFIG_VERSIONMINOR 6
 
@@ -78,6 +78,6 @@ typedef enum ConfigurationStatus
 extern CfgData configData;
 extern bool isN3DS;
 
-bool readConfig(bool isSdMounted);
+bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(bool oldPinStatus, u32 oldPinMode);
+void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode);

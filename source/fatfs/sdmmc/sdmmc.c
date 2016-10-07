@@ -244,7 +244,6 @@ int __attribute__((noinline)) sdmmc_nand_readsectors(u32 sector_no, u32 numsecto
     return geterror(&handleNAND);
 }
 
-/*
 int __attribute__((noinline)) sdmmc_nand_writesectors(u32 sector_no, u32 numsectors, const u8 *in) //experimental
 {
     if(handleNAND.isSDHC == 0) sector_no <<= 9;
@@ -259,7 +258,6 @@ int __attribute__((noinline)) sdmmc_nand_writesectors(u32 sector_no, u32 numsect
     inittarget(&handleSD);
     return geterror(&handleNAND);
 }
-*/
 
 static u32 calcSDSize(u8 *csd, int type)
 {

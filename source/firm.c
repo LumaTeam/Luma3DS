@@ -64,11 +64,17 @@ void main(void)
     //Detect dev units
     isDevUnit = CFG_UNITINFO != 0;
 
-    //Mount SD
-    bool isSdMounted = mountFs(true);
+    //Mount SD or CTRNAND
+    Fs fsStatus;
+    if(mountFs(true)) fsStatus = SD_CARD;
+    else
+    {
+        firmSource = FIRMWARE_SYSNAND;
+        fsStatus = (mountFs(false) && switchToCtrNand()) ? CTRNAND : NONE;
+    }
 
     //Attempt to read the configuration file
-    needConfig = readConfig(isSdMounted) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+    needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     u32 devMode = MULTICONFIG(DEVOPTIONS);
 
@@ -94,6 +100,8 @@ void main(void)
         //Determine if booting with A9LH
         isA9lh = !PDN_SPI_CNT;
 
+        if(fsStatus == NONE) error("Error mounting SD and CTRNAND.");
+
         if(devMode != 0 && isA9lh) detectAndProcessExceptionDumps();
 
         //Get pressed buttons
@@ -102,15 +110,8 @@ void main(void)
         //Save old options and begin saving the new boot configuration
         configTemp = (configData.config & 0xFFFFFE00) | ((u32)isA9lh << 6);
 
-        if(!isSdMounted)
-        {
-            nandType = FIRMWARE_SYSNAND;
-            firmSource = FIRMWARE_SYSNAND;
-            needConfig = DONT_CONFIGURE;
-        }
-
         //If it's a MCU reboot, try to force boot options
-        else if(isA9lh && CFG_BOOTENV)
+        if(isA9lh && CFG_BOOTENV)
         {
             //Always force a sysNAND boot when quitting AGB_FIRM
             if(CFG_BOOTENV == 7)
@@ -149,7 +150,7 @@ void main(void)
 
             if(shouldLoadConfigMenu)
             {
-                configMenu(pinExists, pinMode);
+                configMenu(fsStatus, pinExists, pinMode);
 
                 //Update pressed buttons
                 pressed = HID_PAD;
@@ -189,12 +190,14 @@ void main(void)
 
                 if(splashMode == 2) loadSplash();
 
-                //Determine if the user chose to use the SysNAND FIRM as default for a R boot
-                bool useSysAsDefault = isA9lh ? CONFIG(USESYSFIRM) : false;
+                if(fsStatus == CTRNAND) nandType = FIRMWARE_SYSNAND;
 
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
-                if(pressed & BUTTON_R1)
+                else if(pressed & BUTTON_R1)
                 {
+                    //Determine if the user chose to use the SysNAND FIRM as default for a R boot
+                    bool useSysAsDefault = isA9lh ? CONFIG(USESYSFIRM) : false;
+
                     nandType = useSysAsDefault ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
                     firmSource = useSysAsDefault ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
                 }
@@ -248,14 +251,14 @@ void main(void)
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&emuHeader, &firmSource);
 
-    if(isSdMounted && !isFirmlaunch)
+    if(!isFirmlaunch)
     {
         configTemp |= (u32)nandType | ((u32)firmSource << 3);
         writeConfig(needConfig, configTemp);
     }
 
     bool loadFromSd = CONFIG(LOADSDFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromSd, isSdMounted);
+    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromSd, fsStatus);
 
     switch(firmType)
     {
@@ -274,24 +277,24 @@ void main(void)
     launchFirm(firmType, loadFromSd);
 }
 
-static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromSd, bool isSdMounted)
+static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromSd, Fs fsStatus)
 {
     section = firm->section;
 
     const char *firmwareFiles[] = {
-        "/luma/firmware.bin",
-        "/luma/firmware_twl.bin",
-        "/luma/firmware_agb.bin",
-        "/luma/firmware_safe.bin"
+        "luma/firmware.bin",
+        "luma/firmware_twl.bin",
+        "luma/firmware_agb.bin",
+        "luma/firmware_safe.bin"
     },
                *cetkFiles[] = {
-        "/luma/cetk",
-        "/luma/cetk_twl",
-        "/luma/cetk_agb",
-        "/luma/cetk_safe"
+        "luma/cetk",
+        "luma/cetk_twl",
+        "luma/cetk_agb",
+        "luma/cetk_safe"
     };
 
-    if(!mountFs(false)) error("Error mounting CTRNAND.");
+    if(fsStatus == SD_CARD && !mountFs(false)) error("Error mounting CTRNAND.");
 
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
@@ -308,7 +311,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
             if(firmSource != FIRMWARE_SYSNAND) 
                 error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
-            if(HID_PAD == SAFE_MODE) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
+            if(BOOTCFG_SAFEMODE != 0) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
             *firmType = NATIVE_FIRM1X2X;
         }
@@ -317,7 +320,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
         else if(firmVersion < 0x25) mustLoadFromSd = true;
     }
 
-    if(isSdMounted && (loadFromSd || mustLoadFromSd))
+    if(loadFromSd || mustLoadFromSd)
     {
         u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000);
 
@@ -329,12 +332,12 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
                 if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) == sizeof(cetk))
                     decryptNusFirm(cetk, (u8 *)firm, firmSize);
-                else error("The firmware.bin in /luma is encrypted\nor corrupted.");
+                else error("The firmware.bin in luma is encrypted\nor corrupted.");
             }
 
             //Check that the SD FIRM is right for the console from the ARM9 section address
             if((section[3].offset ? section[3].address : section[2].address) != (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-                error("The firmware.bin in /luma is not valid for this\nconsole.");
+                error("The firmware.bin in luma is not valid for this\nconsole.");
 
             firmVersion = 0xFFFFFFFF;
         }
@@ -342,7 +345,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
     if(firmVersion != 0xFFFFFFFF)
     {
-        if(mustLoadFromSd) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot.");
+        if(mustLoadFromSd) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in luma to boot.");
         decryptExeFs((u8 *)firm);
     }
 
@@ -485,7 +488,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         if(loadFromSd)
         {
-            char fileName[30] = "/luma/sysmodules/";
+            char fileName[30] = "luma/sysmodules/";
             const char *ext = ".cxi";
 
             //Read modules from files if they exist

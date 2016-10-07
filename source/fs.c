@@ -38,6 +38,11 @@ bool mountFs(bool isSd)
     return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK : f_mount(&nandFs, "1:", 1) == FR_OK;
 }
 
+bool switchToCtrNand(void)
+{
+    return f_chdrive("1:") == FR_OK && f_chdir("/rw") == FR_OK;
+}
+
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
@@ -84,11 +89,10 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
                 char folder[i + 1];
                 memcpy(folder, path, i);
                 folder[i] = 0;
-                ret = f_mkdir(folder) == FR_OK;
-                if(!ret) break;
+                f_mkdir(folder);
            }
 
-        if(ret) ret = fileWrite(buffer, path, size);
+        ret = fileWrite(buffer, path, size);
     }
     else ret = false;
 
@@ -118,7 +122,7 @@ void loadPayload(u32 pressed)
 
     DIR dir;
     FILINFO info;
-    char path[28] = "/luma/payloads";
+    char path[27] = "luma/payloads";
 
     FRESULT result = f_findfirst(&dir, &info, path, pattern);
 

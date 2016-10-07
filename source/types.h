@@ -56,3 +56,10 @@ typedef enum FirmwareType
     SAFE_FIRM,
     NATIVE_FIRM1X2X
 } FirmwareType;
+
+typedef enum Fs
+{
+    SD_CARD = 0,
+    CTRNAND,
+    NONE
+} Fs;

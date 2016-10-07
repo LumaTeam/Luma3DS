@@ -87,7 +87,8 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-        return (pdrv == SDCARD && !sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff)) ? RES_OK : RES_PARERR;
+        return ((pdrv == SDCARD && !sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff)) ||
+                (pdrv == CTRNAND && !ctrNandWrite(sector, count, (BYTE *)buff))) ? RES_OK : RES_PARERR;
 }
 #endif
 

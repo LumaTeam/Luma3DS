@@ -93,7 +93,7 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 
     if(CONFIG(USECUSTOMPATH))
     {
-        const char pathPath[] = "/luma/path.txt";
+        const char pathPath[] = "luma/path.txt";
 
         u32 pathSize = getFileSize(pathPath);
 

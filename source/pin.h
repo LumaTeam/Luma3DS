@@ -28,7 +28,7 @@
 
 #include "types.h"
 
-#define PIN_PATH         "/luma/pin.bin"
+#define PIN_PATH         "luma/pin.bin"
 #define PIN_VERSIONMAJOR 1
 #define PIN_VERSIONMINOR 3
 

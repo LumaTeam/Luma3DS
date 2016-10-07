@@ -77,7 +77,7 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
 
     IFile file;
 
-    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, paths[currentNand], FS_OPEN_READ)))
+    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, paths[currentNand], FS_OPEN_READ)) || R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, paths[currentNand], FS_OPEN_READ)))
     {
         u64 fileSize;
 
@@ -135,7 +135,7 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     IFile file;
 
-    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)))
+    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)) || R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)))
     {
         u64 fileSize;
 
@@ -159,7 +159,7 @@ static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
     IFile file;
 
-    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)))
+    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)) || R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)))
     {
         u64 fileSize;
 

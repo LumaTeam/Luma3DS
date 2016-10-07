@@ -29,18 +29,17 @@
 #include "buttons.h"
 #include "pin.h"
 
-bool readConfig(bool isSdMounted)
+bool readConfig(void)
 {
     bool ret;
 
-    if(!isSdMounted ||
-       fileRead(&configData, CONFIG_PATH, sizeof(CfgData)) != sizeof(CfgData) ||
+    if(fileRead(&configData, CONFIG_PATH, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
         configData.config = 0;
-        ret = !isSdMounted;
+        ret = false;
     }
     else ret = true;
 
@@ -68,7 +67,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
     }
 }
 
-void configMenu(bool oldPinStatus, u32 oldPinMode)
+void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -80,7 +79,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
                                         "( ) Use SysNAND FIRM if booting with R (A9LH)",
-                                        "( ) Enable FIRMs and modules loading from SD",
+                                        "( ) Enable loading external FIRMs and modules",
                                         "( ) Use custom path",
                                         "( ) Enable region/language emu. and ext. .code",
                                         "( ) Show NAND or user string in System Settings",
@@ -148,8 +147,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "1/2/3/4), also add A if you have\n"
                                           "a matching payload.",
 
-                                          "Enable loading FIRMs and\n"
-                                          "system modules from the SD card.\n\n"
+                                          "Enable loading external FIRMs and\n"
+                                          "system modules.\n\n"
                                           "This isn't needed in most cases.\n\n"
                                           "Refer to the wiki for instructions.",
 
@@ -193,25 +192,37 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         u32 posXs[4];
         u32 posY;
         u32 enabled;
+        bool visible;
     } multiOptions[] = {
-        { .posXs = {19, 24, 29, 34} },
-        { .posXs = {21, 26, 31, 36} },
-        { .posXs = {12, 22, 31, 0}  },
-        { .posXs = {14, 19, 24, 29} },
-        { .posXs = {17, 26, 32, 44} },
-        { .posXs = {19, 30, 42, 0}  }
+        { .posXs = {19, 24, 29, 34}, .visible = fsStatus == SD_CARD },
+        { .posXs = {21, 26, 31, 36}, .visible = true },
+        { .posXs = {12, 22, 31, 0}, .visible = true  },
+        { .posXs = {14, 19, 24, 29}, .visible = true },
+        { .posXs = {17, 26, 32, 44}, .visible = isN3DS },
+        { .posXs = {19, 30, 42, 0}, .visible = true  }
     };
-
-    //Calculate the amount of the various kinds of options and pre-select the first single one
-    u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
-        singleOptionsAmount = sizeof(singleOptionsText) / sizeof(char *),
-        totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption = multiOptionsAmount;
 
     struct singleOption {
         u32 posY;
         bool enabled;
-    } singleOptions[singleOptionsAmount];
+        bool visible;
+    } singleOptions[] = {
+        { .visible = fsStatus == SD_CARD },
+        { .visible = fsStatus == SD_CARD },
+        { .visible = true },
+        { .visible = fsStatus == SD_CARD },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true }
+    };
+
+    //Calculate the amount of the various kinds of options and pre-select the first single one
+    u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
+        singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption),
+        totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
+        selectedOption = multiOptionsAmount;
+    while(!singleOptions[selectedOption - multiOptionsAmount].visible) selectedOption++;
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -232,7 +243,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
     {
-        if(!(i == NEWCPU && !isN3DS))
+        if(multiOptions[i].visible)
         {
             multiOptions[i].posY = endPos + SPACING_Y;
             endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
@@ -246,10 +257,13 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     //Display all the normal options in white except for the first one
     for(u32 i = 0; i < singleOptionsAmount; i++)
     {
-        singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
-        if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
-        color = COLOR_WHITE;
+        if(singleOptions[i].visible)
+        {
+            singleOptions[i].posY = endPos + SPACING_Y;
+            endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
+            if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
+            color = COLOR_WHITE;
+        }
     }
 
     drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
@@ -270,24 +284,31 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
             //Remember the previously selected option
             u32 oldSelectedOption = selectedOption;
 
-            switch(pressed)
+            while(true)
             {
-                case BUTTON_UP:
-                    if(!selectedOption) selectedOption = totalIndexes;
-                    else selectedOption = (selectedOption == NEWCPU + 1 && !isN3DS) ? selectedOption - 2 : selectedOption - 1;
-                    break;
-                case BUTTON_DOWN:
-                    if(selectedOption == totalIndexes) selectedOption = 0;
-                    else selectedOption = (selectedOption == NEWCPU - 1 && !isN3DS) ? selectedOption + 2 : selectedOption + 1;
-                    break;
-                case BUTTON_LEFT:
-                    selectedOption = 0;
-                    break;
-                case BUTTON_RIGHT:
-                    selectedOption = totalIndexes;
-                    break;
-                default:
-                    continue;
+                switch(pressed)
+                {
+                    case BUTTON_UP:
+                        selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
+                        break;
+                    case BUTTON_DOWN:
+                        selectedOption = selectedOption == totalIndexes ? 0 : selectedOption + 1;
+                        break;
+                    case BUTTON_LEFT:
+                        pressed = BUTTON_DOWN;
+                        selectedOption = 0;
+                        break;
+                    case BUTTON_RIGHT:
+                        pressed = BUTTON_UP;
+                        selectedOption = totalIndexes;
+                        break;
+                }
+
+                if(selectedOption < multiOptionsAmount)
+                {
+                    if(multiOptions[selectedOption].visible) break;
+                }
+                else if(singleOptions[selectedOption - multiOptionsAmount].visible) break;
             }
 
             if(selectedOption == oldSelectedOption) continue;
