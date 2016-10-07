@@ -255,7 +255,7 @@ void main(void)
     }
 
     bool loadFromSd = CONFIG(LOADSDFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromSd);
+    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromSd, isSdMounted);
 
     switch(firmType)
     {
@@ -274,7 +274,7 @@ void main(void)
     launchFirm(firmType, loadFromSd);
 }
 
-static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromSd)
+static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromSd, bool isSdMounted)
 {
     section = firm->section;
 
@@ -317,7 +317,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
         else if(firmVersion < 0x25) mustLoadFromSd = true;
     }
 
-    if(loadFromSd || mustLoadFromSd)
+    if(isSdMounted && (loadFromSd || mustLoadFromSd))
     {
         u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000);
 
