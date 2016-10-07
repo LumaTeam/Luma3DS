@@ -257,8 +257,8 @@ void main(void)
         writeConfig(needConfig, configTemp);
     }
 
-    bool loadFromSd = CONFIG(LOADSDFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromSd, fsStatus);
+    bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
+    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, fsStatus);
 
     switch(firmType)
     {
@@ -274,10 +274,10 @@ void main(void)
             break;
     }
 
-    launchFirm(firmType, loadFromSd);
+    launchFirm(firmType, loadFromStorage);
 }
 
-static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromSd, Fs fsStatus)
+static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bool loadFromStorage, Fs fsStatus)
 {
     section = firm->section;
 
@@ -301,7 +301,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
     if(firmVersion == 0xFFFFFFFF) error("Error getting the CTRNAND FIRM.");
 
-    bool mustLoadFromSd = false;
+    bool mustLoadFromStorage = false;
 
     if(!isN3DS && *firmType == NATIVE_FIRM)
     {
@@ -316,11 +316,11 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
             *firmType = NATIVE_FIRM1X2X;
         }
 
-        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD
-        else if(firmVersion < 0x25) mustLoadFromSd = true;
+        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD/CTRNAND
+        else if(firmVersion < 0x25) mustLoadFromStorage = true;
     }
 
-    if(loadFromSd || mustLoadFromSd)
+    if(loadFromStorage || mustLoadFromStorage)
     {
         u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000);
 
@@ -332,12 +332,12 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
                 if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) == sizeof(cetk))
                     decryptNusFirm(cetk, (u8 *)firm, firmSize);
-                else error("The firmware.bin in luma is encrypted\nor corrupted.");
+                else error("The firmware.bin in /luma is encrypted\nor corrupted.");
             }
 
-            //Check that the SD FIRM is right for the console from the ARM9 section address
+            //Check that the FIRM is right for the console from the ARM9 section address
             if((section[3].offset ? section[3].address : section[2].address) != (isN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-                error("The firmware.bin in luma is not valid for this\nconsole.");
+                error("The firmware.bin in /luma is not valid for this\nconsole.");
 
             firmVersion = 0xFFFFFFFF;
         }
@@ -345,7 +345,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
 
     if(firmVersion != 0xFFFFFFFF)
     {
-        if(mustLoadFromSd) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in luma to boot.");
+        if(mustLoadFromStorage) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot.");
         decryptExeFs((u8 *)firm);
     }
 
@@ -473,7 +473,7 @@ static inline void patch1x2xNativeAndSafeFirm(u32 devMode)
     }
 }
 
-static inline void copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromSd)
+static inline void copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromStorage)
 {
     u32 srcModuleSize,
         dstModuleSize;
@@ -486,9 +486,9 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         u32 fileSize;
 
-        if(loadFromSd)
+        if(loadFromStorage)
         {
-            char fileName[30] = "luma/sysmodules/";
+            char fileName[29] = "luma/sysmodules/";
             const char *ext = ".cxi";
 
             //Read modules from files if they exist
@@ -520,13 +520,13 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
     }
 }
 
-static inline void launchFirm(FirmwareType firmType, bool loadFromSd)
+static inline void launchFirm(FirmwareType firmType, bool loadFromStorage)
 {
     //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs
     u32 sectionNum;
-    if(firmType == NATIVE_FIRM || (loadFromSd && firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X))
+    if(firmType == NATIVE_FIRM || (loadFromStorage && firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X))
     {
-        copySection0AndInjectSystemModules(firmType, loadFromSd);
+        copySection0AndInjectSystemModules(firmType, loadFromStorage);
         sectionNum = 1;
     }
     else sectionNum = 0;
