@@ -37,16 +37,21 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-        DRESULT ret = RES_OK;
-        static bool sdmmcInited = false;
+        DRESULT ret;
+        static u32 sdmmcInitResult = 4;
 
-        if(!sdmmcInited)
+        if(sdmmcInitResult == 4) sdmmcInitResult = sdmmc_sdcard_init();
+
+        if(pdrv == CTRNAND)
         {
-            if(!sdmmc_sdcard_init()) ret = RES_PARERR;
-            else sdmmcInited = true;
+            if(!(sdmmcInitResult & 1))
+            {
+                ctrNandInit();
+                ret = RES_OK;
+            }
+            else ret = RES_PARERR;
         }
-
-        if(pdrv == CTRNAND) ctrNandInit();
+        else ret = (!(sdmmcInitResult & 2)) ? RES_OK : RES_PARERR;
 
 	return ret;
 }
