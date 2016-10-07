@@ -64,11 +64,11 @@ void main(void)
     //Detect dev units
     isDevUnit = CFG_UNITINFO != 0;
 
-    //Mount filesystems. CTRNAND will be mounted only if/when needed
-    mountFs();
+    //Mount SD
+    bool isSdMounted = mountFs(true);
 
     //Attempt to read the configuration file
-    needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+    needConfig = readConfig(isSdMounted) ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     u32 devMode = MULTICONFIG(DEVOPTIONS);
 
@@ -102,8 +102,15 @@ void main(void)
         //Save old options and begin saving the new boot configuration
         configTemp = (configData.config & 0xFFFFFE00) | ((u32)isA9lh << 6);
 
+        if(!isSdMounted)
+        {
+            nandType = FIRMWARE_SYSNAND;
+            firmSource = FIRMWARE_SYSNAND;
+            needConfig = DONT_CONFIGURE;
+        }
+
         //If it's a MCU reboot, try to force boot options
-        if(isA9lh && CFG_BOOTENV)
+        else if(isA9lh && CFG_BOOTENV)
         {
             //Always force a sysNAND boot when quitting AGB_FIRM
             if(CFG_BOOTENV == 7)
@@ -241,7 +248,7 @@ void main(void)
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&emuHeader, &firmSource);
 
-    if(!isFirmlaunch)
+    if(isSdMounted && !isFirmlaunch)
     {
         configTemp |= (u32)nandType | ((u32)firmSource << 3);
         writeConfig(needConfig, configTemp);
@@ -284,8 +291,12 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
         "/luma/cetk_safe"
     };
 
+    if(!mountFs(false)) error("Error mounting CTRNAND.");
+
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
+
+    if(firmVersion == 0xFFFFFFFF) error("Error getting the CTRNAND FIRM.");
 
     bool mustLoadFromSd = false;
 

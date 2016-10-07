@@ -47,8 +47,8 @@ bool loadSplash(void)
     initScreens();
     clearScreens(true, true, true);
 
-    if(isTopSplashValid) fileRead(fbs[1].top_left, topSplashPath, 0);
-    if(isBottomSplashValid) fileRead(fbs[1].bottom, bottomSplashPath, 0);
+    if(isTopSplashValid) fileRead(fbs[1].top_left, topSplashPath, SCREEN_TOP_FBSIZE);
+    if(isBottomSplashValid) fileRead(fbs[1].bottom, bottomSplashPath, SCREEN_BOTTOM_FBSIZE);
 
     swapFramebuffers(true);
 

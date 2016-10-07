@@ -41,7 +41,7 @@
 #include "cache.h"
 #include "i2c.h"
 
-vu32 *const arm11Entry = (vu32 *)BRAHMA_ARM11_ENTRY;
+vu32 *arm11Entry = (vu32 *)BRAHMA_ARM11_ENTRY;
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
@@ -166,16 +166,6 @@ void clearScreens(bool clearTop, bool clearBottom, bool clearAlternate)
         }
 
         while(!((!clearTopTmp || (REGs_PSC0[3] & 2)) && (!clearBottomTmp || (REGs_PSC1[3] & 2))));
-
-        if(fbTmp->top_right != fbTmp->top_left && clearTopTmp)
-        {
-            REGs_PSC0[0] = (u32)fbTmp->top_right >> 3; //Start address
-            REGs_PSC0[1] = (u32)(fbTmp->top_right + SCREEN_TOP_FBSIZE) >> 3; //End address
-            REGs_PSC0[2] = 0; //Fill value
-            REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
-
-            while(!(REGs_PSC0[3] & 2));
-        }
 
         WAIT_FOR_ARM9();
     }

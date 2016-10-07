@@ -29,18 +29,22 @@
 #include "buttons.h"
 #include "pin.h"
 
-bool readConfig(void)
+bool readConfig(bool isSdMounted)
 {
-    if(fileRead(&configData, CONFIG_PATH, sizeof(CfgData)) != sizeof(CfgData) ||
+    bool ret;
+
+    if(!isSdMounted ||
+       fileRead(&configData, CONFIG_PATH, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
         configData.config = 0;
-        return false;
+        ret = !isSdMounted;
     }
+    else ret = true;
 
-    return true;
+    return ret;
 }
 
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp)

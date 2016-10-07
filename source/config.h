@@ -78,6 +78,6 @@ typedef enum ConfigurationStatus
 extern CfgData configData;
 extern bool isN3DS;
 
-bool readConfig(void);
+bool readConfig(bool isSdMounted);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
 void configMenu(bool oldPinStatus, u32 oldPinMode);

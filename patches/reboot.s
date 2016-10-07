@@ -25,13 +25,18 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
         cmp r0, r2
         bne pxi_wait_recv
 
-    ; Open file
-    add r0, r7, #8
-    adr r1, fname
-    mov r2, #1
-    ldr r6, [fopen]
-    orr r6, 1
-    blx r6
+        adr r1, sd_fname
+
+    open_payload:
+        ; Open file
+        add r0, r7, #8
+        mov r2, #1
+        ldr r6, [fopen]
+        orr r6, 1
+        blx r6
+        cmp r0, #0
+        adrne r1, nand_fname
+        bne open_payload
 
     ; Read file
     mov r0, r7
@@ -71,8 +76,11 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-fname: .dcw "sdmc:/arm9loaderhax.bin"
+sd_fname: .dcw "sdmc:/arm9loaderhax.bin"
        .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+.pool
+nand_fname: .dcw "nand:/arm9loaderhax.bin"
+            .word 0
 
 .align 4
     kernelcode_start:

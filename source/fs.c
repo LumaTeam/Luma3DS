@@ -33,10 +33,9 @@
 static FATFS sdFs,
              nandFs;
 
-void mountFs(void)
+bool mountFs(bool isSd)
 {
-    f_mount(&sdFs, "0:", 1);
-    f_mount(&nandFs, "1:", 0);
+    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK : f_mount(&nandFs, "1:", 1) == FR_OK;
 }
 
 u32 fileRead(void *dest, const char *path, u32 maxSize)
@@ -48,7 +47,7 @@ u32 fileRead(void *dest, const char *path, u32 maxSize)
     {
         u32 size = f_size(&file);
         if(dest == NULL) ret = size;
-        else if(!(maxSize > 0 && size > maxSize))
+        else if(size <= maxSize)
             f_read(&file, dest, size, (unsigned int *)&ret);
         f_close(&file);
     }
@@ -64,6 +63,7 @@ u32 getFileSize(const char *path)
 bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
+    bool ret;
 
     FRESULT result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
 
@@ -74,10 +74,9 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
         f_truncate(&file);
         f_close(&file);
 
-        return true;
+        ret = (u32)written == size;
     }
-
-    if(result == FR_NO_PATH)
+    else if(result == FR_NO_PATH)
     {
         for(u32 i = 1; path[i] != 0; i++)
            if(path[i] == '/')
@@ -85,13 +84,15 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
                 char folder[i + 1];
                 memcpy(folder, path, i);
                 folder[i] = 0;
-                f_mkdir(folder);
+                ret = f_mkdir(folder) == FR_OK;
+                if(!ret) break;
            }
 
-        return fileWrite(buffer, path, size);
+        if(ret) ret = fileWrite(buffer, path, size);
     }
+    else ret = false;
 
-    return false;
+    return ret;
 }
 
 void fileDelete(const char *path)
@@ -163,38 +164,41 @@ u32 firmRead(void *dest, u32 firmType)
 
     DIR dir;
     FILINFO info;
-
-    f_opendir(&dir, path);
-
     u32 firmVersion = 0xFFFFFFFF;
 
-    //Parse the target directory
-    while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
+    if(f_opendir(&dir, path) == FR_OK)
     {
-        //Not a cxi
-        if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
-
-        //Convert the .app name to an integer
-        u32 tempVersion = 0;
-        for(char *tmp = info.altname; *tmp != '.'; tmp++)
+        //Parse the target directory
+        while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
         {
-            tempVersion <<= 4;
-            tempVersion += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
+            //Not a cxi
+            if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
+
+            //Convert the .app name to an integer
+            u32 tempVersion = 0;
+            for(char *tmp = info.altname; *tmp != '.'; tmp++)
+            {
+                tempVersion <<= 4;
+                tempVersion += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
+            }
+
+            //Found an older cxi
+            if(tempVersion < firmVersion) firmVersion = tempVersion;
         }
 
-        //Found an older cxi
-        if(tempVersion < firmVersion) firmVersion = tempVersion;
+        f_closedir(&dir);
+
+        if(firmVersion != 0xFFFFFFFF)
+        {
+            //Complete the string with the .app name
+            concatenateStrings(path, "/00000000.app");
+
+            //Convert back the .app name from integer to array
+            hexItoa(firmVersion, &path[35], 8);
+
+            if(!fileRead(dest, path, 0x400200)) firmVersion = 0xFFFFFFFF;
+        }
     }
-
-    f_closedir(&dir);
-
-    //Complete the string with the .app name
-    concatenateStrings(path, "/00000000.app");
-
-    //Convert back the .app name from integer to array
-    hexItoa(firmVersion, &path[35], 8);
-
-    fileRead(dest, path, 0);
 
     return firmVersion;
 }

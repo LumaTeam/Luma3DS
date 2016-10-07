@@ -47,7 +47,7 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
 
     u32 registerDump[REG_DUMP_SIZE / 4];
     u8 codeDump[CODE_DUMP_SIZE];
-    u8 *const finalBuffer = cannotAccessVA((const void *)0xE5000000) ? (u8 *)0xF5000000 : (u8 *)0xE5000000; //VA for 0x25000000
+    u8 *finalBuffer = cannotAccessVA((void *)0xE5000000) ? (u8 *)0xF5000000 : (u8 *)0xE5000000; //VA for 0x25000000
     u8 *final = finalBuffer;
 
     while(*(vu32 *)final == 0xDEADC0DE && *((vu32 *)final + 1) == 0xDEADCAFE);
@@ -88,7 +88,7 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
     final += dumpHeader.stackDumpSize;
 
-    if(!cannotAccessVA((u8 *)0xFFFF9004))
+    if(!cannotAccessVA((void *)0xFFFF9004))
     {
         vu64 *additionalData = (vu64 *)final;
         dumpHeader.additionalDataSize = 16;

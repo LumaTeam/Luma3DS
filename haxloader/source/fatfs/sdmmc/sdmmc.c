@@ -274,17 +274,17 @@ static u32 calcSDSize(u8 *csd, int type)
     switch(type)
     {
         case 0:
-            {
-                u32 block_len = csd[9] & 0xF;
-                block_len = 1u << block_len;
-                u32 mult = (u32)((csd[4] >> 7) | ((csd[5] & 3) << 1));
-                mult = 1u << (mult + 2);
-                result = csd[8] & 3;
-                result = (result << 8) | csd[7];
-                result = (result << 2) | (csd[6] >> 6);
-                result = (result + 1) * mult * block_len / 512;
-            }
+        {
+            u32 block_len = csd[9] & 0xF;
+            block_len = 1u << block_len;
+            u32 mult = (u32)((csd[4] >> 7) | ((csd[5] & 3) << 1));
+            mult = 1u << (mult + 2);
+            result = csd[8] & 3;
+            result = (result << 8) | csd[7];
+            result = (result << 2) | (csd[6] >> 6);
+            result = (result + 1) * mult * block_len / 512;
             break;
+        }
         case 1:
             result = csd[7] & 0x3F;
             result = (result << 8) | csd[6];
@@ -482,9 +482,9 @@ void sdmmc_get_cid(bool isNand, u32 *info)
 }
 */
 
-void sdmmc_sdcard_init()
+bool sdmmc_sdcard_init()
 {
     InitSD();
     //Nand_Init();
-    SD_Init();
+    return SD_Init() == 0;
 }

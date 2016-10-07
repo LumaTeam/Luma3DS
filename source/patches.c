@@ -100,7 +100,7 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
         if(pathSize > 5 && pathSize < 58)
         {
             u8 path[pathSize];
-            fileRead(path, pathPath, 0);
+            fileRead(path, pathPath, pathSize);
             if(path[pathSize - 1] == 0xA) pathSize--;
             if(path[pathSize - 1] == 0xD) pathSize--;
 

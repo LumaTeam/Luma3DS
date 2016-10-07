@@ -106,7 +106,7 @@ extern bool isN3DS, isDevUnit, isA9lh;
 extern FirmwareSource firmSource;
 
 void ctrNandInit(void);
-u32 ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
+int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 void set6x7xKeys(void);
 void decryptExeFs(u8 *inbuf);
 void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize);

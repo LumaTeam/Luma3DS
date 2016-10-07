@@ -28,7 +28,7 @@
 
 extern bool isN3DS, isA9lh;
 
-void mountFs(void);
+bool mountFs(bool isSd);
 u32 fileRead(void *dest, const char *path, u32 maxSize);
 u32 getFileSize(const char *path);
 bool fileWrite(const void *buffer, const char *path, u32 size);
