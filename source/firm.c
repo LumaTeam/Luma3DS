@@ -308,7 +308,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
             if(firmSource != FIRMWARE_SYSNAND) 
                 error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
-            if(BOOTCFG_SAFEMODE != 0) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
+            if(HID_PAD == SAFE_MODE) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
             *firmType = NATIVE_FIRM1X2X;
         }
