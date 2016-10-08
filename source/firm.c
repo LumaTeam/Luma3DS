@@ -331,7 +331,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
                 u8 cetk[0xA50];
 
                 if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) == sizeof(cetk))
-                    decryptNusFirm(cetk, (u8 *)firm, firmSize);
+                    decryptNusFirm((Ticket *)&cetk[0x140], (Ncch *)firm, firmSize);
                 else error("The firmware.bin in /luma is encrypted\nor corrupted.");
             }
 
@@ -346,7 +346,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource, bo
     if(firmVersion != 0xFFFFFFFF)
     {
         if(mustLoadFromStorage) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot.");
-        decryptExeFs((u8 *)firm);
+        decryptExeFs((Ncch *)firm);
     }
 
     return firmVersion;
@@ -360,7 +360,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(isN3DS)
     {
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
-        kernel9Loader(arm9Section);
+        kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
 
@@ -440,7 +440,7 @@ static inline void patchLegacyFirm(FirmwareType firmType, u32 firmVersion, u32 d
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
     if(isN3DS)
     {
-        kernel9Loader(arm9Section);
+        kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
@@ -458,7 +458,7 @@ static inline void patch1x2xNativeAndSafeFirm(u32 devMode)
     if(isN3DS)
     {
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
-        kernel9Loader(arm9Section);
+        kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
 
         patchFirmWrites(arm9Section, section[2].size);
@@ -481,7 +481,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
     for(u8 *src = (u8 *)firm + section[0].offset, *srcEnd = src + section[0].size, *dst = section[0].address;
         src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
     {
-        srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
+        srcModuleSize = ((Ncch *)src)->contentSize * 0x200;
         const char *moduleName = (char *)(src + 0x200);
 
         u32 fileSize;

@@ -24,6 +24,7 @@
 *   Crypto libs from http://github.com/b1l1s/ctr
 *   kernel9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 *   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
+*   3ds type structs adapted from 3DBrew and https://github.com/mid-kid/CakesForeveryWan/blob/master/source/headers.h
 */
 
 #pragma once
@@ -101,6 +102,76 @@
 #define SHA_224_HASH_SIZE   (224 / 8)
 #define SHA_1_HASH_SIZE     (160 / 8)
 
+typedef struct Ncch {
+    uint8_t sig[0x100]; //RSA-2048 signature of the NCCH header, using SHA-256
+    char magic[4]; //NCCH
+    uint32_t contentSize; //Media unit
+    uint8_t partitionId[8];
+    uint8_t makerCode[2];
+    uint16_t version;
+    uint8_t reserved1[4];
+    uint8_t programID[8];
+    uint8_t reserved2[0x10];
+    uint8_t logoHash[0x20]; //Logo Region SHA-256 hash
+    char productCode[0x10];
+    uint8_t exHeaderHash[0x20]; //Extended header SHA-256 hash
+    uint32_t exHeaderSize; //Extended header size
+    uint32_t reserved3;
+    uint8_t flags[8];
+    uint32_t plainOffset; //Media unit
+    uint32_t plainSize; //Media unit
+    uint32_t logoOffset; //Media unit
+    uint32_t logoSize; //Media unit
+    uint32_t exeFsOffset; //Media unit
+    uint32_t exeFsSize; //Media unit
+    uint32_t exeFsHashSize; //Media unit
+    uint32_t reserved4;
+    uint32_t romFsOffset; //Media unit
+    uint32_t romFsSize; //Media unit
+    uint32_t romFsHashSize; //Media unit
+    uint32_t reserved5;
+    uint8_t exeFsHash[0x20]; //ExeFS superblock SHA-256 hash
+    uint8_t romFsHash[0x20]; //RomFS superblock SHA-256 hash
+} Ncch;
+
+typedef struct Ticket
+{
+    char sigIssuer[0x40];
+    uint8_t eccPubKey[0x3C];
+    uint8_t version;
+    uint8_t caCrlVersion;
+    uint8_t signerCrlVersion;
+    uint8_t titleKey[0x10];
+    uint8_t reserved1;
+    uint8_t ticketId[8];
+    uint8_t consoleId[4];
+    uint8_t titleId[8];
+    uint8_t reserved2[2];
+    uint16_t ticketTitleVersion;
+    uint8_t reserved3[8];
+    uint8_t licenseType;
+    uint8_t ticketCommonKeyYIndex; //Ticket common keyY index, usually 0x1 for retail system titles.
+    uint8_t reserved4[0x2A];
+    uint8_t unk[4]; //eShop Account ID?
+    uint8_t reserved5;
+    uint8_t audit;
+    uint8_t reserved6[0x42];
+    uint8_t limits[0x40];
+    uint8_t contentIndex[0xAC];
+} Ticket;
+
+typedef struct Arm9Bin {
+    uint8_t keyX[0x10];
+    uint8_t keyY[0x10];
+    uint8_t ctr[0x10];
+    uint8_t size[8];
+    uint8_t reserved[8];
+    uint8_t ctlBlock[0x10];
+    char magic[4];
+    uint8_t reserved2[0xC];
+    uint8_t slot0x16keyX[0x10];
+} Arm9Bin;
+
 extern u32 emuOffset;
 extern bool isN3DS, isDevUnit, isA9lh;
 extern FirmwareSource firmSource;
@@ -109,8 +180,8 @@ void ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf);
 void set6x7xKeys(void);
-void decryptExeFs(u8 *inbuf);
-void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize);
-void kernel9Loader(u8 *arm9Section);
+void decryptExeFs(Ncch *ncch);
+void decryptNusFirm(const Ticket *ticket, Ncch *ncch, u32 ncchSize);
+void kernel9Loader(Arm9Bin *arm9Section);
 void computePinHash(u8 *outbuf, const u8 *inbuf);
 void restoreShaHashBackup(void);

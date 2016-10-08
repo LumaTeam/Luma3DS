@@ -24,6 +24,7 @@
 *   Crypto libs from http://github.com/b1l1s/ctr
 *   kernel9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 *   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
+*   3ds type structs adapted from 3DBrew and https://github.com/mid-kid/CakesForeveryWan/blob/master/source/headers.h
 */
 
 #include "crypto.h"
@@ -375,29 +376,29 @@ void set6x7xKeys(void)
     memset32((void *)0x01FFCD00, 0, 0x10);
 }
 
-void decryptExeFs(u8 *inbuf)
+void decryptExeFs(Ncch *ncch)
 {
-    u8 *exeFsOffset = inbuf + *(u32 *)(inbuf + 0x1A0) * 0x200;
-    u32 exeFsSize = *(u32 *)(inbuf + 0x1A4) * 0x200;
+    u8 *exeFsOffset = (u8 *)ncch + ncch->exeFsOffset * 0x200;
+    u32 exeFsSize = ncch->exeFsSize * 0x200;
     u8 __attribute__((aligned(4))) ncchCtr[AES_BLOCK_SIZE] = {0};
 
     for(u32 i = 0; i < 8; i++)
-        ncchCtr[7 - i] = *(inbuf + 0x108 + i);
+        ncchCtr[7 - i] = ncch->partitionId[i];
     ncchCtr[8] = 2;
 
-    aes_setkey(0x2C, inbuf, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x2C, ncch, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_advctr(ncchCtr, 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x2C);
-    aes(inbuf, exeFsOffset + 0x200, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(ncch, exeFsOffset + 0x200, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
-void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize)
+void decryptNusFirm(const Ticket *ticket, Ncch *ncch, u32 ncchSize)
 {
     const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
     u8 __attribute__((aligned(4))) titleKey[AES_BLOCK_SIZE];
     u8 __attribute__((aligned(4))) cetkIv[AES_BLOCK_SIZE] = {0};
-    memcpy(titleKey, inbuf + 0x1BF, sizeof(titleKey));
-    memcpy(cetkIv, inbuf + 0x1DC, 8);
+    memcpy(titleKey, ticket->titleKey, sizeof(titleKey));
+    memcpy(cetkIv, ticket->titleId, sizeof(ticket->titleId));
 
     aes_setkey(0x3D, keyY0x3D, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x3D);
@@ -407,16 +408,16 @@ void decryptNusFirm(const u8 *inbuf, u8 *outbuf, u32 ncchSize)
 
     aes_setkey(0x16, titleKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x16);
-    aes(outbuf, outbuf, ncchSize / AES_BLOCK_SIZE, ncchIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(ncch, ncch, ncchSize / AES_BLOCK_SIZE, ncchIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    decryptExeFs(outbuf);
+    decryptExeFs(ncch);
 }
 
-void kernel9Loader(u8 *arm9Section)
+void kernel9Loader(Arm9Bin *arm9Section)
 {
     //Determine the kernel9loader version
     u32 k9lVersion;
-    switch(arm9Section[0x53])
+    switch(arm9Section->magic[3])
     {
         case 0xFF:
             k9lVersion = 0;
@@ -429,7 +430,7 @@ void kernel9Loader(u8 *arm9Section)
             break;
     }
 
-    u32 startOfArm9Bin = *(u32 *)(arm9Section + 0x800);
+    u32 startOfArm9Bin = *(u32 *)((u8 *)arm9Section + 0x800);
     bool needToDecrypt = startOfArm9Bin != 0x47704770 && startOfArm9Bin != 0xB0862000;
 
     if(!isDevUnit && (k9lVersion == 2 || (k9lVersion == 1 && needToDecrypt)))
@@ -452,28 +453,28 @@ void kernel9Loader(u8 *arm9Section)
             //Set keyX
             u8 __attribute__((aligned(4))) keyX[AES_BLOCK_SIZE];
             aes_use_keyslot(0x11);
-            aes(keyX, arm9Section + 0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+            aes(keyX, arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
             aes_setkey(0x16, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         }
 
         //Set keyY
         u8 __attribute__((aligned(4))) keyY[AES_BLOCK_SIZE];
-        memcpy(keyY, arm9Section + 0x10, sizeof(keyY));
+        memcpy(keyY, arm9Section->keyY, sizeof(keyY));
         aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         //Set CTR
         u8 __attribute__((aligned(4))) arm9BinCtr[AES_BLOCK_SIZE];
-        memcpy(arm9BinCtr, arm9Section + 0x20, sizeof(arm9BinCtr));
+        memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
 
         //Calculate the size of the ARM9 binary
         u32 arm9BinSize = 0;
         //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
-        for(u8 *tmp = arm9Section + 0x30; *tmp != 0; tmp++)
+        for(u8 *tmp = arm9Section->size; *tmp != 0; tmp++)
             arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
 
         //Decrypt ARM9 binary
         aes_use_keyslot(arm9BinSlot);
-        aes(arm9Section + 0x800, arm9Section + 0x800, arm9BinSize / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes((u8 *)arm9Section + 0x800, (u8 *)arm9Section + 0x800, arm9BinSize / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
     //Set >=9.6 KeyXs
