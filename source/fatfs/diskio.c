@@ -37,7 +37,7 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-        DRESULT ret;
+        DSTATUS ret;
         static u32 sdmmcInitResult = 4;
 
         if(sdmmcInitResult == 4) sdmmcInitResult = sdmmc_sdcard_init();
@@ -47,11 +47,11 @@ DSTATUS disk_initialize (
             if(!(sdmmcInitResult & 1))
             {
                 ctrNandInit();
-                ret = RES_OK;
+                ret = 0;
             }
-            else ret = RES_PARERR;
+            else ret = STA_NOINIT;
         }
-        else ret = (!(sdmmcInitResult & 2)) ? RES_OK : RES_PARERR;
+        else ret = (!(sdmmcInitResult & 2)) ? 0 : STA_NOINIT;
 
 	return ret;
 }
