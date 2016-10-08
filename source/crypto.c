@@ -469,7 +469,7 @@ void kernel9Loader(Arm9Bin *arm9Section)
         //Calculate the size of the ARM9 binary
         u32 arm9BinSize = 0;
         //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
-        for(u8 *tmp = arm9Section->size; *tmp != 0; tmp++)
+        for(char *tmp = arm9Section->size; *tmp != 0; tmp++)
             arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
 
         //Decrypt ARM9 binary

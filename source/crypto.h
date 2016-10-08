@@ -164,7 +164,7 @@ typedef struct Arm9Bin {
     uint8_t keyX[0x10];
     uint8_t keyY[0x10];
     uint8_t ctr[0x10];
-    uint8_t size[8];
+    char size[8];
     uint8_t reserved[8];
     uint8_t ctlBlock[0x10];
     char magic[4];
