@@ -56,7 +56,7 @@ u32 waitInput(void)
 
 void mcuReboot(void)
 {
-    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens(true, true, false);
+    if(ISFIRMLAUNCH && PDN_GPU_CNT != 1) clearScreens(true, true, false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
@@ -67,7 +67,7 @@ void mcuReboot(void)
 
 void mcuPowerOff(void)
 {
-    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens(true, true, false);
+    if(ISFIRMLAUNCH && PDN_GPU_CNT != 1) clearScreens(true, true, false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
@@ -112,7 +112,7 @@ void chrono(u32 seconds)
 
 void error(const char *message)
 {
-    if(isFirmlaunch) mcuReboot();
+    if(ISFIRMLAUNCH) mcuReboot();
 
     initScreens();
 

@@ -26,8 +26,6 @@
 
 #define PATTERN(a) a "_*.bin"
 
-extern bool isN3DS, isA9lh;
-
 bool mountFs(bool isSd);
 bool switchToCtrNand(void);
 u32 fileRead(void *dest, const char *path, u32 maxSize);

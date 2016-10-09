@@ -36,8 +36,36 @@ typedef volatile u16 vu16;
 typedef volatile u32 vu32;
 typedef volatile u64 vu64;
 
-//Used by multiple files
+#include "3dsheaders.h"
+
 #define BRAHMA_ARM11_ENTRY 0x1FFFFFF8
+
+#define CFG_BOOTENV    (*(vu32 *)0x10010000)
+#define CFG_UNITINFO   (*(vu8  *)0x10010010)
+#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
+#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
+
+#define ISN3DS       (PDN_MPCORE_CFG == 7)
+#define ISDEVUNIT    (CFG_UNITINFO != 0)
+#define ISA9LH       (!PDN_SPI_CNT)
+#define ISFIRMLAUNCH (launchedFirmTidLow[5] != 0)
+
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    u16 formatVersionMajor, formatVersionMinor;
+
+    u32 config;
+} CfgData;
+
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    u16 formatVersionMajor, formatVersionMinor;
+
+    u8 lengthHash[32];
+    u8 hash[32];
+} PinData;
 
 typedef enum FirmwareSource
 {
@@ -57,9 +85,5 @@ typedef enum FirmwareType
     NATIVE_FIRM1X2X
 } FirmwareType;
 
-typedef enum Fs
-{
-    SD_CARD = 0,
-    CTRNAND,
-    NONE
-} Fs;
+extern u16 launchedFirmTidLow[8]; //Defined in start.s
+static Firm *const firm = (Firm *)0x24000000;

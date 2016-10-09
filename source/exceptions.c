@@ -45,17 +45,22 @@ void installArm9Handlers(void)
     }
 }
 
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset)
+u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset)
 {
-    u32 *initFPU;
-    for(initFPU = exceptionsPage; initFPU < (exceptionsPage + 0x400) && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU++);
+    u32 ret = 0; 
 
-    u32 *mcuReboot;
-    for(mcuReboot = exceptionsPage; mcuReboot < (exceptionsPage + 0x400) && (mcuReboot[0] != 0xE59F4104 || mcuReboot[1] != 0xE3A0A0C2); mcuReboot++);
-    mcuReboot--;
+    u32 *initFPU;
+    for(initFPU = exceptionsPage; initFPU < exceptionsPage + 0x400 && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU++);
+    if(initFPU == exceptionsPage + 0x400) ret = 1;
 
     u32 *freeSpace;
-    for(freeSpace = initFPU; freeSpace < (exceptionsPage + 0x400) && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF); freeSpace++);
+    for(freeSpace = initFPU; freeSpace < exceptionsPage + 0x400 && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF); freeSpace++);
+    if(initFPU == exceptionsPage + 0x400) ret = 1;
+
+    u32 *mcuReboot;
+    for(mcuReboot = exceptionsPage; mcuReboot < exceptionsPage + 0x400 && (mcuReboot[0] != 0xE59F4104 || mcuReboot[1] != 0xE3A0A0C2); mcuReboot++);
+    if(initFPU == exceptionsPage + 0x400) ret = 1;
+    mcuReboot--;
 
     memcpy(freeSpace, arm11_exceptions_bin + 32, arm11_exceptions_bin_size - 32);
 
@@ -76,6 +81,8 @@ void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffs
             default: break;
         }
     }
+
+    return ret;
 }
 
 void detectAndProcessExceptionDumps(void)

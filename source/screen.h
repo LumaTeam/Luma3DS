@@ -44,7 +44,9 @@ static volatile struct fb {
      u8 *top_left;
      u8 *top_right;
      u8 *bottom;
-} *const fbs = (volatile struct fb *)0x23FFFE00;
+}  __attribute__((packed)) *const fbs = (volatile struct fb *)0x23FFFE00;
+
+extern CfgData configData;
 
 void deinitScreens(void);
 void swapFramebuffers(bool isAlternate);

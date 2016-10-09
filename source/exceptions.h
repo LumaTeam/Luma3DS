@@ -43,5 +43,5 @@ typedef struct __attribute__((packed))
 } ExceptionDumpHeader;
 
 void installArm9Handlers(void);
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset);
+u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset);
 void detectAndProcessExceptionDumps(void);

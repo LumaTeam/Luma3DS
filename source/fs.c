@@ -144,7 +144,7 @@ void loadPayload(u32 pressed)
         {
             loaderAddress[1] = payloadSize;
 
-            if(isA9lh) restoreShaHashBackup();
+            backupAndRestoreShaHash(true);
             initScreens();
 
             flushDCacheRange(loaderAddress, loader_bin_size);
@@ -163,7 +163,7 @@ u32 firmRead(void *dest, u32 firmType)
                                     { "00000003", "20000003" }};
 
     char path[48] = "1:/title/00040138/";
-    concatenateStrings(path, firmFolders[firmType][isN3DS ? 1 : 0]);
+    concatenateStrings(path, firmFolders[firmType][ISN3DS ? 1 : 0]);
     concatenateStrings(path, "/content");
 
     DIR dir;

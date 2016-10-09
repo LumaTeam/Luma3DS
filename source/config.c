@@ -29,6 +29,8 @@
 #include "buttons.h"
 #include "pin.h"
 
+CfgData configData;
+
 bool readConfig(void)
 {
     bool ret;
@@ -67,7 +69,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
     }
 }
 
-void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode)
+void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -116,7 +118,8 @@ void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode)
                                           "games.",
 
                                           "Select the developer features.\n\n"
-                                          "\t* 'Off' disables exception handlers.\n"
+                                          "\t* 'Off' disables exception handlers\n"
+                                          "in FIRM.\n"
                                           "\t* 'ErrDisp' displays debug info\n"
                                           "on the 'An error has occurred' screen.\n"
                                           "\t* 'UNITINFO' makes the console be\n"
@@ -194,11 +197,11 @@ void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode)
         u32 enabled;
         bool visible;
     } multiOptions[] = {
-        { .posXs = {19, 24, 29, 34}, .visible = fsStatus == SD_CARD },
+        { .posXs = {19, 24, 29, 34}, .visible = isSdMode },
         { .posXs = {21, 26, 31, 36}, .visible = true },
         { .posXs = {12, 22, 31, 0}, .visible = true  },
         { .posXs = {14, 19, 24, 29}, .visible = true },
-        { .posXs = {17, 26, 32, 44}, .visible = isN3DS },
+        { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
         { .posXs = {19, 30, 42, 0}, .visible = true  }
     };
 
@@ -207,10 +210,10 @@ void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode)
         bool enabled;
         bool visible;
     } singleOptions[] = {
-        { .visible = fsStatus == SD_CARD },
-        { .visible = fsStatus == SD_CARD },
+        { .visible = isSdMode },
+        { .visible = isSdMode },
         { .visible = true },
-        { .visible = fsStatus == SD_CARD },
+        { .visible = isSdMode },
         { .visible = true },
         { .visible = true },
         { .visible = true },

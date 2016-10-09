@@ -28,15 +28,6 @@
 
 #include "types.h"
 
-typedef struct patchData {
-    u32 offset[2];
-    union {
-        u8 type0[8];
-        u16 type1;
-    } patch;
-    u32 type;
-} patchData;
-
 typedef struct __attribute__((packed))
 {
     char magic[4];
@@ -51,25 +42,32 @@ typedef struct __attribute__((packed))
     u32 config;
 } CFWInfo;
 
-extern bool isDevUnit;
+extern CfgData configData;
 
-u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
+u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
-void patchSignatureChecks(u8 *pos, u32 size);
-void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
-void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
-void patchFirmWrites(u8 *pos, u32 size);
-void patchOldFirmWrites(u8 *pos, u32 size);
+u32 patchSignatureChecks(u8 *pos, u32 size);
+u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
+u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
+u32 patchFirmWrites(u8 *pos, u32 size);
+u32 patchOldFirmWrites(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
 void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
-void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
-void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
+u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);
-void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
+u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
 void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable);
-void patchKernel9Panic(u8 *pos, u32 size);
-void patchKernel11Panic(u8 *pos, u32 size);
-void patchP9AccessChecks(u8 *pos, u32 size);
-void patchArm11SvcAccessChecks(u32 *arm11SvcHandler);
-void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
-void patchUnitInfoValueSet(u8 *pos, u32 size);
+u32 patchKernel9Panic(u8 *pos, u32 size);
+u32 patchKernel11Panic(u8 *pos, u32 size);
+u32 patchP9AccessChecks(u8 *pos, u32 size);
+u32 patchArm11SvcAccessChecks(u32 *arm11SvcHandler, u32 *endPos);
+u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
+u32 patchUnitInfoValueSet(u8 *pos, u32 size);
+u32 patchLgySignatureChecks(u8 *pos, u32 size);
+u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size);
+u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size);
+u32 patchTwlWhitelistChecks(u8 *pos, u32 size);
+u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion);
+u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size);
+u32 patchTwlShaHashChecks(u8 *pos, u32 size);
+u32 patchAgbBootSplash(u8 *pos, u32 size);

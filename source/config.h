@@ -60,14 +60,6 @@ enum singleOptions
     PATCHACCESS
 };
 
-typedef struct __attribute__((packed))
-{
-    char magic[4];
-    u16 formatVersionMajor, formatVersionMinor;
-
-    u32 config;
-} CfgData;
-
 typedef enum ConfigurationStatus
 {
     DONT_CONFIGURE = 0,
@@ -75,9 +67,6 @@ typedef enum ConfigurationStatus
     CREATE_CONFIGURATION
 } ConfigurationStatus;
 
-extern CfgData configData;
-extern bool isN3DS;
-
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(Fs fsStatus, bool oldPinStatus, u32 oldPinMode);
+void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode);
