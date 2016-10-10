@@ -209,7 +209,8 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
         if(!ret) *posSdmmc = sdmmc;
 
         //Add EmuNAND hooks
-        ret += patchNandRw(process9Offset, process9Size, (u32)(freeK9Space - arm9Section + kernel9Address));
+        u32 branchOffset = (u32)(freeK9Space - arm9Section + kernel9Address);
+        ret += patchNandRw(process9Offset, process9Size, branchOffset);
 
         //Set MPU
         ret += patchMpu(arm9Section, arm9SectionSize);

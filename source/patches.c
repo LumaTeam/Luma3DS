@@ -39,10 +39,10 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 
     Cxi *off = (Cxi *)(temp - 0x100);
 
-    *process9Size = off->ncch.contentSize * 0x200;
+    *process9Size = (off->ncch.exeFsSize - 1) * 0x200;
     *process9MemAddr = off->exHeader.systemControlInfo.textCodeSet.address;
 
-    return (u8 *)off + (off->ncch.exeFsOffset * 0x200) + 0x200;
+    return (u8 *)off + (off->ncch.exeFsOffset + 1) * 0x200;
 }
 
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)

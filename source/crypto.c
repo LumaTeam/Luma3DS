@@ -388,8 +388,8 @@ bool decryptExeFs(Cxi *cxi)
     {
         isCxi = true;
 
-        u8 *exeFsOffset = (u8 *)cxi + cxi->ncch.exeFsOffset * 0x200;
-        u32 exeFsSize = cxi->ncch.exeFsSize * 0x200;
+        u8 *exeFsOffset = (u8 *)cxi + (cxi->ncch.exeFsOffset + 1) * 0x200;
+        u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
         u8 __attribute__((aligned(4))) ncchCtr[AES_BLOCK_SIZE] = {0};
 
         for(u32 i = 0; i < 8; i++)
@@ -399,7 +399,7 @@ bool decryptExeFs(Cxi *cxi)
         aes_setkey(0x2C, cxi, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_advctr(ncchCtr, 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x2C);
-        aes(cxi, exeFsOffset + 0x200, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes(cxi, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
     else isCxi = false;
 
