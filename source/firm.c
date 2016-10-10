@@ -127,7 +127,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;
-    u8 *process9Offset = getProcess9Info(arm9Section + 0x15000, firm->section[2].size - 0x15000, &process9Size, &process9MemAddr);
+    u8 *process9Offset = getProcess9Info(arm9Section, firm->section[2].size, &process9Size, &process9MemAddr);
 
     //Find the Kernel11 SVC table and handler, exceptions page and free space locations
     u32 baseK11VA;

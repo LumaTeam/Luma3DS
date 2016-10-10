@@ -177,7 +177,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
 
     //Copy EmuNAND code
     u8 *freeK9Space;
-    ret += getFreeK9Space(arm9Section + 0x13500, arm9SectionSize - 0x13500, &freeK9Space);
+    ret += getFreeK9Space(arm9Section, arm9SectionSize, &freeK9Space);
     if(!ret)
     {
         memcpy(freeK9Space, emunand_bin, emunand_bin_size);
@@ -198,7 +198,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
         ret += patchNandRw(process9Offset, process9Size, (u32)(freeK9Space - arm9Section + kernel9Address));
 
         //Set MPU
-        ret += patchMpu(arm9Section + 0x13500, arm9SectionSize - 0x13500);
+        ret += patchMpu(arm9Section, arm9SectionSize);
     }
 
     return ret;
