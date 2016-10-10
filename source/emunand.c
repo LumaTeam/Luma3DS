@@ -102,7 +102,7 @@ static inline u32 getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     //Looking for the last free space before Process9
     *freeK9Space = memsearch(pos + 0x13500, pattern, size - 0x13500, sizeof(pattern)) + 0x455;
 
-    return *freeK9Space == NULL ? 1 : 0; 
+    return *freeK9Space == NULL ? 1 : 0;
 }
 
 static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
@@ -171,13 +171,13 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     return ret;
 }
 
-u32 patchEmuNand(u8 *arm9Section, u8 *process9Offset, u32 process9Size, u32 emuHeader)
+u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address)
 {
     u32 ret = 0;
 
     //Copy EmuNAND code
     u8 *freeK9Space;
-    ret += getFreeK9Space(arm9Section, firm->section[2].size, &freeK9Space);
+    ret += getFreeK9Space(arm9Section, arm9SectionSize, &freeK9Space);
     if(!ret)
     {
         memcpy(freeK9Space, emunand_bin, emunand_bin_size);
@@ -195,10 +195,10 @@ u32 patchEmuNand(u8 *arm9Section, u8 *process9Offset, u32 process9Size, u32 emuH
         if(!ret) *posSdmmc = sdmmc;
 
         //Add EmuNAND hooks
-        ret += patchNandRw(process9Offset, process9Size, (u32)(freeK9Space - arm9Section + firm->section[2].address));
+        ret += patchNandRw(process9Offset, process9Size, (u32)(freeK9Space - arm9Section + kernel9Address));
 
         //Set MPU
-        ret += patchMpu(arm9Section, firm->section[2].size);
+        ret += patchMpu(arm9Section, arm9SectionSize);
     }
 
     return ret;

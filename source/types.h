@@ -101,4 +101,3 @@ typedef enum FirmwareType
 } FirmwareType;
 
 extern u16 launchedFirmTidLow[8]; //Defined in start.s
-static Firm *const firm = (Firm *)0x24000000;

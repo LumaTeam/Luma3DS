@@ -34,6 +34,8 @@
 #include "screen.h"
 #include "../build/bundled.h"
 
+static Firm *firm = (Firm *)0x24000000;
+
 u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSdMode)
 {
     const char *firmwareFiles[] = {
@@ -140,7 +142,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32
     ret += patchSignatureChecks(process9Offset, process9Size);
 
     //Apply EmuNAND patches
-    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, process9Offset, process9Size, emuHeader);
+    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, firm->section[2].size, process9Offset, process9Size, emuHeader, firm->section[2].address);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
     else if(ISA9LH || (ISFIRMLAUNCH && BOOTCFG_A9LH != 0)) ret += patchFirmWrites(process9Offset, process9Size);
