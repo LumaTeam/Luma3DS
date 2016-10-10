@@ -28,20 +28,6 @@
 
 #include "types.h"
 
-typedef struct __attribute__((packed))
-{
-    char magic[4];
-        
-    u8 versionMajor;
-    u8 versionMinor;
-    u8 versionBuild;
-    u8 flags;
-
-    u32 commitHash;
-
-    u32 config;
-} CFWInfo;
-
 extern CfgData configData;
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
@@ -51,8 +37,8 @@ u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
 u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 u32 patchFirmWrites(u8 *pos, u32 size);
 u32 patchOldFirmWrites(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
+u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
+u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);

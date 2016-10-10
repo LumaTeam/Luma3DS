@@ -155,10 +155,10 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32
         ret += patchTitleInstallMinVersionChecks(process9Offset, process9Size, firmVersion);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
+        ret += reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
 
-    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
+    ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
 
     //Apply UNITINFO patch
     if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, firm->section[2].size);

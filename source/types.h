@@ -67,6 +67,21 @@ typedef struct __attribute__((packed))
     u8 hash[32];
 } PinData;
 
+typedef struct __attribute__((packed))
+{
+    u32 magic[2];
+    u16 versionMinor, versionMajor;
+
+    u16 processor, core;
+    u32 type;
+
+    u32 totalSize;
+    u32 registerDumpSize;
+    u32 codeDumpSize;
+    u32 stackDumpSize;
+    u32 additionalDataSize;
+} ExceptionDumpHeader;
+
 typedef enum FirmwareSource
 {
     FIRMWARE_SYSNAND = 0,

@@ -203,55 +203,85 @@ u32 patchOldFirmWrites(u8 *pos, u32 size)
     return ret;
 }
 
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
+u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
 {
+    u32 ret = 0;
+
     //Official implementation of svcBackdoor
-    const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
-                                0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
-                                0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
-                                0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
-                                0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
-                                0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
-                                0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
-                                0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
-                                0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
-                                0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
+    const u8 svcBackdoor[] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
+                              0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
+                              0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
+                              0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
+                              0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
+                              0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
+                              0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
+                              0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
+                              0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
+                              0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
 
     if(!arm11SvcTable[0x7B])
     {
-        memcpy(*freeK11Space, svcBackdoor, 40);
+        if(*(u32 *)(*freeK11Space + sizeof(svcBackdoor) - 4) != 0xFFFFFFFF) ret = 1;
+        else
+        {
+            memcpy(*freeK11Space, svcBackdoor, sizeof(svcBackdoor));
 
-        arm11SvcTable[0x7B] = baseK11VA + *freeK11Space - pos;
-        *freeK11Space += 40;
+            arm11SvcTable[0x7B] = baseK11VA + *freeK11Space - pos;
+            *freeK11Space += 40;
+        }
     }
+
+    return ret;
 }
 
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
+u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
 {
-    memcpy(*freeK11Space, svcGetCFWInfo_bin, svcGetCFWInfo_bin_size);
+    u32 ret;
 
-    CFWInfo *info = (CFWInfo *)memsearch(*freeK11Space, "LUMA", svcGetCFWInfo_bin_size, 4);
-
-    const char *rev = REVISION;
-
-    info->commitHash = COMMIT_HASH;
-    info->config = configData.config;
-    info->versionMajor = (u8)(rev[1] - '0');
-    info->versionMinor = (u8)(rev[3] - '0');
-
-    bool isRelease;
-
-    if(rev[4] == '.')
+    if(*(u32 *)(*freeK11Space + svcGetCFWInfo_bin_size - 4) != 0xFFFFFFFF) ret = 1;
+    else
     {
-        info->versionBuild = (u8)(rev[5] - '0');
-        isRelease = rev[6] == 0;
+        memcpy(*freeK11Space, svcGetCFWInfo_bin, svcGetCFWInfo_bin_size);
+
+        struct CfwInfo
+        {
+            char magic[4];
+        
+            u8 versionMajor;
+            u8 versionMinor;
+            u8 versionBuild;
+            u8 flags;
+
+            u32 commitHash;
+
+            u32 config;
+        } __attribute__((packed)) *info = (struct CfwInfo *)memsearch(*freeK11Space, "LUMA", svcGetCFWInfo_bin_size, 4);
+
+        const char *rev = REVISION;
+
+        info->commitHash = COMMIT_HASH;
+        info->config = configData.config;
+        info->versionMajor = (u8)(rev[1] - '0');
+        info->versionMinor = (u8)(rev[3] - '0');
+
+        bool isRelease;
+
+        if(rev[4] == '.')
+        {
+            info->versionBuild = (u8)(rev[5] - '0');
+            isRelease = rev[6] == 0;
+        }
+        else isRelease = rev[4] == 0;
+
+        info->flags = isRelease ? 1 : 0;
+
+        arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
+        *freeK11Space += svcGetCFWInfo_bin_size;
+
+        ret = 0;
     }
-    else isRelease = rev[4] == 0;
 
-    info->flags = isRelease ? 1 : 0;
-
-    arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
-    *freeK11Space += svcGetCFWInfo_bin_size;
+    return ret;
 }
 
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)

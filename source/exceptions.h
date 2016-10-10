@@ -27,21 +27,6 @@
 #define MAKE_BRANCH(src,dst)      (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 
-typedef struct __attribute__((packed))
-{
-    u32 magic[2];
-    u16 versionMinor, versionMajor;
-
-    u16 processor, core;
-    u32 type;
-
-    u32 totalSize;
-    u32 registerDumpSize;
-    u32 codeDumpSize;
-    u32 stackDumpSize;
-    u32 additionalDataSize;
-} ExceptionDumpHeader;
-
 void installArm9Handlers(void);
 u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset);
 void detectAndProcessExceptionDumps(void);
