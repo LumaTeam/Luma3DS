@@ -326,8 +326,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
         {
             static const u8 regionFreePattern[] = {
                 0x00, 0x00, 0x55, 0xE3, 0x01, 0x10, 0xA0
-            };
-            static const u8 regionFreePatch[] = {
+            },
+                            regionFreePatch[] = {
                 0x01, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
             };
 
@@ -349,8 +349,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
             {
                 static const u8 skipEshopUpdateCheckPattern[] = {
                     0x30, 0xB5, 0xF1, 0xB0
-                };
-                static const u8 skipEshopUpdateCheckPatch[] = {
+                },
+                                skipEshopUpdateCheckPatch[] = {
                     0x00, 0x20, 0x08, 0x60, 0x70, 0x47
                 };
 
@@ -383,7 +383,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             break;
         }
-        
+
         case 0x0004001000021000LL: // USA MSET
         case 0x0004001000020000LL: // JPN MSET
         case 0x0004001000022000LL: // EUR MSET
@@ -395,8 +395,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
             {
                 static const u16 verPattern[] = u"Ver.";
                 static u16 *verString;
-                u32 verStringSize = 0;
-                u32 currentNand = BOOTCFG_NAND;
+                u32 verStringSize = 0,
+                    currentNand = BOOTCFG_NAND;
 
                 u16 customVerString[19];
                 loadCustomVerString(customVerString, &verStringSize, currentNand);
@@ -443,8 +443,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
         {
             static const u8 stopCartUpdatesPattern[] = {
                 0x0C, 0x18, 0xE1, 0xD8
-            };
-            static const u8 stopCartUpdatesPatch[] = {
+            },
+                            stopCartUpdatesPatch[] = {
                 0x0B, 0x18, 0x21, 0xC8
             };
 
@@ -480,8 +480,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
         {
             static const u8 secureinfoSigCheckPattern[] = {
                 0x06, 0x46, 0x10, 0x48
-            };
-            static const u8 secureinfoSigCheckPatch[] = {
+            },
+                            secureinfoSigCheckPatch[] = {
                 0x00, 0x26
             };
 
@@ -495,8 +495,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             if(secureInfoExists())
             {
-                static const u16 secureinfoFilenamePattern[] = u"SecureInfo_";
-                static const u16 secureinfoFilenamePatch[] = u"C";
+                static const u16 secureinfoFilenamePattern[] = u"SecureInfo_",
+                                 secureinfoFilenamePatch[] = u"C";
 
                 //Use SecureInfo_C
                 patchMemory(code, size, 
@@ -515,18 +515,17 @@ void patchCode(u64 progId, u8 *code, u32 size)
         {
             static const u8 sigCheckPattern[] = {
                 0x30, 0x40, 0x2D, 0xE9, 0x02
-            };
-            static const u8 sha256ChecksPattern1[] = {
+            },
+                            sha256ChecksPattern1[] = {
                 0x30, 0x40, 0x2D, 0xE9, 0x24
-            };
-            static const u8 sha256ChecksPattern2[] = {
+            },
+                            sha256ChecksPattern2[] = {
                 0xF8, 0x4F, 0x2D, 0xE9, 0x01
-            };
-            
-            static const u8 stub[] = {
+            },
+                            stub[] = {
                 0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
             };
-            
+
             //Disable CRR0 signature (RSA2048 with SHA256) check
             patchMemory(code, size, 
                 sigCheckPattern, 
@@ -534,7 +533,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 stub,
                 sizeof(stub), 1
             );
-            
+
             //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
             patchMemory(code, size, 
                 sha256ChecksPattern1, 
@@ -542,14 +541,14 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 stub,
                 sizeof(stub), 1
             );
-            
+
             patchMemory(code, size, 
                 sha256ChecksPattern2, 
                 sizeof(sha256ChecksPattern2), 0, 
                 stub,
                 sizeof(stub), 1
             );
-            
+
             break;
         }
 
@@ -559,13 +558,11 @@ void patchCode(u64 progId, u8 *code, u32 size)
             {
                 static const u8 unitinfoCheckPattern1[] = { 
                     0x14, 0x00, 0xD0, 0xE5, 0xDB
-                };
-
-                static const u8 unitinfoCheckPattern2[] = {
+                },
+                                unitinfoCheckPattern2[] = {
                     0x14, 0x00, 0xD0, 0xE5, 0x01
-                } ;
-
-                static const u8 unitinfoCheckPatch[] = {
+                },
+                                unitinfoCheckPatch[] = {
                     0x00, 0x00, 0xA0, 0xE3
                 } ;
 
