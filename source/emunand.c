@@ -98,11 +98,20 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
 static inline u32 getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
 {
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
+    u32 ret;
 
     //Looking for the last free space before Process9
-    *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern)) + 0x455;
+    *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern));
 
-    return *freeK9Space == NULL ? 1 : 0;
+    if(*freeK9Space == NULL) ret = 1;
+    else
+    {
+        *freeK9Space += 0x455;
+
+        ret = 0;
+    }
+
+    return ret;
 }
 
 static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
@@ -117,6 +126,7 @@ static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
     else
     {
         *sdmmc = *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
+
         ret = 0;
     }
 
@@ -127,7 +137,7 @@ static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 {
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
-    u32 ret = 0;
+    u32 ret;
 
     u16 *readOffset = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -145,6 +155,8 @@ static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
             *readOffset = *writeOffset = 0x4C00;
             readOffset[1] = writeOffset[1] = 0x47A0;
             ((u32 *)writeOffset)[1] = ((u32 *)readOffset)[1] = branchOffset;
+
+            ret = 0;
         }
     }
 
@@ -165,6 +177,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
         off[0] = 0x00360003;
         off[6] = 0x00200603;
         off[9] = 0x001C0603;
+
         ret = 0;
     }
 
@@ -175,11 +188,12 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
 {
     u32 ret = 0;
 
-    //Copy EmuNAND code
     u8 *freeK9Space;
     ret += getFreeK9Space(arm9Section, arm9SectionSize, &freeK9Space);
+
     if(!ret)
     {
+        //Copy EmuNAND code
         memcpy(freeK9Space, emunand_bin, emunand_bin_size);
 
         //Add the data of the found EmuNAND
