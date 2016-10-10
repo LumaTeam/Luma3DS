@@ -27,6 +27,7 @@
 #include "utils.h"
 #include "exceptions.h"
 #include "draw.h"
+#include "strings.h"
 #include "buttons.h"
 #include "pin.h"
 
@@ -243,7 +244,12 @@ void main(void)
             break;
     }
 
-    if(res != 0) error("Error applying FIRM patches.");
+    if(res != 0)
+    {
+        char patchesError[] = "Failed to apply    FIRM patch(es).";
+        hexItoa(res, patchesError + 16, 2, false);
+        error(patchesError);
+    }
 
     launchFirm(firmType, loadFromStorage);
 }

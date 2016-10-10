@@ -35,7 +35,7 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *temp = memsearch(pos, "NCCH", size, 4);
 
-    if(temp == NULL) error("Error getting Process9 data.");
+    if(temp == NULL) error("Failed to get Process9 data.");
 
     Cxi *off = (Cxi *)(temp - 0x100);
 
@@ -72,7 +72,7 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     if(*freeK11Space == NULL) ret = false;
     else (*freeK11Space)++;
 
-    if(!ret) error("Error getting Kernel11 data.");
+    if(!ret) error("Failed to get Kernel11 data.");
 
     return arm11SvcTable;
 }
@@ -359,7 +359,7 @@ u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
     if(temp == NULL) ret = false;
     else stackAddress = *(u32 *)(temp + 9);
 
-    if(!ret) error("Error getting ARM11 exception handlers data.");
+    if(!ret) error("Failed to get ARM11 exception handlers data.");
 
     return stackAddress;
 }

@@ -47,38 +47,44 @@ void installArm9Handlers(void)
 
 u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset)
 {
+    u32 ret;
+    u32 *endPos = exceptionsPage + 0x400;
+
     u32 *initFPU;
-    for(initFPU = exceptionsPage; initFPU < exceptionsPage + 0x400 && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU++);
+    for(initFPU = exceptionsPage; *initFPU != 0xE1A0D002 && initFPU < endPos; initFPU++);
 
     u32 *freeSpace;
-    for(freeSpace = initFPU; freeSpace < exceptionsPage + 0x400 && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF); freeSpace++);
+    for(freeSpace = initFPU; *freeSpace != 0xFFFFFFFF && freeSpace < endPos; freeSpace++);
 
     u32 *mcuReboot;
-    for(mcuReboot = exceptionsPage; mcuReboot < exceptionsPage + 0x400 && (mcuReboot[0] != 0xE59F4104 || mcuReboot[1] != 0xE3A0A0C2); mcuReboot++);
+    for(mcuReboot = exceptionsPage; *mcuReboot != 0xE3A0A0C2 && mcuReboot < endPos; mcuReboot++);
 
-    u32 ret = (initFPU == exceptionsPage + 0x400 || freeSpace == exceptionsPage + 0x400 ||
-               mcuReboot == exceptionsPage + 0x400 || *(u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 36) != 0xFFFFFFFF) ? 1 : 0;
-
-    mcuReboot--;
-
-    memcpy(freeSpace, arm11_exceptions_bin + 32, arm11_exceptions_bin_size - 32);
-
-    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32); //Undefined Instruction
-    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32); //Prefetch Abort
-    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 16) - 32); //Data Abort
-    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32); //FIQ
-
-    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 32); pos++)
+    if(initFPU == endPos || freeSpace == endPos || mcuReboot == endPos) ret = 1;
+    else
     {
-        switch(*pos) //Perform relocations
+        initFPU += 3;
+        mcuReboot -= 2;
+
+        memcpy(freeSpace, arm11_exceptions_bin + 32, arm11_exceptions_bin_size - 32);
+
+        exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32); //Undefined Instruction
+        exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32); //Prefetch Abort
+        exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 16) - 32); //Data Abort
+        exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32); //FIQ
+
+        for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 32); pos++)
         {
-            case 0xFFFF3000: *pos = stackAddress; break;
-            case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
-            case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
-            case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)
-            case 0xBEEFBEEF: *pos = codeSetOffset; break;
-            default: break;
+            switch(*pos) //Perform relocations
+            {
+                case 0xFFFF3000: *pos = stackAddress; break;
+                case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
+                case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
+                case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)
+                case 0xBEEFBEEF: *pos = codeSetOffset; break;
+            }
         }
+
+        ret = 0;
     }
 
     return ret;
@@ -145,13 +151,13 @@ void detectAndProcessExceptionDumps(void)
         for(u32 i = 0; i < 17; i += 2)
         {
             posY = drawString(registerNames[i], true, 10, posY + SPACING_Y, COLOR_WHITE);
-            hexItoa(regs[i], hexString, 8);
+            hexItoa(regs[i], hexString, 8, true);
             drawString(hexString, true, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
 
             if(i != 16 || dumpHeader->processor != 9)
             {
                 drawString(registerNames[i + 1], true, 10 + 22 * SPACING_X, posY, COLOR_WHITE);
-                hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8);
+                hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8, true);
                 drawString(hexString, true, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
             }
         }
@@ -166,14 +172,14 @@ void detectAndProcessExceptionDumps(void)
 
         for(u32 line = 0; line < 19 && stackDump < additionalData; line++)
         {
-            hexItoa(regs[13] + 8 * line, hexString, 8);
+            hexItoa(regs[13] + 8 * line, hexString, 8, true);
             posYBottom = drawString(hexString, false, 10, posYBottom + SPACING_Y, COLOR_WHITE);
             drawCharacter(':', false, 10 + 8 * SPACING_X, posYBottom, COLOR_WHITE);
 
             for(u32 i = 0; i < 8 && stackDump < additionalData; i++, stackDump++)
             {
                 char byteString[] = "00";
-                hexItoa(*stackDump, byteString, 2);
+                hexItoa(*stackDump, byteString, 2, false);
                 drawString(byteString, false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
             }
         }

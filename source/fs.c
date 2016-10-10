@@ -201,7 +201,7 @@ u32 firmRead(void *dest, u32 firmType)
             concatenateStrings(path, "/00000000.app");
 
             //Convert back the .app name from integer to array
-            hexItoa(firmVersion, &path[35], 8);
+            hexItoa(firmVersion, path + 35, 8, false);
 
             if(!fileRead(dest, path, 0x400200)) firmVersion = 0xFFFFFFFF;
         }

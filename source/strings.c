@@ -40,7 +40,7 @@ void concatenateStrings(char *destination, const char *source)
     memcpy(&destination[j], source, i + 1);
 }
 
-void hexItoa(u32 number, char *out, u32 digits)
+void hexItoa(u32 number, char *out, u32 digits, bool fillString)
 {
     const char hexDigits[] = "0123456789ABCDEF";
     u32 i = 0;
@@ -51,5 +51,5 @@ void hexItoa(u32 number, char *out, u32 digits)
         number >>= 4;
     }
 
-    while(i < digits) out[digits - 1 - i++] = '0';
+    if(fillString) while(i < digits) out[digits - 1 - i++] = '0';
 }

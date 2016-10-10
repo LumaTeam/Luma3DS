@@ -13,7 +13,7 @@ static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, i
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
-        if(found == NULL) break;
+        if(found == NULL) svcBreak(USERBREAK_ASSERT);
 
         memcpy(found + offset, replace, repSize);
 
@@ -143,6 +143,8 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
         {
             u64 total;
             IFile_Read(&file, &total, code, fileSize);
+
+            if(total != fileSize) svcBreak(USERBREAK_ASSERT);
         }
 
         IFile_Close(&file);
@@ -374,8 +376,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             u8 *fpdVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
 
+            if(fpdVer == NULL) svcBreak(USERBREAK_ASSERT);
+
             //Allow online access to work with old friends modules
-            if(fpdVer != NULL && fpdVer[9] < mostRecentFpdVer) fpdVer[9] = mostRecentFpdVer;
+            if(fpdVer[9] < mostRecentFpdVer) fpdVer[9] = mostRecentFpdVer;
 
             break;
         }
@@ -462,12 +466,11 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
                 u32 *cfgN3dsCpuLoc = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
 
+                if(cfgN3dsCpuLoc == NULL) svcBreak(USERBREAK_ASSERT);
+
                 //Patch N3DS CPU Clock and L2 cache setting
-                if(cfgN3dsCpuLoc != NULL)
-                {
-                    *(cfgN3dsCpuLoc + 1) = 0xE1A00000;
-                    *(cfgN3dsCpuLoc + 8) = 0xE3A00000 | cpuSetting;
-                }
+                *(cfgN3dsCpuLoc + 1) = 0xE1A00000;
+                *(cfgN3dsCpuLoc + 8) = 0xE3A00000 | cpuSetting;
             }
 
             break;
