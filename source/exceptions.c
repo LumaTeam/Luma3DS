@@ -56,16 +56,17 @@ u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffse
     u32 *mcuReboot;
     for(mcuReboot = exceptionsPage; mcuReboot < exceptionsPage + 0x400 && (mcuReboot[0] != 0xE59F4104 || mcuReboot[1] != 0xE3A0A0C2); mcuReboot++);
 
-    u32 ret = (initFPU == exceptionsPage + 0x400 || freeSpace == exceptionsPage + 0x400 || mcuReboot == exceptionsPage + 0x400) ? 1 : 0;
+    u32 ret = (initFPU == exceptionsPage + 0x400 || freeSpace == exceptionsPage + 0x400 ||
+               mcuReboot == exceptionsPage + 0x400 || *(u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 36) != 0xFFFFFFFF) ? 1 : 0;
 
     mcuReboot--;
 
     memcpy(freeSpace, arm11_exceptions_bin + 32, arm11_exceptions_bin_size - 32);
 
-    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32);    //Undefined Instruction
-    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32);    //Prefetch Abort
-    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 16) - 32);    //Data Abort
-    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32);    //FIQ
+    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32); //Undefined Instruction
+    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32); //Prefetch Abort
+    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 16) - 32); //Data Abort
+    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32); //FIQ
 
     for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 32); pos++)
     {

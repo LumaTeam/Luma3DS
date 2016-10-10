@@ -100,7 +100,7 @@ static inline u32 getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
     //Looking for the last free space before Process9
-    *freeK9Space = memsearch(pos + 0x13500, pattern, size - 0x13500, sizeof(pattern)) + 0x455;
+    *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern)) + 0x455;
 
     return *freeK9Space == NULL ? 1 : 0;
 }
@@ -177,7 +177,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
 
     //Copy EmuNAND code
     u8 *freeK9Space;
-    ret += getFreeK9Space(arm9Section, arm9SectionSize, &freeK9Space);
+    ret += getFreeK9Space(arm9Section + 0x13500, arm9SectionSize - 0x13500, &freeK9Space);
     if(!ret)
     {
         memcpy(freeK9Space, emunand_bin, emunand_bin_size);
@@ -198,7 +198,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
         ret += patchNandRw(process9Offset, process9Size, (u32)(freeK9Space - arm9Section + kernel9Address));
 
         //Set MPU
-        ret += patchMpu(arm9Section, arm9SectionSize);
+        ret += patchMpu(arm9Section + 0x13500, arm9SectionSize - 0x13500);
     }
 
     return ret;
