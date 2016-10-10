@@ -191,7 +191,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32
 u32 patchTwlFirm(u32 firmVersion, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
-    u32 ret = 0;
     
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
     if(ISN3DS)
@@ -199,6 +198,8 @@ u32 patchTwlFirm(u32 firmVersion, u32 devMode)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
+
+    u32 ret = 0;
 
     ret += patchLgySignatureChecks(arm9Section, firm->section[3].size);
     ret += patchTwlInvalidSignatureChecks(arm9Section, firm->section[3].size);
@@ -217,7 +218,6 @@ u32 patchTwlFirm(u32 firmVersion, u32 devMode)
 u32 patchAgbFirm(u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
-    u32 ret = 0;
     
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
     if(ISN3DS)
@@ -225,6 +225,8 @@ u32 patchAgbFirm(u32 devMode)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
+
+    u32 ret = 0;
 
     ret += patchLgySignatureChecks(arm9Section, firm->section[3].size);
     if(CONFIG(SHOWGBABOOT)) ret += patchAgbBootSplash(arm9Section, firm->section[3].size);
