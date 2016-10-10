@@ -657,7 +657,7 @@ u32 patchAgbBootSplash(u8 *pos, u32 size)
     if(off == NULL) ret = 1;
     else
     {
-        *off = 0x26;
+        off[2] = 0x26;
 
         ret = 0;
     }
