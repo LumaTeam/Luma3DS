@@ -126,31 +126,34 @@ void loadPayload(u32 pressed)
 
     FRESULT result = f_findfirst(&dir, &info, path, pattern);
 
-    f_closedir(&dir);
-
-    if(result == FR_OK && info.fname[0] != 0)
+    if(result == FR_OK)
     {
-        u32 *loaderAddress = (u32 *)0x24FFFF00;
-        u8 *payloadAddress = (u8 *)0x24F00000;
+        f_closedir(&dir);
 
-        memcpy(loaderAddress, loader_bin, loader_bin_size);
-
-        concatenateStrings(path, "/");
-        concatenateStrings(path, info.altname);
-
-        u32 payloadSize = fileRead(payloadAddress, path, (u8 *)loaderAddress - payloadAddress);
-
-        if(payloadSize > 0)
+        if(info.fname[0] != 0)
         {
-            loaderAddress[1] = payloadSize;
+            u32 *loaderAddress = (u32 *)0x24FFFF00;
+            u8 *payloadAddress = (u8 *)0x24F00000;
 
-            backupAndRestoreShaHash(true);
-            initScreens();
+            memcpy(loaderAddress, loader_bin, loader_bin_size);
 
-            flushDCacheRange(loaderAddress, loader_bin_size);
-            flushICacheRange(loaderAddress, loader_bin_size);
+            concatenateStrings(path, "/");
+            concatenateStrings(path, info.altname);
 
-            ((void (*)())loaderAddress)();
+            u32 payloadSize = fileRead(payloadAddress, path, (u8 *)loaderAddress - payloadAddress);
+
+            if(payloadSize > 0)
+            {
+                loaderAddress[1] = payloadSize;
+
+                backupAndRestoreShaHash(true);
+                initScreens();
+
+                flushDCacheRange(loaderAddress, loader_bin_size);
+                flushICacheRange(loaderAddress, loader_bin_size);
+
+                ((void (*)())loaderAddress)();
+            }
         }
     }
 }
