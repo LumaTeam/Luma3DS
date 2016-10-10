@@ -48,7 +48,7 @@ void main(void)
     else
     {
         firmSource = FIRMWARE_SYSNAND;
-        if(!mountFs(false) || !switchToCtrNand()) error("Error mounting SD and CTRNAND.");
+        if(!mountFs(false) || !switchToCtrNand()) error("Failed to mount SD and CTRNAND.");
         isSdMode = false;
     }
 

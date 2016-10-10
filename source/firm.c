@@ -51,12 +51,12 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
         "luma/cetk_safe"
     };
 
-    if(isSdMode && !mountFs(false)) error("Error mounting CTRNAND.");
+    if(isSdMode && !mountFs(false)) error("Failed to mount CTRNAND.");
 
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
 
-    if(firmVersion == 0xFFFFFFFF) error("Error getting the CTRNAND FIRM.");
+    if(firmVersion == 0xFFFFFFFF) error("Failed to get the CTRNAND FIRM.");
 
     bool mustLoadFromStorage = false;
 
@@ -79,7 +79,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
 
     if(loadFromStorage || mustLoadFromStorage)
     {
-        u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000);
+        u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400200);
 
         if(firmSize > sizeof(Cxi))
         {
