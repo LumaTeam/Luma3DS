@@ -69,8 +69,8 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-        return ((pdrv == SDCARD && !sdmmc_sdcard_readsectors(sector, count, (BYTE *)buff)) ||
-                (pdrv == CTRNAND && !ctrNandRead(sector, count, (BYTE *)buff))) ? RES_OK : RES_PARERR;
+        return ((pdrv == SDCARD && !sdmmc_sdcard_readsectors(sector, count, buff)) ||
+                (pdrv == CTRNAND && !ctrNandRead(sector, count, buff))) ? RES_OK : RES_PARERR;
 }
 
 
@@ -87,7 +87,7 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-        return ((pdrv == SDCARD && !sdmmc_sdcard_writesectors(sector, count, (BYTE *)buff)) ||
+        return ((pdrv == SDCARD && !sdmmc_sdcard_writesectors(sector, count, buff)) ||
                 (pdrv == CTRNAND && !ctrNandWrite(sector, count, buff))) ? RES_OK : RES_PARERR;
 }
 #endif

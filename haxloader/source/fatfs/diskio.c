@@ -50,7 +50,7 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-        return (!sdmmc_sdcard_readsectors(sector, count, (BYTE *)buff)) ? RES_OK : RES_PARERR;
+        return (!sdmmc_sdcard_readsectors(sector, count, buff)) ? RES_OK : RES_PARERR;
 }
 
 
