@@ -230,7 +230,7 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, devMode);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isSdMode, devMode);
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM1X2X:

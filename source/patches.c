@@ -101,7 +101,7 @@ u32 patchSignatureChecks(u8 *pos, u32 size)
     return ret;
 }
 
-u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
+u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr, bool isSdMode)
 {
     //Look for firmlaunch code
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
@@ -146,7 +146,7 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
                         finalPath[i] = (u16)path[i];
                     finalPath[pathSize] = 0;
 
-                    u8 *pos_path = memsearch(off, u"sd", reboot_bin_size, 4) + 0xA;
+                    u8 *pos_path = memsearch(off, isSdMode ? u"sd" : u"na", reboot_bin_size, 4) + 0xA;
                     memcpy(pos_path, finalPath, (pathSize + 1) * 2);
                 }
             }

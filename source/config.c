@@ -213,7 +213,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .visible = isSdMode },
         { .visible = isSdMode },
         { .visible = true },
-        { .visible = isSdMode },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },

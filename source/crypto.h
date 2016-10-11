@@ -24,6 +24,7 @@
 *   Crypto libs from http://github.com/b1l1s/ctr
 *   kernel9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 *   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
+*   ctrNandWrite logic adapted from https://github.com/d0k3/GodMode9/blob/master/source/nand/nand.c
 */
 
 #pragma once
@@ -106,7 +107,7 @@ extern FirmwareSource firmSource;
 
 void ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
-int ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf);
+int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);
 void set6x7xKeys(void);
 bool decryptExeFs(Cxi *cxi);
 bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);

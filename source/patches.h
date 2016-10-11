@@ -34,7 +34,7 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
 u32 patchSignatureChecks(u8 *pos, u32 size);
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
-u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
+u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr, bool isSdMode);
 u32 patchFirmWrites(u8 *pos, u32 size);
 u32 patchOldFirmWrites(u8 *pos, u32 size);
 u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);

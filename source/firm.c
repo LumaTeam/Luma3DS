@@ -109,7 +109,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32 devMode)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isSdMode, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -148,7 +148,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, u32
     else if(ISA9LH || (ISFIRMLAUNCH && BOOTCFG_A9LH != 0)) ret += patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches
-    ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+    ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr, isSdMode);
 
     //11.0 FIRM patches
     if(firmVersion >= (ISN3DS ? 0x21 : 0x52))

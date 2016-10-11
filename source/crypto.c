@@ -24,6 +24,7 @@
 *   Crypto libs from http://github.com/b1l1s/ctr
 *   kernel9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
 *   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
+*   ctrNandWrite logic adapted from https://github.com/d0k3/GodMode9/blob/master/source/nand/nand.c
 */
 
 #include "crypto.h"
@@ -352,18 +353,31 @@ int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
     return result;
 }
 
-int ctrNandWrite(u32 sector, u32 sectorCount, u8 *inbuf)
+int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
 {
+    u8 *buffer = (u8 *)0x23000000;
+    u32 bufferSize = 0xF00000;
+
     u8 __attribute__((aligned(4))) tmpCtr[sizeof(nandCtr)];
     memcpy(tmpCtr, nandCtr, sizeof(nandCtr));
     aes_advctr(tmpCtr, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-    //Encrypt
     aes_use_keyslot(nandSlot);
-    aes(inbuf, inbuf, sectorCount * 0x200 / AES_BLOCK_SIZE, tmpCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    //Write
-    return sdmmc_nand_writesectors(sector + fatStart, sectorCount, inbuf);
+    int result = 0;
+    for(u32 i = 0; i < sectorCount && !result; i += bufferSize / 0x200)
+    {
+        u32 tempAmount = (bufferSize / 0x200) < (sectorCount - i) ? (bufferSize / 0x200) : (sectorCount - i);
+
+        memcpy(buffer, inbuf + (i * 0x200), tempAmount * 0x200);
+
+        //Encrypt
+        aes(buffer, buffer, tempAmount * 0x200 / AES_BLOCK_SIZE, tmpCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+        //Write
+        result = sdmmc_nand_writesectors(i + sector + fatStart, tempAmount, buffer);
+    }
+
+    return result;
 }
 
 void set6x7xKeys(void)
