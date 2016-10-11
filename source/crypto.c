@@ -364,17 +364,17 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
     aes_use_keyslot(nandSlot);
 
     int result = 0;
-    for(u32 i = 0; i < sectorCount && !result; i += bufferSize / 0x200)
+    for(u32 tempSector = 0; tempSector < sectorCount && !result; tempSector += bufferSize / 0x200)
     {
-        u32 tempAmount = (bufferSize / 0x200) < (sectorCount - i) ? (bufferSize / 0x200) : (sectorCount - i);
+        u32 tempCount = (bufferSize / 0x200) < (sectorCount - tempSector) ? (bufferSize / 0x200) : (sectorCount - tempSector);
 
-        memcpy(buffer, inbuf + (i * 0x200), tempAmount * 0x200);
+        memcpy(buffer, inbuf + (tempSector * 0x200), tempCount * 0x200);
 
         //Encrypt
-        aes(buffer, buffer, tempAmount * 0x200 / AES_BLOCK_SIZE, tmpCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes(buffer, buffer, tempCount * 0x200 / AES_BLOCK_SIZE, tmpCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         //Write
-        result = sdmmc_nand_writesectors(i + sector + fatStart, tempAmount, buffer);
+        result = sdmmc_nand_writesectors(tempSector + sector + fatStart, tempCount, buffer);
     }
 
     return result;
