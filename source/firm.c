@@ -93,7 +93,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
             }
 
             //Check that the FIRM is right for the console from the ARM9 section address
-            if((firm->section[3].offset ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
+            if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
                 error("The firmware.bin in /luma is not valid for this\nconsole.");
 
             firmVersion = 0xFFFFFFFF;
