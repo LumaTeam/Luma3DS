@@ -224,8 +224,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
         singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption),
         totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption = multiOptionsAmount;
-    while(!singleOptions[selectedOption - multiOptionsAmount].visible) selectedOption++;
+        selectedOption;
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -255,17 +254,21 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     }
 
     endPos += SPACING_Y / 2;
-    u32 color = COLOR_RED;
 
     //Display all the normal options in white except for the first one
-    for(u32 i = 0; i < singleOptionsAmount; i++)
+    for(u32 i = 0, color = COLOR_RED; i < singleOptionsAmount; i++)
     {
         if(singleOptions[i].visible)
         {
             singleOptions[i].posY = endPos + SPACING_Y;
             endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
             if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
-            color = COLOR_WHITE;
+
+            if(color == COLOR_RED)
+            {
+                selectedOption = i + multiOptionsAmount;
+                color = COLOR_WHITE;
+            }
         }
     }
 
