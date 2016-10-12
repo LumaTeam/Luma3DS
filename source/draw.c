@@ -34,11 +34,11 @@
 
 bool loadSplash(void)
 {
-    const char topSplashPath[] = "luma/splash.bin",
-               bottomSplashPath[] = "luma/splashbottom.bin";
+    const char *topSplashFile = "splash.bin",
+               *bottomSplashFile = "splashbottom.bin";
 
-    bool isTopSplashValid = getFileSize(topSplashPath) == SCREEN_TOP_FBSIZE,
-         isBottomSplashValid = getFileSize(bottomSplashPath) == SCREEN_BOTTOM_FBSIZE;
+    bool isTopSplashValid = getFileSize(topSplashFile) == SCREEN_TOP_FBSIZE,
+         isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE;
 
     //Don't delay boot nor init the screens if no splash images or invalid splash images are on the SD
     if(!isTopSplashValid && !isBottomSplashValid)
@@ -47,8 +47,8 @@ bool loadSplash(void)
     initScreens();
     clearScreens(true, true, true);
 
-    if(isTopSplashValid) fileRead(fbs[1].top_left, topSplashPath, SCREEN_TOP_FBSIZE);
-    if(isBottomSplashValid) fileRead(fbs[1].bottom, bottomSplashPath, SCREEN_BOTTOM_FBSIZE);
+    if(isTopSplashValid) fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE);
+    if(isBottomSplashValid) fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE);
 
     swapFramebuffers(true);
 

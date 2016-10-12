@@ -100,7 +100,7 @@ void newPin(bool allowSkipping, u32 pinMode)
     computePinHash(tmp, enteredPassword);
     memcpy(pin.hash, tmp, sizeof(tmp));
 
-    if(!fileWrite(&pin, PIN_PATH, sizeof(PinData)))
+    if(!fileWrite(&pin, PIN_FILE, sizeof(PinData)))
         error("Error writing the PIN file");
 }
 
@@ -108,7 +108,7 @@ bool verifyPin(u32 pinMode)
 {
     PinData pin;
 
-    if(fileRead(&pin, PIN_PATH, sizeof(PinData)) != sizeof(PinData) ||
+    if(fileRead(&pin, PIN_FILE, sizeof(PinData)) != sizeof(PinData) ||
        memcmp(pin.magic, "PINF", 4) != 0 ||
        pin.formatVersionMajor != PIN_VERSIONMAJOR ||
        pin.formatVersionMinor != PIN_VERSIONMINOR)
@@ -132,14 +132,14 @@ bool verifyPin(u32 pinMode)
     u8 cnt = 0;
     u32 charDrawPos = 16 * SPACING_X;
 
-    const char messagePath[] = "luma/pinmessage.txt";
+    const char *messageFile = "pinmessage.txt";
 
-    u32 messageSize = getFileSize(messagePath);
+    u32 messageSize = getFileSize(messageFile);
 
     if(messageSize > 0 && messageSize <= 800)
     {
         char message[messageSize + 1];
-        fileRead(message, messagePath, messageSize);
+        fileRead(message, messageFile, messageSize);
         message[messageSize] = 0;
         drawString(message, false, 10, 10, COLOR_WHITE);
     }

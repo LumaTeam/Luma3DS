@@ -39,19 +39,19 @@ static Firm *firm = (Firm *)0x24000000;
 u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSdMode)
 {
     const char *firmwareFiles[] = {
-        "luma/firmware.bin",
-        "luma/firmware_twl.bin",
-        "luma/firmware_agb.bin",
-        "luma/firmware_safe.bin"
+        "firmware.bin",
+        "firmware_twl.bin",
+        "firmware_agb.bin",
+        "firmware_safe.bin"
     },
                *cetkFiles[] = {
-        "luma/cetk",
-        "luma/cetk_twl",
-        "luma/cetk_agb",
-        "luma/cetk_safe"
+        "cetk",
+        "cetk_twl",
+        "cetk_agb",
+        "cetk_safe"
     };
 
-    if(isSdMode && !mountFs(false)) error("Failed to mount CTRNAND.");
+    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
 
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
@@ -279,7 +279,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         if(loadFromStorage)
         {
-            char fileName[29] = "luma/sysmodules/";
+            char fileName[24] = "sysmodules/";
             const char *ext = ".cxi";
 
             //Read modules from files if they exist

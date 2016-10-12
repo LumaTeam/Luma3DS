@@ -33,14 +33,32 @@
 static FATFS sdFs,
              nandFs;
 
-bool mountFs(bool isSd)
+static bool switchToMainDir(bool isSd)
 {
-    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK : f_mount(&nandFs, "1:", 1) == FR_OK;
+    const char *mainDir = isSd ? "/luma" : "/rw/luma";
+    bool ret;
+
+    switch(f_chdir(mainDir))
+    {
+        case FR_OK:
+            ret = true;
+            break;
+        case FR_NO_PATH:
+            f_mkdir(mainDir);
+            ret = switchToMainDir(isSd);
+            break;
+        default:
+            ret = false;
+            break;
+    }
+
+    return ret;    
 }
 
-bool switchToCtrNand(void)
+bool mountFs(bool isSd, bool switchToCtrNand)
 {
-    return f_chdrive("1:") == FR_OK && f_chdir("/rw") == FR_OK;
+    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) : 
+                  f_mount(&nandFs, "1:", 1) == FR_OK && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
 }
 
 u32 fileRead(void *dest, const char *path, u32 maxSize)
@@ -70,31 +88,27 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
     FIL file;
     bool ret;
 
-    FRESULT result = f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS);
-
-    if(result == FR_OK)
+    switch(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS))
     {
-        unsigned int written;
-        f_write(&file, buffer, size, &written);
-        f_truncate(&file);
-        f_close(&file);
+        case FR_OK:
+        {
+            unsigned int written;
+            f_write(&file, buffer, size, &written);
+            f_truncate(&file);
+            f_close(&file);
 
-        ret = (u32)written == size;
-    }
-    else if(result == FR_NO_PATH)
-    {
-        for(u32 i = 1; path[i] != 0; i++)
-           if(path[i] == '/')
-           {
-                char folder[i + 1];
-                memcpy(folder, path, i);
-                folder[i] = 0;
-                f_mkdir(folder);
-           }
+            ret = (u32)written == size;
+            break;
+        }
+        case FR_NO_PATH:
 
-        ret = fileWrite(buffer, path, size);
+
+            ret = fileWrite(buffer, path, size);
+            break;
+        default:
+            ret = false;
+            break;
     }
-    else ret = false;
 
     return ret;
 }
@@ -122,7 +136,7 @@ void loadPayload(u32 pressed)
 
     DIR dir;
     FILINFO info;
-    char path[27] = "luma/payloads";
+    char path[22] = "payloads";
 
     FRESULT result = f_findfirst(&dir, &info, path, pattern);
 
@@ -132,7 +146,7 @@ void loadPayload(u32 pressed)
 
         if(info.fname[0] != 0)
         {
-            u32 *loaderAddress = (u32 *)0x24FFFF00;
+            u32 *loaderAddress = (u32 *)0x24FFFE00;
             u8 *payloadAddress = (u8 *)0x24F00000;
 
             memcpy(loaderAddress, loader_bin, loader_bin_size);
@@ -140,7 +154,7 @@ void loadPayload(u32 pressed)
             concatenateStrings(path, "/");
             concatenateStrings(path, info.altname);
 
-            u32 payloadSize = fileRead(payloadAddress, path, (u8 *)loaderAddress - payloadAddress);
+            u32 payloadSize = fileRead(payloadAddress, path, (u32)((u8 *)loaderAddress - payloadAddress));
 
             if(payloadSize > 0)
             {

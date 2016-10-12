@@ -35,7 +35,7 @@ bool readConfig(void)
 {
     bool ret;
 
-    if(fileRead(&configData, CONFIG_PATH, sizeof(CfgData)) != sizeof(CfgData) ||
+    if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
@@ -64,7 +64,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         //Merge the new options and new boot configuration
         configData.config = (configData.config & 0xFFFFFE00) | (configTemp & 0x1FF);
 
-        if(!fileWrite(&configData, CONFIG_PATH, sizeof(CfgData)))
+        if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
             error("Error writing the configuration file");
     }
 }
@@ -381,7 +381,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     u32 newPinMode = MULTICONFIG(PIN);
 
     if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
-    else if(oldPinStatus) fileDelete(PIN_PATH);
+    else if(oldPinStatus) fileDelete(PIN_FILE);
 
     //Wait for the pressed buttons to change
     while(HID_PAD & PIN_BUTTONS);

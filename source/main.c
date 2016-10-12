@@ -44,11 +44,11 @@ void main(void)
 
     //Mount SD or CTRNAND
     bool isSdMode;
-    if(mountFs(true)) isSdMode = true;
+    if(mountFs(true, false)) isSdMode = true;
     else
     {
         firmSource = FIRMWARE_SYSNAND;
-        if(!mountFs(false) || !switchToCtrNand()) error("Failed to mount SD and CTRNAND.");
+        if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
         isSdMode = false;
     }
 

@@ -28,7 +28,7 @@
 #define MULTICONFIG(a)   ((configData.config >> (a * 2 + 9)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
-#define CONFIG_PATH         "luma/config.bin"
+#define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 1
 #define CONFIG_VERSIONMINOR 6
 
