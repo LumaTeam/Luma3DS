@@ -24,13 +24,13 @@
 .align 4
 .global _start
 _start:
-    @ Change the stack pointer
-    mov sp, #0x27000000
-
     @ Disable interrupts
     mrs r0, cpsr
     orr r0, #0x1C0
     msr cpsr_cx, r0
+
+    @ Change the stack pointer
+    mov sp, #0x27000000
 
     @ Disable caches / MPU
     mrc p15, 0, r0, c1, c0, 0  @ read control register
