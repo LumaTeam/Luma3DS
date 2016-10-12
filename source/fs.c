@@ -101,7 +101,14 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
             break;
         }
         case FR_NO_PATH:
-
+            for(u32 i = 1; path[i] != 0; i++)
+                if(path[i] == '/')
+                {
+                    char folder[i + 1];
+                    memcpy(folder, path, i);
+                    folder[i] = 0;
+                    f_mkdir(folder);
+                }
 
             ret = fileWrite(buffer, path, size);
             break;
