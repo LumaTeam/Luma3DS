@@ -89,7 +89,7 @@ void main(void)
             if(CFG_BOOTENV == 7)
             {
                 nandType = FIRMWARE_SYSNAND;
-                firmSource = CONFIG(USESYSFIRM) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
+                firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
                 needConfig = DONT_CONFIGURE;
 
                 //Flag to prevent multiple boot options-forcing
@@ -113,7 +113,7 @@ void main(void)
             bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
             //If no configuration file exists or SELECT is held, load configuration menu
-            bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & BUTTON_SELECT) && !(pressed & BUTTON_L1));
+            bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
 
             if(shouldLoadConfigMenu)
             {
@@ -159,46 +159,47 @@ void main(void)
                 //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
                 else if(pressed & BUTTON_R1)
                 {
-                    //Determine if the user chose to use the SysNAND FIRM as default for a R boot
-                    bool useSysAsDefault = ISA9LH ? CONFIG(USESYSFIRM) : false;
-
-                    nandType = useSysAsDefault ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                    firmSource = useSysAsDefault ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+                    if(CONFIG(USESYSFIRM))
+                    {
+                        nandType = FIRMWARE_EMUNAND;
+                        firmSource = FIRMWARE_SYSNAND;
+                    }
+                    else
+                    {
+                        nandType = FIRMWARE_SYSNAND;
+                        firmSource = FIRMWARE_EMUNAND;
+                    }
                 }
 
                 /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
                    with their own FIRM */
-                else
-                {
-                    nandType = (CONFIG(AUTOBOOTSYS) != !(pressed & BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-                    firmSource = nandType;
-                }
+                else firmSource = nandType = (CONFIG(AUTOBOOTSYS) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
 
                 //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
                 if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
                 {
-                    FirmwareSource temp;
+                    FirmwareSource tempNand;
                     switch(pressed & EMUNAND_BUTTONS)
                     {
                         case BUTTON_UP:
-                            temp = FIRMWARE_EMUNAND;
+                            tempNand = FIRMWARE_EMUNAND;
                             break;
                         case BUTTON_RIGHT:
-                            temp = FIRMWARE_EMUNAND2;
+                            tempNand = FIRMWARE_EMUNAND2;
                             break;
                         case BUTTON_DOWN:
-                            temp = FIRMWARE_EMUNAND3;
+                            tempNand = FIRMWARE_EMUNAND3;
                             break;
                         case BUTTON_LEFT:
-                            temp = FIRMWARE_EMUNAND4;
+                            tempNand = FIRMWARE_EMUNAND4;
                             break;
                         default:
-                            temp = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
+                            tempNand = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
                             break;
                     }
 
-                    if(nandType == FIRMWARE_EMUNAND) nandType = temp;
-                    else firmSource = temp;
+                    if(nandType == FIRMWARE_EMUNAND) nandType = tempNand;
+                    else firmSource = tempNand;
                 }
             }
         }

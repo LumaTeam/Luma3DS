@@ -52,12 +52,12 @@ static bool switchToMainDir(bool isSd)
             break;
     }
 
-    return ret;    
+    return ret;
 }
 
 bool mountFs(bool isSd, bool switchToCtrNand)
 {
-    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) : 
+    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) :
                   f_mount(&nandFs, "1:", 1) == FR_OK && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
 }
 

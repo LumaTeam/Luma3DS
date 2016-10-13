@@ -80,7 +80,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                       };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
-                                        "( ) Use SysNAND FIRM if booting with R (A9LH)",
+                                        "( ) Use SysNAND FIRM if booting with R",
                                         "( ) Enable loading external FIRMs and modules",
                                         "( ) Use custom path",
                                         "( ) Enable region/language emu. and ext. .code",
