@@ -59,7 +59,7 @@ void main(void)
     //Determine if this is a firmlaunch boot
     if(ISFIRMLAUNCH)
     {
-        if(needConfig == CREATE_CONFIGURATION) mcuReboot();
+        if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
         //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
         firmType = launchedFirmTidLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTidLow[5] - u'0');
@@ -86,7 +86,7 @@ void main(void)
         configTemp = (configData.config & 0xFFFFFE00) | ((u32)ISA9LH << 6);
 
         //If it's a MCU reboot, try to force boot options
-        if(ISA9LH && CFG_BOOTENV)
+        if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
         {
             //Always force a SysNAND boot when quitting AGB_FIRM
             if(CFG_BOOTENV == 7)
@@ -101,7 +101,7 @@ void main(void)
 
             /* Else, force the last used boot options unless a button is pressed
                or the no-forcing flag is set */
-            else if(needConfig != CREATE_CONFIGURATION && !pressed && !BOOTCFG_NOFORCEFLAG)
+            else if(!pressed && !BOOTCFG_NOFORCEFLAG)
             {
                 nandType = (FirmwareSource)BOOTCFG_NAND;
                 firmSource = (FirmwareSource)BOOTCFG_FIRM;

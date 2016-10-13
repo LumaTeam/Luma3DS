@@ -112,14 +112,16 @@ void chrono(u32 seconds)
 
 void error(const char *message)
 {
-    if(ISFIRMLAUNCH) mcuReboot();
+    if(!ISFIRMLAUNCH)
+    {
+        initScreens();
 
-    initScreens();
+        drawString("An error has occurred:", true, 10, 10, COLOR_RED);
+        u32 posY = drawString(message, true, 10, 30, COLOR_WHITE);
+        drawString("Press any button to shutdown", true, 10, posY + 2 * SPACING_Y, COLOR_WHITE);
 
-    drawString("An error has occurred:", true, 10, 10, COLOR_RED);
-    u32 posY = drawString(message, true, 10, 30, COLOR_WHITE);
-    drawString("Press any button to shutdown", true, 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+        waitInput();
+    }
 
-    waitInput();
     mcuPowerOff();
 }
