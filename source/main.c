@@ -36,6 +36,7 @@ extern FirmwareSource firmSource;
 
 void main(void)
 {
+    bool isA9lhInstalled;
     u32 configTemp,
         emuHeader;
     FirmwareType firmType;
@@ -65,6 +66,7 @@ void main(void)
 
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
+        isA9lhInstalled = BOOTCFG_A9LH != 0;
     }
     else
     {
@@ -75,6 +77,7 @@ void main(void)
         }
 
         firmType = NATIVE_FIRM;
+        isA9lhInstalled = ISA9LH;
 
         //Get pressed buttons
         u32 pressed = HID_PAD;
@@ -231,11 +234,11 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isSdMode, devMode);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSdMode, devMode);
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM1X2X:
-            res = ISA9LH ? patch1x2xNativeAndSafeFirm(devMode) : 0;
+            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(devMode) : 0;
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, devMode);

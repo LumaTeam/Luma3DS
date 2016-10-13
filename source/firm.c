@@ -109,7 +109,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isSdMode, u32 devMode)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSdMode, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -145,7 +145,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, firm->section[2].size, process9Offset, process9Size, emuHeader, firm->section[2].address);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
-    else if(ISA9LH || (ISFIRMLAUNCH && BOOTCFG_A9LH != 0)) ret += patchFirmWrites(process9Offset, process9Size);
+    else if(isA9lhInstalled) ret += patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches
     ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr, isSdMode);
@@ -165,7 +165,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     //Apply UNITINFO patch
     if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, firm->section[2].size);
 
-    if(devMode != 0 && ISA9LH)
+    if(devMode != 0 && isA9lhInstalled)
     {
         //ARM11 exception handlers
         u32 codeSetOffset,
