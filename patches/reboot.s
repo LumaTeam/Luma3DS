@@ -1,7 +1,8 @@
 .arm.little
 
-payload_addr equ 0x23F00000   ; Brahma payload address.
-payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeBrah supports).
+payload_addr equ 0x23F00000   ; Brahma payload address
+payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeBrah supports)
+sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
 
 .create "build/reboot.bin", 0
 .arm
@@ -26,30 +27,31 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
         bne pxi_wait_recv
 
         adr r1, sd_fname
-        mov r4, #0
 
     open_payload:
         ; Open file
-        cmp r4, #2 ; Panic if both payloads don't exist
-        beq svcBreak
         add r0, r7, #8
         mov r2, #1
         ldr r6, [fopen]
         orr r6, 1
         blx r6
         cmp r0, #0
-        adrne r1, nand_fname
-        addne r4, #1
-        bne open_payload
+        beq read_payload
+        ldr r2, =sd_notmounted
+        cmp r0, r2
+        bne svcBreak
+        adr r1, nand_fname
+        b open_payload
 
-    ; Read file
-    mov r0, r7
-    adr r1, bytes_read
-    ldr r2, =payload_addr
-    mov r3, payload_maxsize
-    ldr r6, [r7]
-    ldr r6, [r6, #0x28]
-    blx r6
+    read_payload:
+        ; Read file
+        mov r0, r7
+        adr r1, bytes_read
+        ldr r2, =payload_addr
+        ldr r3, =payload_maxsize
+        ldr r6, [r7]
+        ldr r6, [r6, #0x28]
+        blx r6
 
     ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
     add r0, r8, 0x1A
