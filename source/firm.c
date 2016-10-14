@@ -36,7 +36,7 @@
 
 static Firm *firm = (Firm *)0x24000000;
 
-u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSdMode)
+u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage)
 {
     const char *firmwareFiles[] = {
         "firmware.bin",
@@ -50,8 +50,6 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
         "cetk_agb",
         "cetk_safe"
     };
-
-    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
 
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
@@ -109,7 +107,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSdMode, u32 devMode)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -148,7 +146,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     else if(isA9lhInstalled) ret += patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches
-    ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr, isSdMode);
+    ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
     //11.0 FIRM patches
     if(firmVersion >= (ISN3DS ? 0x21 : 0x52))

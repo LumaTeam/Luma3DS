@@ -26,11 +26,10 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         cmp r0, r2
         bne pxi_wait_recv
 
-        adr r1, sd_fname
-
     open_payload:
         ; Open file
         add r0, r7, #8
+        adr r1, fname
         mov r2, #1
         ldr r6, [fopen]
         orr r6, 1
@@ -40,7 +39,10 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         ldr r2, =sd_notmounted
         cmp r0, r2
         bne svcBreak
-        adr r1, nand_fname
+        adr r0, fname
+        adr r1, nand_mount
+        mov r2, #8
+        bl memcpy16
         b open_payload
 
     read_payload:
@@ -54,14 +56,10 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         blx r6
 
     ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
-    add r0, r8, 0x1A
-    add r1, r0, #0x10
-    ldr r2, =payload_addr + 4
-    copy_TID_low:
-        ldrh r3, [r0], #2
-        strh r3, [r2], #2
-        cmp r0, r1
-        blo copy_TID_low
+    ldr r0, =payload_addr + 4
+    add r1, r8, 0x1A
+    mov r2, #0x10
+    bl memcpy16
 
     ; Set kernel state
     mov r0, #0
@@ -79,6 +77,15 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
     die:
         b die
 
+    memcpy16:
+        add r2, r0, r2
+        copy_loop:
+            ldrh r3, [r1], #2
+            strh r3, [r0], #2
+            cmp r0, r2
+            blo copy_loop
+        bx lr
+
     svcBreak:
         swi 0x3C
         b die
@@ -86,11 +93,10 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-sd_fname: .dcw "sdmc:/arm9loaderhax.bin"
-          .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+fname: .dcw "sdmc:/arm9loaderhax.bin"
+       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .pool
-nand_fname: .dcw "nand:/arm9loaderhax.bin"
-            .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+nand_mount: .dcw "nand"
 
 .align 4
     kernelcode_start:

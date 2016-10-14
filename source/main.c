@@ -225,8 +225,10 @@ void main(void)
         writeConfig(needConfig, configTemp);
     }
 
+    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
+
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSdMode);
+    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage);
 
     u32 devMode = MULTICONFIG(DEVOPTIONS);
 
@@ -234,7 +236,7 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSdMode, devMode);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, devMode);
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM1X2X:
