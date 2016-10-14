@@ -272,7 +272,7 @@ u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
         }
         else isRelease = rev[4] == 0;
 
-        info->flags = isRelease ? 1 : 0;
+        if(isRelease) info->flags = 1;
 
         arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
         *freeK11Space += svcGetCFWInfo_bin_size;

@@ -26,12 +26,21 @@ static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, i
     }
 }
 
-static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
+static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
 {
     FS_Path filePath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
+}
+
+static Result openLumaFile(IFile *file, const char *path)
+{
+    Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+
+    if((u32)res == 0xC88044AB) res = fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ); //Returned if SD is not mounted
+
+    return res;
 }
 
 static void loadCFWInfo(void)
@@ -77,7 +86,7 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
 
     IFile file;
 
-    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, paths[currentNand], FS_OPEN_READ)) || R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, paths[currentNand], FS_OPEN_READ)))
+    if(R_SUCCEEDED(openLumaFile(&file, paths[currentNand])))
     {
         u64 fileSize;
 
@@ -135,7 +144,7 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     IFile file;
 
-    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)) || R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)))
+    if(R_SUCCEEDED(openLumaFile(&file, path)))
     {
         u64 fileSize;
 
@@ -161,7 +170,7 @@ static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 
     IFile file;
 
-    if(R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, path, FS_OPEN_READ)) || R_SUCCEEDED(fileOpen(&file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)))
+    if(R_SUCCEEDED(openLumaFile(&file, path)))
     {
         u64 fileSize;
 
