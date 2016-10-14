@@ -141,13 +141,12 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr, bool isSdMode)
 
                 if(pathSize > 5 && pathSize < 56 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
                 {
-                    u16 finalPath[pathSize + 1];
+                    u16 finalPath[pathSize];
                     for(u32 i = 0; i < pathSize; i++)
                         finalPath[i] = (u16)path[i];
-                    finalPath[pathSize] = 0;
 
                     u8 *pos_path = memsearch(off, isSdMode ? u"sd" : u"na", reboot_bin_size, 4) + 0xA;
-                    memcpy(pos_path, finalPath, (pathSize + 1) * 2);
+                    memcpy(pos_path, finalPath, pathSize * 2);
                 }
             }
         }
