@@ -200,18 +200,24 @@ u32 patchTwlFirm(u32 firmVersion, u32 devMode)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
-    u32 ret = 0;
+    //Find the Process9 .code location, size and memory address
+    u32 process9Size,
+        process9MemAddr;
+    u8 *process9Offset = getProcess9Info(arm9Section, firm->section[3].size, &process9Size, &process9MemAddr);
 
-    ret += patchLgySignatureChecks(arm9Section, firm->section[3].size);
-    ret += patchTwlInvalidSignatureChecks(arm9Section, firm->section[3].size);
-    ret += patchTwlNintendoLogoChecks(arm9Section, firm->section[3].size);
-    ret += patchTwlWhitelistChecks(arm9Section, firm->section[3].size);
-    if(!ISN3DS && firmVersion == 0x11) ret += patchOldTwlFlashcartChecks(arm9Section, firm->section[3].size);
-    else ret += patchTwlFlashcartChecks(arm9Section, firm->section[3].size, firmVersion);
-    ret += patchTwlShaHashChecks(arm9Section, firm->section[3].size);
+    u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
+        ret = 0;
+
+    ret += patchLgySignatureChecks(process9Offset, process9Size);
+    ret += patchTwlInvalidSignatureChecks(process9Offset, process9Size);
+    ret += patchTwlNintendoLogoChecks(process9Offset, process9Size);
+    ret += patchTwlWhitelistChecks(process9Offset, process9Size);
+    if(ISN3DS || firmVersion > 0x11) ret += patchTwlFlashcartChecks(process9Offset, process9Size, firmVersion);
+    else if(!ISN3DS && firmVersion == 0x11) ret += patchOldTwlFlashcartChecks(process9Offset, process9Size);
+    ret += patchTwlShaHashChecks(process9Offset, process9Size);
 
     //Apply UNITINFO patch
-    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, firm->section[3].size);
+    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
     return ret;
 }
@@ -227,13 +233,19 @@ u32 patchAgbFirm(u32 devMode)
         firm->arm9Entry = (u8 *)0x801301C;
     }
 
-    u32 ret = 0;
+    //Find the Process9 .code location, size and memory address
+    u32 process9Size,
+        process9MemAddr;
+    u8 *process9Offset = getProcess9Info(arm9Section, firm->section[3].size, &process9Size, &process9MemAddr);
 
-    ret += patchLgySignatureChecks(arm9Section, firm->section[3].size);
-    if(CONFIG(SHOWGBABOOT)) ret += patchAgbBootSplash(arm9Section, firm->section[3].size);
+    u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
+        ret = 0;
+
+    ret += patchLgySignatureChecks(process9Offset, process9Size);
+    if(CONFIG(SHOWGBABOOT)) ret += patchAgbBootSplash(process9Offset, process9Size);
 
     //Apply UNITINFO patch
-    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, firm->section[3].size);
+    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
     return ret;
 }
@@ -241,23 +253,29 @@ u32 patchAgbFirm(u32 devMode)
 u32 patch1x2xNativeAndSafeFirm(u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
-    u32 ret = 0;
 
     if(ISN3DS)
     {
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
-
-        ret += patchFirmWrites(arm9Section, firm->section[2].size);
     }
-    else ret += patchOldFirmWrites(arm9Section, firm->section[2].size);
+
+    //Find the Process9 .code location, size and memory address
+    u32 process9Size,
+        process9MemAddr;
+    u8 *process9Offset = getProcess9Info(arm9Section, firm->section[2].size, &process9Size, &process9MemAddr);
+
+    u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
+        ret = 0;
+
+    ret += ISN3DS ? patchFirmWrites(process9Offset, process9Size) : patchOldFirmWrites(process9Offset, process9Size);
 
     if(devMode != 0)
     {
         //ARM9 exception handlers
-        ret += patchArm9ExceptionHandlersInstall(arm9Section, firm->section[2].size);
-        ret += patchSvcBreak9(arm9Section, firm->section[2].size, (u32)firm->section[2].address);
+        ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
+        ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
     }
 
     return ret;
