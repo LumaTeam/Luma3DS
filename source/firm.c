@@ -134,13 +134,14 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         *arm11ExceptionsPage,
         *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
-    u32 ret = 0;
+    u32 kernel9Size = firm->section[2].size - (process9Size + sizeof(Cxi) + 0x200),
+        ret = 0;
 
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
 
     //Apply EmuNAND patches
-    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, firm->section[2].size, process9Offset, process9Size, emuHeader, firm->section[2].address);
+    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, emuHeader, firm->section[2].address);
 
     //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
     else if(isA9lhInstalled) ret += patchFirmWrites(process9Offset, process9Size);
@@ -161,7 +162,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
 
     //Apply UNITINFO patch
-    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, firm->section[2].size);
+    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
     if(devMode != 0 && isA9lhInstalled)
     {
@@ -173,9 +174,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
 
         //ARM9 exception handlers
-        ret += patchArm9ExceptionHandlersInstall(arm9Section, firm->section[2].size);
-        ret += patchSvcBreak9(arm9Section, firm->section[2].size, (u32)firm->section[2].address);
-        ret += patchKernel9Panic(arm9Section, firm->section[2].size);
+        ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
+        ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
+        ret += patchKernel9Panic(arm9Section, kernel9Size);
     }
 
     if(CONFIG(PATCHACCESS))

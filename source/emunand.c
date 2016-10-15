@@ -184,12 +184,12 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     return ret;
 }
 
-u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address)
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address)
 {
     u32 ret = 0;
 
     u8 *freeK9Space;
-    ret += getFreeK9Space(arm9Section, arm9SectionSize, &freeK9Space);
+    ret += getFreeK9Space(arm9Section, kernel9Size, &freeK9Space);
 
     if(!ret)
     {
@@ -213,7 +213,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 p
         ret += patchNandRw(process9Offset, process9Size, branchOffset);
 
         //Set MPU
-        ret += patchMpu(arm9Section, arm9SectionSize);
+        ret += patchMpu(arm9Section, kernel9Size);
     }
 
     return ret;

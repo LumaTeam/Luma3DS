@@ -506,7 +506,7 @@ u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
 u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 {
     //Look for UNITINFO value being set during kernel sync
-    const u8 pattern[] = {0xA0, 0x13, 0x01, 0x10};
+    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
     u32 ret;
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
@@ -514,8 +514,6 @@ u32 patchUnitInfoValueSet(u8 *pos, u32 size)
     if(off == NULL) ret = 1;
     else
     {
-        off -= 2;
-
         off[0] = ISDEVUNIT ? 0 : 1;
         off[3] = 0xE3;
 
