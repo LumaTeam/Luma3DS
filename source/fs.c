@@ -224,7 +224,7 @@ u32 firmRead(void *dest, u32 firmType)
             //Convert back the .app name from integer to array
             hexItoa(firmVersion, path + 35, 8, false);
 
-            if(fileRead(dest, path, 0x400200) <= sizeof(Cxi)) firmVersion = 0xFFFFFFFF;
+            if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x200) firmVersion = 0xFFFFFFFF;
         }
     }
 

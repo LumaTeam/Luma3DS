@@ -77,22 +77,24 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
 
     if(loadFromStorage || mustLoadFromStorage)
     {
-        u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400200);
+        u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000 + sizeof(Cxi) + 0x200);
 
-        if(firmSize > sizeof(Cxi))
+        if(firmSize > 0)
         {
+            if(firmSize <= sizeof(Cxi) + 0x200) error("The FIRM in /luma is not valid.");
+
             if(memcmp(firm, "FIRM", 4) != 0)
             {
                 u8 cetk[0xA50];
 
                 if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) != sizeof(cetk) ||
                    !decryptNusFirm((Ticket *)(cetk + 0x140), (Cxi *)firm, firmSize))
-                    error("The firmware.bin in /luma is encrypted\nor corrupted.");
+                    error("The FIRM in /luma is encrypted or corrupted.");
             }
 
             //Check that the FIRM is right for the console from the ARM9 section address
             if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-                error("The firmware.bin in /luma is not valid for this\nconsole.");
+                error("The FIRM in /luma is not for this console.");
 
             firmVersion = 0xFFFFFFFF;
         }
