@@ -285,18 +285,20 @@ u32 patch1x2xNativeAndSafeFirm(u32 devMode)
 
 static inline void copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromStorage)
 {
-    u32 srcModuleSize,
+    u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000,
+        srcModuleSize,
         dstModuleSize;
 
     for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
-        src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
+        src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
         srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
         const char *moduleName = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
 
-        u32 fileSize;
+        bool loadedModule;
 
-        if(loadFromStorage)
+        if(!loadFromStorage) loadedModule = false;
+        else
         {
             char fileName[24] = "sysmodules/";
             const char *ext = ".cxi";
@@ -305,12 +307,23 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
             concatenateStrings(fileName, moduleName);
             concatenateStrings(fileName, ext);
 
-            fileSize = fileRead(dst, fileName, 2 * srcModuleSize);
-        }
-        else fileSize = 0;
+            dstModuleSize = getFileSize(fileName);
 
-        if(fileSize > 0) dstModuleSize = fileSize;
-        else
+            if(dstModuleSize == 0) loadedModule = false;
+            else
+            {
+                if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
+                   dstModuleSize > maxModuleSize ||
+                   fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
+                   memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
+                   memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
+                    error("An external FIRM module is invalid.");
+
+                loadedModule = true;
+            }
+        }
+
+        if(!loadedModule)
         {
             const u8 *module;
 
@@ -324,6 +337,8 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
                 module = src;
                 dstModuleSize = srcModuleSize;
             }
+
+            if(dstModuleSize > maxModuleSize) error("The FIRM modules section is full.");
 
             memcpy(dst, module, dstModuleSize);
         }
