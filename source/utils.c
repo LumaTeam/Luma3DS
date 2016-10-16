@@ -56,18 +56,18 @@ u32 waitInput(void)
 
 void mcuReboot(void)
 {
-    if(!ISFIRMLAUNCH && PDN_GPU_CNT != 1) clearScreens(true, true, false);
+    if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(true, true, false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
 
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 1);
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
     while(true);
 }
 
 void mcuPowerOff(void)
 {
-    if(!ISFIRMLAUNCH && PDN_GPU_CNT != 1) clearScreens(true, true, false);
+    if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(true, true, false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();

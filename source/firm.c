@@ -319,7 +319,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
                    fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
                    memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
                    memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
-                    error("An external FIRM module is invalid.");
+                    error("An external FIRM module is invalid or corrupted.");
 
                 loadedModule = true;
             }

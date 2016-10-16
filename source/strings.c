@@ -27,7 +27,7 @@ u32 strlen(const char *string)
 {
     char *stringEnd = (char *)string;
 
-    while(*stringEnd) stringEnd++;
+    while(*stringEnd != 0) stringEnd++;
 
     return stringEnd - string;
 }

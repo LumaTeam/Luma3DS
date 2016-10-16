@@ -82,7 +82,7 @@ void deinitScreens(void)
         WAIT_FOR_ARM9();
     }
 
-    if(PDN_GPU_CNT != 1) invokeArm11Function(ARM11);
+    if(ARESCREENSINITED) invokeArm11Function(ARM11);
 }
 
 void updateBrightness(u32 brightnessIndex)
@@ -181,7 +181,7 @@ void initScreens(void)
         __asm(".word 0xF10C01C0");
 
         u32 brightnessLevel = brightness[MULTICONFIG(BRIGHTNESS)];
-        
+
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
         *(vu32 *)0x1020200C &= 0xFFFEFFFE;
@@ -288,7 +288,7 @@ void initScreens(void)
 
     if(needToSetup)
     {
-        if(PDN_GPU_CNT == 1)
+        if(!ARESCREENSINITED)
         {
             flushDCacheRange(&configData, sizeof(CfgData));
             invokeArm11Function(initSequence);
