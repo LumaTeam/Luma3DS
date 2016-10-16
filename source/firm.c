@@ -288,6 +288,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
     u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000,
         srcModuleSize,
         dstModuleSize;
+    const char *extModuleSizeError = "The external FIRM modules are too large.";
 
     for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
         src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
@@ -312,8 +313,9 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
             if(dstModuleSize == 0) loadedModule = false;
             else
             {
+                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+
                 if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
-                   dstModuleSize > maxModuleSize ||
                    fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
                    memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
                    memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
@@ -338,7 +340,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
                 dstModuleSize = srcModuleSize;
             }
 
-            if(dstModuleSize > maxModuleSize) error("The FIRM modules section is full.");
+            if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
 
             memcpy(dst, module, dstModuleSize);
         }
