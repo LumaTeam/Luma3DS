@@ -54,17 +54,6 @@ u32 waitInput(void)
     return key;
 }
 
-void mcuReboot(void)
-{
-    if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(true, true, false);
-
-    //Ensure that all memory transfers have completed and that the data cache has been flushed
-    flushEntireDCache();
-
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
-    while(true);
-}
-
 void mcuPowerOff(void)
 {
     if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(true, true, false);
