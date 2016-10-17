@@ -377,7 +377,7 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     if(arm9SvcTable == NULL) ret = 1;
     else
     {
-        while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
+        while(*arm9SvcTable != 0) arm9SvcTable++; //Look for SVC0 (NULL)
 
         u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
         *addr = 0xE12FFF7F;

@@ -37,7 +37,7 @@ void main(void)
             payload;
         bool foundPayload = false;
 
-        if(f_open(&pathFile, "/luma/path.txt", FA_READ) == FR_OK)
+        if(f_open(&pathFile, "luma/path.txt", FA_READ) == FR_OK)
         {
             u32 pathSize = f_size(&pathFile);
 
@@ -74,10 +74,13 @@ void main(void)
             f_read(&payload, payloadAddress, payloadSize, &read);
             f_close(&payload);
 
-            flushDCacheRange(loaderAddress, loader_bin_size);
-            flushICacheRange(loaderAddress, loader_bin_size);
+            if((u32)read == payloadSize)
+            {
+                flushDCacheRange(loaderAddress, loader_bin_size);
+                flushICacheRange(loaderAddress, loader_bin_size);
 
-            ((void (*)())loaderAddress)();
+                ((void (*)())loaderAddress)();
+            }
         }
     }
 
