@@ -73,6 +73,7 @@
         ldr r3, =0x1102 ; Low title id of the fs module
         cmp r2, r3 ; Compare the low title id to the id of the sm module
         bne out ; Skip if they're not the same
+
         ldr r2, =0x7401 ; strb r1, [r0, #16]
         ldr r3, =0x2000 ; movs r0, #0
 
