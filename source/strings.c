@@ -53,3 +53,38 @@ void hexItoa(u32 number, char *out, u32 digits, bool fillString)
 
     if(fillString) while(i < digits) out[digits - 1 - i++] = '0';
 }
+
+void decItoa(u32 number, char *out, u32 digits)
+{
+    while(number >= 10)
+    {
+        u32 i,
+            tmp;
+
+        for(i = 0, tmp = number; tmp >= 10; tmp /= 10, i++);
+
+        out[digits - 1 - i] = '0' + tmp;
+
+        u32 tmp2 = 10;
+
+        while(i > 1)
+        {
+            tmp2 *= 10;
+            i--;
+        }
+
+        number -= tmp * tmp2;
+    }
+
+    out[digits - 1] = '0' + number;
+}
+
+u32 decAtoi(const char *in)
+{
+    u32 res = 0;
+
+    for(char *tmp = (char *)in; *tmp != 0; tmp++)
+        res = *tmp - '0' + res * 10;
+
+    return res;
+}

@@ -27,3 +27,5 @@
 u32 strlen(const char *string);
 void concatenateStrings(char *destination, const char *source);
 void hexItoa(u32 number, char *out, u32 digits, bool fillString);
+void decItoa(u32 number, char *out, u32 digits);
+u32 decAtoi(const char *in);

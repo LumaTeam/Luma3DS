@@ -29,6 +29,7 @@
 
 #include "crypto.h"
 #include "memory.h"
+#include "strings.h"
 #include "utils.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
@@ -502,15 +503,9 @@ void kernel9Loader(Arm9Bin *arm9Section)
         u8 __attribute__((aligned(4))) arm9BinCtr[AES_BLOCK_SIZE];
         memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
 
-        //Calculate the size of the ARM9 binary
-        u32 arm9BinSize = 0;
-        //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
-        for(char *tmp = arm9Section->size; *tmp != 0; tmp++)
-            arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
-
         //Decrypt ARM9 binary
         aes_use_keyslot(arm9BinSlot);
-        aes(startOfArm9Bin, startOfArm9Bin, arm9BinSize / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
     }

@@ -242,16 +242,9 @@ void findDumpFile(const char *path, char *fileName)
     {
         result = f_findfirst(&dir, &info, path, fileName);
 
-        if(result != FR_OK || !info.fname[0]) break;
+        if(result != FR_OK || !info.fname[0] || n == 99999999) break;
 
-        u32 i = 18,
-            tmp = ++n;
-
-        while(tmp > 0)
-        {
-            fileName[i--] = '0' + (tmp % 10);
-            tmp /= 10;
-        }
+        decItoa(++n, fileName + 11, 8);
     }
 
     if(result == FR_OK) f_closedir(&dir);

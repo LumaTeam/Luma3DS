@@ -253,7 +253,7 @@ void main(void)
     if(res != 0)
     {
         char patchesError[] = "Failed to apply    FIRM patch(es).";
-        hexItoa(res, patchesError + 16, 2, false);
+        decItoa(res, patchesError + 16, 2);
         error(patchesError);
     }
 
