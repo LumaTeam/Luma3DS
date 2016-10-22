@@ -505,7 +505,7 @@ void kernel9Loader(Arm9Bin *arm9Section)
 
         //Decrypt ARM9 binary
         aes_use_keyslot(arm9BinSlot);
-        aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
     }

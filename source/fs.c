@@ -202,13 +202,7 @@ u32 firmRead(void *dest, u32 firmType)
             //Not a cxi
             if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
 
-            //Convert the .app name to an integer
-            u32 tempVersion = 0;
-            for(char *tmp = info.altname; *tmp != '.'; tmp++)
-            {
-                tempVersion <<= 4;
-                tempVersion += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
-            }
+            u32 tempVersion = hexAtoi(info.altname, 8);
 
             //Found an older cxi
             if(tempVersion < firmVersion) firmVersion = tempVersion;

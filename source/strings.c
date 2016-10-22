@@ -79,11 +79,26 @@ void decItoa(u32 number, char *out, u32 digits)
     out[digits - 1] = '0' + number;
 }
 
-u32 decAtoi(const char *in)
+u32 hexAtoi(const char *in, u32 digits)
 {
     u32 res = 0;
+    char *tmp = (char *)in;
 
-    for(char *tmp = (char *)in; *tmp != 0; tmp++)
+    for(u32 i = 0; i < digits && *tmp != 0; tmp++, i++)
+    {
+        res <<= 4;
+        res += *tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0';
+    }
+
+    return res;
+}
+
+u32 decAtoi(const char *in, u32 digits)
+{
+    u32 res = 0;
+    char *tmp = (char *)in;
+
+    for(u32 i = 0; i < digits && *tmp != 0; tmp++, i++)
         res = *tmp - '0' + res * 10;
 
     return res;
