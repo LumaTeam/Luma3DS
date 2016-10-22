@@ -238,11 +238,11 @@ void findDumpFile(const char *path, char *fileName)
     FRESULT result;
     u32 n = 0;
 
-    while(true)
+    while(n <= 99999999)
     {
         result = f_findfirst(&dir, &info, path, fileName);
 
-        if(result != FR_OK || !info.fname[0] || n == 99999999) break;
+        if(result != FR_OK || !info.fname[0]) break;
 
         decItoa(++n, fileName + 11, 8);
     }
