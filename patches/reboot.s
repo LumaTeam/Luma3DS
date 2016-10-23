@@ -38,7 +38,7 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         beq read_payload
         ldr r2, =sd_notmounted
         cmp r0, r2
-        bne svcBreak
+        bne panic
         adr r0, fname
         adr r1, nand_mount
         mov r2, #8
@@ -86,8 +86,10 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
             blo copy_loop
         bx lr
 
-    svcBreak:
-        swi 0x3C
+    panic:
+        mov r1, r0  ; unused register
+        mov r0, #0
+        swi 0x3C    ; svcBreak(USERBREAK_PANIC)
         b die
 
 bytes_read: .word 0
