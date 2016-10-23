@@ -169,14 +169,17 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
     u32 ret;
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     if(off == NULL) ret = 1;
     else
     {
-        off[0] = 0x00360003;
-        off[6] = 0x00200603;
-        off[9] = 0x001C0603;
+        off[0] = 0x0003;
+        off[1] = 0x0036;
+        off[0xC] = 0x0603;
+        off[0xD] = 0x0020;
+        off[0x12] = 0x0603;
+        off[0x13] = 0x001C;
 
         ret = 0;
     }
