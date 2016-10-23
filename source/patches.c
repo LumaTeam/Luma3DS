@@ -570,15 +570,13 @@ u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
     const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
     u32 ret;
 
-    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(temp == NULL) ret = 1;
+    if(off == NULL) ret = 1;
     else
     {
-        u16 *off = (u16 *)temp + 1;
-
-        off[0] = 0x2000;
-        off[1] = 0;
+        off[1] = 0x2000;
+        off[2] = 0;
 
         ret = 0;
     }
@@ -591,15 +589,13 @@ u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
     const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
     u32 ret;
 
-    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(temp == NULL) ret = 1;
+    if(off == NULL) ret = 1;
     else
     {
-        u16 *off = (u16 *)temp + 2;
-
-        off[0] = 0x2000;
-        off[1] = 0;
+        off[2] = 0x2000;
+        off[3] = 0;
 
         ret = 0;
     }
