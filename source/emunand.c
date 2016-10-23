@@ -175,8 +175,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     else
     {
         off[1] = 0x0036;
-        off[0xC] = 0x0603;
-        off[0x12] = 0x0603;
+        off[0xC] = off[0x12] = 0x0603;
 
         ret = 0;
     }

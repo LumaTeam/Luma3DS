@@ -623,12 +623,8 @@ u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
     {
         u16 *off = (u16 *)(temp + 3);
 
-        off[0] = 0x2001; //mov r0, #1
-        off[1] = 0; //nop
-        off[6] = 0x2001; //mov r0, #1
-        off[7] = 0; //nop
-        off[0xC] = 0x2001; //mov r0, #1
-        off[0xD] = 0; //nop
+        off[0] = off[6] = off[0xC] = 0x2001; //mov r0, #1
+        off[1] = off[7] = off[0xD] = 0; //nop
 
         ret = 0;
     }
@@ -646,10 +642,8 @@ u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
     if(off == NULL) ret = 1;
     else
     {
-        off[0] = 0x2001; //mov r0, #1
-        off[1] = 0; //nop
-        off[6] = 0x2001; //mov r0, #1
-        off[7] = 0; //nop
+        off[0] = off[6] = 0x2001; //mov r0, #1
+        off[1] = off[7] = 0; //nop
 
         ret = 0;
     }
