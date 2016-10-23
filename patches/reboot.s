@@ -57,7 +57,7 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
 
     ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
     ldr r0, =payload_addr + 4
-    add r1, r8, 0x1A
+    add r1, r8, #0x1A
     mov r2, #0x10
     bl memcpy16
 
@@ -87,9 +87,9 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         bx lr
 
     panic:
-        mov r1, r0  ; unused register
+        mov r1, r0 ; unused register
         mov r0, #0
-        swi 0x3C    ; svcBreak(USERBREAK_PANIC)
+        swi 0x3C ; svcBreak(USERBREAK_PANIC)
         b die
 
 bytes_read: .word 0
@@ -104,18 +104,18 @@ nand_mount: .dcw "nand"
     kernelcode_start:
 
     ; Disable MPU
-    ldr r0, =0x42078  ; alt vector select, enable itcm
+    ldr r0, =0x42078 ; alt vector select, enable itcm
     mcr p15, 0, r0, c1, c0, 0
 
     ; Clean and flush data cache
-    mov r1, #0                          ; segment counter
+    mov r1, #0 ; segment counter
     outer_loop:
-        mov r0, #0                      ; line counter
+        mov r0, #0 ; line counter
 
         inner_loop:
-            orr r2, r1, r0                  ; generate segment and line address
-            mcr p15, 0, r2, c7, c14, 2      ; clean and flush the line
-            add r0, #0x20                   ; increment to next line
+            orr r2, r1, r0 ; generate segment and line address
+            mcr p15, 0, r2, c7, c14, 2 ; clean and flush the line
+            add r0, #0x20 ; increment to next line
             cmp r0, #0x400
             bne inner_loop
 
@@ -123,7 +123,8 @@ nand_mount: .dcw "nand"
         cmp r1, #0
         bne outer_loop
 
-    mcr p15, 0, r1, c7, c10, 4              ; drain write buffer
+    ; Drain write buffer
+    mcr p15, 0, r1, c7, c10, 4
 
     ; Flush instruction cache
     mcr p15, 0, r1, c7, c5, 0
