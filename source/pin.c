@@ -50,7 +50,7 @@ void newPin(bool allowSkipping, u32 pinMode)
 
     u8 length = 4 + 2 * (pinMode - 1);
 
-    char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
+    const char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
     drawString(title, true, 10, 10, COLOR_TITLE);
     drawString("PIN (  digits): ", true, 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
     drawCharacter('0' + length, true, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);

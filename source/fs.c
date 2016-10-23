@@ -64,9 +64,10 @@ bool mountFs(bool isSd, bool switchToCtrNand)
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
-    u32 ret = 0;
+    u32 ret;
 
-    if(f_open(&file, path, FA_READ) == FR_OK)
+    if(f_open(&file, path, FA_READ) != FR_OK) ret = 0;
+    else
     {
         u32 size = f_size(&file);
         if(dest == NULL) ret = size;
@@ -191,11 +192,12 @@ u32 firmRead(void *dest, u32 firmType)
     concatenateStrings(path, "/content");
 
     DIR dir;
-    FILINFO info;
     u32 firmVersion = 0xFFFFFFFF;
 
     if(f_opendir(&dir, path) == FR_OK)
     {
+        FILINFO info;
+
         //Parse the target directory
         while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
         {
@@ -228,12 +230,13 @@ u32 firmRead(void *dest, u32 firmType)
 void findDumpFile(const char *path, char *fileName)
 {
     DIR dir;
-    FILINFO info;
     FRESULT result;
     u32 n = 0;
 
     while(n <= 99999999)
     {
+        FILINFO info;
+
         result = f_findfirst(&dir, &info, path, fileName);
 
         if(result != FR_OK || !info.fname[0]) break;

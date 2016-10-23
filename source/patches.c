@@ -48,13 +48,13 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
-    bool ret = true;
+    bool res = true;
 
     *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     u32 *arm11SvcTable;
 
-    if(*arm11ExceptionsPage == NULL) ret = false;
+    if(*arm11ExceptionsPage == NULL) res = false;
     else
     {
         *arm11ExceptionsPage -= 0xB;
@@ -69,10 +69,10 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
     *freeK11Space = memsearch(pos, pattern2, size, sizeof(pattern2));
 
-    if(*freeK11Space == NULL) ret = false;
+    if(*freeK11Space == NULL) res = false;
     else (*freeK11Space)++;
 
-    if(!ret) error("Failed to get Kernel11 data.");
+    if(!res) error("Failed to get Kernel11 data.");
 
     return arm11SvcTable;
 }
