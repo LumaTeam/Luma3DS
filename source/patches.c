@@ -285,16 +285,20 @@ u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
 
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
 {
-    const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
-    u32 ret = 0;
+    const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
+    u32 ret;
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(off == NULL)
+    if(off == NULL) ret = firmVersion == 0xFFFFFFFF ? 0 : 1;
+    else
     {
-        if(firmVersion != 0xFFFFFFFF) ret = 1;
+        off++;
+
+        memset32(off, 0, 8); //Zero out the first TitleID in the list
+
+        ret = 0;
     }
-    else off[4] = 0xE0;
 
     return ret;
 }
