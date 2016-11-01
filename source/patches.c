@@ -482,10 +482,11 @@ u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
     /* We have to detour a function in the ARM11 kernel because builtin modules
        are compressed in memory and are only decompressed at runtime */
 
-    u32 ret = 0;
+    u32 ret;
 
     //Check that we have enough free space
-    if(*(u32 *)(*freeK11Space + k11modules_bin_size - 4) == 0xFFFFFFFF)
+    if(*(u32 *)(*freeK11Space + k11modules_bin_size - 4) != 0xFFFFFFFF) ret = 0;
+    else
     {
         //Look for the code that decompresses the .code section of the builtin modules
         const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};
@@ -504,6 +505,8 @@ u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
             *off = 0xEB000000 | (((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF);
 
             *freeK11Space += k11modules_bin_size;
+
+            ret = 0;
         }
     }
 
