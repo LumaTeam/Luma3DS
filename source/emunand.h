@@ -20,6 +20,10 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   Code for locating the SDMMC struct by Normmatt
+*/
+
 #pragma once
 
 #include "types.h"

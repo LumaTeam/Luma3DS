@@ -20,6 +20,10 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   Code for locating the SDMMC struct by Normmatt
+*/
+
 #include "emunand.h"
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"

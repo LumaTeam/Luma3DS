@@ -1,3 +1,5 @@
+; Code by Normmatt
+
 .arm.little
 
 .create "build/emunand.bin", 0

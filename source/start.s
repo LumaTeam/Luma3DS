@@ -28,7 +28,7 @@ _start:
 
 .global launchedFirmTidLow
 launchedFirmTidLow:
-    .hword 0, 0, 0, 0, 0, 0, 0, 0 
+    .hword 0, 0, 0, 0, 0, 0, 0, 0
 
 start:
     @ Disable interrupts

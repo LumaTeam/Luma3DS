@@ -334,7 +334,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x000400300000B102LL: // TWN Menu
         {
             static const u8 regionFreePattern[] = {
-                0x00, 0x00, 0x55, 0xE3, 0x01, 0x10, 0xA0
+                0x0A, 0x0C, 0x00, 0x10
             },
                             regionFreePatch[] = {
                 0x01, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
@@ -342,8 +342,8 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             //Patch SMDH region checks
             patchMemory(code, size, 
-                regionFreePattern, 
-                sizeof(regionFreePattern), -16, 
+                regionFreePattern,
+                sizeof(regionFreePattern), -31, 
                 regionFreePatch, 
                 sizeof(regionFreePatch), 1
             );
@@ -378,7 +378,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004013000003202LL: // FRIENDS
         {
             static const u8 fpdVerPattern[] = {
-                0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01
+                0x42, 0xE0, 0x1E, 0xFF
             };
 
             u8 mostRecentFpdVer = 8;
@@ -388,7 +388,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             if(fpdVer == NULL) svcBreak(USERBREAK_ASSERT);
 
             //Allow online access to work with old friends modules
-            if(fpdVer[9] < mostRecentFpdVer) fpdVer[9] = mostRecentFpdVer;
+            if(fpdVer[0xA] < mostRecentFpdVer) fpdVer[0xA] = mostRecentFpdVer;
 
             break;
         }
@@ -402,7 +402,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         {
             if(CONFIG(PATCHVERSTRING))
             {
-                static const u16 verPattern[] = u"Ver.";
+                static const u16 verPattern[] = u"Ve";
                 static u16 *verString;
                 u32 verStringSize = 0,
                     currentNand = BOOTCFG_NAND;
@@ -523,13 +523,13 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004013000003702LL: // RO
         {
             static const u8 sigCheckPattern[] = {
-                0x30, 0x40, 0x2D, 0xE9, 0x02
+                0x20, 0xA0, 0xE1, 0x8B
             },
                             sha256ChecksPattern1[] = {
-                0x30, 0x40, 0x2D, 0xE9, 0x24
+                0xE1, 0x30, 0x40, 0x2D
             },
                             sha256ChecksPattern2[] = {
-                0xF8, 0x4F, 0x2D, 0xE9, 0x01
+                0x2D, 0xE9, 0x01, 0x70
             },
                             stub[] = {
                 0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
@@ -538,7 +538,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             //Disable CRR0 signature (RSA2048 with SHA256) check
             patchMemory(code, size, 
                 sigCheckPattern, 
-                sizeof(sigCheckPattern), 0, 
+                sizeof(sigCheckPattern), -9, 
                 stub,
                 sizeof(stub), 1
             );
@@ -546,14 +546,14 @@ void patchCode(u64 progId, u8 *code, u32 size)
             //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
             patchMemory(code, size, 
                 sha256ChecksPattern1, 
-                sizeof(sha256ChecksPattern1), 0, 
+                sizeof(sha256ChecksPattern1), 1, 
                 stub,
                 sizeof(stub), 1
             );
 
             patchMemory(code, size, 
                 sha256ChecksPattern2, 
-                sizeof(sha256ChecksPattern2), 0, 
+                sizeof(sha256ChecksPattern2), -2, 
                 stub,
                 sizeof(stub), 1
             );
@@ -566,7 +566,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             if(MULTICONFIG(DEVOPTIONS) == 1)
             {
                 static const u8 unitinfoCheckPattern1[] = { 
-                    0x14, 0x00, 0xD0, 0xE5, 0xDB
+                    0x00, 0xD0, 0xE5, 0xDB
                 },
                                 unitinfoCheckPattern2[] = {
                     0x14, 0x00, 0xD0, 0xE5, 0x01
@@ -577,7 +577,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
                 patchMemory(code, size, 
                     unitinfoCheckPattern1, 
-                    sizeof(unitinfoCheckPattern1), 0, 
+                    sizeof(unitinfoCheckPattern1), -1, 
                     unitinfoCheckPatch, 
                     sizeof(unitinfoCheckPatch), 1
                 );

@@ -21,7 +21,11 @@
 */
 
 /*
+*   Signature patches by an unknown author
+*   firmlaunches patching code originally by delebile
+*   FIRM partition writes patches by delebile
 *   ARM11 modules patching code originally by Subv
+*   Idea for svcBreak patches from yellows8 and others on #3dsdev
 */
 
 #pragma once

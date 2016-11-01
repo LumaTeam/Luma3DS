@@ -1,3 +1,5 @@
+; Code originally from delebile and mid-kid
+
 .arm.little
 
 payload_addr equ 0x23F00000   ; Brahma payload address

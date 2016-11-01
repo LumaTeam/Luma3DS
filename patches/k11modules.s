@@ -20,7 +20,7 @@
 ;   Notices displayed by works containing it.
 ;
 
-; This is mainly Subv's code, big thanks to him.
+; Code originally from Subv
 
 .arm.little
 

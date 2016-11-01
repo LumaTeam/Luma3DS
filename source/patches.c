@@ -21,7 +21,11 @@
 */
 
 /*
+*   Signature patches by an unknown author
+*   firmlaunches patching code originally by delebile
+*   FIRM partition writes patches by delebile
 *   ARM11 modules patching code originally by Subv
+*   Idea for svcBreak patches from yellows8 and others on #3dsdev
 */
 
 #include "patches.h"
@@ -369,8 +373,7 @@ u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
 
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 {
-    /* Stub svcBreak with "bkpt 65535" so we can debug the panic.
-       Thanks @yellows8 and others for mentioning this idea on #3dsdev */
+    //Stub svcBreak with "bkpt 65535" so we can debug the panic
 
     //Look for the svc handler
     const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
