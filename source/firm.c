@@ -302,11 +302,10 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
         else
         {
             char fileName[24] = "sysmodules/";
-            const char *ext = ".cxi";
 
             //Read modules from files if they exist
             concatenateStrings(fileName, moduleName);
-            concatenateStrings(fileName, ext);
+            concatenateStrings(fileName, ".cxi");
 
             dstModuleSize = getFileSize(fileName);
 
