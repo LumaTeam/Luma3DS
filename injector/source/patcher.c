@@ -418,7 +418,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 
     else if(progId == 0x0004013000008002LL) //NS
     {
-        if(progVer >= 0xD)
+        if(progVer > 4)
         {
             static const u8 stopCartUpdatesPattern[] = {
                 0x0C, 0x18, 0xE1, 0xD8
