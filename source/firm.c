@@ -36,7 +36,7 @@
 
 static Firm *firm = (Firm *)0x24000000;
 
-u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage)
+u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
     const char *firmwareFiles[] = {
         "firmware.bin",
@@ -66,7 +66,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
             if(nandType != FIRMWARE_SYSNAND) 
                 error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
-            if(BOOTCFG_SAFEMODE != 0) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
+            if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
             *firmType = NATIVE_FIRM1X2X;
         }
@@ -109,7 +109,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, u32 devMode)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSafeMode, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -161,7 +161,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         ret += reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
 
-    ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
+    ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
 
     //Apply UNITINFO patch
     if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);

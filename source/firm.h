@@ -24,8 +24,8 @@
 
 #include "types.h"
 
-u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage);
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, u32 devMode);
+u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode);
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSafeMode, u32 devMode);
 u32 patchTwlFirm(u32 firmVersion, u32 devMode);
 u32 patchAgbFirm(u32 devMode);
 u32 patch1x2xNativeAndSafeFirm(u32 devMode);

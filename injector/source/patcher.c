@@ -43,7 +43,7 @@ static Result openLumaFile(IFile *file, const char *path)
     return res;
 }
 
-static void loadCFWInfo(void)
+static inline void loadCFWInfo(void)
 {
     static bool infoLoaded = false;
 
@@ -52,7 +52,7 @@ static void loadCFWInfo(void)
         svcGetCFWInfo(&info);
 
         IFile file;
-        if(BOOTCFG_SAFEMODE != 0 && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
+        if(LOADERFLAG(ISSAFEMODE) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
             IFile_Close(&file);
 
         infoLoaded = true;
@@ -320,135 +320,105 @@ static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOff
     }
 }
 
-void patchCode(u64 progId, u8 *code, u32 size)
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 {
     loadCFWInfo();
 
-    switch(progId)
+    if(((progId == 0x0004003000008F02LL || //USA Home Menu
+         progId == 0x0004003000008202LL || //JPN Home Menu
+         progId == 0x0004003000009802LL) //EUR Home Menu
+        && progVer > 4) ||
+       (progId == 0x000400300000A902LL //KOR Home Menu
+        && progVer > 0) ||
+        progId == 0x000400300000A102LL || //CHN Home Menu
+        progId == 0x000400300000B102LL) //TWN Home Menu
     {
-        case 0x0004003000008F02LL: // USA Menu
-        case 0x0004003000008202LL: // EUR Menu
-        case 0x0004003000009802LL: // JPN Menu
-        case 0x000400300000A102LL: // CHN Menu
-        case 0x000400300000A902LL: // KOR Menu
-        case 0x000400300000B102LL: // TWN Menu
+        static const u8 regionFreePattern[] = {
+            0x0A, 0x0C, 0x00, 0x10
+        },
+                        regionFreePatch[] = {
+            0x01, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
+        };
+
+        //Patch SMDH region checks
+        patchMemory(code, size, 
+            regionFreePattern,
+            sizeof(regionFreePattern), -31, 
+            regionFreePatch, 
+            sizeof(regionFreePatch), 1
+        );
+    }
+
+    else if(progId == 0x0004013000003202LL) // FRIENDS
+    {
+        static const u8 fpdVerPattern[] = {
+            0x42, 0xE0, 0x1E, 0xFF
+        };
+
+        u8 mostRecentFpdVer = 8;
+
+        u8 *off = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
+
+        if(off == NULL) svcBreak(USERBREAK_ASSERT);
+
+        //Allow online access to work with old friends modules
+        if(off[0xA] < mostRecentFpdVer) off[0xA] = mostRecentFpdVer;
+    }
+
+    else if((progId == 0x0004001000021000LL || // USA MSET
+             progId == 0x0004001000020000LL || // JPN MSET
+             progId == 0x0004001000022000LL || // EUR MSET
+             progId == 0x0004001000026000LL || // CHN MSET
+             progId == 0x0004001000027000LL || // KOR MSET
+             progId == 0x0004001000028000LL) // TWN MSET
+            && CONFIG(PATCHVERSTRING)) 
+    {
+        static const u16 verPattern[] = u"Ve";
+        static u16 *verString;
+        u32 verStringSize = 0,
+        currentNand = BOOTCFG_NAND;
+
+        u16 customVerString[19];
+        loadCustomVerString(customVerString, &verStringSize, currentNand);
+
+        if(verStringSize != 0) verString = customVerString;
+        else
         {
-            static const u8 regionFreePattern[] = {
-                0x0A, 0x0C, 0x00, 0x10
-            },
-                            regionFreePatch[] = {
-                0x01, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
-            };
+            verStringSize = 8;
+            u32 currentFirm = BOOTCFG_FIRM;
 
-            //Patch SMDH region checks
-            patchMemory(code, size, 
-                regionFreePattern,
-                sizeof(regionFreePattern), -31, 
-                regionFreePatch, 
-                sizeof(regionFreePatch), 1
-            );
+            static u16 *verStringsNands[] = { u" Sys",
+                                              u" Emu",
+                                              u"Emu2",
+                                              u"Emu3",
+                                              u"Emu4" },
 
-            break;
+                       *verStringsEmuSys[] = { u"EmuS",
+                                               u"Em2S",
+                                               u"Em3S",
+                                               u"Em4S" },
+
+                       *verStringsSysEmu[] = { u"SysE",
+                                               u"SyE2",
+                                               u"SyE3",
+                                               u"SyE4" };
+
+            verString = (currentFirm != 0) == (currentNand != 0) ? verStringsNands[currentNand] :
+                                              (!currentNand ? verStringsSysEmu[currentFirm - 1] : verStringsEmuSys[currentNand - 1]);
         }
 
-        case 0x0004013000002C02LL: // NIM
-        {
-            //Apply only if the user booted with R
-            if((BOOTCFG_NAND != 0) != (BOOTCFG_FIRM != 0))
-            {
-                static const u8 skipEshopUpdateCheckPattern[] = {
-                    0x30, 0xB5, 0xF1, 0xB0
-                },
-                                skipEshopUpdateCheckPatch[] = {
-                    0x00, 0x20, 0x08, 0x60, 0x70, 0x47
-                };
+        //Patch Ver. string
+        patchMemory(code, size,
+            verPattern,
+            sizeof(verPattern) - 2, 0,
+            verString,
+            verStringSize, 1
+        );
+    }
 
-                //Skip update checks to access the EShop
-                patchMemory(code, size, 
-                    skipEshopUpdateCheckPattern, 
-                    sizeof(skipEshopUpdateCheckPattern), 0, 
-                    skipEshopUpdateCheckPatch, 
-                    sizeof(skipEshopUpdateCheckPatch), 1
-                );
-            }
-
-            break;
-        }
-
-        case 0x0004013000003202LL: // FRIENDS
-        {
-            static const u8 fpdVerPattern[] = {
-                0x42, 0xE0, 0x1E, 0xFF
-            };
-
-            u8 mostRecentFpdVer = 8;
-
-            u8 *fpdVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
-
-            if(fpdVer == NULL) svcBreak(USERBREAK_ASSERT);
-
-            //Allow online access to work with old friends modules
-            if(fpdVer[0xA] < mostRecentFpdVer) fpdVer[0xA] = mostRecentFpdVer;
-
-            break;
-        }
-
-        case 0x0004001000021000LL: // USA MSET
-        case 0x0004001000020000LL: // JPN MSET
-        case 0x0004001000022000LL: // EUR MSET
-        case 0x0004001000026000LL: // CHN MSET
-        case 0x0004001000027000LL: // KOR MSET
-        case 0x0004001000028000LL: // TWN MSET
-        {
-            if(CONFIG(PATCHVERSTRING))
-            {
-                static const u16 verPattern[] = u"Ve";
-                static u16 *verString;
-                u32 verStringSize = 0,
-                    currentNand = BOOTCFG_NAND;
-
-                u16 customVerString[19];
-                loadCustomVerString(customVerString, &verStringSize, currentNand);
-
-                if(verStringSize != 0) verString = customVerString;
-                else
-                {
-                    verStringSize = 8;
-                    u32 currentFirm = BOOTCFG_FIRM;
-
-                    static u16 *verStringsNands[] = { u" Sys",
-                                                      u" Emu",
-                                                      u"Emu2",
-                                                      u"Emu3",
-                                                      u"Emu4" },
-
-                               *verStringsEmuSys[] = { u"EmuS",
-                                                       u"Em2S",
-                                                       u"Em3S",
-                                                       u"Em4S" },
-
-                               *verStringsSysEmu[] = { u"SysE",
-                                                       u"SyE2",
-                                                       u"SyE3",
-                                                       u"SyE4" };
-
-                    verString = (currentFirm != 0) == (currentNand != 0) ? verStringsNands[currentNand] :
-                                                                           (!currentNand ? verStringsSysEmu[currentFirm - 1] : verStringsEmuSys[currentNand - 1]);
-                }
-
-                //Patch Ver. string
-                patchMemory(code, size,
-                    verPattern,
-                    sizeof(verPattern) - 2, 0,
-                    verString,
-                    verStringSize, 1
-                );
-            }
-
-            break;
-        }
-
-        case 0x0004013000008002LL: // NS
+    else if(progId == 0x0004013000008002LL) // NS
+    {
+        if(progVer >= 0xD)
         {
             static const u8 stopCartUpdatesPattern[] = {
                 0x0C, 0x18, 0xE1, 0xD8
@@ -464,162 +434,148 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 stopCartUpdatesPatch,
                 sizeof(stopCartUpdatesPatch), 2
             );
+        }
 
+        if(LOADERFLAG(ISN3DS))
+        {
             u32 cpuSetting = MULTICONFIG(NEWCPU);
 
             if(cpuSetting != 0)
             {
                 static const u8 cfgN3dsCpuPattern[] = {
-                    0x00, 0x40, 0xA0, 0xE1, 0x07
+                    0x0C, 0x00, 0x94, 0x15
                 };
 
-                u32 *cfgN3dsCpuLoc = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
+                u32 *off = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
 
-                if(cfgN3dsCpuLoc == NULL) svcBreak(USERBREAK_ASSERT);
+                if(off == NULL) svcBreak(USERBREAK_ASSERT);
 
                 //Patch N3DS CPU Clock and L2 cache setting
-                *(cfgN3dsCpuLoc + 1) = 0xE1A00000;
-                *(cfgN3dsCpuLoc + 8) = 0xE3A00000 | cpuSetting;
+                *(off - 4) = 0xE1A00000;
+                *(off + 3) = 0xE3A00000 | cpuSetting;
             }
-
-            break;
         }
+    }
 
-        case 0x0004013000001702LL: // CFG
+    else if(progId == 0x0004013000001702LL) // CFG
+    {
+        static const u8 secureinfoSigCheckPattern[] = {
+            0x06, 0x46, 0x10, 0x48
+        },
+                        secureinfoSigCheckPatch[] = {
+            0x00, 0x26
+        };
+
+        //Disable SecureInfo signature check
+        patchMemory(code, size, 
+            secureinfoSigCheckPattern, 
+            sizeof(secureinfoSigCheckPattern), 0, 
+            secureinfoSigCheckPatch, 
+            sizeof(secureinfoSigCheckPatch), 1
+        );
+
+        if(secureInfoExists())
         {
-            static const u8 secureinfoSigCheckPattern[] = {
-                0x06, 0x46, 0x10, 0x48
-            },
-                            secureinfoSigCheckPatch[] = {
-                0x00, 0x26
-            };
+            static const u16 secureinfoFilenamePattern[] = u"SecureInfo_",
+                             secureinfoFilenamePatch[] = u"C";
 
-            //Disable SecureInfo signature check
+            //Use SecureInfo_C
             patchMemory(code, size, 
-                secureinfoSigCheckPattern, 
-                sizeof(secureinfoSigCheckPattern), 0, 
-                secureinfoSigCheckPatch, 
-                sizeof(secureinfoSigCheckPatch), 1
+                secureinfoFilenamePattern, 
+                sizeof(secureinfoFilenamePattern) - 2,
+                sizeof(secureinfoFilenamePattern) - 2, 
+                secureinfoFilenamePatch, 
+                sizeof(secureinfoFilenamePatch) - 2, 2
             );
-
-            if(secureInfoExists())
-            {
-                static const u16 secureinfoFilenamePattern[] = u"SecureInfo_",
-                                 secureinfoFilenamePatch[] = u"C";
-
-                //Use SecureInfo_C
-                patchMemory(code, size, 
-                    secureinfoFilenamePattern, 
-                    sizeof(secureinfoFilenamePattern) - 2,
-                    sizeof(secureinfoFilenamePattern) - 2, 
-                    secureinfoFilenamePatch, 
-                    sizeof(secureinfoFilenamePatch) - 2, 2
-                );
-            }
-
-            break;
         }
+    }
         
-        case 0x0004013000003702LL: // RO
+    else if(progId == 0x0004013000003702LL && progVer >= 1) // RO
+    {
+        static const u8 sigCheckPattern[] = {
+            0x20, 0xA0, 0xE1, 0x8B
+        },
+                        sha256ChecksPattern1[] = {
+            0xE1, 0x30, 0x40, 0x2D
+        },
+                        sha256ChecksPattern2[] = {
+            0x2D, 0xE9, 0x01, 0x70
+        },
+                        stub[] = {
+            0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
+        };
+
+        //Disable CRR0 signature (RSA2048 with SHA256) check
+        patchMemory(code, size, 
+            sigCheckPattern, 
+            sizeof(sigCheckPattern), -9, 
+            stub,
+            sizeof(stub), 1
+        );
+
+        //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
+        patchMemory(code, size, 
+            sha256ChecksPattern1, 
+            sizeof(sha256ChecksPattern1), 1, 
+            stub,
+            sizeof(stub), 1
+        );
+
+        patchMemory(code, size, 
+            sha256ChecksPattern2, 
+            sizeof(sha256ChecksPattern2), -2, 
+            stub,
+            sizeof(stub), 1
+        );
+    }
+
+    else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) // ErrDisp
+    {
+        static const u8 unitinfoCheckPattern1[] = { 
+            0x00, 0xD0, 0xE5, 0xDB
+        },
+                        unitinfoCheckPattern2[] = {
+            0x14, 0x00, 0xD0, 0xE5, 0x01
+        },
+                        unitinfoCheckPatch[] = {
+            0x00, 0x00, 0xA0, 0xE3
+        };
+
+        patchMemory(code, size, 
+            unitinfoCheckPattern1, 
+            sizeof(unitinfoCheckPattern1), -1, 
+            unitinfoCheckPatch, 
+            sizeof(unitinfoCheckPatch), 1
+        );
+
+        patchMemory(code, size, 
+            unitinfoCheckPattern2, 
+            sizeof(unitinfoCheckPattern2), 0,
+            unitinfoCheckPatch, 
+            sizeof(unitinfoCheckPatch), 3
+        );
+    }
+
+    else if(CONFIG(USELANGEMUANDCODE) && (u32)((progId & 0xFFFFFFF000000000LL) >> 0x24) == 0x0004000)
+    {
+        //External .code section loading
+        loadTitleCodeSection(progId, code, size);
+
+        //Language emulation
+        u8 regionId = 0xFF,
+           languageId = 0xFF;
+        loadTitleLocaleConfig(progId, &regionId, &languageId);
+
+        if(regionId != 0xFF || regionId != 0xFF)
         {
-            static const u8 sigCheckPattern[] = {
-                0x20, 0xA0, 0xE1, 0x8B
-            },
-                            sha256ChecksPattern1[] = {
-                0xE1, 0x30, 0x40, 0x2D
-            },
-                            sha256ChecksPattern2[] = {
-                0x2D, 0xE9, 0x01, 0x70
-            },
-                            stub[] = {
-                0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
-            };
+            u32 CFGUHandleOffset;
+            u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
 
-            //Disable CRR0 signature (RSA2048 with SHA256) check
-            patchMemory(code, size, 
-                sigCheckPattern, 
-                sizeof(sigCheckPattern), -9, 
-                stub,
-                sizeof(stub), 1
-            );
-
-            //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
-            patchMemory(code, size, 
-                sha256ChecksPattern1, 
-                sizeof(sha256ChecksPattern1), 1, 
-                stub,
-                sizeof(stub), 1
-            );
-
-            patchMemory(code, size, 
-                sha256ChecksPattern2, 
-                sizeof(sha256ChecksPattern2), -2, 
-                stub,
-                sizeof(stub), 1
-            );
-
-            break;
-        }
-
-        case 0x0004003000008A02LL: // ErrDisp
-        {
-            if(MULTICONFIG(DEVOPTIONS) == 1)
+            if(CFGU_GetConfigInfoBlk2_endPos != NULL)
             {
-                static const u8 unitinfoCheckPattern1[] = { 
-                    0x00, 0xD0, 0xE5, 0xDB
-                },
-                                unitinfoCheckPattern2[] = {
-                    0x14, 0x00, 0xD0, 0xE5, 0x01
-                },
-                                unitinfoCheckPatch[] = {
-                    0x00, 0x00, 0xA0, 0xE3
-                } ;
-
-                patchMemory(code, size, 
-                    unitinfoCheckPattern1, 
-                    sizeof(unitinfoCheckPattern1), -1, 
-                    unitinfoCheckPatch, 
-                    sizeof(unitinfoCheckPatch), 1
-                );
-
-                patchMemory(code, size, 
-                    unitinfoCheckPattern2, 
-                    sizeof(unitinfoCheckPattern2), 0,
-                    unitinfoCheckPatch, 
-                    sizeof(unitinfoCheckPatch), 3
-                );
+                if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
+                if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
             }
-
-            break;
         }
-
-        default:
-            if(CONFIG(USELANGEMUANDCODE))
-            {
-                if((u32)((progId & 0xFFFFFFF000000000LL) >> 0x24) == 0x0004000)
-                {
-                    //External .code section loading
-                    loadTitleCodeSection(progId, code, size);
-
-                    //Language emulation
-                    u8 regionId = 0xFF,
-                       languageId = 0xFF;
-                    loadTitleLocaleConfig(progId, &regionId, &languageId);
-
-                    if(regionId != 0xFF || regionId != 0xFF)
-                    {
-                        u32 CFGUHandleOffset;
-                        u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
-
-                        if(CFGU_GetConfigInfoBlk2_endPos != NULL)
-                        {
-                            if(languageId != 0xFF) patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
-                            if(regionId != 0xFF) patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
-                        }
-                    }
-                }
-            }
-
-        break;
     }
 }

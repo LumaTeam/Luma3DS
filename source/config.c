@@ -62,7 +62,7 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         }
 
         //Merge the new options and new boot configuration
-        configData.config = (configData.config & 0xFFFFFE00) | (configTemp & 0x1FF);
+        configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
 
         if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
             error("Error writing the configuration file");
@@ -377,9 +377,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        configData.config |= multiOptions[i].enabled << (i * 2 + 9);
+        configData.config |= multiOptions[i].enabled << (i * 2 + 8);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 21);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
 
     u32 newPinMode = MULTICONFIG(PIN);
 

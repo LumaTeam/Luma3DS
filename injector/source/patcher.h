@@ -2,15 +2,15 @@
 
 #include <3ds/types.h>
 
-#define CONFIG(a)        (((info.config >> (a + 21)) & 1) != 0)
-#define MULTICONFIG(a)   ((info.config >> (a * 2 + 9)) & 3)
+#define CONFIG(a)        (((info.config >> (a + 20)) & 1) != 0)
+#define MULTICONFIG(a)   ((info.config >> (a * 2 + 8)) & 3)
 #define BOOTCONFIG(a, b) ((info.config >> a) & b)
+#define LOADERFLAG(a)    ((info.flags >> (a + 4)) & 1) != 0
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
 #define BOOTCFG_A9LH         BOOTCONFIG(6, 1)
 #define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(7, 1)
-#define BOOTCFG_SAFEMODE     BOOTCONFIG(8, 1)
 
 enum multiOptions
 {
@@ -34,4 +34,10 @@ enum singleOptions
     PATCHACCESS
 };
 
-void patchCode(u64 progId, u8 *code, u32 size);
+enum flags
+{
+    ISN3DS = 0,
+    ISSAFEMODE
+};
+
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size);

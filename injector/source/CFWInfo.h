@@ -9,7 +9,7 @@ typedef struct __attribute__((packed))
     u8 versionMajor;
     u8 versionMinor;
     u8 versionBuild;
-    u8 flags; /* bit 0: dev branch; bit 1: is release */
+    u8 flags;
 
     u32 commitHash;
 

@@ -237,7 +237,7 @@ u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
     return ret;
 }
 
-u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
+u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode)
 {
     u32 ret;
 
@@ -249,7 +249,7 @@ u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
         struct CfwInfo
         {
             char magic[4];
-        
+
             u8 versionMajor;
             u8 versionMinor;
             u8 versionBuild;
@@ -277,6 +277,10 @@ u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
         else isRelease = rev[4] == 0;
 
         if(isRelease) info->flags = 1;
+
+        if(ISN3DS) info->flags |= 1 << 4;
+
+        if(isSafeMode) info->flags |= 1 << 5;
 
         arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
         *freeK11Space += svcGetCFWInfo_bin_size;

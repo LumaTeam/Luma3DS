@@ -36,7 +36,8 @@ extern FirmwareSource firmSource;
 
 void main(void)
 {
-    bool isA9lhInstalled;
+    bool isA9lhInstalled,
+         isSafeMode = false;
     u32 configTemp,
         emuHeader;
     FirmwareType firmType;
@@ -83,7 +84,7 @@ void main(void)
         u32 pressed = HID_PAD;
 
         //Save old options and begin saving the new boot configuration
-        configTemp = (configData.config & 0xFFFFFE00) | ((u32)ISA9LH << 6);
+        configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
 
         //If it's a MCU reboot, try to force boot options
         if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
@@ -131,8 +132,7 @@ void main(void)
                 nandType = FIRMWARE_SYSNAND;
                 firmSource = FIRMWARE_SYSNAND;
 
-                //Flag to tell loader to init SD
-                configTemp |= 1 << 8;
+                isSafeMode = true;
 
                 //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
                 if(pinExists && !shouldLoadConfigMenu)
@@ -228,7 +228,7 @@ void main(void)
     if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
 
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage);
+    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
     u32 devMode = MULTICONFIG(DEVOPTIONS);
 
@@ -236,7 +236,7 @@ void main(void)
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, devMode);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, devMode);
             break;
         case SAFE_FIRM:
         case NATIVE_FIRM1X2X:
