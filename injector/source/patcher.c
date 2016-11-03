@@ -284,9 +284,9 @@ static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetC
 
                     if(found) 
                     {
-                        *((u32 *)instr - 1)  = 0xE3A00000 | languageId; // mov    r0, sp                 => mov r0, =languageId
-                        *(u32 *)instr        = 0xE5CD0000;              // bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
-                        *((u32 *)instr + 1)  = 0xE3B00000;              // (1 or 2 instructions)         => movs r0, 0             (result code)
+                        *((u32 *)instr - 1)  = 0xE3A00000 | languageId; //mov    r0, sp                 => mov r0, =languageId
+                        *(u32 *)instr        = 0xE5CD0000;              //bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
+                        *((u32 *)instr + 1)  = 0xE3B00000;              //(1 or 2 instructions)         => movs r0, 0             (result code)
 
                         //We're done
                         return;
@@ -309,10 +309,10 @@ static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOff
            cmp[2] == cfgSecureInfoGetRegionCmdPattern[2] && *((u16 *)cmdPos + 7) == 0xE59F &&
            *(u32 *)(cmdPos + 20 + *((u16 *)cmdPos + 6)) == CFGUHandleOffset)
         {
-            *((u32 *)cmdPos + 4) = 0xE3A00000 | regionId; // mov    r0, =regionId
-            *((u32 *)cmdPos + 5) = 0xE5C40008;            // strb   r0, [r4, 8]
-            *((u32 *)cmdPos + 6) = 0xE3B00000;            // movs   r0, 0            (result code) ('s' not needed but nvm)
-            *((u32 *)cmdPos + 7) = 0xE5840004;            // str    r0, [r4, 4]
+            *((u32 *)cmdPos + 4) = 0xE3A00000 | regionId; //mov    r0, =regionId
+            *((u32 *)cmdPos + 5) = 0xE5C40008;            //strb   r0, [r4, 8]
+            *((u32 *)cmdPos + 6) = 0xE3B00000;            //movs   r0, 0            (result code) ('s' not needed but nvm)
+            *((u32 *)cmdPos + 7) = 0xE5840004;            //str    r0, [r4, 4]
 
             //The remaining, not patched, function code will do the rest for us
             break;
@@ -349,7 +349,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         );
     }
 
-    else if(progId == 0x0004013000003202LL) // FRIENDS
+    else if(progId == 0x0004013000003202LL) //FRIENDS
     {
         static const u8 fpdVerPattern[] = {
             0x42, 0xE0, 0x1E, 0xFF
@@ -365,12 +365,12 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         if(off[0xA] < mostRecentFpdVer) off[0xA] = mostRecentFpdVer;
     }
 
-    else if((progId == 0x0004001000021000LL || // USA MSET
-             progId == 0x0004001000020000LL || // JPN MSET
-             progId == 0x0004001000022000LL || // EUR MSET
-             progId == 0x0004001000026000LL || // CHN MSET
-             progId == 0x0004001000027000LL || // KOR MSET
-             progId == 0x0004001000028000LL) // TWN MSET
+    else if((progId == 0x0004001000021000LL || //USA MSET
+             progId == 0x0004001000020000LL || //JPN MSET
+             progId == 0x0004001000022000LL || //EUR MSET
+             progId == 0x0004001000026000LL || //CHN MSET
+             progId == 0x0004001000027000LL || //KOR MSET
+             progId == 0x0004001000028000LL) //TWN MSET
             && CONFIG(PATCHVERSTRING)) 
     {
         static const u16 verPattern[] = u"Ve";
@@ -416,7 +416,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         );
     }
 
-    else if(progId == 0x0004013000008002LL) // NS
+    else if(progId == 0x0004013000008002LL) //NS
     {
         if(progVer >= 0xD)
         {
@@ -457,7 +457,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         }
     }
 
-    else if(progId == 0x0004013000001702LL) // CFG
+    else if(progId == 0x0004013000001702LL) //CFG
     {
         static const u8 secureinfoSigCheckPattern[] = {
             0x06, 0x46, 0x10, 0x48
@@ -490,7 +490,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         }
     }
         
-    else if(progId == 0x0004013000003702LL && progVer >= 1) // RO
+    else if(progId == 0x0004013000003702LL && progVer > 0) //RO
     {
         static const u8 sigCheckPattern[] = {
             0x20, 0xA0, 0xE1, 0x8B
@@ -502,7 +502,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             0x2D, 0xE9, 0x01, 0x70
         },
                         stub[] = {
-            0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
+            0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 //mov r0, #0; bx lr
         };
 
         //Disable CRR0 signature (RSA2048 with SHA256) check
@@ -529,7 +529,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         );
     }
 
-    else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) // ErrDisp
+    else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) //ErrDisp
     {
         static const u8 unitinfoCheckPattern1[] = { 
             0x00, 0xD0, 0xE5, 0xDB
