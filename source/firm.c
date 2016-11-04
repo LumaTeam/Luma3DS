@@ -104,6 +104,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     {
         if(mustLoadFromStorage) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot.");
         if(!decryptExeFs((Cxi *)firm)) error("The CTRNAND FIRM is corrupted.");
+        if(ISDEVUNIT) firmVersion = 0xFFFFFFFF;
     }
 
     return firmVersion;
@@ -122,7 +123,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     }
 
     //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH or a dev unit
-    else if(!ISA9LH && !ISFIRMLAUNCH && firmVersion >= 0x29 && !ISDEVUNIT) set6x7xKeys();
+    else if(!ISA9LH && !ISFIRMLAUNCH && firmVersion >= 0x29) set6x7xKeys();
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -145,11 +146,19 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     //Apply EmuNAND patches
     if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, emuHeader, firm->section[2].address);
 
-    //Apply FIRM0/1 writes patches on sysNAND to protect A9LH
+    //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
     else if(isA9lhInstalled) ret += patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches
     ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+
+    //Apply dev unit check patches related to NCCH and CIA encryption
+    if(!ISDEVUNIT)
+    {
+        ret += patchZeroKeyNcchEncryptionCheck(process9Offset, process9Size);
+        ret += patchNandNcchEncryptionCheck(process9Offset, process9Size);
+        ret += patchCheckForDevCommonKey(process9Offset, process9Size);
+    }
 
     //11.0 FIRM patches
     if(firmVersion >= (ISN3DS ? 0x21 : 0x52))

@@ -206,6 +206,84 @@ u32 patchOldFirmWrites(u8 *pos, u32 size)
     return ret;
 }
 
+u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
+{
+    const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
+    u32 ret;
+
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) ret = firmVersion == 0xFFFFFFFF ? 0 : 1;
+    else
+    {
+        off++;
+
+        memset32(off, 0, 8); //Zero out the first TitleID in the list
+
+        ret = 0;
+    }
+
+    return ret;
+}
+
+u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x28, 0x2A, 0xD0, 0x08};
+    u32 ret;
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL) ret = 1;
+    else
+    {
+        u16 *off = (u16 *)(temp - 1);
+
+        *off = 0x2001; //mov r0, #1
+
+        ret = 0;
+    }
+
+    return ret;
+}
+
+u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x07, 0xD1, 0x28, 0x7A};
+    u32 ret;
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) ret = 1;
+    else
+    {
+        off--;
+
+        *off = 0x2001; //mov r0, #1
+
+        ret = 0;
+    }
+
+    return ret;
+}
+
+u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x03, 0x7C, 0x28, 0x00};
+    u32 ret;
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) ret = 1;
+    else
+    {
+        *off = 0x2301; //mov r3, #1
+
+        ret = 0;
+    }
+
+    return ret;
+}
+
 u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
 {
     u32 ret = 0;
@@ -284,26 +362,6 @@ u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
 
         arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
         *freeK11Space += svcGetCFWInfo_bin_size;
-
-        ret = 0;
-    }
-
-    return ret;
-}
-
-u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
-{
-    const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
-    u32 ret;
-
-    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
-
-    if(off == NULL) ret = firmVersion == 0xFFFFFFFF ? 0 : 1;
-    else
-    {
-        off++;
-
-        memset32(off, 0, 8); //Zero out the first TitleID in the list
 
         ret = 0;
     }

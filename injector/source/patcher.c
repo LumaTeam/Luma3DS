@@ -59,7 +59,7 @@ static inline void loadCFWInfo(void)
     }
 }
 
-static bool secureInfoExists(void)
+static inline bool secureInfoExists(void)
 {
     static bool exists = false;
 
@@ -76,7 +76,7 @@ static bool secureInfoExists(void)
     return exists;
 }
 
-static void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
+static inline void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
 {
     static const char *paths[] = { "/luma/customversion_sys.txt",
                                    "/luma/customversion_emu.txt",
@@ -134,7 +134,7 @@ static void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
     }
 }
 
-static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
+static inline void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/code_sections/[u64 titleID in hex, uppercase].bin"
        If it exists it should be a decompressed binary code file */
@@ -160,7 +160,7 @@ static void loadTitleCodeSection(u64 progId, u8 *code, u32 size)
     }
 }
 
-static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
+static inline void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
@@ -209,7 +209,7 @@ static void loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
     }
 }
 
-static u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
+static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 {
     /* HANS:
        Look for error code which is known to be stored near cfg:u handle
@@ -249,7 +249,7 @@ static u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
     return NULL;
 }
 
-static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
+static inline void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
 {
     u8 *CFGU_GetConfigInfoBlk2_startPos; //Let's find STMFD SP (there might be a NOP before, but nevermind)
 
@@ -297,7 +297,7 @@ static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetC
     }
 }
 
-static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
+static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
 {
     for(u8 *cmdPos = code; cmdPos < code + size - 28; cmdPos += 4)
     {

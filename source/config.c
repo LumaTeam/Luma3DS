@@ -373,7 +373,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     }
 
     //Preserve the last-used boot options (first 9 bits)
-    configData.config &= 0x1FF;
+    configData.config &= 0xFF;
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
