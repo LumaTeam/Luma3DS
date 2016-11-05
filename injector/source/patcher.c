@@ -489,7 +489,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             );
         }
     }
-        
+
     else if(progId == 0x0004013000003702LL && progVer > 0) //RO
     {
         static const u8 sigCheckPattern[] = {

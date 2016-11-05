@@ -58,7 +58,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
 
     bool mustLoadFromStorage = false;
 
-    if(!ISN3DS && *firmType == NATIVE_FIRM)
+    if(!ISN3DS && *firmType == NATIVE_FIRM && !ISDEVUNIT)
     {
         if(firmVersion < 0x18)
         {
