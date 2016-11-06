@@ -13,7 +13,11 @@ static void patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, i
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
-        if(found == NULL) svcBreak(USERBREAK_ASSERT);
+        if(found == NULL)
+        {
+            if(!i) svcBreak(USERBREAK_ASSERT);
+            break;
+        }
 
         memcpy(found + offset, replace, repSize);
 
