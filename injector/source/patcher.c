@@ -346,10 +346,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Patch SMDH region checks
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern,
-                sizeof(pattern), -31, 
-                patch, 
+                sizeof(pattern), -31,
+                patch,
                 sizeof(patch), 1
             )) res++;
     }
@@ -413,10 +413,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         }
 
         //Patch Ver. string
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern,
                 sizeof(pattern) - 2, 0,
-                patch, 
+                patch,
                 patchSize, 1
             )) res++;
     }
@@ -433,10 +433,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             };
 
             //Disable updates from foreign carts (makes carts region-free)
-            u32 ret = patchMemory(code, size, 
+            u32 ret = patchMemory(code, size,
                           pattern,
                           sizeof(pattern), 0,
-                          patch, 
+                          patch,
                           sizeof(patch), 2
                       );
 
@@ -449,11 +449,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 
             if(cpuSetting != 0)
             {
-                static const u8 cfgN3dsCpuPattern[] = {
+                static const u8 pattern[] = {
                     0x0C, 0x00, 0x94, 0x15
                 };
 
-                u32 *off = (u32 *)memsearch(code, cfgN3dsCpuPattern, size, sizeof(cfgN3dsCpuPattern));
+                u32 *off = (u32 *)memsearch(code, pattern, size, sizeof(pattern));
 
                 if(off == NULL) res++;
                 else
@@ -476,10 +476,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Disable SecureInfo signature check
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern,
                 sizeof(pattern), 0,
-                patch, 
+                patch,
                 sizeof(patch), 1
             )) res++;
 
@@ -489,10 +489,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                              patch[] = u"C";
 
             //Use SecureInfo_C
-            if(patchMemory(code, size, 
+            if(patchMemory(code, size,
                    pattern,
                    sizeof(pattern) - 2, 22,
-                   patch, 
+                   patch,
                    sizeof(patch) - 2, 2
                ) != 2) res++;
         }
@@ -514,25 +514,25 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Disable CRR0 signature (RSA2048 with SHA256) check
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern,
                 sizeof(pattern), -9,
-                patch, 
+                patch,
                 sizeof(patch), 1
             )) res++;
 
         //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern2,
                 sizeof(pattern2), 1,
-                patch, 
+                patch,
                 sizeof(patch), 1
             )) res++;
 
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern3,
                 sizeof(pattern3), -2,
-                patch, 
+                patch,
                 sizeof(patch), 1
             )) res++;
     }
@@ -550,17 +550,17 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Patch UNITINFO checks to make ErrDisp more verbose
-        if(!patchMemory(code, size, 
+        if(!patchMemory(code, size,
                 pattern,
                 sizeof(pattern), -1,
-                patch, 
+                patch,
                 sizeof(patch), 1
             )) res++;
 
-        if(patchMemory(code, size, 
+        if(patchMemory(code, size,
                pattern2,
                sizeof(pattern2), 0,
-               patch, 
+               patch,
                sizeof(patch), 3
            ) != 3) res++;
     }
