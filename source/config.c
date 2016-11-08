@@ -113,7 +113,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "(refer to the wiki for instructions).",
 
                                           "Select the New 3DS CPU mode.\n\n"
-                                          "It will be always enabled.\n\n"
+                                          "This won't apply to\n"
+                                          "New 3DS exclusive/enhanced games.\n\n"
                                           "'Clock+L2' can cause issues with some\n"
                                           "games.",
 

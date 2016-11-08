@@ -459,8 +459,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                 else
                 {
                     //Patch N3DS CPU Clock and L2 cache setting
-                    *(off - 4) = 0xE1A00000;
-                    *(off + 3) = 0xE3A00000 | cpuSetting;
+                    *(off - 4) = *(off - 3);
+                    *(off - 3) = *(off - 1);
+                    memcpy(off - 1, off, 16);
+                    *(off + 3) = 0xE3800000 | cpuSetting;
                 }
             }
         }
