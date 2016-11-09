@@ -319,17 +319,16 @@ static inline u32 patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHan
 
         u32 *cmp = (u32 *)cmdPos;
 
-        if((cmp[0] & 0xFFFF0FFF) == cfgSecureInfoGetRegionCmdPattern[0])
+        if(*cmp == cfgSecureInfoGetRegionCmdPattern[1])
         {
             for(u32 i = 1; i < 4; i++)
-                if(cmp[i] == cfgSecureInfoGetRegionCmdPattern[1] && *((u16 *)cmdPos + 5 + (2 * i)) == 0xE59F &&
-                   *(u32 *)(cmdPos + 16 + (4 * i) + *((u16 *)cmdPos + 4 + (2 * i))) == CFGUHandleOffset)
+                if((*(cmp - i) & 0xFFFF0FFF) == cfgSecureInfoGetRegionCmdPattern[0] && *((u16 *)cmdPos + 5) == 0xE59F &&
+                   *(u32 *)(cmdPos + 16 + *((u16 *)cmdPos + 4)) == CFGUHandleOffset)
                 {
-                    cmp += 3 + i;
-                    cmp[0] = 0xE3A00000 | regionId; //mov    r0, =regionId
-                    cmp[1] = 0xE5C40008;            //strb   r0, [r4, 8]
-                    cmp[2] = 0xE3B00000;            //movs   r0, 0            (result code) ('s' not needed but nvm)
-                    cmp[3] = 0xE5840004;            //str    r0, [r4, 4]
+                    cmp[3] = 0xE3A00000 | regionId; //mov    r0, =regionId
+                    cmp[4] = 0xE5C40008;            //strb   r0, [r4, 8]
+                    cmp[5] = 0xE3B00000;            //movs   r0, 0            (result code) ('s' not needed but nvm)
+                    cmp[6] = 0xE5840004;            //str    r0, [r4, 4]
 
                     //The remaining, not patched, function code will do the rest for us
                     return 0;
