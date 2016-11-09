@@ -240,21 +240,24 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
         }
     }
 
-    for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos < code + size - 8; CFGU_GetConfigInfoBlk2_endPos += 4)
+    if(n > 0)
     {
-        static const u32 CFGU_GetConfigInfoBlk2_endPattern[] = {0xE8BD8010, 0x00010082};
-
-        //There might be multiple implementations of GetConfigInfoBlk2 but let's search for the one we want
-        u32 *cmp = (u32 *)CFGU_GetConfigInfoBlk2_endPos;
-
-        if(cmp[0] == CFGU_GetConfigInfoBlk2_endPattern[0] && cmp[1] == CFGU_GetConfigInfoBlk2_endPattern[1])
+        for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos < code + size - 8; CFGU_GetConfigInfoBlk2_endPos += 4)
         {
-            *CFGUHandleOffset = *((u32 *)CFGU_GetConfigInfoBlk2_endPos + 2);
+            static const u32 CFGU_GetConfigInfoBlk2_endPattern[] = {0xE8BD8010, 0x00010082};
 
-            for(u32 i = 0; i < n; i++)
-                if(possible[i] == *CFGUHandleOffset) return CFGU_GetConfigInfoBlk2_endPos;
+            //There might be multiple implementations of GetConfigInfoBlk2 but let's search for the one we want
+            u32 *cmp = (u32 *)CFGU_GetConfigInfoBlk2_endPos;
 
-            CFGU_GetConfigInfoBlk2_endPos += 4;
+            if(cmp[0] == CFGU_GetConfigInfoBlk2_endPattern[0] && cmp[1] == CFGU_GetConfigInfoBlk2_endPattern[1])
+            {
+                *CFGUHandleOffset = *((u32 *)CFGU_GetConfigInfoBlk2_endPos + 2);
+
+                for(u32 i = 0; i < n; i++)
+                    if(possible[i] == *CFGUHandleOffset) return CFGU_GetConfigInfoBlk2_endPos;
+
+                CFGU_GetConfigInfoBlk2_endPos += 4;
+            }
         }
     }
 
@@ -267,41 +270,44 @@ static inline u32 patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFG
 
     for(CFGU_GetConfigInfoBlk2_startPos = CFGU_GetConfigInfoBlk2_endPos - 4;
         CFGU_GetConfigInfoBlk2_startPos >= code && *((u16 *)CFGU_GetConfigInfoBlk2_startPos + 1) != 0xE92D;
-        CFGU_GetConfigInfoBlk2_startPos -= 2);
+        CFGU_GetConfigInfoBlk2_startPos -= 4);
 
-    for(u8 *languageBlkIdPos = code; languageBlkIdPos < code + size; languageBlkIdPos += 4)
+    if(CFGU_GetConfigInfoBlk2_startPos >= code)
     {
-        if(*(u32 *)languageBlkIdPos == 0xA0002)
+        for(u8 *languageBlkIdPos = code; languageBlkIdPos < code + size; languageBlkIdPos += 4)
         {
-            for(u8 *instr = languageBlkIdPos - 8; instr >= languageBlkIdPos - 0x1008 && instr >= code + 4; instr -= 4) //Should be enough
+            if(*(u32 *)languageBlkIdPos == 0xA0002)
             {
-                if(instr[3] == 0xEB) //We're looking for BL
+                for(u8 *instr = languageBlkIdPos - 8; instr >= languageBlkIdPos - 0x1008 && instr >= code + 4; instr -= 4) //Should be enough
                 {
-                    u8 *calledFunction = instr;
-                    u32 i = 0;
-                    bool found;
-
-                    do
+                    if(instr[3] == 0xEB) //We're looking for BL
                     {
-                        u32 low24 = (*(u32 *)calledFunction & 0x00FFFFFF) << 2;
-                        u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension
-                        s32 offset = (s32)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch
+                        u8 *calledFunction = instr;
+                        u32 i = 0;
+                        bool found;
 
-                        calledFunction += offset;
+                        do
+                        {
+                            u32 low24 = (*(u32 *)calledFunction & 0x00FFFFFF) << 2;
+                            u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension
+                            s32 offset = (s32)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch
 
-                        found = calledFunction >= CFGU_GetConfigInfoBlk2_startPos - 4 && calledFunction <= CFGU_GetConfigInfoBlk2_endPos;
-                        i++;
-                    }
-                    while(i < 2 && !found && calledFunction[3] == 0xEA);
+                            calledFunction += offset;
 
-                    if(found) 
-                    {
-                        *((u32 *)instr - 1)  = 0xE3A00000 | languageId; //mov    r0, sp                 => mov r0, =languageId
-                        *(u32 *)instr        = 0xE5CD0000;              //bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
-                        *((u32 *)instr + 1)  = 0xE3B00000;              //(1 or 2 instructions)         => movs r0, 0             (result code)
+                            found = calledFunction >= CFGU_GetConfigInfoBlk2_startPos - 4 && calledFunction <= CFGU_GetConfigInfoBlk2_endPos;
+                            i++;
+                        }
+                        while(i < 2 && !found && calledFunction[3] == 0xEA);
 
-                        //We're done
-                        return 0;
+                        if(found) 
+                        {
+                            *((u32 *)instr - 1)  = 0xE3A00000 | languageId; //mov    r0, sp                 => mov r0, =languageId
+                            *(u32 *)instr        = 0xE5CD0000;              //bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
+                            *((u32 *)instr + 1)  = 0xE3B00000;              //(1 or 2 instructions)         => movs r0, 0             (result code)
+
+                            //We're done
+                            return 0;
+                        }
                     }
                 }
             }
@@ -321,14 +327,14 @@ static inline u32 patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHan
 
         if(*cmp == cfgSecureInfoGetRegionCmdPattern[1])
         {
-            for(u32 i = 1; i < 4; i++)
+            for(u32 i = 1; i < 3; i++)
                 if((*(cmp - i) & 0xFFFF0FFF) == cfgSecureInfoGetRegionCmdPattern[0] && *((u16 *)cmdPos + 5) == 0xE59F &&
                    *(u32 *)(cmdPos + 16 + *((u16 *)cmdPos + 4)) == CFGUHandleOffset)
                 {
                     cmp[3] = 0xE3A00000 | regionId; //mov    r0, =regionId
-                    cmp[4] = 0xE5C40008;            //strb   r0, [r4, 8]
-                    cmp[5] = 0xE3B00000;            //movs   r0, 0            (result code) ('s' not needed but nvm)
-                    cmp[6] = 0xE5840004;            //str    r0, [r4, 4]
+                    cmp[4] = 0xE5C40008;            //strb   r0, [r4, #8]
+                    cmp[5] = 0xE3A00000;            //mov    r0, #0 (result code)
+                    cmp[6] = 0xE5840004;            //str    r0, [r4, #4]
 
                     //The remaining, not patched, function code will do the rest for us
                     return 0;
