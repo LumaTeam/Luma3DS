@@ -152,7 +152,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     //Apply firmlaunch patches
     ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
-    //Apply dev unit check patches related to NCCH and CIA encryption
+    //Apply dev unit check patches related to NCCH encryption
     if(!ISDEVUNIT)
     {
         ret += patchZeroKeyNcchEncryptionCheck(process9Offset, process9Size);
@@ -171,11 +171,11 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
 
     ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
 
-    //Apply UNITINFO patch
+    //Apply UNITINFO patches
     if(devMode == 2)
     {
         ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
-        ret += patchCheckForDevCommonKey(process9Offset, process9Size);
+        if(!ISDEVUNIT) ret += patchCheckForDevCommonKey(process9Offset, process9Size);
     }
 
     if(devMode != 0 && isA9lhInstalled)
