@@ -191,7 +191,10 @@ static inline u32 loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId
             if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) ret = 1;
             else
             {
-                for(u32 i = 0; i < 7; i++)
+                u32 i,
+                    j;
+
+                for(i = 0; i < 7; i++)
                 {
                     static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
 
@@ -202,16 +205,18 @@ static inline u32 loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId
                     }
                 }
 
-                for(u32 i = 0; i < 12; i++)
+                for(j = 0; j < 12; j++)
                 {
                     static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
 
-                    if(memcmp(buf + 4, languages[i], 2) == 0)
+                    if(memcmp(buf + 4, languages[j], 2) == 0)
                     {
-                        *languageId = (u8)i;
+                        *languageId = (u8)j;
                         break;
                     }
                 }
+
+                if(i == 7 || j == 12) ret = 1;
             }
         }
 
@@ -594,11 +599,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         res += loadTitleCodeSection(progId, code, size);
 
         //Language emulation
-        u8 regionId = 0xFF,
-           languageId = 0xFF;
+        u8 regionId,
+           languageId;
         res += loadTitleLocaleConfig(progId, &regionId, &languageId);
 
-        if(regionId != 0xFF || regionId != 0xFF)
+        if(!res)
         {
             u32 CFGUHandleOffset;
             u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
@@ -606,8 +611,8 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             if(CFGU_GetConfigInfoBlk2_endPos == NULL) res++;
             else
             {
-                if(languageId != 0xFF) res += patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
-                if(regionId != 0xFF) res += patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
+                res += patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
+                res += patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
             }
         }
     }
