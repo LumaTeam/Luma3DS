@@ -127,7 +127,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "always detected as a development unit\n"
                                           "(which breaks online features and\n"
                                           "allows booting some developer\n"
-                                          "software).\n\n"
+                                          "software and installing dev CIAs).\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
 
