@@ -4,7 +4,6 @@
 
 payload_addr equ 0x23F00000   ; Brahma payload address
 payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeBrah supports)
-sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
 
 .create "build/reboot.bin", 0
 .arm
@@ -28,6 +27,8 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         cmp r0, r2
         bne pxi_wait_recv
 
+    mov r4, #2
+
     open_payload:
         ; Open file
         add r0, r7, #8
@@ -38,9 +39,8 @@ sd_notmounted equ 0xC8804465  ; Error code returned when SD is not mounted
         blx r6
         cmp r0, #0
         beq read_payload
-        ldr r2, =sd_notmounted
-        cmp r0, r2
-        bne panic
+        subs r4, r4, #1
+        beq panic
         adr r0, fname
         adr r1, nand_mount
         mov r2, #8
