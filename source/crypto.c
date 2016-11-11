@@ -299,18 +299,18 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 
 /*****************************************************************/
 
-static u8 __attribute__((aligned(4))) nandCtr[AES_BLOCK_SIZE];
+__attribute__((aligned(4))) static u8 nandCtr[AES_BLOCK_SIZE],
+                                      shaHashBackup[SHA_256_HASH_SIZE];
 static u8 nandSlot;
 static u32 fatStart;
-static u8 __attribute__((aligned(4))) shaHashBackup[SHA_256_HASH_SIZE];
 static bool didShaHashBackup = false;
 
 FirmwareSource firmSource;
 
 void ctrNandInit(void)
 {
-    u8 __attribute__((aligned(4))) cid[AES_BLOCK_SIZE];
-    u8 __attribute__((aligned(4))) shaSum[SHA_256_HASH_SIZE];
+    __attribute__((aligned(4))) u8 cid[AES_BLOCK_SIZE],
+                                   shaSum[SHA_256_HASH_SIZE];
 
     sdmmc_get_cid(1, (u32 *)cid);
     sha(shaSum, cid, sizeof(cid), SHA_256_MODE);
@@ -318,7 +318,7 @@ void ctrNandInit(void)
 
     if(ISN3DS)
     {
-        u8 __attribute__((aligned(4))) keyY0x5[AES_BLOCK_SIZE] = {0x4D, 0x80, 0x4F, 0x4E, 0x99, 0x90, 0x19, 0x46, 0x13, 0xA2, 0x04, 0xAC, 0x58, 0x44, 0x60, 0xBE};
+        __attribute__((aligned(4))) u8 keyY0x5[AES_BLOCK_SIZE] = {0x4D, 0x80, 0x4F, 0x4E, 0x99, 0x90, 0x19, 0x46, 0x13, 0xA2, 0x04, 0xAC, 0x58, 0x44, 0x60, 0xBE};
         aes_setkey(0x05, keyY0x5, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         nandSlot = 0x05;
@@ -333,7 +333,7 @@ void ctrNandInit(void)
 
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 {
-    u8 __attribute__((aligned(4))) tmpCtr[sizeof(nandCtr)];
+    __attribute__((aligned(4))) u8 tmpCtr[sizeof(nandCtr)];
     memcpy(tmpCtr, nandCtr, sizeof(nandCtr));
     aes_advctr(tmpCtr, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
@@ -359,7 +359,7 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
     u8 *buffer = (u8 *)0x23000000;
     u32 bufferSize = 0xF00000;
 
-    u8 __attribute__((aligned(4))) tmpCtr[sizeof(nandCtr)];
+    __attribute__((aligned(4))) u8 tmpCtr[sizeof(nandCtr)];
     memcpy(tmpCtr, nandCtr, sizeof(nandCtr));
     aes_advctr(tmpCtr, ((sector + fatStart) * 0x200) / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(nandSlot);
@@ -383,13 +383,17 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
 
 void set6x7xKeys(void)
 {
-    const u8 __attribute__((aligned(4))) keyX0x25Retail[AES_BLOCK_SIZE] = {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3};
-    const u8 __attribute__((aligned(4))) keyY0x2FRetail[AES_BLOCK_SIZE] = {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16};
-    const u8 __attribute__((aligned(4))) keyX0x25Dev[AES_BLOCK_SIZE] = {0x81, 0x90, 0x7A, 0x4B, 0x6F, 0x1B, 0x47, 0x32, 0x3A, 0x67, 0x79, 0x74, 0xCE, 0x4A, 0xD7, 0x1B};
-    const u8 __attribute__((aligned(4))) keyY0x2FDev[AES_BLOCK_SIZE] = {0x73, 0x25, 0xC4, 0xEB, 0x14, 0x3A, 0x0D, 0x5F, 0x5D, 0xB6, 0xE5, 0xC5, 0x7A, 0x21, 0x95, 0xAC};
+    __attribute__((aligned(4))) const u8 keyX0x25s[2][AES_BLOCK_SIZE] = {
+        {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3},
+        {0x81, 0x90, 0x7A, 0x4B, 0x6F, 0x1B, 0x47, 0x32, 0x3A, 0x67, 0x79, 0x74, 0xCE, 0x4A, 0xD7, 0x1B}
+    },
+                                         keyY0x2Fs[2][AES_BLOCK_SIZE] = {
+        {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16},
+        {0x73, 0x25, 0xC4, 0xEB, 0x14, 0x3A, 0x0D, 0x5F, 0x5D, 0xB6, 0xE5, 0xC5, 0x7A, 0x21, 0x95, 0xAC}
+    };
 
-    aes_setkey(0x25, !ISDEVUNIT ? keyX0x25Retail : keyX0x25Dev, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setkey(0x2F, !ISDEVUNIT ? keyY0x2FRetail : keyY0x2FDev, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x25, keyX0x25s[ISDEVUNIT ? 1 : 0], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x2F, keyY0x2Fs[ISDEVUNIT ? 1 : 0], AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function, 
                 when non-zero it clears this block and continues to do the key generation.
@@ -407,7 +411,7 @@ bool decryptExeFs(Cxi *cxi)
 
         u8 *exeFsOffset = (u8 *)cxi + (cxi->ncch.exeFsOffset + 1) * 0x200;
         u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
-        u8 __attribute__((aligned(4))) ncchCtr[AES_BLOCK_SIZE] = {0};
+        __attribute__((aligned(4))) u8 ncchCtr[AES_BLOCK_SIZE] = {0};
 
         for(u32 i = 0; i < 8; i++)
             ncchCtr[7 - i] = cxi->ncch.partitionId[i];
@@ -431,9 +435,9 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
     {
         isTicket = true;
 
-        const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
-        u8 __attribute__((aligned(4))) titleKey[AES_BLOCK_SIZE];
-        u8 __attribute__((aligned(4))) cetkIv[AES_BLOCK_SIZE] = {0};
+        __attribute__((aligned(4))) const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
+        __attribute__((aligned(4))) u8 titleKey[AES_BLOCK_SIZE],
+                                       cetkIv[AES_BLOCK_SIZE] = {0};
         memcpy(titleKey, ticket->titleKey, sizeof(titleKey));
         memcpy(cetkIv, ticket->titleId, sizeof(ticket->titleId));
 
@@ -441,7 +445,7 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
         aes_use_keyslot(0x3D);
         aes(titleKey, titleKey, 1, cetkIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-        u8 __attribute__((aligned(4))) ncchIv[AES_BLOCK_SIZE] = {0};
+        __attribute__((aligned(4))) u8 ncchIv[AES_BLOCK_SIZE] = {0};
 
         aes_setkey(0x16, titleKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x16);
@@ -475,12 +479,16 @@ void kernel9Loader(Arm9Bin *arm9Section)
     if(k9lVersion == 2 || (k9lVersion == 1 && needToDecrypt))
     {
         //Set 0x11 keyslot
-        const u8 __attribute__((aligned(4))) key1Retail[AES_BLOCK_SIZE] = {0x07, 0x29, 0x44, 0x38, 0xF8, 0xC9, 0x75, 0x93, 0xAA, 0x0E, 0x4A, 0xB4, 0xAE, 0x84, 0xC1, 0xD8};
-        const u8 __attribute__((aligned(4))) key2Retail[AES_BLOCK_SIZE] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
-        const u8 __attribute__((aligned(4))) key1Dev[AES_BLOCK_SIZE] = {0xA2, 0xF4, 0x00, 0x3C, 0x7A, 0x95, 0x10, 0x25, 0xDF, 0x4E, 0x9E, 0x74, 0xE3, 0x0C, 0x92, 0x99};
-        const u8 __attribute__((aligned(4))) key2Dev[AES_BLOCK_SIZE] = {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25};
+        __attribute__((aligned(4))) const u8 key1s[2][AES_BLOCK_SIZE] = {
+            {0x07, 0x29, 0x44, 0x38, 0xF8, 0xC9, 0x75, 0x93, 0xAA, 0x0E, 0x4A, 0xB4, 0xAE, 0x84, 0xC1, 0xD8},
+            {0xA2, 0xF4, 0x00, 0x3C, 0x7A, 0x95, 0x10, 0x25, 0xDF, 0x4E, 0x9E, 0x74, 0xE3, 0x0C, 0x92, 0x99}
+        },
+                                             key2s[2][AES_BLOCK_SIZE] = {
+            {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0},
+            {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
+        };
 
-        aes_setkey(0x11, !ISDEVUNIT ? (k9lVersion == 2 ? key2Retail : key1Retail) : (k9lVersion == 2 ? key2Dev : key1Dev), AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x11, k9lVersion == 2 ? key2s[ISDEVUNIT ? 1 : 0] : key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
     if(needToDecrypt)
@@ -493,19 +501,19 @@ void kernel9Loader(Arm9Bin *arm9Section)
             arm9BinSlot = 0x16;
 
             //Set keyX
-            u8 __attribute__((aligned(4))) keyX[AES_BLOCK_SIZE];
+            __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
             aes_use_keyslot(0x11);
             aes(keyX, arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
             aes_setkey(0x16, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
         }
 
         //Set keyY
-        u8 __attribute__((aligned(4))) keyY[AES_BLOCK_SIZE];
+        __attribute__((aligned(4))) u8 keyY[AES_BLOCK_SIZE];
         memcpy(keyY, arm9Section->keyY, sizeof(keyY));
         aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         //Set CTR
-        u8 __attribute__((aligned(4))) arm9BinCtr[AES_BLOCK_SIZE];
+        __attribute__((aligned(4))) u8 arm9BinCtr[AES_BLOCK_SIZE];
         memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
 
         //Decrypt ARM9 binary
@@ -518,8 +526,8 @@ void kernel9Loader(Arm9Bin *arm9Section)
     //Set >=9.6 KeyXs
     if(k9lVersion == 2)
     {
-        u8 __attribute__((aligned(4))) keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98};
-        u8 __attribute__((aligned(4))) decKey[sizeof(keyData)];
+        __attribute__((aligned(4))) u8 keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
+                                       decKey[sizeof(keyData)];
 
         //Set keys 0x19..0x1F keyXs
         aes_use_keyslot(0x11);
@@ -533,8 +541,8 @@ void kernel9Loader(Arm9Bin *arm9Section)
 
 void computePinHash(u8 *outbuf, const u8 *inbuf)
 {
-    u8 __attribute__((aligned(4))) cid[AES_BLOCK_SIZE];
-    u8 __attribute__((aligned(4))) cipherText[AES_BLOCK_SIZE];
+    __attribute__((aligned(4))) u8 cid[AES_BLOCK_SIZE],
+                                   cipherText[AES_BLOCK_SIZE];
 
     sdmmc_get_cid(1, (u32 *)cid);
     aes_use_keyslot(4); //Console-unique keyslot whose keys are set by the ARM9 bootROM
