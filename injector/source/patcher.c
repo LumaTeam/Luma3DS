@@ -599,11 +599,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         res += loadTitleCodeSection(progId, code, size);
 
         //Language emulation
-        u8 regionId,
+        u8 regionId = 0xFF,
            languageId;
         res += loadTitleLocaleConfig(progId, &regionId, &languageId);
 
-        if(!res)
+        if(!res && regionId != 0xFF)
         {
             u32 CFGUHandleOffset;
             u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
