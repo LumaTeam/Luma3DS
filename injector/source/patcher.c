@@ -322,7 +322,7 @@ static inline u32 patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFG
     return 1;
 }
 
-static inline u32 patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
+static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
 {
     for(u8 *cmdPos = code; cmdPos < code + size - 28; cmdPos += 4)
     {
@@ -342,12 +342,10 @@ static inline u32 patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHan
                     cmp[6] = 0xE5840004;            //str    r0, [r4, #4]
 
                     //The remaining, not patched, function code will do the rest for us
-                    return 0;
+                    return;
                 }
         }
     }
-
-    return 1;
 }
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
@@ -612,7 +610,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             else
             {
                 res += patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos);
-                res += patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
+                patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
             }
         }
     }
