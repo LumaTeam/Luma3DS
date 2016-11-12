@@ -51,13 +51,13 @@ u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffse
     u32 *endPos = exceptionsPage + 0x400;
 
     u32 *initFPU;
-    for(initFPU = exceptionsPage; *initFPU != 0xE1A0D002 && initFPU < endPos; initFPU++);
+    for(initFPU = exceptionsPage; initFPU < endPos && *initFPU != 0xE1A0D002; initFPU++);
 
     u32 *freeSpace;
-    for(freeSpace = initFPU; *freeSpace != 0xFFFFFFFF && freeSpace < endPos; freeSpace++);
+    for(freeSpace = initFPU; freeSpace < endPos && *freeSpace != 0xFFFFFFFF; freeSpace++);
 
     u32 *mcuReboot;
-    for(mcuReboot = exceptionsPage; *mcuReboot != 0xE3A0A0C2 && mcuReboot < endPos; mcuReboot++);
+    for(mcuReboot = exceptionsPage; mcuReboot < endPos && *mcuReboot != 0xE3A0A0C2; mcuReboot++);
 
     if(initFPU == endPos || freeSpace == endPos || mcuReboot == endPos || *(u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 36) != 0xFFFFFFFF) ret = 1;
     else
