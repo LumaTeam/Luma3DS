@@ -42,13 +42,15 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
         "firmware.bin",
         "firmware_twl.bin",
         "firmware_agb.bin",
-        "firmware_safe.bin"
+        "firmware_safe.bin",
+        "firmware_sysupdater.bin"
     },
                *cetkFiles[] = {
         "cetk",
         "cetk_twl",
         "cetk_agb",
-        "cetk_safe"
+        "cetk_safe",
+        "cetk_sysupdater"
     };
 
     //Load FIRM from CTRNAND
