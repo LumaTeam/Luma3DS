@@ -276,9 +276,8 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
     if(off == NULL) ret = 1;
     else
     {
-        *off = ISDEVUNIT ? 0x2300 : 0x2301; //mov r3, #0 or 1
-        //use the dev common key as 1st common key on retail, vice-versa on dev
-        
+        *off = 0x2301; //mov r3, #1
+
         ret = 0;
     }
 
