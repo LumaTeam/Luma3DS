@@ -97,6 +97,7 @@ typedef enum FirmwareType
     TWL_FIRM,
     AGB_FIRM,
     SAFE_FIRM,
+    SYSUPDATER_FIRM,
     NATIVE_FIRM1X2X
 } FirmwareType;
 

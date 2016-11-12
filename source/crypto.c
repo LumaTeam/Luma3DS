@@ -545,7 +545,7 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
                                    cipherText[AES_BLOCK_SIZE];
 
     sdmmc_get_cid(1, (u32 *)cid);
-    aes_use_keyslot(4); //Console-unique keyslot whose keys are set by the ARM9 bootROM
+    aes_use_keyslot(0x04); //Console-unique keyslot whose keys are set by the ARM9 bootROM
     aes(cipherText, inbuf, 1, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     sha(outbuf, cipherText, sizeof(cipherText), SHA_256_MODE);
 }

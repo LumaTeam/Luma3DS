@@ -185,7 +185,8 @@ u32 firmRead(void *dest, u32 firmType)
     const char *firmFolders[][2] = {{ "00000002", "20000002" },
                                     { "00000102", "20000102" },
                                     { "00000202", "20000202" },
-                                    { "00000003", "20000003" }};
+                                    { "00000003", "20000003" },
+                                    { "00000001", "20000001" }};
 
     char path[48] = "1:/title/00040138/";
     concatenateStrings(path, firmFolders[firmType][ISN3DS ? 1 : 0]);

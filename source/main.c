@@ -62,8 +62,18 @@ void main(void)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
-        //'0' = NATIVE_FIRM, '1' = TWL_FIRM, '2' = AGB_FIRM
-        firmType = launchedFirmTidLow[7] == u'3' ? SAFE_FIRM : (FirmwareType)(launchedFirmTidLow[5] - u'0');
+        switch(launchedFirmTidLow[7])
+        {
+            case u'2':
+                firmType = (FirmwareType)(launchedFirmTidLow[5] - u'0');
+                break;
+            case u'3':
+                firmType = SAFE_FIRM;
+                break;
+            case u'1':
+                firmType = SYSUPDATER_FIRM;
+                break;
+        }
 
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
@@ -238,15 +248,16 @@ void main(void)
         case NATIVE_FIRM:
             res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, devMode);
             break;
-        case SAFE_FIRM:
-        case NATIVE_FIRM1X2X:
-            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(devMode) : 0;
-            break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, devMode);
             break;
         case AGB_FIRM:
             res = patchAgbFirm(devMode);
+            break;
+        case SAFE_FIRM:
+        case SYSUPDATER_FIRM:
+        case NATIVE_FIRM1X2X:
+            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(devMode) : 0;
             break;
     }
 
