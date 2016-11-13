@@ -228,7 +228,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
         selectedOption,
         singleSelected;
-    bool isMultiOption;
+    bool isMultiOption = false;
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -270,6 +270,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
             if(color == COLOR_RED)
             {
+                singleSelected = i;
                 selectedOption = i + multiOptionsAmount;
                 color = COLOR_WHITE;
             }
