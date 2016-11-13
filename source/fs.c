@@ -228,7 +228,7 @@ void payloadMenu(void)
             u32 pressed = 0,
                 selectedPayload = 0;
 
-            while(!(pressed & (BUTTON_A | BUTTON_START)))
+            while(pressed != BUTTON_A && pressed != BUTTON_START)
             {
                 do
                 {

@@ -313,6 +313,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                         pressed = BUTTON_UP;
                         selectedOption = totalIndexes;
                         break;
+                    default:
+                        break;
                 }
 
                 if(selectedOption < multiOptionsAmount)
