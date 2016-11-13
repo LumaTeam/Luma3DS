@@ -196,13 +196,18 @@ void payloadMenu(void)
     {
         FILINFO info;
         u32 payloadNum = 0;
-        char payloadList[21][_MAX_LFN + 1];
+        char payloadList[21][49];
 
         while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 21)
             if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0)
             {
-                u32 nameLength = strlen(info.fname);
-                if(nameLength < 49) memcpy(payloadList[payloadNum++], info.fname, nameLength + 1);
+                u32 nameLength = strlen(info.fname) - 4;
+                if(nameLength < 49)
+                {
+                    memcpy(payloadList[payloadNum], info.fname, nameLength);
+                    payloadList[payloadNum][nameLength] = 0;
+                    payloadNum++;
+                }
             }
 
         f_closedir(&dir);
@@ -258,6 +263,7 @@ void payloadMenu(void)
 
             concatenateStrings(path, "/");
             concatenateStrings(path, payloadList[selectedPayload]);
+            concatenateStrings(path, ".bin");
             loadPayload(0, path);
             error("The payload is too large or corrupted.");
         }
