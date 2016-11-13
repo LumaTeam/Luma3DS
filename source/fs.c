@@ -194,14 +194,13 @@ void payloadMenu(void)
 
     if(f_opendir(&dir, path) == FR_OK)
     {
-        u32 payloadNum = 0;
-
         FILINFO info;
+        u32 payloadNum = 0;
         char payloadList[21][_MAX_LFN + 1];
 
         while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 21)
             if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0 && strlen(info.fname) < 50)
-                memcpy(payloadList[payloadNum++], info.fname, sizeof(info.fname));
+                memcpy(payloadList[payloadNum++], info.fname, strlen(info.fname) + 1);
 
         f_closedir(&dir);
 
