@@ -299,11 +299,9 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 
 /*****************************************************************/
 
-__attribute__((aligned(4))) static u8 nandCtr[AES_BLOCK_SIZE],
-                                      shaHashBackup[SHA_256_HASH_SIZE];
+__attribute__((aligned(4))) static u8 nandCtr[AES_BLOCK_SIZE];
 static u8 nandSlot;
 static u32 fatStart;
-static bool didShaHashBackup = false;
 
 FirmwareSource firmSource;
 
@@ -552,12 +550,19 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
 
 void backupAndRestoreShaHash(bool isRestore)
 {
+    static bool didShaHashBackup = false;
+    __attribute__((aligned(4))) static u8 shaHashBackup[SHA_256_HASH_SIZE];
+
     if(ISA9LH)
     {
         if(isRestore)
         {
             if(didShaHashBackup) memcpy((void *)REG_SHA_HASH, shaHashBackup, sizeof(shaHashBackup));
         }
-        else if(!didShaHashBackup) memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
+        else if(!didShaHashBackup)
+        {
+            memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
+            didShaHashBackup = true;
+        }
     }
 }
