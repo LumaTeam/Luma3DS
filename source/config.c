@@ -226,7 +226,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
         singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption),
         totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption;
+        selectedOption,
+        singleSelected;
+    bool isMultiOption;
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -314,9 +316,22 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                 if(selectedOption < multiOptionsAmount)
                 {
-                    if(multiOptions[selectedOption].visible) break;
+                    if(multiOptions[selectedOption].visible)
+                    {
+                        isMultiOption = true;
+                        break;
+                    }
                 }
-                else if(singleOptions[selectedOption - multiOptionsAmount].visible) break;
+                else
+                {
+                    singleSelected = selectedOption - multiOptionsAmount;
+
+                    if(singleOptions[singleSelected].visible)
+                    {
+                        isMultiOption = false;
+                        break;
+                    }
+                }
             }
 
             if(selectedOption == oldSelectedOption) continue;
@@ -334,13 +349,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                 if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
             }
 
-            if(selectedOption < multiOptionsAmount)
-                drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
-            else
-            {
-                u32 singleSelected = selectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
-            }
+            if(isMultiOption) drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
+            else drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
 
             clearScreens(false, true, false);
             drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
@@ -348,7 +358,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         else
         {
             //The selected option's status changed, print the 'x's accordingly
-            if(selectedOption < multiOptionsAmount)
+            if(isMultiOption)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
                 drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
@@ -358,20 +368,15 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             }
             else
             {
-                bool oldEnabled = singleOptions[selectedOption - multiOptionsAmount].enabled;
-                singleOptions[selectedOption - multiOptionsAmount].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
+                bool oldEnabled = singleOptions[singleSelected].enabled;
+                singleOptions[singleSelected].enabled = !oldEnabled;
+                if(oldEnabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK);
             }
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-        if(selectedOption < multiOptionsAmount)
-            drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        else
-        {
-            u32 singleSelected = selectedOption - multiOptionsAmount;
-            if(singleOptions[singleSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
-        }
+        if(isMultiOption) drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
+        else if(singleOptions[singleSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
     }
 
     //Preserve the last-used boot options (first 9 bits)

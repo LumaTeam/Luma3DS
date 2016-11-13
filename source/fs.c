@@ -26,6 +26,8 @@
 #include "crypto.h"
 #include "cache.h"
 #include "screen.h"
+#include "draw.h"
+#include "utils.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
 #include "../build/bundled.h"
@@ -126,56 +128,137 @@ void fileDelete(const char *path)
     f_unlink(path);
 }
 
-void loadPayload(u32 pressed)
+void loadPayload(u32 pressed, const char *payloadPath)
 {
-    const char *pattern;
+    u32 *loaderAddress = (u32 *)0x24FFFE00;
+    u8 *payloadAddress = (u8 *)0x24F00000;
+    u32 payloadSize = 0,
+        maxPayloadSize = (u32)((u8 *)loaderAddress - payloadAddress);
 
-    if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
-    else if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
-    else if(pressed & BUTTON_UP) pattern = PATTERN("up");
-    else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
-    else if(pressed & BUTTON_START) pattern = PATTERN("start");
-    else if(pressed & BUTTON_B) pattern = PATTERN("b");
-    else if(pressed & BUTTON_X) pattern = PATTERN("x");
-    else if(pressed & BUTTON_Y) pattern = PATTERN("y");
-    else if(pressed & BUTTON_R1) pattern = PATTERN("r");
-    else if(pressed & BUTTON_A) pattern = PATTERN("a");
-    else pattern = PATTERN("select");
-
-    DIR dir;
-    FILINFO info;
-    char path[22] = "payloads";
-
-    FRESULT result = f_findfirst(&dir, &info, path, pattern);
-
-    if(result == FR_OK)
+    if(payloadPath == NULL)
     {
+        const char *pattern;
+
+        if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
+        else if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
+        else if(pressed & BUTTON_UP) pattern = PATTERN("up");
+        else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
+        else if(pressed & BUTTON_START) pattern = PATTERN("start");
+        else if(pressed & BUTTON_B) pattern = PATTERN("b");
+        else if(pressed & BUTTON_X) pattern = PATTERN("x");
+        else if(pressed & BUTTON_Y) pattern = PATTERN("y");
+        else if(pressed & BUTTON_R1) pattern = PATTERN("r");
+        else if(pressed & BUTTON_A) pattern = PATTERN("a");
+        else pattern = PATTERN("select");
+
+        DIR dir;
+        FILINFO info;
+        FRESULT result;
+        char path[22] = "payloads";
+
+        result = f_findfirst(&dir, &info, path, pattern);
+
+        if(result == FR_OK)
+        {
+            f_closedir(&dir);
+
+            if(info.fname[0] != 0)
+            {
+                concatenateStrings(path, "/");
+                concatenateStrings(path, info.altname);
+                payloadSize = fileRead(payloadAddress, path, maxPayloadSize);
+            }
+        }
+    }
+    else payloadSize = fileRead(payloadAddress, payloadPath, maxPayloadSize);
+
+    if(payloadSize > 0)
+    {
+        memcpy(loaderAddress, loader_bin, loader_bin_size);
+        loaderAddress[1] = payloadSize;
+
+        backupAndRestoreShaHash(true);
+        initScreens();
+
+        flushDCacheRange(loaderAddress, loader_bin_size);
+        flushICacheRange(loaderAddress, loader_bin_size);
+
+        ((void (*)())loaderAddress)();
+    }
+}
+
+void payloadMenu(void)
+{
+    DIR dir;
+    char path[_MAX_LFN + 10] = "payloads";
+
+    if(f_opendir(&dir, path) == FR_OK)
+    {
+        u32 payloadNum = 0;
+
+        FILINFO info;
+        char payloadList[21][_MAX_LFN + 1];
+
+        while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 21)
+            if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0 && strlen(info.fname) < 48)
+                memcpy(payloadList[payloadNum++], info.fname, sizeof(info.fname));
+
         f_closedir(&dir);
 
-        if(info.fname[0] != 0)
+        if(payloadNum > 0)
         {
-            u32 *loaderAddress = (u32 *)0x24FFFE00;
-            u8 *payloadAddress = (u8 *)0x24F00000;
+            char selected = '*';
 
-            memcpy(loaderAddress, loader_bin, loader_bin_size);
+            initScreens();
+
+            drawString("Luma3DS chainloader - Press A to select", true, 10, 10, COLOR_TITLE);
+
+            for(u32 i = 0, posY = 30; i < payloadNum; i++, posY += SPACING_Y)
+                drawString(payloadList[i], true, 10 + 2 * (SPACING_X), posY, COLOR_WHITE);
+
+            drawCharacter(selected, true, 10, 30, COLOR_RED);
+
+            u32 pressed = 0,
+                selectedPayload = 0;
+
+            while(pressed != BUTTON_A)
+            {
+                do
+                {
+                    pressed = waitInput();
+                }
+                while(!(pressed & MENU_BUTTONS));
+
+                u32 oldSelectedPayload = selectedPayload;
+
+                switch(pressed)
+                {
+                    case BUTTON_UP:
+                        selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
+                        break;
+                    case BUTTON_DOWN:
+                        selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
+                        break;
+                    case BUTTON_LEFT:
+                        selectedPayload = 0;
+                        break;
+                    case BUTTON_RIGHT:
+                        selectedPayload = payloadNum - 1;
+                        break;
+                    default:
+                        continue;
+                }
+
+                if(oldSelectedPayload == selectedPayload) continue;
+
+                drawCharacter(selected, true, 10, 30 + oldSelectedPayload * SPACING_Y, COLOR_BLACK);
+                drawCharacter(selected, true, 10, 30 + selectedPayload * SPACING_Y, COLOR_RED);
+            }
 
             concatenateStrings(path, "/");
-            concatenateStrings(path, info.altname);
-
-            u32 payloadSize = fileRead(payloadAddress, path, (u32)((u8 *)loaderAddress - payloadAddress));
-
-            if(payloadSize > 0)
-            {
-                loaderAddress[1] = payloadSize;
-
-                backupAndRestoreShaHash(true);
-                initScreens();
-
-                flushDCacheRange(loaderAddress, loader_bin_size);
-                flushICacheRange(loaderAddress, loader_bin_size);
-
-                ((void (*)())loaderAddress)();
-            }
+            concatenateStrings(path, payloadList[selectedPayload]);
+            loadPayload(0, path);
+            error("The payload is too large or corrupted.");
         }
     }
 }

@@ -157,12 +157,12 @@ void main(void)
 
                 if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
+                if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START) payloadMenu();
+
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
-                bool shouldLoadPayload = ((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-                                         ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1));
-
-                if(shouldLoadPayload) loadPayload(pressed);
+                else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
+                        ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
 
                 if(splashMode == 2) loadSplash();
 

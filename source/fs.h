@@ -31,6 +31,7 @@ u32 fileRead(void *dest, const char *path, u32 maxSize);
 u32 getFileSize(const char *path);
 bool fileWrite(const void *buffer, const char *path, u32 size);
 void fileDelete(const char *path);
-void loadPayload(u32 pressed);
+void loadPayload(u32 pressed, const char *payloadPath);
+void payloadMenu(void);
 u32 firmRead(void *dest, u32 firmType);
 void findDumpFile(const char *path, char *fileName);
