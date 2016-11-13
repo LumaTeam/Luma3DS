@@ -200,23 +200,22 @@ void payloadMenu(void)
         char payloadList[21][_MAX_LFN + 1];
 
         while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 21)
-            if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0 && strlen(info.fname) < 48)
+            if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0 && strlen(info.fname) < 50)
                 memcpy(payloadList[payloadNum++], info.fname, sizeof(info.fname));
 
         f_closedir(&dir);
 
         if(payloadNum > 0)
         {
-            char selected = '*';
-
             initScreens();
 
             drawString("Luma3DS chainloader - Press A to select", true, 10, 10, COLOR_TITLE);
 
-            for(u32 i = 0, posY = 30; i < payloadNum; i++, posY += SPACING_Y)
-                drawString(payloadList[i], true, 10 + 2 * (SPACING_X), posY, COLOR_WHITE);
-
-            drawCharacter(selected, true, 10, 30, COLOR_RED);
+            for(u32 i = 0, posY = 30, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
+            {
+                drawString(payloadList[i], true, 10, posY, color);
+                if(color == COLOR_RED) color = COLOR_WHITE;
+            }
 
             u32 pressed = 0,
                 selectedPayload = 0;
@@ -251,8 +250,8 @@ void payloadMenu(void)
 
                 if(oldSelectedPayload == selectedPayload) continue;
 
-                drawCharacter(selected, true, 10, 30 + oldSelectedPayload * SPACING_Y, COLOR_BLACK);
-                drawCharacter(selected, true, 10, 30 + selectedPayload * SPACING_Y, COLOR_RED);
+                drawString(payloadList[oldSelectedPayload], true, 10, 30 + oldSelectedPayload * SPACING_Y, COLOR_WHITE);
+                drawString(payloadList[selectedPayload], true, 10, 30 + selectedPayload * SPACING_Y, COLOR_RED);
             }
 
             concatenateStrings(path, "/");
