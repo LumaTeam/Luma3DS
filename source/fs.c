@@ -196,9 +196,9 @@ void payloadMenu(void)
     {
         FILINFO info;
         u32 payloadNum = 0;
-        char payloadList[21][49];
+        char payloadList[20][49];
 
-        while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 21)
+        while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 20)
             if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0)
             {
                 u32 nameLength = strlen(info.fname) - 4;
@@ -216,9 +216,10 @@ void payloadMenu(void)
         {
             initScreens();
 
-            drawString("Luma3DS chainloader - Press A to select", true, 10, 10, COLOR_TITLE);
+            drawString("Luma3DS chainloader", true, 10, 10, COLOR_TITLE);
+            drawString("Press A to select, START to quit", true, 10, 10 + SPACING_Y, COLOR_TITLE);
 
-            for(u32 i = 0, posY = 30, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
+            for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
             {
                 drawString(payloadList[i], true, 10, posY, color);
                 if(color == COLOR_RED) color = COLOR_WHITE;
@@ -227,11 +228,11 @@ void payloadMenu(void)
             u32 pressed = 0,
                 selectedPayload = 0;
 
-            while(pressed != BUTTON_A)
+            while(!(pressed & (BUTTON_A | BUTTON_START)))
             {
                 do
                 {
-                    pressed = waitInput();
+                    pressed = waitInput(true);
                 }
                 while(!(pressed & MENU_BUTTONS));
 
@@ -257,15 +258,22 @@ void payloadMenu(void)
 
                 if(oldSelectedPayload == selectedPayload) continue;
 
-                drawString(payloadList[oldSelectedPayload], true, 10, 30 + oldSelectedPayload * SPACING_Y, COLOR_WHITE);
-                drawString(payloadList[selectedPayload], true, 10, 30 + selectedPayload * SPACING_Y, COLOR_RED);
+                drawString(payloadList[oldSelectedPayload], true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE);
+                drawString(payloadList[selectedPayload], true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED);
             }
 
-            concatenateStrings(path, "/");
-            concatenateStrings(path, payloadList[selectedPayload]);
-            concatenateStrings(path, ".bin");
-            loadPayload(0, path);
-            error("The payload is too large or corrupted.");
+            if(pressed == BUTTON_A)
+            {
+                concatenateStrings(path, "/");
+                concatenateStrings(path, payloadList[selectedPayload]);
+                concatenateStrings(path, ".bin");
+                loadPayload(0, path);
+                error("The payload is too large or corrupted.");
+            }
+
+            while(HID_PAD & MENU_BUTTONS);
+            startChrono();
+            while(chrono(false) < 2);
         }
     }
 }

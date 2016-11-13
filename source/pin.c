@@ -66,7 +66,7 @@ void newPin(bool allowSkipping, u32 pinMode)
         u32 pressed;
         do
         {
-            pressed = waitInput();
+            pressed = waitInput(false);
         }
         while(!(pressed & PIN_BUTTONS));
 
@@ -156,7 +156,7 @@ bool verifyPin(u32 pinMode)
         u32 pressed;
         do
         {
-            pressed = waitInput();
+            pressed = waitInput(false);
         }
         while(!(pressed & PIN_BUTTONS));
 

@@ -20,6 +20,10 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   waitInput function based on code by d0k3 https://github.com/d0k3/Decrypt9WIP/blob/master/source/hid.c
+*/
+
 #pragma once
 
 #include "types.h"
@@ -28,7 +32,8 @@
 #define REG_TIMER_CNT(i)    *(vu16 *)(0x10003002 + 4 * i)
 #define REG_TIMER_VAL(i)    *(vu16 *)(0x10003000 + 4 * i)
 
-u32 waitInput(void);
+u32 waitInput(bool isMenu);
 void mcuPowerOff(void);
-void chrono(u32 seconds);
+void startChrono(void);
+u64 chrono(bool isMilliseconds);
 void error(const char *message);

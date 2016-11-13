@@ -239,12 +239,12 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     initScreens();
 
     drawString(CONFIG_TITLE, true, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save", true, 10, 30, COLOR_WHITE);
+    drawString("Press A to select, START to save", true, 10, 10 + SPACING_Y, COLOR_TITLE);
 
     //Character to display a selected option
     char selected = 'x';
 
-    u32 endPos = 42;
+    u32 endPos = 10 + 2 * SPACING_Y;
 
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -286,7 +286,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     {
         do
         {
-            pressed = waitInput();
+            pressed = waitInput(true);
         }
         while(!(pressed & MENU_BUTTONS));
 
@@ -394,8 +394,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
     else if(oldPinStatus) fileDelete(PIN_FILE);
 
-    //Wait for the pressed buttons to change
     while(HID_PAD & PIN_BUTTONS);
-
-    chrono(2);
+    startChrono();
+    while(chrono(false) < 2);
 }

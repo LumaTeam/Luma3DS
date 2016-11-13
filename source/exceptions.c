@@ -204,7 +204,7 @@ void detectAndProcessExceptionDumps(void)
 
         memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
 
-        waitInput();
+        waitInput(false);
         mcuPowerOff();
     }
 }

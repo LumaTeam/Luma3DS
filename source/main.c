@@ -148,7 +148,8 @@ void main(void)
                 if(pinExists && !shouldLoadConfigMenu)
                 {
                     while(HID_PAD & PIN_BUTTONS);
-                    chrono(2);
+                    startChrono();
+                    while(chrono(false) < 2);
                 }
             }
             else
@@ -157,10 +158,11 @@ void main(void)
 
                 if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
-                if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START) payloadMenu();
-
-                /* If L and R/A/Select or one of the single payload buttons are pressed,
-                   chainload an external payload */
+                if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
+                {
+                    payloadMenu();
+                    pressed = HID_PAD;
+                }
                 else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
                         ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
 
@@ -192,7 +194,7 @@ void main(void)
                 if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
                 {
                     FirmwareSource tempNand;
-                    switch(pressed & EMUNAND_BUTTONS)
+                    switch(pressed & DPAD_BUTTONS)
                     {
                         case BUTTON_UP:
                             tempNand = FIRMWARE_EMUNAND;
