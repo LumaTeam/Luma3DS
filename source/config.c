@@ -119,15 +119,16 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "games.",
 
                                           "Select the developer features.\n\n"
-                                          "\t* 'Off' disables exception handlers\n"
-                                          "in FIRM.\n"
-                                          "\t* 'ErrDisp' displays debug info\n"
+                                          "\t* If 'Off' is not checked, exception\n"
+                                          "handlers will be enabled on A9LH.\n"
+                                          "\t* 'ErrDisp' also displays debug info\n"
                                           "on the 'An error has occurred' screen.\n"
-                                          "\t* 'UNITINFO' makes the console be\n"
-                                          "always detected as a development unit\n"
-                                          "(which breaks online features and\n"
-                                          "allows booting some developer\n"
-                                          "software and installing dev CIAs).\n\n"
+                                          "\t* 'UNITINFO' also makes the console\n"
+                                          "be always detected as a\n"
+                                          "development unit\n"
+                                          "(which breaks online features, amiibos\n"
+                                          "and retail CIAs, but allows installing\n"
+                                          "and booting some developer software).\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
 
