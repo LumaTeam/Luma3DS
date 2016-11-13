@@ -199,8 +199,11 @@ void payloadMenu(void)
         char payloadList[21][_MAX_LFN + 1];
 
         while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 21)
-            if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0 && strlen(info.fname) < 50)
-                memcpy(payloadList[payloadNum++], info.fname, strlen(info.fname) + 1);
+            if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0)
+            {
+                u32 nameLength = strlen(info.fname);
+                if(nameLength < 49) memcpy(payloadList[payloadNum++], info.fname, nameLength + 1);
+            }
 
         f_closedir(&dir);
 
