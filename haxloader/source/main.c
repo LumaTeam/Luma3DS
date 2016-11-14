@@ -63,7 +63,7 @@ void main(void)
 
         if(foundPayload)
         {
-            u32 *loaderAddress = (u32 *)0x24FFFF00;
+            u32 *loaderAddress = (u32 *)0x24FFFE00;
             void *payloadAddress = (void *)0x24F00000;
             u32 payloadSize = f_size(&payload);
 
