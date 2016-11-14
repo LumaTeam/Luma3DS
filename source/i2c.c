@@ -160,7 +160,7 @@ bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
                 if(dev_id == I2C_DEV_MCU)
                 {
                     startChrono();
-                    while(chrono(true) < 2);
+                    while(chrono(true) < 3);
                 }
 
                 return true;
