@@ -50,19 +50,29 @@ void newPin(bool allowSkipping, u32 pinMode)
 
     u8 length = 4 + 2 * (pinMode - 1);
 
-    const char *title = allowSkipping ? "Press START to skip or enter a new PIN" : "Enter a new PIN to proceed";
-    drawString(title, true, 10, 10, COLOR_TITLE);
-    drawString("PIN (  digits): ", true, 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-    drawCharacter('0' + length, true, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
+    drawString("Enter a new PIN using ABXY and the DPad", true, 10, 10, COLOR_TITLE);
+    drawString(allowSkipping ? "Press START to skip, SELECT to reset" : "Press SELECT to reset", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+
+    drawString("PIN (  digits): ", true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE);
+    drawCharacter('0' + length, true, 10 + 5 * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
 
     //Pad to AES block length with zeroes
     __attribute__((aligned(4))) u8 enteredPassword[AES_BLOCK_SIZE] = {0};
 
+    bool reset = false;
     u8 cnt = 0;
-    u32 charDrawPos = 16 * SPACING_X;
 
     while(cnt < length)
     {
+        if(reset)
+        {
+            for(u32 i = 0; i < cnt; i++) 
+                drawCharacter((char)enteredPassword[i], true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK);
+
+            cnt = 0;
+            reset = false;
+        }
+
         u32 pressed;
         do
         {
@@ -74,14 +84,17 @@ void newPin(bool allowSkipping, u32 pinMode)
         if(!allowSkipping) pressed &= ~BUTTON_START;
 
         if(pressed & BUTTON_START) return;
-        if(!pressed) continue;
 
-        char key = pinKeyToLetter(pressed);
-        enteredPassword[cnt++] = (u8)key; //Add character to password
+        if(pressed & BUTTON_SELECT) reset = true;
+        else if(pressed != 0)
+        {
+            enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
 
-        //Visualize character on screen
-        drawCharacter(key, true, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
-        charDrawPos += 2 * SPACING_X;
+            //Visualize character on screen
+            drawCharacter(enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+
+            cnt++;
+        }
     }
 
     PinData pin;
@@ -125,12 +138,11 @@ bool verifyPin(u32 pinMode)
 
     initScreens();
 
-    //Pad to AES block length with zeroes
-    __attribute__((aligned(4))) u8 enteredPassword[AES_BLOCK_SIZE] = {0};
+    drawString("Enter the PIN using ABXY and the DPad to proceed", true, 10, 10, COLOR_TITLE);
+    drawString("Press START to shutdown, SELECT to clear", true, 10, 10 + SPACING_Y, COLOR_TITLE);
 
-    bool unlock = false;
-    u8 cnt = 0;
-    u32 charDrawPos = 16 * SPACING_X;
+    drawString("PIN (  digits): ", true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE);
+    drawCharacter('0' + lengthBlock[0], true, 10 + 5 * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
 
     const char *messageFile = "pinmessage.txt";
 
@@ -147,11 +159,23 @@ bool verifyPin(u32 pinMode)
         }
     }
 
+    //Pad to AES block length with zeroes
+    __attribute__((aligned(4))) u8 enteredPassword[AES_BLOCK_SIZE] = {0};
+
+    bool unlock = false,
+         reset = false;
+    u8 cnt = 0;
+
     while(!unlock)
     {
-        drawString("Press START to shutdown or enter PIN to proceed", true, 10, 10, COLOR_TITLE);
-        drawString("PIN (  digits): ", true, 10, 10 + 2 * SPACING_Y, COLOR_WHITE);
-        drawCharacter('0' + lengthBlock[0], true, 10 + 5 * SPACING_X, 10 + 2 * SPACING_Y, COLOR_WHITE);
+        if(reset)
+        {
+            for(u32 i = 0; i < cnt; i++) 
+                drawCharacter((char)enteredPassword[i], true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK);
+
+            cnt = 0;
+            reset = false;
+        }
 
         u32 pressed;
         do
@@ -164,28 +188,25 @@ bool verifyPin(u32 pinMode)
 
         pressed &= PIN_BUTTONS;
 
-        if(!pressed) continue;
-
-        char key = pinKeyToLetter(pressed);
-        enteredPassword[cnt++] = (u8)key; //Add character to password
-
-        //Visualize character on screen
-        drawCharacter(key, true, 10 + charDrawPos, 10 + 2 * SPACING_Y, COLOR_WHITE);
-        charDrawPos += 2 * SPACING_X;
-
-        if(cnt >= lengthBlock[0])
+        if(pressed & BUTTON_SELECT) reset = true;
+        else if(pressed != 0)
         {
-            computePinHash(tmp, enteredPassword);
-            unlock = memcmp(pin.hash, tmp, sizeof(tmp)) == 0;
+            enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
 
-            if(!unlock)
+            //Visualize character on screen
+            drawCharacter((char)enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+
+            if(++cnt >= lengthBlock[0])
             {
-                charDrawPos = 16 * SPACING_X;
-                cnt = 0;
+                computePinHash(tmp, enteredPassword);
+                unlock = memcmp(pin.hash, tmp, sizeof(tmp)) == 0;
 
-                clearScreens(true, false, false);
+                if(!unlock)
+                {
+                    reset = true;
 
-                drawString("Wrong PIN, try again", true, 10, 10 + 4 * SPACING_Y, COLOR_RED); 
+                    drawString("Wrong PIN, try again", true, 10, 10 + 5 * SPACING_Y, COLOR_RED); 
+                }
             }
         }
     }

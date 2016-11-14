@@ -25,7 +25,6 @@
 */
 
 #include "i2c.h"
-#include "utils.h"
 
 //-----------------------------------------------------------------------------
 
@@ -155,16 +154,7 @@ bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
             *i2cGetCntReg(bus_id) = 0xC1;
             i2cStop(bus_id, 0);
 
-            if(i2cGetResult(bus_id))
-            {
-                if(dev_id == I2C_DEV_MCU)
-                {
-                    startChrono();
-                    while(chrono(true) < 3);
-                }
-
-                return true;
-            }
+            if(i2cGetResult(bus_id)) return true;
         }
         *i2cGetCntReg(bus_id) = 0xC5;
         i2cWaitBusy(bus_id);

@@ -190,7 +190,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
 void payloadMenu(void)
 {
     DIR dir;
-    char path[_MAX_LFN + 10] = "payloads";
+    char path[62] = "payloads";
 
     if(f_opendir(&dir, path) == FR_OK)
     {
@@ -272,8 +272,7 @@ void payloadMenu(void)
             }
 
             while(HID_PAD & MENU_BUTTONS);
-            startChrono();
-            while(chrono(false) < 2);
+            wait(false, 2ULL);
         }
     }
 }

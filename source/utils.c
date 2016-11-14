@@ -31,16 +31,38 @@
 #include "draw.h"
 #include "cache.h"
 
+static void startChrono(void)
+{
+    REG_TIMER_CNT(0) = 0; //67MHz
+    for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
+
+    for(u32 i = 0; i < 4; i++) REG_TIMER_VAL(i) = 0;
+
+    REG_TIMER_CNT(0) = 0x80; //67MHz; enabled
+    for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
+}
+
+static u64 chrono(bool isMilliseconds)
+{
+    u64 res;
+    for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
+
+    if(isMilliseconds) res /= (TICKS_PER_SEC / 1000);
+    else res /= TICKS_PER_SEC;
+
+    return res;
+}
+
 u32 waitInput(bool isMenu)
 {
-    static u64 dPadDelay = 0;
+    static u64 dPadDelay = 0ULL;
     bool pressedKey = false;
     u32 key,
         oldKey = HID_PAD;
 
     if(isMenu)
     {
-        dPadDelay = dPadDelay > 0 ? 87 : 143;
+        dPadDelay = dPadDelay > 0ULL ? 87ULL : 143ULL;
         startChrono();
     }
 
@@ -77,26 +99,10 @@ void mcuPowerOff(void)
     while(true);
 }
 
-void startChrono(void)
+void wait(bool isMilliseconds, u64 amount)
 {
-    REG_TIMER_CNT(0) = 0; //67MHz
-    for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
-
-    for(u32 i = 0; i < 4; i++) REG_TIMER_VAL(i) = 0;
-
-    REG_TIMER_CNT(0) = 0x80; //67MHz; enabled
-    for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
-}
-
-u64 chrono(bool isMilliseconds)
-{
-    u64 res;
-    for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
-
-    if(isMilliseconds) res /= (TICKS_PER_SEC / 1000);
-    else res /= TICKS_PER_SEC;
-
-    return res;
+    startChrono();
+    while(chrono(isMilliseconds) < amount);
 }
 
 void error(const char *message)

@@ -34,6 +34,5 @@
 
 u32 waitInput(bool isMenu);
 void mcuPowerOff(void);
-void startChrono(void);
-u64 chrono(bool isMilliseconds);
+void wait(bool isMilliseconds, u64 amount);
 void error(const char *message);

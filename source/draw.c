@@ -55,9 +55,7 @@ bool loadSplash(void)
         else
         {
             swapFramebuffers(true);
-
-            startChrono();
-            while(chrono(false) < 3);
+            wait(false, 3ULL);
 
             ret = true;
         }

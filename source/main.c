@@ -148,8 +148,7 @@ void main(void)
                 if(pinExists && !shouldLoadConfigMenu)
                 {
                     while(HID_PAD & PIN_BUTTONS);
-                    startChrono();
-                    while(chrono(false) < 2);
+                    wait(false, 2ULL);
                 }
             }
             else

@@ -40,6 +40,7 @@
 #include "memory.h"
 #include "cache.h"
 #include "i2c.h"
+#include "utils.h"
 
 vu32 *arm11Entry = (vu32 *)BRAHMA_ARM11_ENTRY;
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
@@ -295,6 +296,7 @@ void initScreens(void)
 
             //Turn on backlight
             i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
+            wait(true, 3ULL);
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
