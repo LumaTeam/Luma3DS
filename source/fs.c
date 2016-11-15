@@ -38,23 +38,17 @@ static FATFS sdFs,
 static bool switchToMainDir(bool isSd)
 {
     const char *mainDir = isSd ? "/luma" : "/rw/luma";
-    bool ret;
 
     switch(f_chdir(mainDir))
     {
         case FR_OK:
-            ret = true;
-            break;
+            return true;
         case FR_NO_PATH:
             f_mkdir(mainDir);
-            ret = switchToMainDir(isSd);
-            break;
+            return switchToMainDir(isSd);
         default:
-            ret = false;
-            break;
+            return false;
     }
-
-    return ret;
 }
 
 bool mountFs(bool isSd, bool switchToCtrNand)
@@ -191,6 +185,7 @@ void payloadMenu(void)
     while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 20)
     {
         if(info.fname[0] == '.' || memcmp(info.altname + 8, ".BIN", 4) != 0) continue;
+
         u32 nameLength = strlen(info.fname) - 4;
 
         if(nameLength > 48) continue;

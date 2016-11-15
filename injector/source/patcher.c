@@ -172,7 +172,7 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
 
     IFile file;
 
-    if(R_FAILED(openLumaFile(&file, path))) return 0;
+    if(R_FAILED(openLumaFile(&file, path))) return true;
 
     bool ret;
     u64 fileSize;

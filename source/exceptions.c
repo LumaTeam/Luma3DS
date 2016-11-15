@@ -89,7 +89,7 @@ void detectAndProcessExceptionDumps(void)
 {
     volatile ExceptionDumpHeader *dumpHeader = (volatile ExceptionDumpHeader *)0x25000000;
 
-    if(dumpHeader->magic[0] != 0xDEADC0DE || dumpHeader->magic[1] == 0xDEADCAFE || (dumpHeader->processor != 9 && dumpHeader->processor != 11)) return;
+    if(dumpHeader->magic[0] != 0xDEADC0DE || dumpHeader->magic[1] != 0xDEADCAFE || (dumpHeader->processor != 9 && dumpHeader->processor != 11)) return;
 
     const vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
     const vu8 *stackDump = (vu8 *)regs + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize;

@@ -425,7 +425,7 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
 
     __attribute__((aligned(4))) const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
     __attribute__((aligned(4))) u8 titleKey[AES_BLOCK_SIZE],
-                                       cetkIv[AES_BLOCK_SIZE] = {0};
+                                   cetkIv[AES_BLOCK_SIZE] = {0};
     memcpy(titleKey, ticket->titleKey, sizeof(titleKey));
     memcpy(cetkIv, ticket->titleId, sizeof(ticket->titleId));
 

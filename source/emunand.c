@@ -164,6 +164,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
 u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address)
 {
     u8 *freeK9Space;
+
     if(!getFreeK9Space(arm9Section, kernel9Size, &freeK9Space)) return 1;
 
     u32 ret = 0;
