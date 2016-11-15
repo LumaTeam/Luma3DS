@@ -53,5 +53,5 @@ extern CfgData configData;
 void deinitScreens(void);
 void swapFramebuffers(bool isAlternate);
 void updateBrightness(u32 brightnessIndex);
-void clearScreens(bool clearTop, bool clearBottom, bool clearAlternate);
+void clearScreens(bool isAlternate);
 void initScreens(void);

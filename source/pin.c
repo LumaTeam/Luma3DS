@@ -46,7 +46,7 @@ static char pinKeyToLetter(u32 pressed)
 
 void newPin(bool allowSkipping, u32 pinMode)
 {
-    clearScreens(true, true, false);
+    clearScreens(false);
 
     u8 length = 4 + 2 * (pinMode - 1);
 

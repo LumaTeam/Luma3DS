@@ -127,14 +127,10 @@ void swapFramebuffers(bool isAlternate)
     invokeArm11Function(ARM11);
 }
 
-void clearScreens(bool clearTop, bool clearBottom, bool clearAlternate)
+void clearScreens(bool isAlternate)
 {
-    static bool clearTopTmp,
-                clearBottomTmp;
     static volatile struct fb *fbTmp;
-    clearTopTmp = clearTop;
-    clearBottomTmp = clearBottom;
-    fbTmp = clearAlternate ? &fbs[1] : &fbs[0];
+    fbTmp = isAlternate ? &fbs[1] : &fbs[0];
 
     void __attribute__((naked)) ARM11(void)
     {
@@ -146,29 +142,21 @@ void clearScreens(bool clearTop, bool clearBottom, bool clearAlternate)
         vu32 *REGs_PSC0 = (vu32 *)0x10400010,
              *REGs_PSC1 = (vu32 *)0x10400020;
 
-        if(clearTopTmp)
-        {
-            REGs_PSC0[0] = (u32)fbTmp->top_left >> 3; //Start address
-            REGs_PSC0[1] = (u32)(fbTmp->top_left + SCREEN_TOP_FBSIZE) >> 3; //End address
-            REGs_PSC0[2] = 0; //Fill value
-            REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
-        }
+        REGs_PSC0[0] = (u32)fbTmp->top_left >> 3; //Start address
+        REGs_PSC0[1] = (u32)(fbTmp->top_left + SCREEN_TOP_FBSIZE) >> 3; //End address
+        REGs_PSC0[2] = 0; //Fill value
+        REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
 
-        if(clearBottomTmp)
-        {
-            REGs_PSC1[0] = (u32)fbTmp->bottom >> 3; //Start address
-            REGs_PSC1[1] = (u32)(fbTmp->bottom + SCREEN_BOTTOM_FBSIZE) >> 3; //End address
-            REGs_PSC1[2] = 0; //Fill value
-            REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
-        }
+        REGs_PSC1[0] = (u32)fbTmp->bottom >> 3; //Start address
+        REGs_PSC1[1] = (u32)(fbTmp->bottom + SCREEN_BOTTOM_FBSIZE) >> 3; //End address
+        REGs_PSC1[2] = 0; //Fill value
+        REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
 
-        while(!((!clearTopTmp || (REGs_PSC0[3] & 2)) && (!clearBottomTmp || (REGs_PSC1[3] & 2))));
+        while(!((REGs_PSC0[3] & 2) && (REGs_PSC1[3] & 2)));
 
         WAIT_FOR_ARM9();
     }
 
-    flushDCacheRange(&clearTopTmp, 1);
-    flushDCacheRange(&clearBottomTmp, 1);
     flushDCacheRange((void *)fbTmp, sizeof(struct fb));
     flushDCacheRange(&fbTmp, 4);
     invokeArm11Function(ARM11);
@@ -305,6 +293,6 @@ void initScreens(void)
         needToSetup = false;
     }
 
-    clearScreens(true, true, false);
+    clearScreens(false);
     swapFramebuffers(false);
 }

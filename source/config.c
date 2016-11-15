@@ -355,7 +355,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             if(isMultiOption) drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
             else drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
 
-            clearScreens(false, true, false);
+            drawString(optionsDescription[oldSelectedOption], false, 10, 10, COLOR_BLACK);
             drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
         }
         else
