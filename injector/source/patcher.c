@@ -134,7 +134,7 @@ exit:
     IFile_Close(&file);
 }
 
-static inline u32 loadTitleCodeSection(u64 progId, u8 *code, u32 size)
+static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/code_sections/[u64 titleID in hex, uppercase].bin"
        If it exists it should be a decompressed binary code file */
@@ -144,18 +144,17 @@ static inline u32 loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     IFile file;
 
-    if(R_FAILED(openLumaFile(&file, path))) return 0;
+    if(R_FAILED(openLumaFile(&file, path))) return true;
 
-    u32 ret;
+    bool ret;
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize > size) ret = 1;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize > size) ret = false;
     else
     {
         u64 total;
 
-        if(R_FAILED(IFile_Read(&file, &total, code, fileSize)) || total != fileSize) ret = 1;
-        else ret = 0;
+        ret = R_SUCCEEDED(IFile_Read(&file, &total, code, fileSize)) && total == fileSize;
     }
 
     IFile_Close(&file);
@@ -163,7 +162,7 @@ static inline u32 loadTitleCodeSection(u64 progId, u8 *code, u32 size)
     return ret;
 }
 
-static inline u32 loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
+static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
 {
     /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
        If it exists it should contain, for example, "EUR IT" */
@@ -175,12 +174,12 @@ static inline u32 loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId
 
     if(R_FAILED(openLumaFile(&file, path))) return 0;
 
-    u32 ret;
+    bool ret;
     u64 fileSize;
 
     if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 6 || fileSize > 8)
     {
-        ret = 1;
+        ret = false;
         goto exit;
     }
 
@@ -189,7 +188,7 @@ static inline u32 loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId
 
     if(R_FAILED(IFile_Read(&file, &total, buf, fileSize)))
     {
-        ret = 1;
+        ret = false;
         goto exit;
     }
 
@@ -218,8 +217,7 @@ static inline u32 loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId
         }
     }
 
-    if(i == 7 || j == 12) ret = 1;
-    else ret = 0;
+    ret = i != 7 && j != 12;
 
 exit:
     IFile_Close(&file);
@@ -267,7 +265,7 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
     return NULL;
 }
 
-static inline u32 patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
+static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
 {
     u8 *CFGU_GetConfigInfoBlk2_startPos; //Let's find STMFD SP (there might be a NOP before, but nevermind)
 
@@ -275,7 +273,7 @@ static inline u32 patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFG
         CFGU_GetConfigInfoBlk2_startPos >= code && *((u16 *)CFGU_GetConfigInfoBlk2_startPos + 1) != 0xE92D;
         CFGU_GetConfigInfoBlk2_startPos -= 4);
 
-    if(CFGU_GetConfigInfoBlk2_startPos < code) return 1;
+    if(CFGU_GetConfigInfoBlk2_startPos < code) return false;
 
     for(u8 *languageBlkIdPos = code; languageBlkIdPos < code + size; languageBlkIdPos += 4)
     {
@@ -304,7 +302,7 @@ static inline u32 patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFG
                     *((u32 *)instr + 1)  = 0xE3B00000;              //(1 or 2 instructions)         => movs r0, 0             (result code)
 
                     //We're done
-                    return 0;
+                    return true;
                 }
 
                 i++;
@@ -313,7 +311,7 @@ static inline u32 patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFG
         }
     }
 
-    return 1;
+    return false;
 }
 
 static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
@@ -590,7 +588,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
 
             if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
-               patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+               !patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
 
             patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
         }
