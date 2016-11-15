@@ -56,7 +56,6 @@ static u64 chrono(bool isMilliseconds)
 u32 waitInput(bool isMenu)
 {
     static u64 dPadDelay = 0ULL;
-    bool pressedKey = false;
     u32 key,
         oldKey = HID_PAD;
 
@@ -66,23 +65,24 @@ u32 waitInput(bool isMenu)
         startChrono();
     }
 
-    while(!pressedKey)
+    while(true)
     {
         key = HID_PAD;
 
         if(!key)
         {
             if(i2cReadRegister(I2C_DEV_MCU, 0x10) == 1) mcuPowerOff();
-            oldKey = key;
+            oldKey = 0;
             dPadDelay = 0;
+            continue;
         }
-        else if((key != oldKey) || (isMenu && (key & DPAD_BUTTONS) != 0 && (chrono(true) >= dPadDelay)))
-        {
-            //Make sure the key is pressed
-            u32 i;
-            for(i = 0; i < 0x13000 && key == HID_PAD; i++);
-            if(i == 0x13000) pressedKey = true;
-        }
+
+        if(key == oldKey && (!isMenu || (!(key & DPAD_BUTTONS) || chrono(true) < dPadDelay))) continue;
+
+        //Make sure the key is pressed
+        u32 i;
+        for(i = 0; i < 0x13000 && key == HID_PAD; i++);
+        if(i == 0x13000) break;
     }
 
     return key;

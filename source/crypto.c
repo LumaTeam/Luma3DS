@@ -401,57 +401,45 @@ void set6x7xKeys(void)
 
 bool decryptExeFs(Cxi *cxi)
 {
-    bool isCxi;
+    if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return false;
 
-    if(memcmp(cxi->ncch.magic, "NCCH", 4) == 0)
-    {
-        isCxi = true;
+    u8 *exeFsOffset = (u8 *)cxi + (cxi->ncch.exeFsOffset + 1) * 0x200;
+    u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
+    __attribute__((aligned(4))) u8 ncchCtr[AES_BLOCK_SIZE] = {0};
 
-        u8 *exeFsOffset = (u8 *)cxi + (cxi->ncch.exeFsOffset + 1) * 0x200;
-        u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
-        __attribute__((aligned(4))) u8 ncchCtr[AES_BLOCK_SIZE] = {0};
+    for(u32 i = 0; i < 8; i++)
+        ncchCtr[7 - i] = cxi->ncch.partitionId[i];
+    ncchCtr[8] = 2;
 
-        for(u32 i = 0; i < 8; i++)
-            ncchCtr[7 - i] = cxi->ncch.partitionId[i];
-        ncchCtr[8] = 2;
+    aes_setkey(0x2C, cxi, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_advctr(ncchCtr, 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x2C);
+    aes(cxi, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-        aes_setkey(0x2C, cxi, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_advctr(ncchCtr, 0x200 / AES_BLOCK_SIZE, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_use_keyslot(0x2C);
-        aes(cxi, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
-    else isCxi = false;
-
-    return isCxi && memcmp(cxi, "FIRM", 4) == 0;
+    return memcmp(cxi, "FIRM", 4) == 0;
 }
 
 bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
 {
-    bool isTicket;
+    if(memcmp(ticket->sigIssuer, "Root", 4) != 0) return false;
 
-    if(memcmp(ticket->sigIssuer, "Root", 4) == 0)
-    {
-        isTicket = true;
-
-        __attribute__((aligned(4))) const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
-        __attribute__((aligned(4))) u8 titleKey[AES_BLOCK_SIZE],
+    __attribute__((aligned(4))) const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
+    __attribute__((aligned(4))) u8 titleKey[AES_BLOCK_SIZE],
                                        cetkIv[AES_BLOCK_SIZE] = {0};
-        memcpy(titleKey, ticket->titleKey, sizeof(titleKey));
-        memcpy(cetkIv, ticket->titleId, sizeof(ticket->titleId));
+    memcpy(titleKey, ticket->titleKey, sizeof(titleKey));
+    memcpy(cetkIv, ticket->titleId, sizeof(ticket->titleId));
 
-        aes_setkey(0x3D, keyY0x3D, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_use_keyslot(0x3D);
-        aes(titleKey, titleKey, 1, cetkIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setkey(0x3D, keyY0x3D, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x3D);
+    aes(titleKey, titleKey, 1, cetkIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-        __attribute__((aligned(4))) u8 ncchIv[AES_BLOCK_SIZE] = {0};
+    __attribute__((aligned(4))) u8 ncchIv[AES_BLOCK_SIZE] = {0};
 
-        aes_setkey(0x16, titleKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_use_keyslot(0x16);
-        aes(cxi, cxi, ncchSize / AES_BLOCK_SIZE, ncchIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
-    else isTicket = false;
+    aes_setkey(0x16, titleKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(0x16);
+    aes(cxi, cxi, ncchSize / AES_BLOCK_SIZE, ncchIv, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    return isTicket && decryptExeFs(cxi);
+    return decryptExeFs(cxi);
 }
 
 void kernel9Loader(Arm9Bin *arm9Section)
@@ -550,19 +538,18 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
 
 void backupAndRestoreShaHash(bool isRestore)
 {
+    if(!ISA9LH) return;
+
     static bool didShaHashBackup = false;
     __attribute__((aligned(4))) static u8 shaHashBackup[SHA_256_HASH_SIZE];
 
-    if(ISA9LH)
+    if(isRestore)
     {
-        if(isRestore)
-        {
-            if(didShaHashBackup) memcpy((void *)REG_SHA_HASH, shaHashBackup, sizeof(shaHashBackup));
-        }
-        else if(!didShaHashBackup)
-        {
-            memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
-            didShaHashBackup = true;
-        }
+        if(didShaHashBackup) memcpy((void *)REG_SHA_HASH, shaHashBackup, sizeof(shaHashBackup));
+    }
+    else if(!didShaHashBackup)
+    {
+        memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
+        didShaHashBackup = true;
     }
 }

@@ -85,16 +85,20 @@ void newPin(bool allowSkipping, u32 pinMode)
 
         if(pressed & BUTTON_START) return;
 
-        if(pressed & BUTTON_SELECT) reset = true;
-        else if(pressed != 0)
+        if(pressed & BUTTON_SELECT)
         {
-            enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
-
-            //Visualize character on screen
-            drawCharacter(enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
-
-            cnt++;
+            reset = true;
+            continue;
         }
+
+        if(!pressed) continue;
+
+        enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
+
+        //Visualize character on screen
+        drawCharacter(enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+
+        cnt++;
     }
 
     PinData pin;
@@ -188,26 +192,29 @@ bool verifyPin(u32 pinMode)
 
         pressed &= PIN_BUTTONS;
 
-        if(pressed & BUTTON_SELECT) reset = true;
-        else if(pressed != 0)
+        if(pressed & BUTTON_SELECT)
         {
-            enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
+            reset = true;
+            continue;
+        }
 
-            //Visualize character on screen
-            drawCharacter((char)enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+        if(!pressed) continue;
 
-            if(++cnt >= lengthBlock[0])
-            {
-                computePinHash(tmp, enteredPassword);
-                unlock = memcmp(pin.hash, tmp, sizeof(tmp)) == 0;
+        enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
 
-                if(!unlock)
-                {
-                    reset = true;
+        //Visualize character on screen
+        drawCharacter((char)enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
 
-                    drawString("Wrong PIN, try again", true, 10, 10 + 5 * SPACING_Y, COLOR_RED); 
-                }
-            }
+        if(++cnt < lengthBlock[0]) continue;
+
+        computePinHash(tmp, enteredPassword);
+        unlock = memcmp(pin.hash, tmp, sizeof(tmp)) == 0;
+
+        if(!unlock)
+        {
+            reset = true;
+
+            drawString("Wrong PIN, try again", true, 10, 10 + 5 * SPACING_Y, COLOR_RED); 
         }
     }
 

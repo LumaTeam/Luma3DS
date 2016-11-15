@@ -78,146 +78,146 @@ void main(void)
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
         isA9lhInstalled = BOOTCFG_A9LH != 0;
+
+        goto boot;
     }
-    else
+
+    if(ISA9LH)
     {
-        if(ISA9LH)
+        detectAndProcessExceptionDumps();
+        installArm9Handlers();
+    }
+
+    firmType = NATIVE_FIRM;
+    isA9lhInstalled = ISA9LH;
+
+    //Get pressed buttons
+    u32 pressed = HID_PAD;
+
+    //Save old options and begin saving the new boot configuration
+    configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
+
+    //If it's a MCU reboot, try to force boot options
+    if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
+    {
+        //Always force a SysNAND boot when quitting AGB_FIRM
+        if(CFG_BOOTENV == 7)
         {
-            detectAndProcessExceptionDumps();
-            installArm9Handlers();
+            nandType = FIRMWARE_SYSNAND;
+            firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
+
+            //Flag to prevent multiple boot options-forcing
+            configTemp |= 1 << 7;
+
+            goto boot;
         }
 
-        firmType = NATIVE_FIRM;
-        isA9lhInstalled = ISA9LH;
-
-        //Get pressed buttons
-        u32 pressed = HID_PAD;
-
-        //Save old options and begin saving the new boot configuration
-        configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
-
-        //If it's a MCU reboot, try to force boot options
-        if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
+        /* Else, force the last used boot options unless a button is pressed
+           or the no-forcing flag is set */
+        if(!pressed && !BOOTCFG_NOFORCEFLAG)
         {
-            //Always force a SysNAND boot when quitting AGB_FIRM
-            if(CFG_BOOTENV == 7)
-            {
-                nandType = FIRMWARE_SYSNAND;
-                firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
-                needConfig = DONT_CONFIGURE;
+            nandType = (FirmwareSource)BOOTCFG_NAND;
+            firmSource = (FirmwareSource)BOOTCFG_FIRM;
 
-                //Flag to prevent multiple boot options-forcing
-                configTemp |= 1 << 7;
-            }
-
-            /* Else, force the last used boot options unless a button is pressed
-               or the no-forcing flag is set */
-            else if(!pressed && !BOOTCFG_NOFORCEFLAG)
-            {
-                nandType = (FirmwareSource)BOOTCFG_NAND;
-                firmSource = (FirmwareSource)BOOTCFG_FIRM;
-                needConfig = DONT_CONFIGURE;
-            }
-        }
-
-        //Boot options aren't being forced
-        if(needConfig != DONT_CONFIGURE)
-        {
-            u32 pinMode = MULTICONFIG(PIN);
-            bool pinExists = pinMode != 0 && verifyPin(pinMode);
-
-            //If no configuration file exists or SELECT is held, load configuration menu
-            bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
-
-            if(shouldLoadConfigMenu)
-            {
-                configMenu(isSdMode, pinExists, pinMode);
-
-                //Update pressed buttons
-                pressed = HID_PAD;
-            }
-
-            if(ISA9LH && !CFG_BOOTENV && pressed == SAFE_MODE)
-            {
-                nandType = FIRMWARE_SYSNAND;
-                firmSource = FIRMWARE_SYSNAND;
-
-                isSafeMode = true;
-
-                //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
-                if(pinExists && !shouldLoadConfigMenu)
-                {
-                    while(HID_PAD & PIN_BUTTONS);
-                    wait(false, 2ULL);
-                }
-            }
-            else
-            {
-                u32 splashMode = MULTICONFIG(SPLASH);
-
-                if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
-
-                if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
-                {
-                    payloadMenu();
-                    pressed = HID_PAD;
-                }
-                else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-                        ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
-
-                if(splashMode == 2) loadSplash();
-
-                //If booting from CTRNAND, always use SysNAND
-                if(!isSdMode) nandType = FIRMWARE_SYSNAND;
-
-                //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
-                else if(pressed & BUTTON_R1)
-                {
-                    if(CONFIG(USESYSFIRM))
-                    {
-                        nandType = FIRMWARE_EMUNAND;
-                        firmSource = FIRMWARE_SYSNAND;
-                    }
-                    else
-                    {
-                        nandType = FIRMWARE_SYSNAND;
-                        firmSource = FIRMWARE_EMUNAND;
-                    }
-                }
-
-                /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
-                   with their own FIRM */
-                else firmSource = nandType = (CONFIG(AUTOBOOTSYS) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
-
-                //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
-                if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
-                {
-                    FirmwareSource tempNand;
-                    switch(pressed & DPAD_BUTTONS)
-                    {
-                        case BUTTON_UP:
-                            tempNand = FIRMWARE_EMUNAND;
-                            break;
-                        case BUTTON_RIGHT:
-                            tempNand = FIRMWARE_EMUNAND2;
-                            break;
-                        case BUTTON_DOWN:
-                            tempNand = FIRMWARE_EMUNAND3;
-                            break;
-                        case BUTTON_LEFT:
-                            tempNand = FIRMWARE_EMUNAND4;
-                            break;
-                        default:
-                            tempNand = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
-                            break;
-                    }
-
-                    if(nandType == FIRMWARE_EMUNAND) nandType = tempNand;
-                    else firmSource = tempNand;
-                }
-            }
+            goto boot;
         }
     }
+
+    u32 pinMode = MULTICONFIG(PIN);
+    bool pinExists = pinMode != 0 && verifyPin(pinMode);
+
+    //If no configuration file exists or SELECT is held, load configuration menu
+    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
+
+    if(shouldLoadConfigMenu)
+    {
+        configMenu(isSdMode, pinExists, pinMode);
+
+        //Update pressed buttons
+        pressed = HID_PAD;
+    }
+
+    if(ISA9LH && !CFG_BOOTENV && pressed == SAFE_MODE)
+    {
+        nandType = FIRMWARE_SYSNAND;
+        firmSource = FIRMWARE_SYSNAND;
+
+        isSafeMode = true;
+
+        //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
+        if(pinExists && !shouldLoadConfigMenu)
+        {
+            while(HID_PAD & PIN_BUTTONS);
+            wait(false, 2ULL);
+        }
+
+        goto boot;
+    }
+
+    u32 splashMode = MULTICONFIG(SPLASH);
+
+    if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
+
+    if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
+    {
+        payloadMenu();
+        pressed = HID_PAD;
+    }
+    else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
+            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
+
+    if(splashMode == 2) loadSplash();
+
+    //If booting from CTRNAND, always use SysNAND
+    if(!isSdMode) nandType = FIRMWARE_SYSNAND;
+
+    //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
+    else if(pressed & BUTTON_R1)
+    {
+        if(CONFIG(USESYSFIRM))
+        {
+            nandType = FIRMWARE_EMUNAND;
+            firmSource = FIRMWARE_SYSNAND;
+        }
+        else
+        {
+            nandType = FIRMWARE_SYSNAND;
+            firmSource = FIRMWARE_EMUNAND;
+        }
+    }
+
+    /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
+       with their own FIRM */
+    else firmSource = nandType = (CONFIG(AUTOBOOTSYS) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+
+    //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
+    if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
+    {
+        FirmwareSource tempNand;
+        switch(pressed & DPAD_BUTTONS)
+        {
+            case BUTTON_UP:
+                tempNand = FIRMWARE_EMUNAND;
+                break;
+            case BUTTON_RIGHT:
+                tempNand = FIRMWARE_EMUNAND2;
+                break;
+            case BUTTON_DOWN:
+                tempNand = FIRMWARE_EMUNAND3;
+                break;
+            case BUTTON_LEFT:
+                tempNand = FIRMWARE_EMUNAND4;
+                break;
+            default:
+                tempNand = (FirmwareSource)(1 + MULTICONFIG(DEFAULTEMU));
+                break;
+        }
+
+        if(nandType == FIRMWARE_EMUNAND) nandType = tempNand;
+        else firmSource = tempNand;
+    }
+
+boot:
 
     //If we need to boot EmuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)

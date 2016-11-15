@@ -36,7 +36,7 @@
 
 static Firm *firm = (Firm *)0x24000000;
 
-u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
+static inline bool loadFirmFromStorage(FirmwareType firmType)
 {
     const char *firmwareFiles[] = {
         "firmware.bin",
@@ -53,6 +53,30 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
         "cetk_sysupdater"
     };
 
+    u32 firmSize = fileRead(firm, firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)firmType], 0x400000 + sizeof(Cxi) + 0x200);
+
+    if(!firmSize) return false;
+
+    if(firmSize <= sizeof(Cxi) + 0x200) error("The FIRM in /luma is not valid.");
+
+    if(memcmp(firm, "FIRM", 4) != 0)
+    {
+        u8 cetk[0xA50];
+
+        if(fileRead(cetk, firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)firmType], sizeof(cetk)) != sizeof(cetk) ||
+           !decryptNusFirm((Ticket *)(cetk + 0x140), (Cxi *)firm, firmSize))
+            error("The FIRM in /luma is encrypted or corrupted.");
+    }
+
+    //Check that the FIRM is right for the console from the ARM9 section address
+    if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
+        error("The FIRM in /luma is not for this console.");
+
+    return true;
+}
+
+u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
+{
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
 
@@ -77,32 +101,8 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
         else if(firmVersion < 0x25) mustLoadFromStorage = true;
     }
 
-    if(loadFromStorage || mustLoadFromStorage)
-    {
-        u32 firmSize = fileRead(firm, *firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)*firmType], 0x400000 + sizeof(Cxi) + 0x200);
-
-        if(firmSize > 0)
-        {
-            if(firmSize <= sizeof(Cxi) + 0x200) error("The FIRM in /luma is not valid.");
-
-            if(memcmp(firm, "FIRM", 4) != 0)
-            {
-                u8 cetk[0xA50];
-
-                if(fileRead(cetk, *firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)*firmType], sizeof(cetk)) != sizeof(cetk) ||
-                   !decryptNusFirm((Ticket *)(cetk + 0x140), (Cxi *)firm, firmSize))
-                    error("The FIRM in /luma is encrypted or corrupted.");
-            }
-
-            //Check that the FIRM is right for the console from the ARM9 section address
-            if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-                error("The FIRM in /luma is not for this console.");
-
-            firmVersion = 0xFFFFFFFF;
-        }
-    }
-
-    if(firmVersion != 0xFFFFFFFF)
+    if((loadFromStorage || mustLoadFromStorage) && loadFirmFromStorage(*firmType)) firmVersion = 0xFFFFFFFF;
+    else
     {
         if(mustLoadFromStorage) error("An old unsupported FIRM has been detected.\nCopy a firmware.bin in /luma to boot.");
         if(!decryptExeFs((Cxi *)firm)) error("The CTRNAND FIRM is corrupted.");
@@ -310,10 +310,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
         srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
         const char *moduleName = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
 
-        bool loadedModule;
-
-        if(!loadFromStorage) loadedModule = false;
-        else
+        if(loadFromStorage)
         {
             char fileName[24] = "sysmodules/";
 
@@ -323,8 +320,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
             dstModuleSize = getFileSize(fileName);
 
-            if(dstModuleSize == 0) loadedModule = false;
-            else
+            if(dstModuleSize != 0)
             {
                 if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
 
@@ -334,29 +330,26 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
                    memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
                     error("An external FIRM module is invalid or corrupted.");
 
-                loadedModule = true;
+                continue;
             }
         }
 
-        if(!loadedModule)
+        const u8 *module;
+
+        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
         {
-            const u8 *module;
-
-            if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
-            {
-                module = injector_bin;
-                dstModuleSize = injector_bin_size;
-            }
-            else
-            {
-                module = src;
-                dstModuleSize = srcModuleSize;
-            }
-
-            if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
-
-            memcpy(dst, module, dstModuleSize);
+            module = injector_bin;
+            dstModuleSize = injector_bin_size;
         }
+        else
+        {
+            module = src;
+            dstModuleSize = srcModuleSize;
+        }
+
+        if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+
+        memcpy(dst, module, dstModuleSize);
     }
 }
 

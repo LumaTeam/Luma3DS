@@ -57,6 +57,7 @@ void  __attribute__((naked)) arm11Stub(void)
 static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
+
     if(!hasCopiedStub)
     {
         memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x30);

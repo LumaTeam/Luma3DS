@@ -66,17 +66,16 @@ bool mountFs(bool isSd, bool switchToCtrNand)
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
+
+    if(f_open(&file, path, FA_READ) != FR_OK) return 0;
+
     u32 ret;
 
-    if(f_open(&file, path, FA_READ) != FR_OK) ret = 0;
-    else
-    {
-        u32 size = f_size(&file);
-        if(dest == NULL) ret = size;
-        else if(size <= maxSize)
-            f_read(&file, dest, size, (unsigned int *)&ret);
-        f_close(&file);
-    }
+    u32 size = f_size(&file);
+    if(dest == NULL) ret = size;
+    else if(size <= maxSize)
+        f_read(&file, dest, size, (unsigned int *)&ret);
+    f_close(&file);
 
     return ret;
 }
@@ -89,7 +88,6 @@ u32 getFileSize(const char *path)
 bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
-    bool ret;
 
     switch(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS))
     {
@@ -100,8 +98,7 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
             f_truncate(&file);
             f_close(&file);
 
-            ret = (u32)written == size;
-            break;
+            return (u32)written == size;
         }
         case FR_NO_PATH:
             for(u32 i = 1; path[i] != 0; i++)
@@ -113,14 +110,10 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
                     f_mkdir(folder);
                 }
 
-            ret = fileWrite(buffer, path, size);
-            break;
+            return fileWrite(buffer, path, size);
         default:
-            ret = false;
-            break;
+            return false;
     }
-
-    return ret;
 }
 
 void fileDelete(const char *path)
@@ -158,33 +151,30 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
         result = f_findfirst(&dir, &info, path, pattern);
 
-        if(result == FR_OK)
-        {
-            f_closedir(&dir);
+        if(result != FR_OK) return;
 
-            if(info.fname[0] != 0)
-            {
-                concatenateStrings(path, "/");
-                concatenateStrings(path, info.altname);
-                payloadSize = fileRead(payloadAddress, path, maxPayloadSize);
-            }
-        }
+        f_closedir(&dir);
+
+        if(!info.fname[0]) return;
+
+        concatenateStrings(path, "/");
+        concatenateStrings(path, info.altname);
+        payloadSize = fileRead(payloadAddress, path, maxPayloadSize);
     }
     else payloadSize = fileRead(payloadAddress, payloadPath, maxPayloadSize);
 
-    if(payloadSize > 0)
-    {
-        memcpy(loaderAddress, loader_bin, loader_bin_size);
-        loaderAddress[1] = payloadSize;
+    if(!payloadSize) return;
 
-        backupAndRestoreShaHash(true);
-        initScreens();
+    memcpy(loaderAddress, loader_bin, loader_bin_size);
+    loaderAddress[1] = payloadSize;
 
-        flushDCacheRange(loaderAddress, loader_bin_size);
-        flushICacheRange(loaderAddress, loader_bin_size);
+    backupAndRestoreShaHash(true);
+    initScreens();
 
-        ((void (*)())loaderAddress)();
-    }
+    flushDCacheRange(loaderAddress, loader_bin_size);
+    flushICacheRange(loaderAddress, loader_bin_size);
+
+    ((void (*)())loaderAddress)();
 }
 
 void payloadMenu(void)
@@ -192,89 +182,87 @@ void payloadMenu(void)
     DIR dir;
     char path[62] = "payloads";
 
-    if(f_opendir(&dir, path) == FR_OK)
+    if(f_opendir(&dir, path) != FR_OK) return;
+
+    FILINFO info;
+    u32 payloadNum = 0;
+    char payloadList[20][49];
+
+    while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 20)
     {
-        FILINFO info;
-        u32 payloadNum = 0;
-        char payloadList[20][49];
+        if(info.fname[0] == '.' || memcmp(info.altname + 8, ".BIN", 4) != 0) continue;
+        u32 nameLength = strlen(info.fname) - 4;
 
-        while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0 && payloadNum < 20)
-            if(info.fname[0] != '.' && memcmp(info.altname + 8, ".BIN", 4) == 0)
-            {
-                u32 nameLength = strlen(info.fname) - 4;
-                if(nameLength < 49)
-                {
-                    memcpy(payloadList[payloadNum], info.fname, nameLength);
-                    payloadList[payloadNum][nameLength] = 0;
-                    payloadNum++;
-                }
-            }
+        if(nameLength > 48) continue;
 
-        f_closedir(&dir);
-
-        if(payloadNum > 0)
-        {
-            initScreens();
-
-            drawString("Luma3DS chainloader", true, 10, 10, COLOR_TITLE);
-            drawString("Press A to select, START to quit", true, 10, 10 + SPACING_Y, COLOR_TITLE);
-
-            for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
-            {
-                drawString(payloadList[i], true, 10, posY, color);
-                if(color == COLOR_RED) color = COLOR_WHITE;
-            }
-
-            u32 pressed = 0,
-                selectedPayload = 0;
-
-            while(pressed != BUTTON_A && pressed != BUTTON_START)
-            {
-                do
-                {
-                    pressed = waitInput(true);
-                }
-                while(!(pressed & MENU_BUTTONS));
-
-                u32 oldSelectedPayload = selectedPayload;
-
-                switch(pressed)
-                {
-                    case BUTTON_UP:
-                        selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
-                        break;
-                    case BUTTON_DOWN:
-                        selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
-                        break;
-                    case BUTTON_LEFT:
-                        selectedPayload = 0;
-                        break;
-                    case BUTTON_RIGHT:
-                        selectedPayload = payloadNum - 1;
-                        break;
-                    default:
-                        continue;
-                }
-
-                if(oldSelectedPayload == selectedPayload) continue;
-
-                drawString(payloadList[oldSelectedPayload], true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE);
-                drawString(payloadList[selectedPayload], true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED);
-            }
-
-            if(pressed == BUTTON_A)
-            {
-                concatenateStrings(path, "/");
-                concatenateStrings(path, payloadList[selectedPayload]);
-                concatenateStrings(path, ".bin");
-                loadPayload(0, path);
-                error("The payload is too large or corrupted.");
-            }
-
-            while(HID_PAD & MENU_BUTTONS);
-            wait(false, 2ULL);
-        }
+        memcpy(payloadList[payloadNum], info.fname, nameLength);
+        payloadList[payloadNum][nameLength] = 0;
+        payloadNum++;
     }
+
+    f_closedir(&dir);
+
+    if(!payloadNum) return;
+
+    initScreens();
+
+    drawString("Luma3DS chainloader", true, 10, 10, COLOR_TITLE);
+    drawString("Press A to select, START to quit", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+
+    for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
+    {
+        drawString(payloadList[i], true, 10, posY, color);
+        if(color == COLOR_RED) color = COLOR_WHITE;
+    }
+
+    u32 pressed = 0,
+        selectedPayload = 0;
+
+    while(pressed != BUTTON_A && pressed != BUTTON_START)
+    {
+        do
+        {
+            pressed = waitInput(true);
+        }
+        while(!(pressed & MENU_BUTTONS));
+
+        u32 oldSelectedPayload = selectedPayload;
+
+        switch(pressed)
+        {
+            case BUTTON_UP:
+                selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
+                break;
+            case BUTTON_DOWN:
+                selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
+                break;
+            case BUTTON_LEFT:
+                selectedPayload = 0;
+                break;
+            case BUTTON_RIGHT:
+                selectedPayload = payloadNum - 1;
+                break;
+            default:
+                continue;
+        }
+
+        if(oldSelectedPayload == selectedPayload) continue;
+
+        drawString(payloadList[oldSelectedPayload], true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE);
+        drawString(payloadList[selectedPayload], true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED);
+    }
+
+    if(pressed == BUTTON_A)
+    {
+        concatenateStrings(path, "/");
+        concatenateStrings(path, payloadList[selectedPayload]);
+        concatenateStrings(path, ".bin");
+        loadPayload(0, path);
+        error("The payload is too large or corrupted.");
+    }
+
+    while(HID_PAD & MENU_BUTTONS);
+    wait(false, 2ULL);
 }
 
 u32 firmRead(void *dest, u32 firmType)
@@ -292,36 +280,35 @@ u32 firmRead(void *dest, u32 firmType)
     DIR dir;
     u32 firmVersion = 0xFFFFFFFF;
 
-    if(f_opendir(&dir, path) == FR_OK)
+    if(f_opendir(&dir, path) != FR_OK) goto exit;
+
+    FILINFO info;
+
+    //Parse the target directory
+    while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
     {
-        FILINFO info;
+        //Not a cxi
+        if(info.fname[9] == 'a' && strlen(info.fname) != 12) continue;
 
-        //Parse the target directory
-        while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
-        {
-            //Not a cxi
-            if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
+        u32 tempVersion = hexAtoi(info.altname, 8);
 
-            u32 tempVersion = hexAtoi(info.altname, 8);
-
-            //Found an older cxi
-            if(tempVersion < firmVersion) firmVersion = tempVersion;
-        }
-
-        f_closedir(&dir);
-
-        if(firmVersion != 0xFFFFFFFF)
-        {
-            //Complete the string with the .app name
-            concatenateStrings(path, "/00000000.app");
-
-            //Convert back the .app name from integer to array
-            hexItoa(firmVersion, path + 35, 8, false);
-
-            if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x200) firmVersion = 0xFFFFFFFF;
-        }
+        //Found an older cxi
+        if(tempVersion < firmVersion) firmVersion = tempVersion;
     }
 
+    f_closedir(&dir);
+
+    if(firmVersion == 0xFFFFFFFF) goto exit;
+
+    //Complete the string with the .app name
+    concatenateStrings(path, "/00000000.app");
+
+    //Convert back the .app name from integer to array
+    hexItoa(firmVersion, path + 35, 8, false);
+
+    if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x200) firmVersion = 0xFFFFFFFF;
+
+exit:
     return firmVersion;
 }
 

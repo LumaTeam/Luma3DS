@@ -38,30 +38,23 @@ bool loadSplash(void)
                *bottomSplashFile = "splashbottom.bin";
 
     bool isTopSplashValid = getFileSize(topSplashFile) == SCREEN_TOP_FBSIZE,
-         isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE,
-         ret;
+         isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE;
 
     //Don't delay boot nor init the screens if no splash images or invalid splash images are on the SD
-    if(!isTopSplashValid && !isBottomSplashValid) ret = false;
-    else
-    {
-        initScreens();
-        clearScreens(true);
+    if(!isTopSplashValid && !isBottomSplashValid) return false;
 
-        if(isTopSplashValid) isTopSplashValid = fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE) == SCREEN_TOP_FBSIZE;
-        if(isBottomSplashValid) isBottomSplashValid = fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
+    initScreens();
+    clearScreens(true);
 
-        if(!isTopSplashValid && !isBottomSplashValid) ret = false;
-        else
-        {
-            swapFramebuffers(true);
-            wait(false, 3ULL);
+    if(isTopSplashValid) isTopSplashValid = fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE) == SCREEN_TOP_FBSIZE;
+    if(isBottomSplashValid) isBottomSplashValid = fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
 
-            ret = true;
-        }
-    }
+    if(!isTopSplashValid && !isBottomSplashValid) return false;
 
-    return ret;
+    swapFramebuffers(true);
+    wait(false, 3ULL);
+
+    return true;
 }
 
 void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color)

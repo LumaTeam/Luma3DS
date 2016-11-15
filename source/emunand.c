@@ -36,7 +36,6 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
     static u8 __attribute__((aligned(4))) temp[0x200];
     static u32 nandSize = 0,
                fatStart;
-    bool found = false;
 
     if(!nandSize)
     {
@@ -45,7 +44,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
         fatStart = *(u32 *)(temp + 0x1C6); //First sector of the FAT partition
     }
 
-    for(u32 i = 0; i < 3 && !found; i++)
+    for(u32 i = 0; i < 3; i++)
     {
         static const u32 roundedMinsizes[] = {0x1D8000, 0x26E000};
 
@@ -72,7 +71,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
             {
                 emuOffset = nandOffset + 1;
                 *emuHeader = nandOffset + 1;
-                found = true;
+                return;
             }
 
             //Check for Gateway EmuNAND
@@ -80,7 +79,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
             {
                 emuOffset = nandOffset;
                 *emuHeader = nandOffset + nandSize;
-                found = true;
+                return;
             }
         }
 
@@ -88,136 +87,108 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
     }
 
     //Fallback to the first EmuNAND if there's no second/third/fourth one, or to SysNAND if there isn't any
-    if(!found)
+    if(*nandType != FIRMWARE_EMUNAND)
     {
-        if(*nandType != FIRMWARE_EMUNAND)
-        {
-            *nandType = FIRMWARE_EMUNAND;
-            locateEmuNand(emuHeader, nandType);
-        }
-        else *nandType = FIRMWARE_SYSNAND;
+        *nandType = FIRMWARE_EMUNAND;
+        locateEmuNand(emuHeader, nandType);
     }
+    else *nandType = FIRMWARE_SYSNAND;
 }
 
-static inline u32 getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
+static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
 {
     const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
-    u32 ret;
 
     //Looking for the last free space before Process9
     *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(*freeK9Space == NULL) ret = 1;
-    else
-    {
-        *freeK9Space += 0x455;
+    if(*freeK9Space == NULL) return false;
 
-        ret = 0;
-    }
+    *freeK9Space += 0x455;
 
-    return ret;
+    return true;
 }
 
 static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
 {
     //Look for struct code
     const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
-    u32 ret;
 
     const u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(off == NULL) ret = 1;
-    else
-    {
-        *sdmmc = *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
+    if(off == NULL) return 1;
 
-        ret = 0;
-    }
+    *sdmmc = *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
 
-    return ret;
+    return 0;
 }
 
 static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 {
     //Look for read/write code
     const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
-    u32 ret;
 
     u16 *readOffset = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(readOffset == NULL) ret = 1;
-    else
-    {
-        readOffset -= 3;
+    if(readOffset == NULL) return 1;
 
-        u16 *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, sizeof(pattern));
+    readOffset -= 3;
 
-        if(writeOffset == NULL) ret = 1;
-        else
-        {
-            writeOffset -= 3;
-            *readOffset = *writeOffset = 0x4C00;
-            readOffset[1] = writeOffset[1] = 0x47A0;
-            ((u32 *)writeOffset)[1] = ((u32 *)readOffset)[1] = branchOffset;
+    u16 *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, sizeof(pattern));
 
-            ret = 0;
-        }
-    }
+    if(writeOffset == NULL) return 1;
 
-    return ret;
+    writeOffset -= 3;
+    *readOffset = *writeOffset = 0x4C00;
+    readOffset[1] = writeOffset[1] = 0x47A0;
+    ((u32 *)writeOffset)[1] = ((u32 *)readOffset)[1] = branchOffset;
+
+    return 0;
 }
 
 static inline u32 patchMpu(u8 *pos, u32 size)
 {
     //Look for MPU pattern
     const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
-    u32 ret;
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(off == NULL) ret = 1;
-    else
-    {
-        off[1] = 0x0036;
-        off[0xC] = off[0x12] = 0x0603;
+    if(off == NULL) return 1;
 
-        ret = 0;
-    }
+    off[1] = 0x0036;
+    off[0xC] = off[0x12] = 0x0603;
 
-    return ret;
+    return 0;
 }
 
 u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address)
 {
+    u8 *freeK9Space;
+    if(!getFreeK9Space(arm9Section, kernel9Size, &freeK9Space)) return 1;
+
     u32 ret = 0;
 
-    u8 *freeK9Space;
-    ret += getFreeK9Space(arm9Section, kernel9Size, &freeK9Space);
+    //Copy EmuNAND code
+    memcpy(freeK9Space, emunand_bin, emunand_bin_size);
 
-    if(!ret)
-    {
-        //Copy EmuNAND code
-        memcpy(freeK9Space, emunand_bin, emunand_bin_size);
+    //Add the data of the found EmuNAND
+    u32 *posOffset = (u32 *)memsearch(freeK9Space, "NAND", emunand_bin_size, 4),
+        *posHeader = (u32 *)memsearch(freeK9Space, "NCSD", emunand_bin_size, 4);
+    *posOffset = emuOffset;
+    *posHeader = emuHeader;
 
-        //Add the data of the found EmuNAND
-        u32 *posOffset = (u32 *)memsearch(freeK9Space, "NAND", emunand_bin_size, 4),
-            *posHeader = (u32 *)memsearch(freeK9Space, "NCSD", emunand_bin_size, 4);
-        *posOffset = emuOffset;
-        *posHeader = emuHeader;
+    //Find and add the SDMMC struct
+    u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
+    u32 sdmmc;
+    ret += getSdmmc(process9Offset, process9Size, &sdmmc);
+    if(!ret) *posSdmmc = sdmmc;
 
-        //Find and add the SDMMC struct
-        u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
-        u32 sdmmc;
-        ret += getSdmmc(process9Offset, process9Size, &sdmmc);
-        if(!ret) *posSdmmc = sdmmc;
+    //Add EmuNAND hooks
+    u32 branchOffset = (u32)(freeK9Space - arm9Section + kernel9Address);
+    ret += patchNandRw(process9Offset, process9Size, branchOffset);
 
-        //Add EmuNAND hooks
-        u32 branchOffset = (u32)(freeK9Space - arm9Section + kernel9Address);
-        ret += patchNandRw(process9Offset, process9Size, branchOffset);
-
-        //Set MPU
-        ret += patchMpu(arm9Section, kernel9Size);
-    }
+    //Set MPU
+    ret += patchMpu(arm9Section, kernel9Size);
 
     return ret;
 }

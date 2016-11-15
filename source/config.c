@@ -33,40 +33,37 @@ CfgData configData;
 
 bool readConfig(void)
 {
-    bool ret;
-
     if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
         configData.config = 0;
-        ret = false;
-    }
-    else ret = true;
 
-    return ret;
+        return false;
+    }
+
+    return true;
 }
 
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFF7F) != configData.config)
+    if(needConfig != CREATE_CONFIGURATION && (configTemp & 0xFFFFFF7F) == configData.config) return;
+
+    if(needConfig == CREATE_CONFIGURATION)
     {
-        if(needConfig == CREATE_CONFIGURATION)
-        {
-            memcpy(configData.magic, "CONF", 4);
-            configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
-            configData.formatVersionMinor = CONFIG_VERSIONMINOR;
-        }
-
-        //Merge the new options and new boot configuration
-        configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
-
-        if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
-            error("Error writing the configuration file");
+        memcpy(configData.magic, "CONF", 4);
+        configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
+        configData.formatVersionMinor = CONFIG_VERSIONMINOR;
     }
+
+    //Merge the new options and new boot configuration
+    configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
+
+    if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
+        error("Error writing the configuration file");
 }
 
 void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
@@ -249,12 +246,11 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
     {
-        if(multiOptions[i].visible)
-        {
-            multiOptions[i].posY = endPos + SPACING_Y;
-            endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
-            drawCharacter(selected, true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
-        }
+        if(!multiOptions[i].visible) continue;
+
+        multiOptions[i].posY = endPos + SPACING_Y;
+        endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
+        drawCharacter(selected, true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
     }
 
     endPos += SPACING_Y / 2;
@@ -262,33 +258,33 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     //Display all the normal options in white except for the first one
     for(u32 i = 0, color = COLOR_RED; i < singleOptionsAmount; i++)
     {
-        if(singleOptions[i].visible)
-        {
-            singleOptions[i].posY = endPos + SPACING_Y;
-            endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
-            if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
+        if(!singleOptions[i].visible) continue;
 
-            if(color == COLOR_RED)
-            {
-                singleSelected = i;
-                selectedOption = i + multiOptionsAmount;
-                color = COLOR_WHITE;
-            }
+        singleOptions[i].posY = endPos + SPACING_Y;
+        endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
+        if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
+
+        if(color == COLOR_RED)
+        {
+            singleSelected = i;
+            selectedOption = i + multiOptionsAmount;
+            color = COLOR_WHITE;
         }
     }
 
     drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
 
-    u32 pressed = 0;
-
     //Boring configuration menu
-    while(pressed != BUTTON_START)
+    while(true)
     {
+        u32 pressed;
         do
         {
             pressed = waitInput(true);
         }
         while(!(pressed & MENU_BUTTONS));
+
+        if(pressed == BUTTON_START) break;
 
         if(pressed != BUTTON_A)
         {
@@ -319,21 +315,19 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                 if(selectedOption < multiOptionsAmount)
                 {
-                    if(multiOptions[selectedOption].visible)
-                    {
-                        isMultiOption = true;
-                        break;
-                    }
+                    if(!multiOptions[selectedOption].visible) continue;
+
+                    isMultiOption = true;
+                    break;
                 }
                 else
                 {
                     singleSelected = selectedOption - multiOptionsAmount;
 
-                    if(singleOptions[singleSelected].visible)
-                    {
-                        isMultiOption = false;
-                        break;
-                    }
+                    if(!singleOptions[singleSelected].visible) continue;
+
+                    isMultiOption = false;
+                    break;
                 }
             }
 
