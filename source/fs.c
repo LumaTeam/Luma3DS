@@ -288,7 +288,7 @@ u32 firmRead(void *dest, u32 firmType)
     while(f_readdir(&dir, &info) == FR_OK && info.fname[0] != 0)
     {
         //Not a cxi
-        if(info.fname[9] == 'a' && strlen(info.fname) != 12) continue;
+        if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
 
         u32 tempVersion = hexAtoi(info.altname, 8);
 
