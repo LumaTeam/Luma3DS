@@ -145,7 +145,7 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
     u32 n = 0,
         possible[24];
 
-    for(u8 *pos = code + 4; n < 24 && pos < code + size - 4; pos += 4)
+    for(u8 *pos = code + 16; n < 24 && pos <= code + size - 16; pos += 4)
     {
         if(*(u32 *)pos != 0xD8A103F9) continue;
 
@@ -155,7 +155,7 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 
     if(!n) return NULL;
 
-    for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos < code + size - 8; CFGU_GetConfigInfoBlk2_endPos += 4)
+    for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos <= code + size - 12; CFGU_GetConfigInfoBlk2_endPos += 4)
     {
         static const u32 CFGU_GetConfigInfoBlk2_endPattern[] = {0xE8BD8010, 0x00010082};
 
@@ -164,10 +164,12 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 
         if(cmp[0] != CFGU_GetConfigInfoBlk2_endPattern[0] || cmp[1] != CFGU_GetConfigInfoBlk2_endPattern[1]) continue;
 
-        *CFGUHandleOffset = *((u32 *)CFGU_GetConfigInfoBlk2_endPos + 2);
-
         for(u32 i = 0; i < n; i++)
-            if(possible[i] == *CFGUHandleOffset) return CFGU_GetConfigInfoBlk2_endPos;
+            if(possible[i] == cmp[2])
+        {
+            *CFGUHandleOffset = cmp[2];
+            return CFGU_GetConfigInfoBlk2_endPos;
+        }
 
         CFGU_GetConfigInfoBlk2_endPos += 4;
     }
@@ -180,12 +182,10 @@ static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CF
     u8 *CFGU_GetConfigInfoBlk2_startPos; //Let's find STMFD SP (there might be a NOP before, but nevermind)
 
     for(CFGU_GetConfigInfoBlk2_startPos = CFGU_GetConfigInfoBlk2_endPos - 4;
-        CFGU_GetConfigInfoBlk2_startPos >= code && *((u16 *)CFGU_GetConfigInfoBlk2_startPos + 1) != 0xE92D;
-        CFGU_GetConfigInfoBlk2_startPos -= 4);
+        *((u16 *)CFGU_GetConfigInfoBlk2_startPos + 1) != 0xE92D; CFGU_GetConfigInfoBlk2_startPos -= 4)
+        if(CFGU_GetConfigInfoBlk2_startPos < code + 4) return false;
 
-    if(CFGU_GetConfigInfoBlk2_startPos < code) return false;
-
-    for(u8 *languageBlkIdPos = code; languageBlkIdPos < code + size; languageBlkIdPos += 4)
+    for(u8 *languageBlkIdPos = code; languageBlkIdPos <= code + size - 4; languageBlkIdPos += 4)
     {
         if(*(u32 *)languageBlkIdPos != 0xA0002) continue;
 
@@ -225,7 +225,7 @@ static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CF
 
 static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
 {
-    for(u8 *cmdPos = code; cmdPos < code + size - 28; cmdPos += 4)
+    for(u8 *cmdPos = code; cmdPos <= code + size - 28; cmdPos += 4)
     {
         static const u32 cfgSecureInfoGetRegionCmdPattern[] = {0xEE1D0F70, 0xE3A00802};
 
@@ -250,44 +250,42 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
 
 static u32 findNearestStmfd(u8* code, u32 pos)
 {
-    while(pos > 0)
+    while(pos >= 4)
     {
-        if(*(u16 *)(code + pos + 2) == 0xE92D) return pos;
         pos -= 4;
+        if(*(u16 *)(code + pos + 2) == 0xE92D) return pos;
     }
 
-    return 0;
+    return 0xFFFFFFFF;
 }
 
 static u32 findFunctionCommand(u8* code, u32 size, u32 command)
 {
-    u32 func = 0;
+    u32 func;
 
-    for(u32 i = 0; !func && i <= size - 4; i += 4)
-        if(*(u32 *)(code + i) == command) func = i;
+    for(func = 4; *(u32 *)(code + func) != command; func += 4)
+        if(func > size - 8) return 0xFFFFFFFF;
 
     return findNearestStmfd(code, func);
 }
 
 static inline u32 findThrowFatalError(u8* code, u32 size)
 {
-    u32 connectToPort = 0;
+    u32 connectToPort;
 
-    for(u32 i = 4; !connectToPort && i <= size - 4; i += 4)
-        if(*(u32 *)(code + i) == 0xEF00002D) connectToPort = i - 4;
+    for(connectToPort = 0; *(u32 *)(code + connectToPort + 4) != 0xEF00002D; connectToPort += 4)
+        if(connectToPort > size - 12) return 0xFFFFFFFF;
 
-    if(!connectToPort) return 0;
+    u32 func = 0xFFFFFFFF;
 
-    u32 func = 0;
-
-    for(u32 i = 0; !func && i <= size - 4; i += 4)
+    for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
     {
         if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, connectToPort)) continue;
 
         func = findNearestStmfd(code, i);
 
-        for(u32 pos = func + 4; func != 0 && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
-            if(*(u32 *)(code + pos) == 0xE200167E) func = 0;
+        for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+            if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
     }
 
     return func;
@@ -341,7 +339,7 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
     char buf[8];
     u64 total;
 
-    if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) ret = false;
+    if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) goto exit;
 
     u32 i,
         j;
@@ -376,7 +374,7 @@ exit:
     return ret;
 }
 
-static bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
+static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a decrypted raw RomFS */
@@ -396,13 +394,13 @@ static bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
     u64 total;
     u32 magic;
 
-    if(R_FAILED(IFile_Read(&file, &total, &magic, 4)) || total != 4 || magic != 0x43465649) ret = false;
+    if(R_FAILED(IFile_Read(&file, &total, &magic, 4)) || total != 4 || magic != 0x43465649) goto exit;
 
     u32 fsOpenFileDirectly = findFunctionCommand(code, size, 0x08030204),
         fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000),
         throwFatalError = findThrowFatalError(code, size);
 
-    if(!fsOpenFileDirectly || !throwFatalError) goto exit;
+    if(fsOpenFileDirectly == 0xFFFFFFFF || throwFatalError == 0xFFFFFFFF) goto exit;
 
     //Setup the payload
     memcpy(code + throwFatalError, romfsredir_bin, romfsredir_bin_size);
@@ -415,7 +413,7 @@ static bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
     //Place the hooks
     *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, throwFatalError);
 
-    if(fsOpenLinkFile != 0)
+    if(fsOpenLinkFile != 0xFFFFFFFF)
     {
         *(u32 *)(code + fsOpenLinkFile) = 0xE3A03003; //mov r3, #3
         *(u32 *)(code + fsOpenLinkFile + 4) = MAKE_BRANCH(fsOpenLinkFile + 4, throwFatalError);
