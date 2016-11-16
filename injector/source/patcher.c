@@ -263,25 +263,25 @@ static u32 findFunctionCommand(u8* code, u32 size, u32 command)
 {
     u32 func = 0;
 
-    for(u32 i = 0; i < size && !func; i += 4)
+    for(u32 i = 0; !func && i <= size - 4; i += 4)
         if(*(u32 *)(code + i) == command) func = i;
 
-    return !func ? 0 : findNearestStmfd(code, func);
+    return findNearestStmfd(code, func);
 }
 
 static inline u32 findThrowFatalError(u8* code, u32 size)
 {
     u32 connectToPort = 0;
 
-    for(u32 i = 0; i < size && !connectToPort; i += 4)
+    for(u32 i = 4; !connectToPort && i <= size - 4; i += 4)
         if(*(u32 *)(code + i) == 0xEF00002D) connectToPort = i - 4;
 
     if(!connectToPort) return 0;
 
     u32 func = 0;
 
-    for(u32 i = 0; i < size && !func; i += 4)
-    {	
+    for(u32 i = 0; !func && i <= size - 4; i += 4)
+    {
         if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, connectToPort)) continue;
 
         func = findNearestStmfd(code, i);
@@ -333,23 +333,15 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
 
     if(R_FAILED(openLumaFile(&file, path))) return true;
 
-    bool ret;
+    bool ret = false;
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 6 || fileSize > 8)
-    {
-        ret = false;
-        goto exit;
-    }
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 6 || fileSize > 8) goto exit;
 
     char buf[8];
     u64 total;
 
-    if(R_FAILED(IFile_Read(&file, &total, buf, fileSize)))
-    {
-        ret = false;
-        goto exit;
-    }
+    if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) ret = false;
 
     u32 i,
         j;
@@ -396,33 +388,21 @@ static bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
 
     if(R_FAILED(openLumaFile(&file, path))) return true;
 
-    bool ret;
+    bool ret = false;
     u64 romfsSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &romfsSize)))
-    {
-        ret = false;
-        goto exit;
-    }
+    if(R_FAILED(IFile_GetSize(&file, &romfsSize))) goto exit;
 
     u64 total;
-    u32 header;
+    u32 magic;
 
-    if(R_FAILED(IFile_Read(&file, &total, &header, 4)) || total != 4 || header != 0x43465649)
-    {
-        ret = false;
-        goto exit;
-    }
+    if(R_FAILED(IFile_Read(&file, &total, &magic, 4)) || total != 4 || magic != 0x43465649) ret = false;
 
     u32 fsOpenFileDirectly = findFunctionCommand(code, size, 0x08030204),
         fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000),
         throwFatalError = findThrowFatalError(code, size);
 
-    if(!fsOpenFileDirectly || !throwFatalError)
-    {
-        ret = false;
-        goto exit;
-    }
+    if(!fsOpenFileDirectly || !throwFatalError) goto exit;
 
     //Setup the payload
     memcpy(code + throwFatalError, romfsredir_bin, romfsredir_bin_size);

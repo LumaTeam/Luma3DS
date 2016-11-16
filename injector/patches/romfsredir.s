@@ -10,7 +10,7 @@
 .arm
     ; fsOpenFileDirectly function will be redirected here.
     ; If the requested archive is not ROMFS, we'll return
-    ; to the original fucntion.
+    ; to the original function.
     openFileDirectlyHook:
         cmp r3, #3
         beq openRomfs
