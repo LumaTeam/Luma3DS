@@ -70,12 +70,12 @@
 .pool
 .align 4
 ; Part of these symbols will be set from outside
-    fsOpenFileDirectly  : .word 0x00000000
-    fsOpenSubFileCmd    : .word 0x08010100
-                          .word 0x00000000 ; File Offset
-                          .word 0x00000000 
-                          .word 0x00000000 ; File Size
-                          .word 0x00000000
-    romfsFileNameSize   : .word 0x00000000
-    romfsFileName       : .word 0x00000000 ; File DataPointer				 
+    fsOpenFileDirectly : .word 0x00000000
+    fsOpenSubFileCmd   : .word 0x08010100
+                         .word 0x00000000 ; File Offset
+                         .word 0x00000000 
+                         .word 0x00000000 ; File Size
+                         .word 0x00000000
+    romfsFileNameSize  : .word 0x00000000
+    romfsFileName      : .word 0x00000000 ; File DataPointer				 
 .close
