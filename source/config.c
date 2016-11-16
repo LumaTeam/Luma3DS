@@ -80,7 +80,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Use SysNAND FIRM if booting with R",
                                         "( ) Enable loading external FIRMs and modules",
                                         "( ) Use custom path",
-                                        "( ) Enable region/language emu. and ext. .code",
+                                        "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch SVC/service/archive/ARM9 access"
@@ -160,10 +160,12 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
-                                          "of patched code binaries for specific\n"
-                                          "games.\n\n"
+                                          "of patched code binaries and\n"
+                                          "custom RomFS for specific games.\n\n"
                                           "Also makes certain DLCs for\n"
                                           "out-of-region games work.\n\n"
+                                          "Enabling this requires the\n"
+                                          "archive patch to be applied.\n\n"
                                           "Refer to the wiki for instructions.",
 
                                           "Enable showing the current NAND/FIRM:\n\n"

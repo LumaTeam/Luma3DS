@@ -429,13 +429,13 @@ u32 patchArm11SvcAccessChecks(u32 *arm11SvcHandler, u32 *endPos)
     return 0;
 }
 
-u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
+u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space, bool patchGames)
 {
     /* We have to detour a function in the ARM11 kernel because builtin modules
        are compressed in memory and are only decompressed at runtime */
 
     //Check that we have enough free space
-    if(*(u32 *)(*freeK11Space + k11modules_bin_size - 4) != 0xFFFFFFFF) return 0;
+    if(*(u32 *)(*freeK11Space + k11modules_bin_size - 4) != 0xFFFFFFFF) return patchGames ? 1 : 0;
 
     //Look for the code that decompresses the .code section of the builtin modules
     const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};

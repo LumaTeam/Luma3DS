@@ -4,6 +4,7 @@
 #include "strings.h"
 #include "ifile.h"
 #include "CFWInfo.h"
+#include "../build/bundled.h"
 
 static CFWInfo info;
 
@@ -134,97 +135,6 @@ exit:
     IFile_Close(&file);
 }
 
-static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
-{
-    /* Here we look for "/luma/code_sections/[u64 titleID in hex, uppercase].bin"
-       If it exists it should be a decompressed binary code file */
-
-    char path[] = "/luma/code_sections/0000000000000000.bin";
-    progIdToStr(path + 35, progId);
-
-    IFile file;
-
-    if(R_FAILED(openLumaFile(&file, path))) return true;
-
-    bool ret;
-    u64 fileSize;
-
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize > size) ret = false;
-    else
-    {
-        u64 total;
-
-        ret = R_SUCCEEDED(IFile_Read(&file, &total, code, fileSize)) && total == fileSize;
-    }
-
-    IFile_Close(&file);
-
-    return ret;
-}
-
-static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
-{
-    /* Here we look for "/luma/locales/[u64 titleID in hex, uppercase].txt"
-       If it exists it should contain, for example, "EUR IT" */
-
-    char path[] = "/luma/locales/0000000000000000.txt";
-    progIdToStr(path + 29, progId);
-
-    IFile file;
-
-    if(R_FAILED(openLumaFile(&file, path))) return true;
-
-    bool ret;
-    u64 fileSize;
-
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 6 || fileSize > 8)
-    {
-        ret = false;
-        goto exit;
-    }
-
-    char buf[8];
-    u64 total;
-
-    if(R_FAILED(IFile_Read(&file, &total, buf, fileSize)))
-    {
-        ret = false;
-        goto exit;
-    }
-
-    u32 i,
-        j;
-
-    for(i = 0; i < 7; i++)
-    {
-        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
-
-        if(memcmp(buf, regions[i], 3) == 0)
-        {
-            *regionId = (u8)i;
-            break;
-        }
-    }
-
-    for(j = 0; j < 12; j++)
-    {
-        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
-
-        if(memcmp(buf + 4, languages[j], 2) == 0)
-        {
-            *languageId = (u8)j;
-            break;
-        }
-    }
-
-    ret = i != 7 && j != 12;
-
-exit:
-    IFile_Close(&file);
-
-    return ret;
-}
-
 static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 {
     /* HANS:
@@ -285,7 +195,6 @@ static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CF
 
             u8 *calledFunction = instr;
             u32 i = 0;
-            bool found;
 
             do
             {
@@ -307,7 +216,7 @@ static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CF
 
                 i++;
             }
-            while(i < 2 && !found && calledFunction[3] == 0xEA);
+            while(i < 2 && calledFunction[3] == 0xEA);
         }
     }
 
@@ -337,6 +246,214 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
             return;
         }
     }
+}
+
+static u32 findNearestStmfd(u8* code, u32 pos)
+{
+    while(pos > 0)
+    {
+        if(*(u16 *)(code + pos + 2) == 0xE92D) return pos;
+        pos -= 4;
+    }
+
+    return 0;
+}
+
+static u32 findFunctionCommand(u8* code, u32 size, u32 command)
+{
+    u32 func = 0;
+
+    for(u32 i = 0; i < size && !func; i += 4)
+        if(*(u32 *)(code + i) == command) func = i;
+
+    return !func ? 0 : findNearestStmfd(code, func);
+}
+
+static inline u32 findThrowFatalError(u8* code, u32 size)
+{
+    u32 connectToPort = 0;
+
+    for(u32 i = 0; i < size && !connectToPort; i += 4)
+        if(*(u32 *)(code + i) == 0xEF00002D) connectToPort = i - 4;
+
+    if(!connectToPort) return 0;
+
+    u32 func = 0;
+
+    for(u32 i = 0; i < size && !func; i += 4)
+    {	
+        if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, connectToPort)) continue;
+
+        func = findNearestStmfd(code, i);
+
+        for(u32 pos = func + 4; func != 0 && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+            if(*(u32 *)(code + pos) == 0xE200167E) func = 0;
+    }
+
+    return func;
+}
+
+static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
+{
+    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.bin"
+       If it exists it should be a decrypted and decompressed binary code file */
+
+    char path[] = "/luma/titles/0000000000000000/code.bin";
+    progIdToStr(path + 28, progId);
+
+    IFile file;
+
+    if(R_FAILED(openLumaFile(&file, path))) return true;
+
+    bool ret;
+    u64 fileSize;
+
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize > size) ret = false;
+    else
+    {
+        u64 total;
+
+        ret = R_SUCCEEDED(IFile_Read(&file, &total, code, fileSize)) && total == fileSize;
+    }
+
+    IFile_Close(&file);
+
+    return ret;
+}
+
+static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
+{
+    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/locale.txt"
+       If it exists it should contain, for example, "EUR IT" */
+
+    char path[] = "/luma/titles/0000000000000000/locale.txt";
+    progIdToStr(path + 28, progId);
+
+    IFile file;
+
+    if(R_FAILED(openLumaFile(&file, path))) return true;
+
+    bool ret;
+    u64 fileSize;
+
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 6 || fileSize > 8)
+    {
+        ret = false;
+        goto exit;
+    }
+
+    char buf[8];
+    u64 total;
+
+    if(R_FAILED(IFile_Read(&file, &total, buf, fileSize)))
+    {
+        ret = false;
+        goto exit;
+    }
+
+    u32 i,
+        j;
+
+    for(i = 0; i < 7; i++)
+    {
+        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
+
+        if(memcmp(buf, regions[i], 3) == 0)
+        {
+            *regionId = (u8)i;
+            break;
+        }
+    }
+
+    for(j = 0; j < 12; j++)
+    {
+        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
+
+        if(memcmp(buf + 4, languages[j], 2) == 0)
+        {
+            *languageId = (u8)j;
+            break;
+        }
+    }
+
+    ret = i != 7 && j != 12;
+
+exit:
+    IFile_Close(&file);
+
+    return ret;
+}
+
+static bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
+{
+    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
+       If it exists it should be a decrypted raw RomFS */
+
+    char path[] = "/luma/titles/0000000000000000/romfs";
+    progIdToStr(path + 28, progId);
+
+    IFile file;
+
+    if(R_FAILED(openLumaFile(&file, path))) return true;
+
+    bool ret;
+    u64 romfsSize;
+
+    if(R_FAILED(IFile_GetSize(&file, &romfsSize)))
+    {
+        ret = false;
+        goto exit;
+    }
+
+    u64 total;
+    u32 header;
+
+    if(R_FAILED(IFile_Read(&file, &total, &header, 4)) || total != 4 || header != 0x43465649)
+    {
+        ret = false;
+        goto exit;
+    }
+
+    u32 fsOpenFileDirectly = findFunctionCommand(code, size, 0x08030204),
+        fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000),
+        throwFatalError = findThrowFatalError(code, size);
+
+    if(!fsOpenFileDirectly || !throwFatalError)
+    {
+        ret = false;
+        goto exit;
+    }
+
+    //Setup the payload
+    memcpy(code + throwFatalError, romfsredir_bin, romfsredir_bin_size);
+    *((u32 *)(code + throwFatalError + 0x10)) = *(u32 *)(code + fsOpenFileDirectly);
+    *((u32 *)(code + throwFatalError + romfsredir_bin_size - 0x08)) = sizeof(path);
+    *((u64 *)(code + throwFatalError + romfsredir_bin_size - 0x10)) = romfsSize - 0x1000ULL;
+    *((u64 *)(code + throwFatalError + romfsredir_bin_size - 0x18)) = 0x1000ULL;
+    *((u32 *)(code + throwFatalError + romfsredir_bin_size - 0x20)) = fsOpenFileDirectly + 0x100000;
+
+    //Place the hooks
+    *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, throwFatalError);
+
+    if(fsOpenLinkFile != 0)
+    {
+        *(u32 *)(code + fsOpenLinkFile) = 0xE3A03003; //mov r3, #3
+        *(u32 *)(code + fsOpenLinkFile + 4) = MAKE_BRANCH(fsOpenLinkFile + 4, throwFatalError);
+        memcpy(code + fsOpenLinkFile + 8, path, sizeof(path));
+        *(u32 *)(code + throwFatalError + romfsredir_bin_size - 4) = fsOpenLinkFile + 8 + 0x100000; //String pointer
+    }
+    else
+    {
+        memcpy(code + throwFatalError + romfsredir_bin_size, path, 0x30);
+        *(u32 *)(code + throwFatalError + romfsredir_bin_size - 4) = throwFatalError + romfsredir_bin_size + 0x100000; //String pointer
+    }
+
+    ret = true;
+
+exit:
+    IFile_Close(&file);
+
+    return ret;
 }
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
@@ -575,12 +692,13 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            ) != 3) goto error;
     }
 
-    else if(CONFIG(USELANGEMUANDCODE) && (u32)((progId & 0xFFFFFFF000000000LL) >> 0x24) == 0x0004000)
+    else if(CONFIG(PATCHGAMES) && (u32)((progId & 0xFFFFFFF000000000LL) >> 0x24) == 0x0004000)
     {
         u8 regionId = 0xFF,
            languageId;
-        if(!loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !loadTitleCodeSection(progId, code, size)) goto error;
+
+        if(!loadTitleCodeSection(progId, code, size) ||
+           !loadTitleLocaleConfig(progId, &regionId, &languageId)) goto error;
 
         if(regionId != 0xFF)
         {
@@ -592,6 +710,8 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 
             patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
         }
+
+        if(!patchRomfsRedirection(progId, code, size)) goto error;
     }
 
     return;

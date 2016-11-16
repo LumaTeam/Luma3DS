@@ -54,7 +54,7 @@ u32 patchKernel9Panic(u8 *pos, u32 size);
 u32 patchKernel11Panic(u8 *pos, u32 size);
 u32 patchP9AccessChecks(u8 *pos, u32 size);
 u32 patchArm11SvcAccessChecks(u32 *arm11SvcHandler, u32 *endPos);
-u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
+u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space, bool patchGames);
 u32 patchUnitInfoValueSet(u8 *pos, u32 size);
 u32 patchLgySignatureChecks(u8 *pos, u32 size);
 u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size);

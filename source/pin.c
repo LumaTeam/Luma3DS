@@ -93,7 +93,8 @@ void newPin(bool allowSkipping, u32 pinMode)
 
         if(!pressed) continue;
 
-        enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
+        //Add character to password
+        enteredPassword[cnt] = (u8)pinKeyToLetter(pressed);
 
         //Visualize character on screen
         drawCharacter(enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
@@ -200,7 +201,8 @@ bool verifyPin(u32 pinMode)
 
         if(!pressed) continue;
 
-        enteredPassword[cnt] = (u8)pinKeyToLetter(pressed); //Add character to password
+        //Add character to password
+        enteredPassword[cnt] = (u8)pinKeyToLetter(pressed);
 
         //Visualize character on screen
         drawCharacter((char)enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);

@@ -14,6 +14,7 @@ OC := arm-none-eabi-objcopy
 name := $(shell basename $(CURDIR))
 
 dir_source := source
+dir_patches := patches
 dir_build := build
 dir_out := ../$(dir_build)
 
@@ -31,6 +32,14 @@ LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS)
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
 
+bundled = $(dir_build)/romfsredir.bin.o
+
+define bin2o
+	bin2s $< | $(AS) -o $(@)
+	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $(dir_build)/bundled.h
+	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $(dir_build)/bundled.h
+endef
+
 .PHONY: all
 all: $(dir_out)/$(name).bin
 
@@ -38,11 +47,22 @@ all: $(dir_out)/$(name).bin
 clean:
 	@rm -rf $(dir_build)
 
+.PRECIOUS: $(dir_build)/%.bin
+
+$(dir_build):
+	@mkdir -p "$@"
+
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
 
-$(dir_build)/$(name).elf: $(objects)
+$(dir_build)/$(name).elf: $(bundled) $(objects)
 	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
+
+$(dir_build)/%.bin.o: $(dir_build)/%.bin
+	@$(bin2o)
+
+$(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
+	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 

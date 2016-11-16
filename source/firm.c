@@ -195,11 +195,18 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         ret += patchKernel9Panic(arm9Section, kernel9Size);
     }
 
-    if(CONFIG(PATCHACCESS))
+    bool patchAccess = CONFIG(PATCHACCESS),
+         patchGames = CONFIG(PATCHGAMES);
+
+    if(patchAccess || patchGames)
     {
-        ret += patchArm11SvcAccessChecks(arm11SvcHandler, (u32 *)(arm11Section1 + firm->section[1].size));
-        ret += patchK11ModuleChecks(arm11Section1, firm->section[1].size, &freeK11Space);
-        ret += patchP9AccessChecks(process9Offset, process9Size);
+        ret += patchK11ModuleChecks(arm11Section1, firm->section[1].size, &freeK11Space, patchGames);
+
+        if(patchAccess)
+        {
+            ret += patchArm11SvcAccessChecks(arm11SvcHandler, (u32 *)(arm11Section1 + firm->section[1].size));
+            ret += patchP9AccessChecks(process9Offset, process9Size);
+        }
     }
 
     return ret;
