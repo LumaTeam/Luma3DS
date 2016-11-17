@@ -39,13 +39,14 @@ static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, in
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
-static Result openLumaFile(IFile *file, const char *path)
+static u32 openLumaFile(IFile *file, const char *path)
 {
     Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
 
-    if((u32)res == 0xC88044AB) res = fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ); //Returned if SD is not mounted
+    if(R_SUCCEEDED(res)) return ARCHIVE_SDMC;
 
-    return res;
+    //Returned if SD is not mounted
+    return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)) ? ARCHIVE_NAND_RW : 0;
 }
 
 static inline void loadCFWInfo(void)
@@ -89,7 +90,7 @@ static inline void loadCustomVerString(u16 *out, u32 *verStringSize, u32 current
 
     IFile file;
 
-    if(R_FAILED(openLumaFile(&file, paths[currentNand]))) return;
+    if(!openLumaFile(&file, paths[currentNand])) return;
 
     u64 fileSize;
 
@@ -301,7 +302,7 @@ static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     IFile file;
 
-    if(R_FAILED(openLumaFile(&file, path))) return true;
+    if(!openLumaFile(&file, path)) return true;
 
     bool ret;
     u64 fileSize;
@@ -329,7 +330,7 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
 
     IFile file;
 
-    if(R_FAILED(openLumaFile(&file, path))) return true;
+    if(!openLumaFile(&file, path)) return true;
 
     bool ret = false;
     u64 fileSize;
@@ -383,8 +384,9 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
     progIdToStr(path + 28, progId);
 
     IFile file;
+    u32 archive = openLumaFile(&file, path);
 
-    if(R_FAILED(openLumaFile(&file, path))) return true;
+    if(!archive) return true;
 
     bool ret = false;
     u64 romfsSize;
@@ -397,33 +399,33 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
     if(R_FAILED(IFile_Read(&file, &total, &magic, 4)) || total != 4 || magic != 0x43465649) goto exit;
 
     u32 fsOpenFileDirectly = findFunctionCommand(code, size, 0x08030204),
-        fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000),
         throwFatalError = findThrowFatalError(code, size);
 
     if(fsOpenFileDirectly == 0xFFFFFFFF || throwFatalError == 0xFFFFFFFF) goto exit;
 
     //Setup the payload
-    memcpy(code + throwFatalError, romfsredir_bin, romfsredir_bin_size);
-    *((u32 *)(code + throwFatalError + 0x10)) = *(u32 *)(code + fsOpenFileDirectly);
-    *((u32 *)(code + throwFatalError + romfsredir_bin_size - 0x08)) = sizeof(path);
-    *((u64 *)(code + throwFatalError + romfsredir_bin_size - 0x10)) = romfsSize - 0x1000ULL;
-    *((u64 *)(code + throwFatalError + romfsredir_bin_size - 0x18)) = 0x1000ULL;
-    *((u32 *)(code + throwFatalError + romfsredir_bin_size - 0x20)) = fsOpenFileDirectly + 0x100000;
+    u8 *payload = code + throwFatalError;
+    memcpy(payload, romfsredir_bin, romfsredir_bin_size);
+    memcpy(payload + romfsredir_bin_size, path, sizeof(path));
+    *(u32 *)(payload + 0xC) = *(u32 *)(code + fsOpenFileDirectly);
+
+    u32 *payloadSymbols = (u32 *)(payload + romfsredir_bin_size - 0x24);
+    payloadSymbols[0] = 0x100000 + fsOpenFileDirectly + 4;
+    *(u64 *)(payloadSymbols + 2) = 0x1000ULL;
+    *(u64 *)(payloadSymbols + 4) = romfsSize - 0x1000ULL;
+    payloadSymbols[6] = archive;
+    payloadSymbols[7] = sizeof(path);
+    payloadSymbols[8] = 0x100000 + throwFatalError + romfsredir_bin_size; //String pointer
 
     //Place the hooks
     *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, throwFatalError);
+
+    u32 fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000);
 
     if(fsOpenLinkFile != 0xFFFFFFFF)
     {
         *(u32 *)(code + fsOpenLinkFile) = 0xE3A03003; //mov r3, #3
         *(u32 *)(code + fsOpenLinkFile + 4) = MAKE_BRANCH(fsOpenLinkFile + 4, throwFatalError);
-        memcpy(code + fsOpenLinkFile + 8, path, sizeof(path));
-        *(u32 *)(code + throwFatalError + romfsredir_bin_size - 4) = fsOpenLinkFile + 8 + 0x100000; //String pointer
-    }
-    else
-    {
-        memcpy(code + throwFatalError + romfsredir_bin_size, path, 0x30);
-        *(u32 *)(code + throwFatalError + romfsredir_bin_size - 4) = throwFatalError + romfsredir_bin_size + 0x100000; //String pointer
     }
 
     ret = true;
@@ -670,7 +672,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            ) != 3) goto error;
     }
 
-    else if(CONFIG(PATCHGAMES) && (u32)((progId & 0xFFFFFFF000000000LL) >> 0x24) == 0x0004000)
+    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
     {
         u8 regionId = 0xFF,
            languageId;

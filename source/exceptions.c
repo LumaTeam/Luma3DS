@@ -123,20 +123,20 @@ void detectAndProcessExceptionDumps(void)
     {
         if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 4)
         {
-        u32 instr = *(vu32 *)(stackDump - 4);
-        if(instr == 0xE12FFF7E) drawString(specialExceptions[0], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
-        else if(instr == 0xEF00003C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+            u32 instr = *(vu32 *)(stackDump - 4);
+            if(instr == 0xE12FFF7E) drawString(specialExceptions[0], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+            else if(instr == 0xEF00003C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
         }
         else if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 2)
         {
-        u16 instr = *(vu16 *)(stackDump - 2);
-        if(instr == 0xDF3C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
+            u16 instr = *(vu16 *)(stackDump - 2);
+            if(instr == 0xDF3C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
         }
     }
 
     if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
     {
-        char processName[] = "Current process:     ";
+        char processName[] = "Current process:         ";
         memcpy(processName + sizeof(processName) - 9, (void *)additionalData, 8);
         posY = drawString(processName, true, 10, posY + SPACING_Y, COLOR_WHITE);
     }
@@ -151,9 +151,9 @@ void detectAndProcessExceptionDumps(void)
 
         if(i != 16 || dumpHeader->processor != 9)
         {
-        drawString(registerNames[i + 1], true, 10 + 22 * SPACING_X, posY, COLOR_WHITE);
-        hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8, true);
-        drawString(hexString, true, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
+            drawString(registerNames[i + 1], true, 10 + 22 * SPACING_X, posY, COLOR_WHITE);
+            hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8, true);
+            drawString(hexString, true, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
         }
     }
 
@@ -173,9 +173,9 @@ void detectAndProcessExceptionDumps(void)
 
         for(u32 i = 0; i < 8 && stackDump < additionalData; i++, stackDump++)
         {
-        char byteString[] = "00";
-        hexItoa(*stackDump, byteString, 2, false);
-        drawString(byteString, false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
+            char byteString[] = "00";
+            hexItoa(*stackDump, byteString, 2, false);
+            drawString(byteString, false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE);
         }
     }
 
