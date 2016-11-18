@@ -436,6 +436,40 @@ exit:
     return ret;
 }
 
+/*
+** This patch will fix the error 022-2812
+** Adapted from the post of PF2M
+** https://gbatemp.net/threads/release-miiverse-custom-image-tool.415505/page-69#post-6787736
+*/
+static inline void antibanPatch(u8 *code, u32 size)
+{
+    static const char *deviceID = "X-Nintendo-Device-ID";
+    static const char *fpdVersion = "X-Nintendo-FPD-Version";
+    static const char *apiVersion = "X-Nintendo-API-Version";
+    static const char *deviceIDPatched = "X-Nintendo-ZZZZZZ-ID";
+    static const char *apiVersionPatched = "1234";
+
+    char    *position;
+    u32     patternSize;
+
+    patternSize = strnlen(deviceID, 30);
+    position = (char *)memsearch(code, deviceID, size, patternSize);
+    if (position == NULL) goto error;
+    strcpy(position, deviceIDPatched);
+    patternSize = strnlen(fpdVersion, 30);
+    position = (char *)memsearch(code, fpdVersion, size, patternSize);
+    if (position == NULL) goto error;
+    strcpy(position, deviceID);
+    patternSize = strnlen(apiVersion, 30);
+    position = (char *)memsearch(code, apiVersion, size, patternSize);
+    if (position == NULL) goto error;
+    position += patternSize;
+    position += 2;
+    strcpy(position, apiVersionPatched);
+error:
+    return;
+}
+
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 {
     loadCFWInfo();
@@ -670,6 +704,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                patch,
                sizeof(patch), 3
            ) != 3) goto error;
+    }
+
+    else if (progId == 0x0004013000003802LL) // ACT Module
+    {
+        antibanPatch(code, size);
     }
 
     if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)

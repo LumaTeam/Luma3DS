@@ -4,3 +4,4 @@
 
 size_t strnlen(const char *string, size_t maxlen);
 void progIdToStr(char *strEnd, u64 progId);
+void strcpy(char *dst, const char *src);

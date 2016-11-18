@@ -18,3 +18,10 @@ void progIdToStr(char *strEnd, u64 progId)
         progId >>= 4;
     }
 }
+
+void strcpy(char *dst, const char *src)
+{
+    while (*src)
+        *dst++ = *src++;
+    *dst = '\0';
+}
