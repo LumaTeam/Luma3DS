@@ -292,6 +292,65 @@ static inline u32 findThrowFatalError(u8* code, u32 size)
     return func;
 }
 
+static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
+{
+    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.ips"
+       If it exists it should be an IPS format patch */
+
+    char path[] = "/luma/titles/0000000000000000/code.ips";
+    progIdToStr(path + 28, progId);
+
+    IFile file;
+
+    if(!openLumaFile(&file, path)) return true;
+
+    bool ret = false;
+    u8 buffer[5];
+    u64 total;
+
+    if(R_FAILED(IFile_Read(&file, &total, buffer, 5)) || total != 5 || memcmp(buffer, "PATCH", 5) != 0) goto exit;
+
+    while(R_SUCCEEDED(IFile_Read(&file, &total, buffer, 3)) && total == 3)
+    {
+        if(memcmp(buffer, "EOF", 3) == 0)
+        {
+            ret = true;
+            break;
+        }
+
+        u32 offset = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
+
+        if(R_FAILED(IFile_Read(&file, &total, buffer, 2)) || total != 2) break;
+
+        u32 patchSize = (buffer[0] << 8) | buffer[1];
+
+        if(!patchSize)
+        {
+            if(R_FAILED(IFile_Read(&file, &total, buffer, 2)) || total != 2) break;
+
+            u32 rleSize = (buffer[0] << 8) | buffer[1];
+
+            if(offset + rleSize > size) break;
+
+            if(R_FAILED(IFile_Read(&file, &total, buffer, 1)) || total != 1) break;
+
+            for(u32 i = 0; i < rleSize; i++)
+                code[offset + i] = buffer[0];
+
+            continue;
+        }
+
+        if(offset + patchSize > size) break;
+
+        if(R_FAILED(IFile_Read(&file, &total, code + offset, patchSize)) || total != patchSize) break;
+    }
+
+exit:
+    IFile_Close(&file);
+
+    return ret;
+}
+
 static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.bin"
@@ -672,13 +731,15 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            ) != 3) goto error;
     }
 
-    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
+    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFCDULL) == 0x00040000)
     {
         u8 regionId = 0xFF,
            languageId;
 
         if(!loadTitleCodeSection(progId, code, size) ||
-           !loadTitleLocaleConfig(progId, &regionId, &languageId)) goto error;
+           !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
+           !patchRomfsRedirection(progId, code, size) ||
+           !applyCodeIpsPatch(progId, code, size)) goto error;
 
         if(regionId != 0xFF)
         {
@@ -690,8 +751,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 
             patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
         }
-
-        if(!patchRomfsRedirection(progId, code, size)) goto error;
     }
 
     return;
