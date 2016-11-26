@@ -731,7 +731,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            ) != 3) goto error;
     }
 
-    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFCDULL) == 0x00040000)
+    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
     {
         u8 regionId = 0xFF,
            languageId;
