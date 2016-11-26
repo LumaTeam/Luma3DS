@@ -127,7 +127,7 @@ void detectAndProcessExceptionDumps(void)
             if(instr == 0xE12FFF7E) drawString(specialExceptions[0], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
             else if(instr == 0xEF00003C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);
         }
-        else if((regs[16] & 0x20) == 1 && dumpHeader->codeDumpSize >= 2)
+        else if((regs[16] & 0x20) != 0 && dumpHeader->codeDumpSize >= 2)
         {
             u16 instr = *(vu16 *)(stackDump - 2);
             if(instr == 0xDF3C) drawString(specialExceptions[1], true, 10 + 32 * SPACING_X, posY, COLOR_WHITE);

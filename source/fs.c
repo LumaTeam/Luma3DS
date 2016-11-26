@@ -60,10 +60,9 @@ bool mountFs(bool isSd, bool switchToCtrNand)
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
+    u32 ret = 0;
 
-    if(f_open(&file, path, FA_READ) != FR_OK) return 0;
-
-    u32 ret;
+    if(f_open(&file, path, FA_READ) != FR_OK) return ret;
 
     u32 size = f_size(&file);
     if(dest == NULL) ret = size;
@@ -262,11 +261,11 @@ void payloadMenu(void)
 
 u32 firmRead(void *dest, u32 firmType)
 {
-    const char *firmFolders[][2] = {{ "00000002", "20000002" },
-                                    { "00000102", "20000102" },
-                                    { "00000202", "20000202" },
-                                    { "00000003", "20000003" },
-                                    { "00000001", "20000001" }};
+    const char *firmFolders[][2] = {{"00000002", "20000002"},
+                                    {"00000102", "20000102"},
+                                    {"00000202", "20000202"},
+                                    {"00000003", "20000003"},
+                                    {"00000001", "20000001"}};
 
     char path[48] = "1:/title/00040138/";
     concatenateStrings(path, firmFolders[firmType][ISN3DS ? 1 : 0]);
