@@ -57,7 +57,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
             case 2:
                 nandOffset = roundedMinsizes[ISN3DS ? 1 : 0]; //"Minsize" layout
                 break;
-            default:
+            case 0:
                 nandOffset = *nandType == FIRMWARE_EMUNAND ? 0 : (nandSize > 0x200000 ? 0x400000 : 0x200000); //"Legacy" layout
                 break;
         }

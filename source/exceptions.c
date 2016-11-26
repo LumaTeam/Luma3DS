@@ -179,12 +179,11 @@ void detectAndProcessExceptionDumps(void)
         }
     }
 
-    char path[36];
-    char fileName[] = "crash_dump_00000000.dmp";
-    const char *pathFolder = dumpHeader->processor == 9 ? "dumps/arm9" : "dumps/arm11";
+    char path[36] = "dumps/",
+         fileName[] = "crash_dump_00000000.dmp";
 
-    findDumpFile(pathFolder, fileName);
-    memcpy(path, pathFolder, strlen(pathFolder) + 1);
+    concatenateStrings(path, dumpHeader->processor == 9 ? "arm9" : "arm11");
+    findDumpFile(path, fileName);
     concatenateStrings(path, "/");
     concatenateStrings(path, fileName);
 
