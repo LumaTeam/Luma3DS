@@ -4,10 +4,7 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-CC := arm-none-eabi-gcc
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-OC := arm-none-eabi-objcopy
+include $(DEVKITARM)/base_tools
 
 name := $(shell basename $(CURDIR))
 
@@ -31,7 +28,7 @@ clean:
 	@rm -rf $(dir_build)
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
-	$(OC) -S -O binary $< $@
+	$(OBJCOPY) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^

@@ -4,10 +4,7 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-CC := arm-none-eabi-gcc
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-OC := arm-none-eabi-objcopy
+include $(DEVKITARM)/base_tools
 
 dir_source := source
 dir_diffs := diffs
@@ -61,7 +58,7 @@ $(dir_out)/mset/$(name).nds:
 	@mv $(dir_cakesrop)/CakesROP.nds $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
-	$(OC) -S -O binary $< $@
+	$(OBJCOPY) -S -O binary $< $@
 
 $(dir_build)/main.elf: $(objects) ../$(dir_build)/loader.bin.o
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
