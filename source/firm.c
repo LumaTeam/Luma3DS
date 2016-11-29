@@ -364,7 +364,7 @@ void launchFirm(FirmwareType firmType, bool loadFromStorage)
 {
     //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs
     u32 sectionNum;
-    if(firmType == NATIVE_FIRM || (loadFromStorage && firmType != SAFE_FIRM && firmType != NATIVE_FIRM1X2X))
+    if(firmType == NATIVE_FIRM || (loadFromStorage && (firmType == TWL_FIRM || firmType == AGB_FIRM)))
     {
         copySection0AndInjectSystemModules(firmType, loadFromStorage);
         sectionNum = 1;
