@@ -256,7 +256,7 @@ void payloadMenu(void)
     }
 
     while(HID_PAD & MENU_BUTTONS);
-    wait(false, 2ULL);
+    wait(2000ULL);
 }
 
 u32 firmRead(void *dest, u32 firmType)

@@ -148,7 +148,7 @@ void main(void)
         if(pinExists && !shouldLoadConfigMenu)
         {
             while(HID_PAD & PIN_BUTTONS);
-            wait(false, 2ULL);
+            wait(2000ULL);
         }
 
         goto boot;

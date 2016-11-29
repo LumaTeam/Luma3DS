@@ -393,5 +393,5 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     else if(oldPinStatus) fileDelete(PIN_FILE);
 
     while(HID_PAD & PIN_BUTTONS);
-    wait(false, 2ULL);
+    wait(2000ULL);
 }

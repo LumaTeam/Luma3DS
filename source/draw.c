@@ -52,7 +52,7 @@ bool loadSplash(void)
     if(!isTopSplashValid && !isBottomSplashValid) return false;
 
     swapFramebuffers(true);
-    wait(false, 3ULL);
+    wait(3000ULL);
 
     return true;
 }
