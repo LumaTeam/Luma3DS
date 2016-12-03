@@ -22,7 +22,7 @@ dir_build := build
 dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -106,4 +106,3 @@ $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-include $(call rwildcard, $(dir_build), *.d)

@@ -13,7 +13,7 @@ dir_build := build
 dir_out := ../$(dir_build)
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS  := -Wall -Wextra -mthumb $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostdlib
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -42,4 +42,3 @@ $(dir_build)/%.o: $(dir_source)/%.c
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-include $(call rwildcard, $(dir_build), *.d)
