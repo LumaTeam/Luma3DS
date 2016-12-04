@@ -15,7 +15,7 @@ dir_build := build
 dir_out := ../out
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
 FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Aurora Wright/TuxSH" --no-print-directory
 ROPFLAGS := DATNAME=$(name).dat DISPNAME=$(name) GRAPHICS=../graphics/
@@ -72,4 +72,3 @@ $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-include $(call rwildcard, $(dir_build), *.d)
