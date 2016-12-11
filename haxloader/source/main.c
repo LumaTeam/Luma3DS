@@ -43,13 +43,13 @@ void main(void)
 
             if(pathSize > 5 && pathSize < 58)
             {
-                char path[pathSize + 1];
+                char path[58];
                 unsigned int read;
                 f_read(&pathFile, path, pathSize, &read);
                 if(path[pathSize - 1] == 0xA) pathSize--;
                 if(path[pathSize - 1] == 0xD) pathSize--;
 
-                if(pathSize > 5 && pathSize < 56 && path[0] == '/' && memcmp(&path[pathSize - 4], ".bin", 4) == 0)
+                if(pathSize > 5 && pathSize < 56 && path[0] == '/' && memcmp(path + pathSize - 4, ".bin", 4) == 0)
                 {
                     path[pathSize] = 0;
                     foundPayload = f_open(&payload, path, FA_READ) == FR_OK;
