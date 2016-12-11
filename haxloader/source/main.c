@@ -43,7 +43,7 @@ void main(void)
 
             if(pathSize > 5 && pathSize < 58)
             {
-                char path[58];
+                char path[57];
                 unsigned int read;
                 f_read(&pathFile, path, pathSize, &read);
                 if(path[pathSize - 1] == 0xA) pathSize--;

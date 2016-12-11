@@ -50,7 +50,7 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 +		fseek(p , 0, SEEK_END);
 +		psize = ftell(p);
 +		if (psize > 5 && psize < 58) {
-+			char path[58];
++			char path[57];
 +
 +			fseek(p, 0, SEEK_SET);
 +			u32 bytes_read = fread(path, 1, psize, p);

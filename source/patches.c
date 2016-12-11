@@ -38,19 +38,18 @@
 static inline void pathChanger(u8 *pos)
 {
     const char *pathFile = "path.txt";
-
-    u32 pathSize = getFileSize(pathFile);
-
-    if(pathSize < 6 || pathSize > 57) return;
-
     u8 path[57];
-    fileRead(path, pathFile, pathSize);
+
+    u32 pathSize = fileRead(path, pathFile, sizeof(path));
+
+    if(pathSize < 6) return;
+
     if(path[pathSize - 1] == 0xA) pathSize--;
     if(path[pathSize - 1] == 0xD) pathSize--;
 
-    if(pathSize < 6 || pathSize > 57 || path[0] != '/' || memcmp(path + pathSize - 4, ".bin", 4) != 0) return;
+    if(pathSize < 6 || pathSize > 55 || path[0] != '/' || memcmp(path + pathSize - 4, ".bin", 4) != 0) return;
 
-    u16 finalPath[58];
+    u16 finalPath[56];
     for(u32 i = 0; i < pathSize; i++)
         finalPath[i] = (u16)path[i];
 
