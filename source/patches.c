@@ -50,12 +50,14 @@ static inline void pathChanger(u8 *pos)
 
     if(pathSize < 6 || pathSize > 57 || path[0] != '/' || memcmp(&path[pathSize - 4], ".bin", 4) != 0) return;
 
-    u16 finalPath[pathSize];
+    u16 finalPath[pathSize + 1];
     for(u32 i = 0; i < pathSize; i++)
         finalPath[i] = (u16)path[i];
 
+    finalPath[pathSize] = 0;
+
     u8 *posPath = memsearch(pos, u"sd", reboot_bin_size, 4) + 0xA;
-    memcpy(posPath, finalPath, pathSize * 2);
+    memcpy(posPath, finalPath, (pathSize + 1) * 2);
 }
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
