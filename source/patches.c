@@ -43,14 +43,14 @@ static inline void pathChanger(u8 *pos)
 
     if(pathSize < 6 || pathSize > 57) return;
 
-    u8 path[pathSize];
+    u8 path[57];
     fileRead(path, pathFile, pathSize);
     if(path[pathSize - 1] == 0xA) pathSize--;
     if(path[pathSize - 1] == 0xD) pathSize--;
 
     if(pathSize < 6 || pathSize > 57 || path[0] != '/' || memcmp(&path[pathSize - 4], ".bin", 4) != 0) return;
 
-    u16 finalPath[pathSize + 1];
+    u16 finalPath[58];
     for(u32 i = 0; i < pathSize; i++)
         finalPath[i] = (u16)path[i];
 

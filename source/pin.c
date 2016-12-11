@@ -155,7 +155,7 @@ bool verifyPin(u32 pinMode)
 
     if(messageSize > 0 && messageSize <= 800)
     {
-        char message[messageSize + 1];
+        char message[801];
 
         if(fileRead(message, messageFile, messageSize) == messageSize)
         {
