@@ -739,15 +739,15 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                         patch[] = {
             0x00, 0x00, 0x00, 0x00
         };
-		
-		//Patch DLP region checks
+
+        //Patch DLP region checks
         if(!patchMemory(code, size,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
                 sizeof(patch), 1
             )) goto error;
-	}
+    }
    
     if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
     {
