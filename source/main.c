@@ -91,8 +91,9 @@ void main(void)
     firmType = NATIVE_FIRM;
     isA9lhInstalled = ISA9LH;
 
-    //Get pressed buttons
-    u32 pressed = HID_PAD;
+
+    //Get pressed buttons only if chainloading/boot menus aren't disabled
+    u32 pressed = CONFIG(KECMENU) ? 0 : HID_PAD;
 
     //Save old options and begin saving the new boot configuration
     configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
