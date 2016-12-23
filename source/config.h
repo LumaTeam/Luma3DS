@@ -56,7 +56,9 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    KECPATCH,
+    KECMENU
 };
 
 typedef enum ConfigurationStatus
