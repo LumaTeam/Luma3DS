@@ -85,7 +85,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch SVC/service/archive/ARM9 access",
                                         "( ) Kecleon: Disable Signature/TWL patches",
-                                        "( ) Kecleon: Ignore all Button Presses on boot."
+                                        "( ) Kecleon: Ignore all Button Presses on boot.",
+                                        "( ) Kecleon: Save config.bin in CTRNAND."
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -195,7 +196,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "This disables patches that can give\n"
                                           "away this 3DS is running CFW,\n"
                                           "such as out-of-region cartridges.\n"
-                                          "Specifically this disables signature,\n"
+                                          "Specifically this disables Signature,\n"
                                           "TWL and Flashcart patches.",
                                           "This makes Luma3DS ignore all Button\n"
                                           "Presses on boot, hiding chainloading\n"
@@ -205,7 +206,10 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "to re-enable chainloading and\n"
                                           "startup menus.\n"
                                           "Also note that config.bin may be\n"
-                                          "located on your CTRNAND in '/rw/luma'."
+                                          "located on your CTRNAND in '/rw/luma'.\n"
+                                          "Use GodMode9 to delete it.",
+                                          "Save configuration file in CTRNAND\n"
+                                          "at '/rw/luma/config.bin'."
                                        };
 
     struct multiOption {
@@ -229,6 +233,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     } singleOptions[] = {
         { .visible = isSdMode },
         { .visible = isSdMode },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },
