@@ -102,6 +102,8 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
@@ -478,6 +480,8 @@ u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 
 u32 patchLgySignatureChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
@@ -494,6 +498,8 @@ u32 patchLgySignatureChecks(u8 *pos, u32 size)
 
 u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0x20, 0xF6, 0xE7, 0x7F};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
@@ -508,6 +514,8 @@ u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
 
 u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
@@ -522,6 +530,8 @@ u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
 
 u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
@@ -536,6 +546,8 @@ u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
 
 u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0x25, 0x20, 0x00, 0x0E};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
@@ -556,6 +568,8 @@ u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 
 u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0x06, 0xF0, 0xA0, 0xFD};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
@@ -570,6 +584,8 @@ u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
 
 u32 patchTwlShaHashChecks(u8 *pos, u32 size)
 {
+    if (CONFIG(KECPATCH)) return 0;
+
     const u8 pattern[] = {0x10, 0xB5, 0x14, 0x22};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
