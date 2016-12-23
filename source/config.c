@@ -83,7 +83,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Patch SVC/service/archive/ARM9 access"
+                                        "( ) Patch SVC/service/archive/ARM9 access",
+                                        "( ) Kecleon: Disable giveaway patches",
+                                        "( ) Kecleon: Hide all boot menus"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -190,6 +192,10 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "9.3 and 10.4.\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
+                                          "Disable patches that can giveaway that\n"
+                                          "this 3DS is running custom firmware.\n"
+                                          "This includes signature checks and twl\n"
+                                          "checks."
                                        };
 
     struct multiOption {
@@ -213,6 +219,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     } singleOptions[] = {
         { .visible = isSdMode },
         { .visible = isSdMode },
+        { .visible = true },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },
