@@ -6,7 +6,7 @@ endif
 
 include $(DEVKITARM)/base_tools
 
-name := Luma3DS Kecloen patch
+name := Luma3DS-Kecleon
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
 commit := $(shell git rev-parse --short=8 HEAD)
 
@@ -96,7 +96,7 @@ $(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
 	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
-$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision)\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)

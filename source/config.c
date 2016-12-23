@@ -195,7 +195,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "Disable patches that can giveaway that\n"
                                           "this 3DS is running custom firmware.\n"
                                           "This includes signature checks and twl\n"
-                                          "checks."
+                                          "checks.",
+                                          "Ignore all key-presses at startup,\n"
+                                          "disabling chainloading and startup menus."
                                        };
 
     struct multiOption {
