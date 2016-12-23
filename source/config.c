@@ -85,7 +85,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch SVC/service/archive/ARM9 access",
                                         "( ) Kecleon: Disable Signature/TWL patches",
-                                        "( ) Kecleon: Disable chainloading/boot menu"
+                                        "( ) Kecleon: Disable Chainloading/Boot Menus"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -192,12 +192,19 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "9.3 and 10.4.\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
-                                          "This disables patches that can give away\n"
-                                          "that this 3DS is running CFW.\n"
-                                          "This includes signature and TWL patches.",
-                                          "This disables menus and chainloading\n"
-                                          "that can give away that this 3DS is\n"
-                                          "running CFW."
+                                          "This disables patches that can give\n"
+                                          "away that this 3DS is running CFW,\n"
+                                          "such as region free cartridges.\n"
+                                          "This includes signature, TWL and\n"
+                                          "FlashCart patches.",
+                                          "This disables startup menus and\n"
+                                          "chainloading that can give away that\n"
+                                          "this 3DS is running CFW.\n\n"
+                                          "Warning: config.bin must be deleted\n"
+                                          "to re-enable chainloading and\n"
+                                          "startup menus.\n"
+                                          "Also note that config.bin may be\n"
+                                          "located on your CTRNAND in '/rw/luma'."
                                        };
 
     struct multiOption {
