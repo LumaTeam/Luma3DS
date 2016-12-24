@@ -46,7 +46,7 @@ void main(void)
 
     // Attempt to mount SD card.
     bool isSdAvailible = mountFs(true, false);
-    bool isSdMode;
+    bool isSdMode = isSdAvailible;
     if (isSdAvailible) {
         // Attempt to load configuration.
         needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
@@ -97,7 +97,6 @@ void main(void)
 
     firmType = NATIVE_FIRM;
     isA9lhInstalled = ISA9LH;
-
 
     //Get pressed buttons only if chainloading/boot menus aren't disabled
     u32 pressed = CONFIG(KECMENU) ? 0 : HID_PAD;
@@ -243,7 +242,7 @@ boot:
         configTemp |= (u32)nandType | ((u32)firmSource << 3);
 
         /* Change to SD card if writing config to SD card. */
-        if (isSdAvailible && !(CONFIG(KECNAND)) {
+        if (isSdAvailible && !CONFIG(KECNAND)) {
             if (!changeDrive(true)) error("SD card unavailible.");
         }
 
