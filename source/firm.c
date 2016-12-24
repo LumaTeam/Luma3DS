@@ -89,7 +89,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
         if(firmVersion < 0x18)
         {
             //We can't boot < 3.x EmuNANDs
-            if(nandType != FIRMWARE_SYSNAND) 
+            if(nandType != FIRMWARE_SYSNAND)
                 error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
             if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
@@ -136,8 +136,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     u32 baseK11VA;
     u8 *freeK11Space;
     u32 *arm11SvcHandler,
+        *arm11DAbtHandler,
         *arm11ExceptionsPage,
-        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11DAbtHandler, &arm11ExceptionsPage);
 
     u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
         ret = 0;
@@ -185,7 +186,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         //ARM11 exception handlers
         u32 codeSetOffset,
             stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset);
-        ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
+        ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
         patchSvcBreak11(arm11Section1, arm11SvcTable);
         ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
 
@@ -215,7 +216,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
 u32 patchTwlFirm(u32 firmVersion, u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
-    
+
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
     if(ISN3DS)
     {
@@ -248,7 +249,7 @@ u32 patchTwlFirm(u32 firmVersion, u32 devMode)
 u32 patchAgbFirm(u32 devMode)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
-    
+
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
     if(ISN3DS)
     {

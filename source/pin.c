@@ -150,18 +150,14 @@ bool verifyPin(u32 pinMode)
     drawCharacter('0' + lengthBlock[0], true, 10 + 5 * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
 
     const char *messageFile = "pinmessage.txt";
+    char message[801];
 
-    u32 messageSize = getFileSize(messageFile);
+    u32 messageSize = fileRead(message, messageFile, sizeof(message) - 1);
 
-    if(messageSize > 0 && messageSize <= 800)
+    if(messageSize != 0)
     {
-        char message[messageSize + 1];
-
-        if(fileRead(message, messageFile, messageSize) == messageSize)
-        {
-            message[messageSize] = 0;
-            drawString(message, false, 10, 10, COLOR_WHITE);
-        }
+        message[messageSize] = 0;
+        drawString(message, false, 10, 10, COLOR_WHITE);
     }
 
     //Pad to AES block length with zeroes

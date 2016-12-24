@@ -38,24 +38,25 @@
 static inline void pathChanger(u8 *pos)
 {
     const char *pathFile = "path.txt";
+    u8 path[57];
 
-    u32 pathSize = getFileSize(pathFile);
+    u32 pathSize = fileRead(path, pathFile, sizeof(path));
 
-    if(pathSize < 6 || pathSize > 57) return;
+    if(pathSize < 6) return;
 
-    u8 path[pathSize];
-    fileRead(path, pathFile, pathSize);
     if(path[pathSize - 1] == 0xA) pathSize--;
     if(path[pathSize - 1] == 0xD) pathSize--;
 
-    if(pathSize < 6 || pathSize > 57 || path[0] != '/' || memcmp(&path[pathSize - 4], ".bin", 4) != 0) return;
+    if(pathSize < 6 || pathSize > 55 || path[0] != '/' || memcmp(path + pathSize - 4, ".bin", 4) != 0) return;
 
-    u16 finalPath[pathSize];
+    u16 finalPath[56];
     for(u32 i = 0; i < pathSize; i++)
         finalPath[i] = (u16)path[i];
 
+    finalPath[pathSize] = 0;
+
     u8 *posPath = memsearch(pos, u"sd", reboot_bin_size, 4) + 0xA;
-    memcpy(posPath, finalPath, pathSize * 2);
+    memcpy(posPath, finalPath, (pathSize + 1) * 2);
 }
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
@@ -72,7 +73,7 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return (u8 *)off + (off->ncch.exeFsOffset + 1) * 0x200;
 }
 
-u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11DAbtHandler, u32 **arm11ExceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5},
              pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -86,14 +87,17 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
     *arm11ExceptionsPage -= 0xB;
     u32 svcOffset = (-(((*arm11ExceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
+    u32 dabtOffset = (-(((*arm11ExceptionsPage)[4] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
     u32 pointedInstructionVA = 0xFFFF0008 - svcOffset;
     *baseK11VA = pointedInstructionVA & 0xFFFF0000; //This assumes that the pointed instruction has an offset < 0x10000, iirc that's always the case
     arm11SvcTable = *arm11SvcHandler = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA); //SVC handler address
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
 
+    pointedInstructionVA = 0xFFFF0010 - dabtOffset;
+    *arm11DAbtHandler = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA);
     (*freeK11Space)++;
 
-    return arm11SvcTable;    
+    return arm11SvcTable;
 }
 
 u32 patchSignatureChecks(u8 *pos, u32 size)

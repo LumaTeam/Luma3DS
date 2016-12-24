@@ -45,7 +45,7 @@ void installArm9Handlers(void)
     }
 }
 
-u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset)
+u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset, u32 *dAbtHandler, u32 dAbtHandlerMemAddress)
 {
     u32 *endPos = exceptionsPage + 0x400;
 
@@ -67,14 +67,35 @@ u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffse
 
     exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32); //Undefined Instruction
     exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32); //Prefetch Abort
-    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 16) - 32); //Data Abort
     exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32); //FIQ
+
+    for(u32 *pos = dAbtHandler; *pos != stackAddress; pos++)
+    {
+        u32 va_dst = 0xFFFF0000 + (((u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)) - (u8 *)exceptionsPage);
+        u32 va_src;
+        switch(*pos)
+        {
+            case 0xF96D0513: //srsdb sp!, 0x13
+                va_src = dAbtHandlerMemAddress +  ((u8 *)pos - (u8 *)dAbtHandler);
+                *pos = MAKE_BRANCH((u8 *)va_src, (u8 *)va_dst);
+                break;
+           case 0xE29EF004: //subs pc, lr, 4
+                pos++;
+                *pos++ = 0xE8BD000F;// pop {r0-r3}
+                va_src = dAbtHandlerMemAddress +  ((u8 *)pos - (u8 *)dAbtHandler);
+                *pos = MAKE_BRANCH((u8 *)va_src, (u8 *)va_dst);
+                break;
+            default:
+                break;
+        }
+    }
+
 
     for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 32); pos++)
     {
         switch(*pos) //Perform relocations
         {
-            case 0xFFFF3000: *pos = stackAddress; break;
+            case 0xFFFF3000: *pos = stackAddress - 0x10; break;
             case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
             case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
             case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)
@@ -95,7 +116,7 @@ void detectAndProcessExceptionDumps(void)
     const vu8 *stackDump = (vu8 *)regs + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize;
     const vu8 *additionalData = stackDump + dumpHeader->stackDumpSize;
 
-    const char *handledExceptionNames[] = { 
+    const char *handledExceptionNames[] = {
         "FIQ", "undefined instruction", "prefetch abort", "data abort"
     };
 

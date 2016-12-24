@@ -67,7 +67,7 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type, u32 cpuId)
     //Dump registers
     //Current order of saved regs: dfsr, ifsr, far, fpexc, fpinst, fpinst2, cpsr, pc, r8-r12, sp, lr, r0-r7
     u32 cpsr = regs[6];
-    u32 pc   = regs[7] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
+    u32 pc   = regs[7] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 0);
 
     registerDump[15] = pc;
     registerDump[16] = cpsr;
