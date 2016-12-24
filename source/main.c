@@ -44,14 +44,19 @@ void main(void)
     FirmwareSource nandType;
     ConfigurationStatus needConfig;
 
-    //Mount SD or CTRNAND
-    bool isSdMode;
-    if(mountFs(true, false)) isSdMode = true;
-    else
-    {
+    // Attempt to mount SD card.
+    bool isSdMode = mountFs(true, false);
+    if (isSdMode) {
+        // Attempt to load configuration.
+        needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+    }
+    // If either of those fail, attempt to mount CTRNAND.
+    if (!isSDMode || needConfig == CREATE_CONFIGURATION) {
         firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
         isSdMode = false;
+        // Attempt to load configuration file.
+        needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
     }
 
     //Attempt to read the configuration file
