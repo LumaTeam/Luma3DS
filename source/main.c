@@ -138,7 +138,7 @@ void main(void)
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(isSdMode, pinExists, pinMode);
+        configMenu(isSdMode, isSdAvailible, pinExists, pinMode);
 
         //Update pressed buttons
         pressed = HID_PAD;

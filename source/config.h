@@ -72,4 +72,5 @@ typedef enum ConfigurationStatus
 
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode);
+void configMenu(bool isSdMode, bool isSdAvailible,
+                bool oldPinStatus, u32 oldPinMode);

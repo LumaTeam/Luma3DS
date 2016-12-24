@@ -66,7 +66,8 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         error("Error writing the configuration file");
 }
 
-void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
+void configMenu(bool isSdMode, bool isSdAvailible,
+                bool oldPinStatus, u32 oldPinMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -241,7 +242,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true }
+        { .visible = isSdAvailible }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
