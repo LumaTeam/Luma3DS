@@ -57,6 +57,12 @@ bool mountFs(bool isSd, bool switchToCtrNand)
                   f_mount(&nandFs, "1:", 1) == FR_OK && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
 }
 
+bool changeDrive(bool switchToSd)
+{
+    return switchToSd ? f_chdrive("0:") == FR_OK && switchToMainDir(true) :
+                        f_chdrive("1:") == FR_OK && switchToMainDir(false);
+}
+
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
