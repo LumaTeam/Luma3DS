@@ -29,7 +29,6 @@
 #include "draw.h"
 #include "strings.h"
 #include "buttons.h"
-#include "pin.h"
 
 extern CfgData configData;
 extern FirmwareSource firmSource;
@@ -130,15 +129,12 @@ void main(void)
         }
     }
 
-    u32 pinMode = MULTICONFIG(PIN);
-    bool pinExists = pinMode != 0 && verifyPin(pinMode);
-
     //If no configuration file exists or SELECT is held, load configuration menu
     bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(isSdMode, isSdAvailible, pinExists, pinMode);
+        configMenu(isSdMode, isSdAvailible);
 
         //Update pressed buttons
         pressed = HID_PAD;
@@ -150,13 +146,6 @@ void main(void)
         firmSource = FIRMWARE_SYSNAND;
 
         isSafeMode = true;
-
-        //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
-        if(pinExists && !shouldLoadConfigMenu)
-        {
-            while(HID_PAD & PIN_BUTTONS);
-            wait(2000ULL);
-        }
 
         goto boot;
     }

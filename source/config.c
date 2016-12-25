@@ -27,7 +27,6 @@
 #include "screen.h"
 #include "draw.h"
 #include "buttons.h"
-#include "pin.h"
 
 CfgData configData;
 
@@ -66,13 +65,11 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         error("Error writing the configuration file");
 }
 
-void configMenu(bool isSdMode, bool isSdAvailible,
-                bool oldPinStatus, u32 oldPinMode)
+void configMenu(bool isSdMode, bool isSdAvailible)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
                                         "Splash: Off( ) Before( ) After( ) payloads",
-                                        "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                         "Dev. features: Off( ) ErrDisp( ) UNITINFO( )"
                                       };
@@ -103,15 +100,6 @@ void configMenu(bool isSdMode, bool isSdAvailible,
                                           "button hints).\n\n"
                                           "\t* 'After payloads' displays it\n"
                                           "afterwards.",
-
-                                          "Activate a PIN lock.\n\n"
-                                          "The PIN will be asked each time\n"
-                                          "Luma3DS boots.\n\n"
-                                          "4, 6 or 8 digits can be selected.\n\n"
-                                          "The ABXY buttons and the directional\n"
-                                          "pad buttons can be used as keys.\n\n"
-                                          "A message can also be displayed\n"
-                                          "(refer to the wiki for instructions).",
 
                                           "Select the New 3DS CPU mode.\n\n"
                                           "This won't apply to\n"
@@ -194,11 +182,13 @@ void configMenu(bool isSdMode, bool isSdAvailible,
                                           "9.3 and 10.4.\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
+
                                           "This disables patches that can give\n"
                                           "away this 3DS is running CFW,\n"
                                           "such as out-of-region cartridges.\n"
                                           "Specifically this disables Signature,\n"
                                           "TWL and Flashcart patches.",
+
                                           "This makes Luma3DS ignore all Button\n"
                                           "Presses on boot, hiding chainloading\n"
                                           "and boot menus that give away this\n"
@@ -209,6 +199,7 @@ void configMenu(bool isSdMode, bool isSdAvailible,
                                           "Also note that config.bin may be\n"
                                           "located on your CTRNAND in '/rw/luma'.\n"
                                           "Use GodMode9 to delete it.",
+
                                           "Save configuration file in CTRNAND\n"
                                           "at '/rw/luma/config.bin'."
                                        };
@@ -222,7 +213,6 @@ void configMenu(bool isSdMode, bool isSdAvailible,
         { .posXs = {19, 24, 29, 34}, .visible = isSdMode },
         { .posXs = {21, 26, 31, 36}, .visible = true },
         { .posXs = {12, 22, 31, 0}, .visible = true  },
-        { .posXs = {14, 19, 24, 29}, .visible = true },
         { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
         { .posXs = {19, 30, 42, 0}, .visible = true  }
     };
@@ -410,11 +400,6 @@ void configMenu(bool isSdMode, bool isSdAvailible,
         configData.config |= multiOptions[i].enabled << (i * 2 + 8);
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
-
-    u32 newPinMode = MULTICONFIG(PIN);
-
-    if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
-    else if(oldPinStatus) fileDelete(PIN_FILE);
 
     while(HID_PAD & PIN_BUTTONS);
     wait(2000ULL);

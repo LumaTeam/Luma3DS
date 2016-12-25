@@ -24,7 +24,7 @@
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 20)) & 1) != 0)
+#define CONFIG(a)        (((configData.config >> (a + 18)) & 1) != 0)
 #define MULTICONFIG(a)   ((configData.config >> (a * 2 + 8)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
@@ -43,7 +43,6 @@ enum multiOptions
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
-    PIN,
     NEWCPU,
     DEVOPTIONS
 };
@@ -72,5 +71,4 @@ typedef enum ConfigurationStatus
 
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(bool isSdMode, bool isSdAvailible,
-                bool oldPinStatus, u32 oldPinMode);
+void configMenu(bool isSdMode, bool isSdAvailible);
