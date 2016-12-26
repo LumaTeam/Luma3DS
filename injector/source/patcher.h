@@ -20,7 +20,6 @@ enum multiOptions
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
-    PIN,
     NEWCPU,
     DEVOPTIONS
 };
@@ -34,7 +33,11 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    KECNAND,
+    KECPATCH,
+    KECMENU,
+    KECCOMBO
 };
 
 enum flags

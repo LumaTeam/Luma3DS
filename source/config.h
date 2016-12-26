@@ -24,7 +24,7 @@
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 18)) & 1) != 0)
+#define CONFIG(a)        (((configData.config >> (a + 20)) & 1) != 0)
 #define MULTICONFIG(a)   ((configData.config >> (a * 2 + 8)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
