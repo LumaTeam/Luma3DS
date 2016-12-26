@@ -82,9 +82,10 @@ void configMenu(bool isSdMode, bool isSdAvailible)
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch SVC/service/archive/ARM9 access",
-                                        "( ) Kecleon: Disable Signature/TWL patches",
-                                        "( ) Kecleon: Ignore all Button Presses on boot.",
-                                        "( ) Kecleon: Save config.bin in CTRNAND."
+                                        "( ) Kecleon: Save config.bin in CTRNAND.",
+                                        "( ) Kecleon: Disable Region-Free/Flashcart\n    patches",
+                                        "( ) Kecleon: Ignore all Button Presses on boot",
+                                        "( ) Kecleon: Set key-combo to remove above lock"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -183,25 +184,26 @@ void configMenu(bool isSdMode, bool isSdAvailible)
                                           "Only change this if you know what you\n"
                                           "are doing!",
 
+                                          "Save configuration file in CTRNAND\n"
+                                          "at '/rw/luma/config.bin'.",
+
                                           "This disables patches that can give\n"
                                           "away this 3DS is running CFW,\n"
-                                          "such as out-of-region cartridges.\n"
-                                          "Specifically this disables Signature,\n"
-                                          "TWL and Flashcart patches.",
+                                          "such as out-of-region cartridges,\n"
+                                          "out-of-region download play,\n"
+                                          "or banned flashcarts.",
 
                                           "This makes Luma3DS ignore all Button\n"
                                           "Presses on boot, hiding chainloading\n"
                                           "and boot menus that give away this\n"
-                                          "3DS is running CFW.\n"
+                                          "3DS is running CFW.\n\n"
                                           "Warning: config.bin must be deleted\n"
-                                          "to re-enable chainloading and\n"
-                                          "startup menus.\n"
-                                          "Also note that config.bin may be\n"
-                                          "located on your CTRNAND in '/rw/luma'.\n"
-                                          "Use GodMode9 to delete it.",
+                                          "to re-enable chainloading menus\n"
+                                          "if Key Combo is not set.\n",
 
-                                          "Save configuration file in CTRNAND\n"
-                                          "at '/rw/luma/config.bin'."
+                                          "Set a Key Combo to make menu appear\n"
+                                          "on startup, when the above option\n"
+                                          "is set."
                                        };
 
     struct multiOption {
@@ -230,9 +232,10 @@ void configMenu(bool isSdMode, bool isSdAvailible)
         { .visible = true },
         { .visible = true },
         { .visible = true },
+        { .visible = isSdAvailible },
         { .visible = true },
         { .visible = true },
-        { .visible = isSdAvailible }
+        { .visible = true }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

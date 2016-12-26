@@ -102,8 +102,6 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
-    if (CONFIG(KECPATCH)) return 0;
-
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
