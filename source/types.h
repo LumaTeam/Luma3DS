@@ -55,7 +55,7 @@ typedef struct __attribute__((packed))
     char magic[4];
     u16 formatVersionMajor, formatVersionMinor;
 
-    u32 config;
+    u64 config;
 } CfgData;
 
 typedef struct __attribute__((packed))
