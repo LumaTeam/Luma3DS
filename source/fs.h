@@ -26,6 +26,7 @@
 
 #define PATTERN(a) a "_*.bin"
 
+void rmEmptyDir();
 bool mountFs(bool isSd, bool switchToCtrNand);
 bool changeDrive(bool switchToSd);
 u32 fileRead(void *dest, const char *path, u32 maxSize);

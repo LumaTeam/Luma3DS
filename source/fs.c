@@ -35,6 +35,22 @@
 static FATFS sdFs,
              nandFs;
 
+void rmEmptyDir()
+{
+    DIR dir;
+    FILINFO fno;
+
+    if (f_chdir("/") != FR_OK) error("Filesystem Error!");
+    if (f_opendir(&dir, "luma") != FR_OK) error("Directory luma does not exist");
+    f_readdir(&dir, &fno);
+    f_closedir(&dir);
+    
+    if (fno.fname[0] == 0) {
+        f_unlink("luma");
+    }
+
+}
+
 static bool switchToMainDir(bool isSd)
 {
     const char *mainDir = isSd ? "/luma" : "/rw/luma";

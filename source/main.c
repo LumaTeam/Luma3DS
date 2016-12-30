@@ -47,7 +47,12 @@ void main(void)
     bool isSdMode = mountFs(true, false);
     if (isSdMode) {
         // Attempt to load configuration.
-        needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
+        if (readConfig()) {
+            needConfig = MODIFY_CONFIGURATION;
+        } else {
+            needConfig = CREATE_CONFIGURATION;
+            rmEmptyDir();
+        }
     }
     // If either of those fail, attempt to mount CTRNAND.
     if (!isSdMode || needConfig == CREATE_CONFIGURATION) {
