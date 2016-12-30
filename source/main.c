@@ -100,6 +100,9 @@ void main(void)
     //Get pressed buttons only if chainloading/boot menus aren't disabled
     u32 pressed = CONFIG(KECMENU) ? 0 : HID_PAD;
 
+    //Should load menu via key combo
+    bool keyComboPressed = CONFIG(KECCOMBO) && configData.combo == HID_PAD;
+
     //Save old options and begin saving the new boot configuration
     configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
 
@@ -130,7 +133,10 @@ void main(void)
     }
 
     //If no configuration file exists or SELECT is held, load configuration menu
-    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
+    bool shouldLoadConfigMenu =
+        needConfig == CREATE_CONFIGURATION ||
+        ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT) ||
+        keyComboPressed;
 
     if(shouldLoadConfigMenu)
     {

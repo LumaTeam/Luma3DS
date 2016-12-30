@@ -56,6 +56,7 @@ typedef struct __attribute__((packed))
     u16 formatVersionMajor, formatVersionMinor;
 
     u64 config;
+    u32 combo;
 } CfgData;
 
 typedef struct __attribute__((packed))

@@ -65,6 +65,23 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         error("Error writing the configuration file");
 }
 
+u32 getPAD()
+{
+    initScreens();
+
+    drawString("Set key combo with ABXY, START, SELECT & D-Pad.\n"
+               "Press R while holding down combo to finish.",
+                true, 10, 10, COLOR_WHITE);
+
+    u32 pressed;
+    do {
+        pressed = waitInput(true);
+    }
+    while(!(pressed & BUTTON_R1));
+
+    return pressed & PIN_BUTTONS;
+}
+
 void configMenu(bool isSdMode, bool isSdAvailible)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
@@ -403,6 +420,8 @@ void configMenu(bool isSdMode, bool isSdAvailible)
         configData.config |= multiOptions[i].enabled << (i * 2 + 8);
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
+
+    if (CONFIG(KECCOMBO)) configData.combo = getPAD();
 
     while(HID_PAD & PIN_BUTTONS);
     wait(2000ULL);
