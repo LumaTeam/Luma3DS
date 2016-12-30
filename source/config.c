@@ -215,12 +215,13 @@ void configMenu(bool isSdMode, bool isSdAvailible)
                                           "and boot menus that give away this\n"
                                           "3DS is running CFW.\n\n"
                                           "Warning: config.bin must be deleted\n"
-                                          "to re-enable chainloading menus\n"
+                                          "to re-enable configuration menus\n"
                                           "if Key Combo is not set.\n",
 
-                                          "Set a Key Combo to make menu appear\n"
-                                          "on startup, when the above option\n"
-                                          "is set."
+                                          "Set a Key Combo to make this\n"
+                                          "configuration menu appear on\n"
+                                          "startup, when the above option is\n"
+                                          "set."
                                        };
 
     struct multiOption {

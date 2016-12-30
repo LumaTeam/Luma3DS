@@ -592,7 +592,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             )) goto error;
     }
 
-    else if(progId == 0x0004013000008002LL) //NS
+    else if(progId == 0x0004013000008002LL && !CONFIG(KECPATCH)) //NS
     {
         if(progVer > 4)
         {
@@ -732,7 +732,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            ) != 3) goto error;
     }
 
-    else if(progId == 0x0004013000002802LL && progVer > 0) //DLP
+    else if(progId == 0x0004013000002802LL && progVer > 0 && !CONFIG(KECPATCH)) //DLP
     {
         static const u8 pattern[] = {
             0x0C, 0xAC, 0xC0, 0xD8
