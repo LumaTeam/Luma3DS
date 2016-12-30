@@ -82,7 +82,7 @@ u32 getPAD()
     return pressed & PIN_BUTTONS;
 }
 
-void configMenu(bool isSdMode, bool isSdAvailible)
+void configMenu(bool isSdMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -250,7 +250,7 @@ void configMenu(bool isSdMode, bool isSdAvailible)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = isSdAvailible },
+        { .visible = isSdMode },
         { .visible = true },
         { .visible = true },
         { .visible = true }

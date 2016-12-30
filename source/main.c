@@ -44,18 +44,15 @@ void main(void)
     ConfigurationStatus needConfig;
 
     // Attempt to mount SD card.
-    bool isSdAvailible = mountFs(true, false);
-    bool isSdMode = isSdAvailible;
-    if (isSdAvailible) {
+    bool isSdMode = mountFs(true, false);
+    if (isSdMode) {
         // Attempt to load configuration.
         needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
-        isSdMode = true;
     }
     // If either of those fail, attempt to mount CTRNAND.
     if (!isSdMode || needConfig == CREATE_CONFIGURATION) {
         firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
-        isSdMode = false;
         // Attempt to load configuration file.
         needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
     }
@@ -140,7 +137,7 @@ void main(void)
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(isSdMode, isSdAvailible);
+        configMenu(isSdMode);
 
         //Update pressed buttons
         pressed = HID_PAD;
@@ -237,7 +234,7 @@ boot:
         configTemp |= (u32)nandType | ((u32)firmSource << 3);
 
         /* Change to SD card if writing config to SD card. */
-        if (isSdAvailible && !CONFIG(KECNAND)) {
+        if (isSdMode && !CONFIG(KECNAND)) {
             if (!changeDrive(true)) error("SD card unavailible.");
         }
 
