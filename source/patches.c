@@ -250,7 +250,7 @@ u32 patchPsKeyslotSelection(u8 *pos, u32 size)
     /* Shellcode disassembly:
      * 
      * tl;dr: if keyslot < 10, use keyslot from enum. Else, use keyslot & 0x3F.
-     * Further, keyslot & 0x40 sets KeyY = (0x10 bytes at FCRAM + 0)
+     * Further, keyslot & 0x40 sets KeyY = (0x10 bytes at FCRAM + 0x1000000)
      *
      *
      * STMFD SP!, {R1-R12, LR} ; Save Registers
@@ -261,7 +261,7 @@ u32 patchPsKeyslotSelection(u8 *pos, u32 size)
      * AND R3, R7, #0x40
      * CMP R3, #0x40
      * BNE +0x8 ; Skip the BLX if keyslot & 0x40 isn't 1
-     * NOP ; We overwrite this with BLX set_key_y(keyslot, ??, key_ptr). Sets KeyY to the 0x10 bytes at FCRAM + 0
+     * NOP ; We overwrite this with BLX set_key_y(keyslot, ??, key_ptr). Sets KeyY to the 0x10 bytes at FCRAM + 0x1000000
      * AND R0, R7, #0x3F ; Restore R0 = a1 & 0x3F
      * CMP R7, #10 ; cmp a1, #10
      * LDRCC R0, [PC, R7, LSL #2] ; if a1 < 10, load keyslot from enum
