@@ -100,6 +100,8 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     return arm11SvcTable;
 }
 
+
+
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
     //Look for signature checks
@@ -232,6 +234,63 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
 
     *off = 0x2301; //mov r3, #1
 
+    return 0;
+}
+
+u32 patchPsKeyslotSelection(u8 *pos, u32 size)
+{
+    // Look for Keyslot selection enum method
+    const u8 pattern[] = {0x0D, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1, 0x2D, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1, 0x31, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1};
+    
+    // Look for code that calls SetKeyY
+    const u8 pattern2[] = {0x88, 0x02, 0x9D, 0xE5, 0x09, 0x00, 0x50, 0xE3, 0x04, 0x00, 0x00, 0x1A};
+    
+    const u32 shellcode[] = {0xE92D5FFE, 0xE1A07000, 0xE207003F, 0xE3A01005, 0xE59F2044, 0xE2073040, 0xE3530040, 0x1A000000, 0xDEADC0DE, 0xE207003F, 0xE357000A, 0x379F0107, 0xE8BD9FFE, 0x0000000D, 0x0000002D, 0x00000031, 0x00000038, 0x00000032, 0x00000039, 0x0000002E, 0x00000040, 0x00000036, 0x00000039, 0x21000000};
+    
+    /* Shellcode disassembly:
+     * 
+     * tl;dr: if keyslot < 10, use keyslot from enum. Else, use keyslot & 0x3F.
+     * Further, keyslot & 0x40 sets KeyY = (0x10 bytes at FCRAM + 0)
+     *
+     *
+     * STMFD SP!, {R1-R12, LR} ; Save Registers
+     * MOV R7, R0 ; Store R0 in R7
+     * AND R0, R7, #0x3F ; R0 = a1 & 0x3F
+     * MOV R1, #5
+     * LDR R2, [PC, #0x44] ; Load FCRAM address from PC+0x44+8
+     * AND R3, R7, #0x40
+     * CMP R3, #0x40
+     * BNE +0x8 ; Skip the BLX if keyslot & 0x40 isn't 1
+     * NOP ; We overwrite this with BLX set_key_y(keyslot, ??, key_ptr). Sets KeyY to the 0x10 bytes at FCRAM + 0
+     * AND R0, R7, #0x3F ; Restore R0 = a1 & 0x3F
+     * CMP R7, #10 ; cmp a1, #10
+     * LDRCC R0, [PC, R7, LSL #2] ; if a1 < 10, load keyslot from enum
+     * LDMFD SP!, {R1-R12, PC} ; Restore registers
+     */
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+    
+    u32 *off2 = (u32 *)memsearch(pos, pattern2, size, sizeof(pattern2));
+
+    if(off == NULL || off2 == NULL) return 1;    
+    
+    off = (u32 *)(((u32)off) - 0x34); // Align off to the start of the keyslot selection function
+    
+    for (int i = 0; i < sizeof(shellcode) / sizeof(shellcode[0]); i++) // Install shellcode
+    {
+        off[i] = shellcode[i];
+    }
+    
+    u32 base = (u32)(&(off[8])); // Get the address of the NOP, so that we can create the BLX  
+    base += 8; // Increment by 8 because ARM jumps are fucking stupid
+    
+    u32 deriv = off2[6] & 0xFFFFFF; // This is the lower 3 bytes of a call to set_key_y.
+    deriv <<= 2; // Mult by 4, to get deriv = &set_key_y - &off2[6] - 8
+    deriv += 8;
+    deriv += (u32)(&(off2[6])); // deriv = &set_key_y
+    
+    off[8] = (u32)(0xFA000000 | (((deriv - base) >> 2) & 0x00FFFFFF)); // BLX to set_key_y
+    
     return 0;
 }
 

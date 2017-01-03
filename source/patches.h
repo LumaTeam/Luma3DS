@@ -44,6 +44,7 @@ u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
 u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchCheckForDevCommonKey(u8 *pos, u32 size);
+u32 patchPsKeyslotSelection(u8 *pos, u32 size);
 u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode);
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
