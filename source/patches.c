@@ -200,6 +200,21 @@ u32 patchOldFirmWrites(u8 *pos, u32 size)
     return 0;
 }
 
+u32 patchFactoryFirmWrites(u8 *pos, u32 size)
+{
+    //Look for FIRM writing code
+    const u8 pattern[] = {0x04, 0x1E, 0x22, 0xDB, 0xFF};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[0] = 0x2400;
+    off[1] = 0xE01D;
+
+    return 0;
+}
+
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
 {
     const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
