@@ -118,6 +118,28 @@ u32 patchSignatureChecks(u8 *pos, u32 size)
     return 0;
 }
 
+u32 patchOldSignatureChecks(u8 *pos, u32 size)
+{
+    // Look for signature checks
+    // Pattern 2 works for 1.x, 2.x + factory FIRM.
+    // For patchSignatureChecks-style (temp - 1 instead of temp - 3):
+    // 1.x+2.x: pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
+    // factory: pattern2[] = {0xB5, 0x16, 0x4E, 0x0C};
+    const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
+             pattern2[] = {0x4E, 0x0C, 0x00, 0x71, 0x68};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
+
+    if(off == NULL || temp == NULL) return 1;
+
+    u16 *off2 = (u16 *)(temp - 3);
+    *off = off2[0] = 0x2000;
+    off2[1] = 0x4770;
+
+    return 0;
+}
+
 u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 {
     //Look for firmlaunch code
@@ -167,6 +189,21 @@ u32 patchOldFirmWrites(u8 *pos, u32 size)
 {
     //Look for FIRM writing code
     const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[0] = 0x2400;
+    off[1] = 0xE01D;
+
+    return 0;
+}
+
+u32 patchFactoryFirmWrites(u8 *pos, u32 size)
+{
+    //Look for FIRM writing code
+    const u8 pattern[] = {0x04, 0x1E, 0x22, 0xDB, 0xFF};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
