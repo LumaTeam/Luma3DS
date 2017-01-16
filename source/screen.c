@@ -47,11 +47,7 @@ static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
 {
-    //Wait for the entry to be set
-    while(*arm11Entry == ARM11_STUB_ADDRESS);
-
-    //Jump to it
-    ((void (*)())*arm11Entry)();
+    WAIT_FOR_ARM9();
 }
         
 static void invokeArm11Function(void (*func)())
