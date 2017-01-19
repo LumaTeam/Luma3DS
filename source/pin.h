@@ -33,4 +33,4 @@
 #define PIN_VERSIONMINOR 3
 
 void newPin(bool allowSkipping, u32 pinMode);
-bool verifyPin(u32 pinMode);
+bool verifyPin(u32 pinMode, bool hidePin);

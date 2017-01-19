@@ -124,7 +124,8 @@ void main(void)
     }
 
     u32 pinMode = MULTICONFIG(PIN);
-    bool pinExists = pinMode != 0 && verifyPin(pinMode);
+    bool hidePin = CONFIG(HIDEPIN);
+    bool pinExists = pinMode != 0 && verifyPin(pinMode, hidePin);
 
     //If no configuration file exists or SELECT is held, load configuration menu
     bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
