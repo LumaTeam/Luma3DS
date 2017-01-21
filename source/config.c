@@ -84,6 +84,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch SVC/service/archive/ARM9 access"
+                                        "( ) Hide Pin when entering"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -172,6 +173,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "The service and archive patches don't work on \n"
                                           "New 3DS FIRMs between 9.3 and 10.4.\n\n"
                                           "Only change this if you know what you are doing!",
+
+                                          "Hides the the input when entering pin to unlock the 3DS."
+
                                        };
 
     struct multiOption {
@@ -195,6 +199,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     } singleOptions[] = {
         { .visible = isSdMode },
         { .visible = isSdMode },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },
