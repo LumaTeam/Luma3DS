@@ -122,7 +122,7 @@ void newPin(bool allowSkipping, u32 pinMode)
         error("Error writing the PIN file");
 }
 
-bool verifyPin(u32 pinMode)
+bool verifyPin(u32 pinMode, bool hidePin)
 {
     PinData pin;
 
@@ -199,9 +199,9 @@ bool verifyPin(u32 pinMode)
 
         //Add character to password
         enteredPassword[cnt] = (u8)pinKeyToLetter(pressed);
-
         //Visualize character on screen
-        drawCharacter((char)enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+        char display = hidePin ? '*' : (char)enteredPassword[cnt];
+        drawCharacter(display, true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
 
         if(++cnt < lengthBlock[0]) continue;
 

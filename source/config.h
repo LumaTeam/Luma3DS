@@ -56,7 +56,8 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    HIDEPIN
 };
 
 typedef enum ConfigurationStatus
