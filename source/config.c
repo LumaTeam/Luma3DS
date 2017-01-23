@@ -192,7 +192,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "Only change this if you know what you\n"
                                           "are doing!",
                                           
-                                          "Hides the the input when entering pin\n"
+                                          "Hides the input when entering pin\n"
                                           "to unlock the 3DS"
                                        };
 
