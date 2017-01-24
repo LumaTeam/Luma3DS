@@ -66,6 +66,7 @@ static void invokeArm11Function(void (*func)())
     *arm11Entry = (u32)func;
     while(*arm11Entry);
     *arm11Entry = ARM11_STUB_ADDRESS;
+    while(*arm11Entry);
 }
 
 void deinitScreens(void)
