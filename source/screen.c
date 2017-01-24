@@ -49,17 +49,17 @@ void  __attribute__((naked)) arm11Stub(void)
 {
     //Disable interrupts
     __asm(".word 0xF10C01C0");
-    
+
     WAIT_FOR_ARM9();
 }
-        
+
 static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
 
     if(!hasCopiedStub)
     {
-        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x30);
+        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x2C);
         hasCopiedStub = true;
     }
 
@@ -83,7 +83,7 @@ void deinitScreens(void)
         WAIT_FOR_ARM9();
     }
 
-    if(ARESCREENSINITED) invokeArm11Function(ARM11);
+    if(ARESCREENSINITIALIZED) invokeArm11Function(ARM11);
 }
 
 void updateBrightness(u32 brightnessIndex)
@@ -277,7 +277,7 @@ void initScreens(void)
 
     if(needToSetup)
     {
-        if(!ARESCREENSINITED)
+        if(!ARESCREENSINITIALIZED)
         {
             flushDCacheRange(&configData, sizeof(CfgData));
             invokeArm11Function(initSequence);
