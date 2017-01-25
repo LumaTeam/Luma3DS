@@ -83,73 +83,90 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Patch SVC/service/archive/ARM9 access"
+                                        "( ) Patch SVC/service/archive/ARM9 access",
                                         "( ) Hide Pin when entering"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
-                                          "It will be booted when no directional pad buttons\n"
-                                          "are pressed.",
+                                          "It will be booted when no\n"
+                                          "directional pad buttons are pressed.",
 
                                           "Select the screen brightness.",
 
                                           "Enable splash screen support.\n\n"
-                                          "\t* 'Before payloads' displays it before booting\n"
-                                          "payloads\n"
-                                          "(intended for splashes that display button hints).\n\n"
-                                          "\t* 'After payloads' displays it afterwards.",
-                                          
+                                          "\t* 'Before payloads' displays it\n"
+                                          "before booting payloads\n"
+                                          "(intended for splashes that display\n"
+                                          "button hints).\n\n"
+                                          "\t* 'After payloads' displays it\n"
+                                          "afterwards.",
+
                                           "Activate a PIN lock.\n\n"
-                                          "The PIN will be asked each time Luma3DS boots.\n\n"
+                                          "The PIN will be asked each time\n"
+                                          "Luma3DS boots.\n\n"
                                           "4, 6 or 8 digits can be selected.\n\n"
-                                          "The ABXY buttons and the directional pad buttons\n"
-                                          "can be used as keys.\n\n"
+                                          "The ABXY buttons and the directional\n"
+                                          "pad buttons can be used as keys.\n\n"
                                           "A message can also be displayed\n"
                                           "(refer to the wiki for instructions).",
 
                                           "Select the New 3DS CPU mode.\n\n"
-                                          "It will be always enabled.\n\n"
-                                          "'Clock+L2' can cause issues with some games.",
+                                          "This won't apply to\n"
+                                          "New 3DS exclusive/enhanced games.\n\n"
+                                          "'Clock+L2' can cause issues with some\n"
+                                          "games.",
 
                                           "Select the developer features.\n\n"
-                                          "\t* 'Off' disables exception handlers.\n"
-                                          "\t* 'ErrDisp' displays debug info on the\n"
-                                          "'An error has occurred' screen.\n"
-                                          "\t* 'UNITINFO' makes the console be always\n"
-                                          "detected as a development unit\n"
-                                          "(which breaks online features and\n"
-                                          "allows booting some developer software).\n\n"
-                                          "Only change this if you know what you are doing!",
-                                          
-                                          "If enabled, SysNAND will be launched on boot.\n\n"
+                                          "\t* If 'Off' is not checked, exception\n"
+                                          "handlers will be enabled on A9LH.\n"
+                                          "\t* 'ErrDisp' also displays debug info\n"
+                                          "on the 'An error has occurred' screen.\n"
+                                          "\t* 'UNITINFO' also makes the console\n"
+                                          "be always detected as a\n"
+                                          "development unit\n"
+                                          "(which breaks online features, amiibos\n"
+                                          "and retail CIAs, but allows installing\n"
+                                          "and booting some developer software).\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!",
+
+                                          "If enabled, SysNAND will be launched\n"
+                                          "on boot.\n\n"
                                           "Otherwise, an EmuNAND will.\n\n"
                                           "Hold L on boot to switch NAND.\n\n"
-                                          "To use a different EmuNAND from the default, hold\n"
-                                          "a directional pad button (Up/Right/Down/Left\n"
-                                          "equal EmuNANDs 1/2/3/4).",
-                                          
-                                          "If enabled, when holding R on boot EmuNAND will be \n"
-                                          "booted with the SysNAND FIRM.\n\n"
-                                          "Otherwise, SysNAND will be booted with an\n"
-                                          "EmuNAND FIRM.\n\n"
-                                          "To use a different EmuNAND from the default, \n"
-                                          "hold a directional pad button (Up/Right/Down/Left\n"
-                                          "equal EmuNANDs 1/2/3/4), also add A if you have\n"
+                                          "To use a different EmuNAND from the\n"
+                                          "default, hold a directional pad button\n"
+                                          "(Up/Right/Down/Left equal EmuNANDs\n"
+                                          "1/2/3/4).",
+
+                                          "If enabled, when holding R on boot\n"
+                                          "EmuNAND will be booted with the\n"
+                                          "SysNAND FIRM.\n\n"
+                                          "Otherwise, SysNAND will be booted\n"
+                                          "with an EmuNAND FIRM.\n\n"
+                                          "To use a different EmuNAND from the\n"
+                                          "default, hold a directional pad button\n"
+                                          "(Up/Right/Down/Left equal EmuNANDs\n"
+                                          "1/2/3/4), also add A if you have\n"
                                           "a matching payload.",
 
-                                          "Enable loading FIRMs and system modules from the \n"
-                                          "SD card.\n\n"
+                                          "Enable loading external FIRMs and\n"
+                                          "system modules.\n\n"
                                           "This isn't needed in most cases.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Use a custom path for the Luma3DS payload.\n\n"
+                                          "Use a custom path for the\n"
+                                          "Luma3DS payload.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Enable overriding the region and language \n"
-                                          "configuration and the usage of patched code\n"
-                                          "binaries for specific games.\n\n"
-                                          "Also makes certain DLCs for out-of-region games\n"
-                                          "work.\n\n"
+                                          "Enable overriding the region and\n"
+                                          "language configuration and the usage\n"
+                                          "of patched code binaries and\n"
+                                          "custom RomFS for specific games.\n\n"
+                                          "Also makes certain DLCs for\n"
+                                          "out-of-region games work.\n\n"
+                                          "Enabling this requires the\n"
+                                          "archive patch to be applied.\n\n"
                                           "Refer to the wiki for instructions.",
 
                                           "Enable showing the current NAND/FIRM:\n\n"
@@ -160,22 +177,23 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
                                           "\t* EmuS = EmuNAND 1 with SysNAND FIRM\n"
                                           "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
-                                          "or a user-defined custom string in System Settings.\n\n"
+                                          "or an user-defined custom string in\n"
+                                          "System Settings.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Enable showing the GBA boot screen when booting \n"
-                                          "GBA games.\n\n"
-                                          "This can cause issues with some games.",
+                                          "Enable showing the GBA boot screen\n"
+                                          "when booting GBA games.",
 
-
-                                          "Disable SVC, service, archive and ARM9 exheader\n"
-                                          "access checks.\n\n"
-                                          "The service and archive patches don't work on \n"
-                                          "New 3DS FIRMs between 9.3 and 10.4.\n\n"
-                                          "Only change this if you know what you are doing!",
-
-                                          "Hides the the input when entering pin to unlock the 3DS."
-
+                                          "Disable SVC, service, archive and ARM9\n"
+                                          "exheader access checks.\n\n"
+                                          "The service and archive patches\n"
+                                          "don't work on New 3DS FIRMs between\n"
+                                          "9.3 and 10.4.\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!",
+                                          
+                                          "Hides the input when entering pin\n"
+                                          "to unlock the 3DS"
                                        };
 
     struct multiOption {
