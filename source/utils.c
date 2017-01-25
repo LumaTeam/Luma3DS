@@ -89,7 +89,7 @@ u32 waitInput(bool isMenu)
 
 void mcuPowerOff(void)
 {
-    if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(false);
+    if(!ISFIRMLAUNCH && ARESCREENSINITIALIZED) clearScreens(false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
