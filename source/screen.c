@@ -47,26 +47,26 @@ static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
 {
-    //Wait for the entry to be set
-    while(*arm11Entry == ARM11_STUB_ADDRESS);
+    //Disable interrupts
+    __asm(".word 0xF10C01C0");
 
-    //Jump to it
-    ((void (*)())*arm11Entry)();
+    WAIT_FOR_ARM9();
 }
-        
+
 static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
 
     if(!hasCopiedStub)
     {
-        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x30);
+        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x2C);
         hasCopiedStub = true;
     }
 
     *arm11Entry = (u32)func;
     while(*arm11Entry);
     *arm11Entry = ARM11_STUB_ADDRESS;
+    while(*arm11Entry);
 }
 
 void deinitScreens(void)
@@ -84,7 +84,7 @@ void deinitScreens(void)
         WAIT_FOR_ARM9();
     }
 
-    if(ARESCREENSINITED) invokeArm11Function(ARM11);
+    if(ARESCREENSINITIALIZED) invokeArm11Function(ARM11);
 }
 
 void updateBrightness(u32 brightnessIndex)
@@ -278,7 +278,7 @@ void initScreens(void)
 
     if(needToSetup)
     {
-        if(!ARESCREENSINITED)
+        if(!ARESCREENSINITIALIZED)
         {
             flushDCacheRange(&configData, sizeof(CfgData));
             invokeArm11Function(initSequence);

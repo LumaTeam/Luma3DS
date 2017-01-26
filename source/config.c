@@ -253,7 +253,6 @@ void configMenu(bool isSdMode)
         { .visible = isSdMode },
         { .visible = true },
         { .visible = true },
-        { .visible = true }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

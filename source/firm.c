@@ -294,6 +294,8 @@ u32 patch1x2xNativeAndSafeFirm(u32 devMode)
         ret = 0;
 
     ret += ISN3DS ? patchFirmWrites(process9Offset, process9Size) : patchOldFirmWrites(process9Offset, process9Size);
+    
+    ret += ISN3DS ? patchSignatureChecks(process9Offset, process9Size) : patchOldSignatureChecks(process9Offset, process9Size);
 
     if(devMode != 0)
     {
