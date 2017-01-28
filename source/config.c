@@ -83,7 +83,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Patch SVC/service/archive/ARM9 access"
+                                        "( ) Patch SVC/service/archive/ARM9 access",
                                         "( ) Hide Pin when entering"
                                       };
 
@@ -164,9 +164,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "Refer to the wiki for instructions.",
 
                                           "Enable showing the GBA boot screen when booting \n"
-                                          "GBA games.\n\n"
-                                          "This can cause issues with some games.",
-
+                                          "GBA games.",
 
                                           "Disable SVC, service, archive and ARM9 exheader\n"
                                           "access checks.\n\n"
@@ -174,8 +172,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "New 3DS FIRMs between 9.3 and 10.4.\n\n"
                                           "Only change this if you know what you are doing!",
 
-                                          "Hides the input when entering pin to unlock the 3DS."
-
+                                          "Hides the input when entering pin\n"
+                                          "to unlock the 3DS"
                                        };
 
     struct multiOption {
