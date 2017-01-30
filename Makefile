@@ -56,7 +56,7 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh 
+all: a9lh haxloader
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
