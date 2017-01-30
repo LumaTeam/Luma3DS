@@ -10,6 +10,10 @@
 #include "font_gb_7x6.h"
 #elif defined FONT_PEARL
 #include "font_pearl.h"
+#elif defined FONT_LL
+#include "font_largel.h"
+#elif defined FONT_LS
+#include "font_larges.h"
 #else
 #include "font_orig.h" // if nothing is selected
 #endif 
