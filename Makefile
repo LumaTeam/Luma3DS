@@ -31,6 +31,8 @@ else ifeq ($(FONT),ACORN)
 CFLAGS	+=	-DFONT_ACORN
 else ifeq ($(FONT),GB)
 CFLAGS	+=	-DFONT_GB
+else ifeq ($(FONT),PEARL)
+CFLAGS	+=	-DFONT_PEARL
 else
 CFLAGS	+=	-DFONT_6X10
 endif
