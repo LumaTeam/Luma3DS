@@ -30,7 +30,7 @@
 #include "types.h"
 
 #define SPACING_Y 10
-#define SPACING_X 6
+#define SPACING_X 8
 
 #define COLOR_TITLE  0xFF9900
 #define COLOR_WHITE  0xFFFFFF

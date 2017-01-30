@@ -23,6 +23,17 @@ dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
+ifeq ($(FONT),ORIG)
+CFLAGS	+=	-DFONT_ORIGINAL
+else ifeq ($(FONT),6X10)
+CFLAGS	+=	-DFONT_6X10
+else ifeq ($(FONT),ACORN)
+CFLAGS	+=	-DFONT_ACORN
+else ifeq ($(FONT),GB)
+CFLAGS	+=	-DFONT_GB
+else
+CFLAGS	+=	-DFONT_6X10
+endif
 LDFLAGS := -nostartfiles
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -39,13 +50,10 @@ define bin2o
 endef
 
 .PHONY: all
-all: elf a9lh haxloader
+all: a9lh haxloader
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
-
-.PHONY: elf
-elf: $(dir_out)/Luma3DS.elf
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
@@ -73,9 +81,6 @@ $(dir_out)/$(name)$(revision).7z: all
 
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
-
-$(dir_out)/Luma3DS.elf: $(dir_build)/main.elf $(dir_out)
-	@cp -a $(dir_build)/main.elf $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OBJCOPY) -S -O binary $< $@
