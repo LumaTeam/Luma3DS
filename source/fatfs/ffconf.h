@@ -134,7 +134,7 @@
 /  This option has no effect when _LFN_UNICODE == 0. */
 
 
-#define _FS_RPATH	0
+#define _FS_RPATH	1
 /* This option configures support of relative path.
 /
 /   0: Disable relative path and remove related functions.

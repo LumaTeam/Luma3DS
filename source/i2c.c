@@ -115,10 +115,35 @@ static bool i2cSelectRegister(u8 bus_id, u8 reg)
 
 //-----------------------------------------------------------------------------
 
+u8 i2cReadRegister(u8 dev_id, u8 reg)
+{
+    u8 bus_id = i2cGetDeviceBusId(dev_id),
+       dev_addr = i2cGetDeviceRegAddr(dev_id);
+
+    for(u32 i = 0; i < 8; i++)
+    {
+        if(i2cSelectDevice(bus_id, dev_addr) && i2cSelectRegister(bus_id, reg))
+        {
+            if(i2cSelectDevice(bus_id, dev_addr | 1))
+            {
+                i2cWaitBusy(bus_id);
+                i2cStop(bus_id, 1);
+                i2cWaitBusy(bus_id);
+
+                return *i2cGetDataReg(bus_id);
+            }
+        }
+        *i2cGetCntReg(bus_id) = 0xC5;
+        i2cWaitBusy(bus_id);
+    }
+
+    return 0xFF;
+}
+
 bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
 {
-    u8 bus_id = i2cGetDeviceBusId(dev_id);
-    u8 dev_addr = i2cGetDeviceRegAddr(dev_id);
+    u8 bus_id = i2cGetDeviceBusId(dev_id),
+       dev_addr = i2cGetDeviceRegAddr(dev_id);
 
     for(u32 i = 0; i < 8; i++)
     {

@@ -18,16 +18,20 @@
 @   reasonable legal notices or author attributions in that material or in the Appropriate Legal
 @   Notices displayed by works containing it.
 
+.text
 .arm
-.global flushCaches
-.type   flushCaches STT_FUNC
+.align 4
 
+.global flushCaches
+.type flushCaches, %function
 flushCaches:
-    @ Clean and flush data cache
+    @ Clean and flush both the data cache and instruction caches
+    
     @ Adpated from http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0155a/ch03s03s05.html ,
     @ and https://github.com/gemarcano/libctr9_io/blob/master/src/ctr_system_ARM.c#L39 as well
     @ Note: ARM's example is actually for a 8KB DCache (which is what the 3DS has)
-    @ Implemented in bootROM at address 0xffff0830
+    
+    @ Implemented in bootROM at addresses 0xffff0830 (DCache) and 0xffff0ab4 (ICache)
 
     mov r1, #0                          @ segment counter
     outer_loop:

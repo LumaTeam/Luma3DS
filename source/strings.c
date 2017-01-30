@@ -23,33 +23,64 @@
 #include "strings.h"
 #include "memory.h"
 
-int strlen(const char *string)
+u32 strlen(const char *string)
 {
     char *stringEnd = (char *)string;
 
-    while(*stringEnd) stringEnd++;
+    while(*stringEnd != 0) stringEnd++;
 
     return stringEnd - string;
 }
 
 void concatenateStrings(char *destination, const char *source)
 {
-    int i = strlen(source),
+    u32 i = strlen(source),
         j = strlen(destination);
 
     memcpy(&destination[j], source, i + 1);
 }
 
-void hexItoa(u32 number, char *out)
+void hexItoa(u32 number, char *out, u32 digits, bool fillString)
 {
     const char hexDigits[] = "0123456789ABCDEF";
-    u32 i = 0;
+    u32 i;
 
-    while(number > 0)
+    for(i = 0; number > 0; i++)
     {
-        out[7 - i++] = hexDigits[number & 0xF];
+        out[digits - 1 - i] = hexDigits[number & 0xF];
         number >>= 4;
     }
 
-    for(; i < 8; i++) out[7 - i] = '0';
+    if(fillString) while(i < digits) out[digits - 1 - i++] = '0';
+}
+
+void decItoa(u32 number, char *out, u32 digits)
+{
+    for(u32 i = 0; number > 0; i++)
+    {
+        out[digits - 1 - i] = '0' + number % 10;
+        number /= 10;
+    }
+}
+
+u32 hexAtoi(const char *in, u32 digits)
+{
+    u32 res = 0;
+    char *tmp = (char *)in;
+
+    for(u32 i = 0; i < digits && *tmp != 0; tmp++, i++)
+        res = (*tmp > '9' ? *tmp - 'A' + 10 : *tmp - '0') + (res << 4);
+
+    return res;
+}
+
+u32 decAtoi(const char *in, u32 digits)
+{
+    u32 res = 0;
+    char *tmp = (char *)in;
+
+    for(u32 i = 0; i < digits && *tmp != 0; tmp++, i++)
+        res = *tmp - '0' + res * 10;
+
+    return res;
 }

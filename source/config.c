@@ -29,14 +29,17 @@
 #include "buttons.h"
 #include "pin.h"
 
+CfgData configData;
+
 bool readConfig(void)
 {
-    if(fileRead(&configData, CONFIG_PATH) != sizeof(CfgData) ||
+    if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
         configData.config = 0;
+
         return false;
     }
 
@@ -47,74 +50,189 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig == CREATE_CONFIGURATION || (configTemp & 0xFFFFFFDF) != configData.config)
+    if(needConfig != CREATE_CONFIGURATION && (configTemp & 0xFFFFFF7F) == configData.config) return;
+
+    if(needConfig == CREATE_CONFIGURATION)
     {
-        if(needConfig == CREATE_CONFIGURATION)
-        {
-            memcpy(configData.magic, "CONF", 4);
-            configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
-            configData.formatVersionMinor = CONFIG_VERSIONMINOR;
-        }
-
-        //Merge the new options and new boot configuration
-        configData.config = (configData.config & 0xFFFFFF80) | (configTemp & 0x7F);
-
-        if(!fileWrite(&configData, CONFIG_PATH, sizeof(CfgData)))
-            error("Error writing the configuration file");
+        memcpy(configData.magic, "CONF", 4);
+        configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
+        configData.formatVersionMinor = CONFIG_VERSIONMINOR;
     }
+
+    //Merge the new options and new boot configuration
+    configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
+
+    if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
+        error("Error writing the configuration file");
 }
 
-void configMenu(bool oldPinStatus)
+void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 {
-    initScreens();
-
-    drawString(CONFIG_TITLE, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save", 10, 30, COLOR_WHITE);
-
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
+                                        "Splash: Off( ) Before( ) After( ) payloads",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
-                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )"
-#ifdef DEV
-                                      , "Dev. features: ErrDisp( ) UNITINFO( ) None( )"
-#endif
+                                        "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
+                                        "Dev. features: Off( ) ErrDisp( ) UNITINFO( )"
                                       };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
-                                        "( ) Use SysNAND FIRM if booting with R (A9LH)",
-                                        "( ) Enable region/language emu. and ext. .code",
-                                        "( ) Show current NAND in System Settings",
+                                        "( ) Use SysNAND FIRM if booting with R",
+                                        "( ) Enable loading external FIRMs and modules",
+                                        "( ) Use custom path",
+                                        "( ) Enable game patching",
+                                        "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Display splash screen before payloads"
-#ifdef DEV
-                                      , "( ) Patch SVC/service/archive/ARM9 access"
-#endif
+                                        "( ) Patch SVC/service/archive/ARM9 access",
+                                        "( ) Hide Pin when entering"
                                       };
 
+    const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
+                                          "It will be booted when no\n"
+                                          "directional pad buttons are pressed.",
+
+                                          "Select the screen brightness.",
+
+                                          "Enable splash screen support.\n\n"
+                                          "\t* 'Before payloads' displays it\n"
+                                          "before booting payloads\n"
+                                          "(intended for splashes that display\n"
+                                          "button hints).\n\n"
+                                          "\t* 'After payloads' displays it\n"
+                                          "afterwards.",
+
+                                          "Activate a PIN lock.\n\n"
+                                          "The PIN will be asked each time\n"
+                                          "Luma3DS boots.\n\n"
+                                          "4, 6 or 8 digits can be selected.\n\n"
+                                          "The ABXY buttons and the directional\n"
+                                          "pad buttons can be used as keys.\n\n"
+                                          "A message can also be displayed\n"
+                                          "(refer to the wiki for instructions).",
+
+                                          "Select the New 3DS CPU mode.\n\n"
+                                          "This won't apply to\n"
+                                          "New 3DS exclusive/enhanced games.\n\n"
+                                          "'Clock+L2' can cause issues with some\n"
+                                          "games.",
+
+                                          "Select the developer features.\n\n"
+                                          "\t* If 'Off' is not checked, exception\n"
+                                          "handlers will be enabled on A9LH.\n"
+                                          "\t* 'ErrDisp' also displays debug info\n"
+                                          "on the 'An error has occurred' screen.\n"
+                                          "\t* 'UNITINFO' also makes the console\n"
+                                          "be always detected as a\n"
+                                          "development unit\n"
+                                          "(which breaks online features, amiibos\n"
+                                          "and retail CIAs, but allows installing\n"
+                                          "and booting some developer software).\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!",
+
+                                          "If enabled, SysNAND will be launched\n"
+                                          "on boot.\n\n"
+                                          "Otherwise, an EmuNAND will.\n\n"
+                                          "Hold L on boot to switch NAND.\n\n"
+                                          "To use a different EmuNAND from the\n"
+                                          "default, hold a directional pad button\n"
+                                          "(Up/Right/Down/Left equal EmuNANDs\n"
+                                          "1/2/3/4).",
+
+                                          "If enabled, when holding R on boot\n"
+                                          "EmuNAND will be booted with the\n"
+                                          "SysNAND FIRM.\n\n"
+                                          "Otherwise, SysNAND will be booted\n"
+                                          "with an EmuNAND FIRM.\n\n"
+                                          "To use a different EmuNAND from the\n"
+                                          "default, hold a directional pad button\n"
+                                          "(Up/Right/Down/Left equal EmuNANDs\n"
+                                          "1/2/3/4), also add A if you have\n"
+                                          "a matching payload.",
+
+                                          "Enable loading external FIRMs and\n"
+                                          "system modules.\n\n"
+                                          "This isn't needed in most cases.\n\n"
+                                          "Refer to the wiki for instructions.",
+
+                                          "Use a custom path for the\n"
+                                          "Luma3DS payload.\n\n"
+                                          "Refer to the wiki for instructions.",
+
+                                          "Enable overriding the region and\n"
+                                          "language configuration and the usage\n"
+                                          "of patched code binaries and\n"
+                                          "custom RomFS for specific games.\n\n"
+                                          "Also makes certain DLCs for\n"
+                                          "out-of-region games work.\n\n"
+                                          "Enabling this requires the\n"
+                                          "archive patch to be applied.\n\n"
+                                          "Refer to the wiki for instructions.",
+
+                                          "Enable showing the current NAND/FIRM:\n\n"
+                                          "\t* Sys  = SysNAND\n"
+                                          "\t* Emu  = EmuNAND 1\n"
+                                          "\t* EmuX = EmuNAND X\n"
+                                          "\t* SysE = SysNAND with EmuNAND 1 FIRM\n"
+                                          "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
+                                          "\t* EmuS = EmuNAND 1 with SysNAND FIRM\n"
+                                          "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
+                                          "or an user-defined custom string in\n"
+                                          "System Settings.\n\n"
+                                          "Refer to the wiki for instructions.",
+
+                                          "Enable showing the GBA boot screen\n"
+                                          "when booting GBA games.",
+
+                                          "Disable SVC, service, archive and ARM9\n"
+                                          "exheader access checks.\n\n"
+                                          "The service and archive patches\n"
+                                          "don't work on New 3DS FIRMs between\n"
+                                          "9.3 and 10.4.\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!",
+                                          
+                                          "Hides the input when entering pin\n"
+                                          "to unlock the 3DS"
+                                       };
+
     struct multiOption {
-        int posXs[4];
-        int posY;
+        u32 posXs[4];
+        u32 posY;
         u32 enabled;
+        bool visible;
     } multiOptions[] = {
-        { .posXs = {19, 24, 29, 34} },
-        { .posXs = {21, 26, 31, 36} },
-        { .posXs = {14, 19, 24, 29} },
-        { .posXs = {17, 26, 32, 44} }
-#ifdef DEV
-      , { .posXs = {23, 35, 43, 0} }
-#endif
+        { .posXs = {19, 24, 29, 34}, .visible = isSdMode },
+        { .posXs = {21, 26, 31, 36}, .visible = true },
+        { .posXs = {12, 22, 31, 0}, .visible = true  },
+        { .posXs = {14, 19, 24, 29}, .visible = true },
+        { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
+        { .posXs = {19, 30, 42, 0}, .visible = true  }
+    };
+
+    struct singleOption {
+        u32 posY;
+        bool enabled;
+        bool visible;
+    } singleOptions[] = {
+        { .visible = isSdMode },
+        { .visible = isSdMode },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true },
+        { .visible = true }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
     u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
-        singleOptionsAmount = sizeof(singleOptionsText) / sizeof(char *),
+        singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption),
         totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption = multiOptionsAmount;
-
-    struct singleOption {
-        int posY;
-        bool enabled;
-    } singleOptions[singleOptionsAmount];
+        selectedOption,
+        singleSelected;
+    bool isMultiOption = false;
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -122,63 +240,102 @@ void configMenu(bool oldPinStatus)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         singleOptions[i].enabled = CONFIG(i);
 
+    initScreens();
+
+    drawString(CONFIG_TITLE, true, 10, 10, COLOR_TITLE);
+    drawString("Press A to select, START to save", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+
     //Character to display a selected option
     char selected = 'x';
 
-    int endPos = 42;
+    u32 endPos = 10 + 2 * SPACING_Y;
 
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
     {
+        if(!multiOptions[i].visible) continue;
+
         multiOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(multiOptionsText[i], 10, multiOptions[i].posY, COLOR_WHITE);
-        drawCharacter(selected, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+        endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
+        drawCharacter(selected, true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
     }
 
     endPos += SPACING_Y / 2;
-    u32 color = COLOR_RED;
 
     //Display all the normal options in white except for the first one
-    for(u32 i = 0; i < singleOptionsAmount; i++)
+    for(u32 i = 0, color = COLOR_RED; i < singleOptionsAmount; i++)
     {
+        if(!singleOptions[i].visible) continue;
+
         singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], 10, singleOptions[i].posY, color);
-        if(singleOptions[i].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[i].posY, color);
-        color = COLOR_WHITE;
+        endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
+        if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
+
+        if(color == COLOR_RED)
+        {
+            singleSelected = i;
+            selectedOption = i + multiOptionsAmount;
+            color = COLOR_WHITE;
+        }
     }
 
-    u32 pressed = 0;
+    drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
 
     //Boring configuration menu
-    while(pressed != BUTTON_START)
+    while(true)
     {
+        u32 pressed;
         do
         {
-            pressed = waitInput();
+            pressed = waitInput(true);
         }
         while(!(pressed & MENU_BUTTONS));
+
+        if(pressed == BUTTON_START) break;
 
         if(pressed != BUTTON_A)
         {
             //Remember the previously selected option
             u32 oldSelectedOption = selectedOption;
 
-            switch(pressed)
+            while(true)
             {
-                case BUTTON_UP:
-                    selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
+                switch(pressed)
+                {
+                    case BUTTON_UP:
+                        selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
+                        break;
+                    case BUTTON_DOWN:
+                        selectedOption = selectedOption == totalIndexes ? 0 : selectedOption + 1;
+                        break;
+                    case BUTTON_LEFT:
+                        pressed = BUTTON_DOWN;
+                        selectedOption = 0;
+                        break;
+                    case BUTTON_RIGHT:
+                        pressed = BUTTON_UP;
+                        selectedOption = totalIndexes;
+                        break;
+                    default:
+                        break;
+                }
+
+                if(selectedOption < multiOptionsAmount)
+                {
+                    if(!multiOptions[selectedOption].visible) continue;
+
+                    isMultiOption = true;
                     break;
-                case BUTTON_DOWN:
-                    selectedOption = selectedOption == totalIndexes ? 0 : selectedOption + 1;
+                }
+                else
+                {
+                    singleSelected = selectedOption - multiOptionsAmount;
+
+                    if(!singleOptions[singleSelected].visible) continue;
+
+                    isMultiOption = false;
                     break;
-                case BUTTON_LEFT:
-                    selectedOption = 0;
-                    break;
-                case BUTTON_RIGHT:
-                    selectedOption = totalIndexes;
-                    break;
-                default:
-                    continue;
+                }
             }
 
             if(selectedOption == oldSelectedOption) continue;
@@ -186,69 +343,60 @@ void configMenu(bool oldPinStatus)
             //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
             {
-                drawString(multiOptionsText[oldSelectedOption], 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
-                drawCharacter(selected, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
+                drawString(multiOptionsText[oldSelectedOption], true, 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
+                drawCharacter(selected, true, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
             }
             else
             {
                 u32 singleOldSelected = oldSelectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleOldSelected], 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
-                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
+                drawString(singleOptionsText[singleOldSelected], true, 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
+                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
             }
 
-            if(selectedOption < multiOptionsAmount)
-                drawString(multiOptionsText[selectedOption], 10, multiOptions[selectedOption].posY, COLOR_RED);
-            else
-            {
-                u32 singleSelected = selectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleSelected], 10, singleOptions[singleSelected].posY, COLOR_RED);
-            }
+            if(isMultiOption) drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
+            else drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
+
+            drawString(optionsDescription[oldSelectedOption], false, 10, 10, COLOR_BLACK);
+            drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
         }
         else
         {
             //The selected option's status changed, print the 'x's accordingly
-            if(selectedOption < multiOptionsAmount)
+            if(isMultiOption)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
-                drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
+                drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
-                if(selectedOption == 1) updateBrightness(multiOptions[1].enabled);
+                if(selectedOption == BRIGHTNESS) updateBrightness(multiOptions[BRIGHTNESS].enabled);
             }
             else
             {
-                bool oldEnabled = singleOptions[selectedOption - multiOptionsAmount].enabled;
-                singleOptions[selectedOption - multiOptionsAmount].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[selectedOption - multiOptionsAmount].posY, COLOR_BLACK);
+                bool oldEnabled = singleOptions[singleSelected].enabled;
+                singleOptions[singleSelected].enabled = !oldEnabled;
+                if(oldEnabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK);
             }
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-        if(selectedOption < multiOptionsAmount)
-            drawCharacter(selected, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        else
-        {
-            u32 singleSelected = selectedOption - multiOptionsAmount;
-            if(singleOptions[singleSelected].enabled) drawCharacter(selected, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
-        }
+        if(isMultiOption) drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
+        else if(singleOptions[singleSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
     }
 
-    u32 oldPinLength = CONFIG_PIN;
-
-    //Preserve the last-used boot options (last 12 bits)
-    configData.config &= 0x3F;
+    //Preserve the last-used boot options (first 9 bits)
+    configData.config &= 0xFF;
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        configData.config |= multiOptions[i].enabled << (i * 2 + 7);
+        configData.config |= multiOptions[i].enabled << (i * 2 + 8);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 21);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
 
-    if(CONFIG_PIN != 0) newPin(oldPinStatus && CONFIG_PIN == oldPinLength);
-    else if(oldPinStatus) fileDelete(PIN_PATH);
+    u32 newPinMode = MULTICONFIG(PIN);
 
-    //Wait for the pressed buttons to change
+    if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
+    else if(oldPinStatus) fileDelete(PIN_FILE);
+
     while(HID_PAD & PIN_BUTTONS);
-
-    chrono(2);
+    wait(2000ULL);
 }

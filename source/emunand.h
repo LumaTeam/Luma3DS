@@ -20,15 +20,15 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   Code for locating the SDMMC struct by Normmatt
+*/
+
 #pragma once
 
 #include "types.h"
 
-#define NCSD_MAGIC      0x4453434E
 #define ROUND_TO_4MB(a) (((a) + 0x2000 - 1) & (~(0x2000 - 1)))
 
-extern u32 emuOffset;
-extern bool isN3DS;
-
 void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType);
-void patchEmuNand(u8 *arm9Section, u32 arm9SectionSize, u8 *process9Offset, u32 process9Size, u32 emuHeader, u32 branchAdditive);
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address);

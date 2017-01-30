@@ -4,12 +4,7 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-include $(DEVKITARM)/3ds_rules
-
-CC := arm-none-eabi-gcc
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-OC := arm-none-eabi-objcopy
+include $(DEVKITARM)/base_tools
 
 name := Luma3DS
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
@@ -20,127 +15,88 @@ dir_patches := patches
 dir_loader := loader
 dir_injector := injector
 dir_exceptions := exceptions
-dir_arm9_exceptions := exceptions/arm9
-dir_arm11_exceptions := exceptions/arm11
-dir_mset := CakeHax
-dir_ninjhax := CakeBrah
+dir_arm9_exceptions := $(dir_exceptions)/arm9
+dir_arm11_exceptions := $(dir_exceptions)/arm11
+dir_haxloader := haxloader
 dir_build := build
 dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostartfiles
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Aurora Wright/TuxSH" --no-print-directory
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/injector.h $(dir_build)/loader.h
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/svcGetCFWInfo.bin.o $(dir_build)/k11modules.bin.o \
+          $(dir_build)/injector.bin.o $(dir_build)/loader.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
 
-ifeq ($(strip $(DEV)),TRUE)
-CFLAGS += -DDEV
-bundled += $(dir_build)/k11modulespatch.h $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h
-title := \"$(name) $(revision) (dev) configuration\"
-else
-title := \"$(name) $(revision) configuration\"
-endif
+define bin2o
+	bin2s $< | $(AS) -o $(@)
+	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $(dir_build)/bundled.h
+	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $(dir_build)/bundled.h
+endef
 
 .PHONY: all
-all: launcher a9lh ninjhax
+all: a9lh haxloader
 
-.PHONY: launcher
-launcher: $(dir_out)/$(name).dat
+.PHONY: release
+release: $(dir_out)/$(name)$(revision).7z
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
 
-.PHONY: ninjhax
-ninjhax: $(dir_out)/3ds/$(name)
-
-.PHONY: release
-ifeq ($(strip $(DEV)),TRUE)
-release: $(dir_out)/$(name)$(revision)-dev.7z
-else
-release: $(dir_out)/$(name)$(revision).7z
-endif
+.PHONY: haxloader
+haxloader: a9lh
+	@$(MAKE) name=$(name) -C $(dir_haxloader)
 
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
+	@$(MAKE) -C $(dir_haxloader) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean	
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
-$(dir_out):
-	@mkdir -p "$(dir_out)"
+.PRECIOUS: $(dir_build)/%.bin
 
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
-	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
-	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
+$(dir_out) $(dir_build):
+	@mkdir -p "$@"
+
+$(dir_out)/$(name)$(revision).7z: all
+	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
-$(dir_out)/3ds/$(name): $(dir_out)
-	@mkdir -p "$@"
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
-	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
-
-$(dir_out)/$(name)$(revision).7z: launcher a9lh ninjhax
-	@7z a -mx $@ ./$(@D)/*
-
-$(dir_out)/$(name)$(revision)-dev.7z: launcher a9lh ninjhax
-	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
-
 $(dir_build)/main.bin: $(dir_build)/main.elf
-	$(OC) -S -O binary $< $@
+	$(OBJCOPY) -S -O binary $< $@
 
-$(dir_build)/main.elf: $(objects)
+$(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/emunandpatch.h: $(dir_patches)/emunand.s
-	@mkdir -p "$(@D)"
+$(dir_build)/%.bin.o: $(dir_build)/%.bin
+	@$(bin2o)
+
+$(dir_build)/injector.bin: $(dir_injector) $(dir_build)
+	@$(MAKE) -C $<
+
+$(dir_build)/loader.bin: $(dir_loader) $(dir_build)
+	@$(MAKE) -C $<
+
+$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions) $(dir_build)
+	@$(MAKE) -C $<
+
+$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions) $(dir_build)
+	@$(MAKE) -C $<
+
+$(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
 	@armips $<
-	@bin2c -o $@ -n emunand $(@D)/emunand.bin
-
-$(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n reboot $(@D)/reboot.bin
-
-$(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n svcGetCFWInfo $(@D)/svcGetCFWInfo.bin
-
-$(dir_build)/injector.h: $(dir_injector)/Makefile
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $(dir_injector) DEV=$(DEV)
-	@bin2c -o $@ -n injector $(@D)/injector.cxi
-
-$(dir_build)/loader.h: $(dir_loader)/Makefile
-	@$(MAKE) -C $(dir_loader)
-	@bin2c -o $@ -n loader $(@D)/loader.bin
-
-$(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
-
-$(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
-	@$(MAKE) -C $(dir_arm9_exceptions)
-	@bin2c -o $@ -n arm9_exceptions $(@D)/arm9_exceptions.bin
-
-$(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
-	@$(MAKE) -C $(dir_arm11_exceptions)
-	@bin2c -o $@ -n arm11_exceptions $(@D)/arm11_exceptions.bin
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
-$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="$(title)"
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
@@ -150,4 +106,3 @@ $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-include $(call rwildcard, $(dir_build), *.d)

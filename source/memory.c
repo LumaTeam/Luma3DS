@@ -21,7 +21,7 @@
 */
 
 /*
-*   Quick Search algorithm adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
+*   Boyer-Moore Horspool algorithm adapted from http://www-igm.univ-mlv.fr/~lecroq/string/node18.html#SECTION00180
 *   memcpy, memset32 and memcmp adapted from https://github.com/mid-kid/CakesForeveryWan/blob/557a8e8605ab3ee173af6497486e8f22c261d0e2/source/memfuncs.c
 */
 
@@ -46,13 +46,13 @@ void memset32(void *dest, u32 filler, u32 size)
 
 int memcmp(const void *buf1, const void *buf2, u32 size)
 {
-    const u8 *buf1c = (const u8 *)buf1;
-    const u8 *buf2c = (const u8 *)buf2;
+    const u8 *buf1c = (const u8 *)buf1,
+             *buf2c = (const u8 *)buf2;
 
     for(u32 i = 0; i < size; i++)
     {
         int cmp = buf1c[i] - buf2c[i];
-        if(cmp) return cmp;
+        if(cmp != 0) return cmp;
     }
 
     return 0;
@@ -61,23 +61,22 @@ int memcmp(const void *buf1, const void *buf2, u32 size)
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 {
     const u8 *patternc = (const u8 *)pattern;
-
-    //Preprocessing
     u32 table[256];
 
+    //Preprocessing
     for(u32 i = 0; i < 256; i++)
-        table[i] = patternSize + 1;
-    for(u32 i = 0; i < patternSize; i++)
-        table[patternc[i]] = patternSize - i;
+        table[i] = patternSize;
+    for(u32 i = 0; i < patternSize - 1; i++)
+        table[patternc[i]] = patternSize - i - 1;
 
     //Searching
     u32 j = 0;
-
     while(j <= size - patternSize)
     {
-        if(memcmp(pattern, startPos + j, patternSize) == 0)
+        u8 c = startPos[j + patternSize - 1];
+        if(patternc[patternSize - 1] == c && memcmp(pattern, startPos + j, patternSize - 1) == 0)
             return startPos + j;
-        j += table[startPos[j + patternSize]];
+        j += table[c];
     }
 
     return NULL;

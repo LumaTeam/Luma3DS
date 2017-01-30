@@ -21,68 +21,47 @@
 */
 
 /*
+*   Signature patches by an unknown author
+*   firmlaunches patching code originally by delebile
+*   FIRM partition writes patches by delebile
 *   ARM11 modules patching code originally by Subv
+*   Idea for svcBreak patches from yellows8 and others on #3dsdev
 */
 
 #pragma once
 
 #include "types.h"
 
-typedef struct patchData {
-    u32 offset[2];
-    union {
-        u8 type0[8];
-        u16 type1;
-    } patch;
-    u32 type;
-} patchData;
+extern CfgData configData;
 
-typedef struct __attribute__((packed))
-{
-    char magic[4];
-        
-    u8 versionMajor;
-    u8 versionMinor;
-    u8 versionBuild;
-    u8 flags;
-
-    u32 commitHash;
-
-    u32 config;
-} CFWInfo;
-
-extern bool isN3DS;
-
-#ifdef DEV
-extern bool isDevUnit;
-#endif
-
-u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
-
-#ifdef DEV
-u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
-#else
-u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space);
-#endif
-
-void patchSignatureChecks(u8 *pos, u32 size);
-void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
-void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
-void patchFirmWrites(u8 *pos, u32 size);
-void patchOldFirmWrites(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
-void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
-
-#ifdef DEV
-void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
+u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11DAbtHandler, u32 **arm11ExceptionsPage);
+u32 patchSignatureChecks(u8 *pos, u32 size);
+u32 patchOldSignatureChecks(u8 *pos, u32 size);
+u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
+u32 patchFirmWrites(u8 *pos, u32 size);
+u32 patchOldFirmWrites(u8 *pos, u32 size);
+u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
+u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size);
+u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size);
+u32 patchCheckForDevCommonKey(u8 *pos, u32 size);
+u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
+u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode);
+u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);
-void patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
+u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
 void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable);
-void patchKernel9Panic(u8 *pos, u32 size);
-void patchKernel11Panic(u8 *pos, u32 size);
-void patchP9AccessChecks(u8 *pos, u32 size);
-void patchArm11SvcAccessChecks(u32 *arm11SvcHandler);
-void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
-void patchUnitInfoValueSet(u8 *pos, u32 size);
-#endif
+u32 patchKernel9Panic(u8 *pos, u32 size);
+u32 patchKernel11Panic(u8 *pos, u32 size);
+u32 patchP9AccessChecks(u8 *pos, u32 size);
+u32 patchArm11SvcAccessChecks(u32 *arm11SvcHandler, u32 *endPos);
+u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space, bool patchGames);
+u32 patchUnitInfoValueSet(u8 *pos, u32 size);
+u32 patchLgySignatureChecks(u8 *pos, u32 size);
+u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size);
+u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size);
+u32 patchTwlWhitelistChecks(u8 *pos, u32 size);
+u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion);
+u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size);
+u32 patchTwlShaHashChecks(u8 *pos, u32 size);
+u32 patchAgbBootSplash(u8 *pos, u32 size);

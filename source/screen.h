@@ -31,16 +31,27 @@
 
 #define PDN_GPU_CNT (*(vu8  *)0x10141200)
 
-#define ARM11_STUB_ADDRESS (0x25000000 - 0x30) //It's currently only 0x28 bytes large. We're putting 0x30 just to be sure here
+#define ARESCREENSINITIALIZED (PDN_GPU_CNT != 1)
+
+#define ARM11_STUB_ADDRESS 0x1FFFFD00
 #define WAIT_FOR_ARM9()    *arm11Entry = 0; while(!*arm11Entry); ((void (*)())*arm11Entry)();
+
+#define SCREEN_TOP_WIDTH     400
+#define SCREEN_BOTTOM_WIDTH  320
+#define SCREEN_HEIGHT        240
+#define SCREEN_TOP_FBSIZE    (3 * SCREEN_TOP_WIDTH * SCREEN_HEIGHT)
+#define SCREEN_BOTTOM_FBSIZE (3 * SCREEN_BOTTOM_WIDTH * SCREEN_HEIGHT)
 
 static volatile struct fb {
      u8 *top_left;
      u8 *top_right;
      u8 *bottom;
-} *const fb = (volatile struct fb *)0x23FFFE00;
+}  __attribute__((packed)) *const fbs = (volatile struct fb *)0x23FFFE00;
+
+extern CfgData configData;
 
 void deinitScreens(void);
+void swapFramebuffers(bool isAlternate);
 void updateBrightness(u32 brightnessIndex);
-void clearScreens(void);
+void clearScreens(bool isAlternate);
 void initScreens(void);

@@ -25,14 +25,24 @@
 *   Screen deinit code by tiniVi
 */
 
+/*
+*   About cache coherency:
+*
+*   Flushing the data cache for all memory regions read from/written to by both processors is mandatory on the ARM9 processor.
+*   Thus, we make sure there'll be a cache miss on the ARM9 next time it's read.
+*   Otherwise the ARM9 won't see the changes made and things will break.
+*
+*   On the ARM11, in the environment we're in, the MMU isn't enabled and nothing is cached.
+*/
+
 #include "screen.h"
 #include "config.h"
 #include "memory.h"
 #include "cache.h"
-#include "draw.h"
 #include "i2c.h"
+#include "utils.h"
 
-vu32 *const arm11Entry = (vu32 *)0x1FFFFFF8;
+vu32 *arm11Entry = (vu32 *)BRAHMA_ARM11_ENTRY;
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
@@ -40,26 +50,23 @@ void  __attribute__((naked)) arm11Stub(void)
     //Disable interrupts
     __asm(".word 0xF10C01C0");
 
-    //Wait for the entry to be set
-    while(*arm11Entry == ARM11_STUB_ADDRESS);
-
-    //Jump to it
-    ((void (*)())*arm11Entry)();
+    WAIT_FOR_ARM9();
 }
 
 static void invokeArm11Function(void (*func)())
 {
     static bool hasCopiedStub = false;
+
     if(!hasCopiedStub)
     {
-        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x30);
-        flushDCacheRange((void *)ARM11_STUB_ADDRESS, 0x30);
+        memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x2C);
         hasCopiedStub = true;
     }
 
     *arm11Entry = (u32)func;
     while(*arm11Entry);
     *arm11Entry = ARM11_STUB_ADDRESS;
+    while(*arm11Entry);
 }
 
 void deinitScreens(void)
@@ -77,7 +84,7 @@ void deinitScreens(void)
         WAIT_FOR_ARM9();
     }
 
-    if(PDN_GPU_CNT != 1) invokeArm11Function(ARM11);
+    if(ARESCREENSINITIALIZED) invokeArm11Function(ARM11);
 }
 
 void updateBrightness(u32 brightnessIndex)
@@ -101,54 +108,70 @@ void updateBrightness(u32 brightnessIndex)
     invokeArm11Function(ARM11);
 }
 
-void clearScreens(void)
-{   
+void swapFramebuffers(bool isAlternate)
+{
+    static u32 isAlternateTmp;
+    isAlternateTmp = isAlternate ? 1 : 0;
+
+    void __attribute__((naked)) ARM11(void)
+    {
+        //Disable interrupts
+        __asm(".word 0xF10C01C0");
+
+        *(vu32 *)0x10400478 = (*(vu32 *)0x10400478 & 0xFFFFFFFE) | isAlternateTmp;
+        *(vu32 *)0x10400578 = (*(vu32 *)0x10400478 & 0xFFFFFFFE) | isAlternateTmp;
+
+        WAIT_FOR_ARM9();
+    }
+
+    flushDCacheRange(&isAlternateTmp, 4);
+    invokeArm11Function(ARM11);
+}
+
+void clearScreens(bool isAlternate)
+{
+    static volatile struct fb *fbTmp;
+    fbTmp = isAlternate ? &fbs[1] : &fbs[0];
+
     void __attribute__((naked)) ARM11(void)
     {
         //Disable interrupts
         __asm(".word 0xF10C01C0");
 
         //Setting up two simultaneous memory fills using the GPU
-        vu32 *REGs_PSC0 = (vu32 *)0x10400010;
-        REGs_PSC0[0] = (u32)fb->top_left >> 3; //Start address
-        REGs_PSC0[1] = (u32)(fb->top_left + 0x46500) >> 3; //End address
+
+        vu32 *REGs_PSC0 = (vu32 *)0x10400010,
+             *REGs_PSC1 = (vu32 *)0x10400020;
+
+        REGs_PSC0[0] = (u32)fbTmp->top_left >> 3; //Start address
+        REGs_PSC0[1] = (u32)(fbTmp->top_left + SCREEN_TOP_FBSIZE) >> 3; //End address
         REGs_PSC0[2] = 0; //Fill value
         REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
 
-        vu32 *REGs_PSC1 = (vu32 *)0x10400020;
-        REGs_PSC1[0] = (u32)fb->bottom >> 3; //Start address
-        REGs_PSC1[1] = (u32)(fb->bottom + 0x38400) >> 3; //End address
+        REGs_PSC1[0] = (u32)fbTmp->bottom >> 3; //Start address
+        REGs_PSC1[1] = (u32)(fbTmp->bottom + SCREEN_BOTTOM_FBSIZE) >> 3; //End address
         REGs_PSC1[2] = 0; //Fill value
         REGs_PSC1[3] = (2 << 8) | 1; //32-bit pattern; start
 
         while(!((REGs_PSC0[3] & 2) && (REGs_PSC1[3] & 2)));
 
-        if(fb->top_right != fb->top_left)
-        {
-            REGs_PSC0[0] = (u32)fb->top_right >> 3; //Start address
-            REGs_PSC0[1] = (u32)(fb->top_right + 0x46500) >> 3; //End address
-            REGs_PSC0[2] = 0; //Fill value
-            REGs_PSC0[3] = (2 << 8) | 1; //32-bit pattern; start
-
-            while(!(REGs_PSC0[3] & 2));
-        }
-
         WAIT_FOR_ARM9();
     }
 
-    flushDCacheRange((void *)fb, sizeof(struct fb));
+    flushDCacheRange((void *)fbTmp, sizeof(struct fb));
+    flushDCacheRange(&fbTmp, 4);
     invokeArm11Function(ARM11);
 }
 
 void initScreens(void)
 {
-    void __attribute__((naked)) ARM11(void)
+    void __attribute__((naked)) initSequence(void)
     {
         //Disable interrupts
         __asm(".word 0xF10C01C0");
 
-        u32 brightnessLevel = brightness[CONFIG_BRIGHTNESS];
-        
+        u32 brightnessLevel = brightness[MULTICONFIG(BRIGHTNESS)];
+
         *(vu32 *)0x10141200 = 0x1007F;
         *(vu32 *)0x10202014 = 0x00000001;
         *(vu32 *)0x1020200C &= 0xFFFEFFFE;
@@ -157,7 +180,7 @@ void initScreens(void)
         *(vu32 *)0x10202244 = 0x1023E;
         *(vu32 *)0x10202A44 = 0x1023E;
 
-        // Top screen
+        //Top screen
         *(vu32 *)0x10400400 = 0x000001c2;
         *(vu32 *)0x10400404 = 0x000000d1;
         *(vu32 *)0x10400408 = 0x000001c1;
@@ -187,11 +210,11 @@ void initScreens(void)
         *(vu32 *)0x10400490 = 0x000002D0;
         *(vu32 *)0x1040049C = 0x00000000;
 
-        // Disco register
+        //Disco register
         for(u32 i = 0; i < 256; i++)
            *(vu32 *)0x10400484 = 0x10101 * i;
 
-        // Bottom screen
+        //Bottom screen
         *(vu32 *)0x10400500 = 0x000001c2;
         *(vu32 *)0x10400504 = 0x000000d1;
         *(vu32 *)0x10400508 = 0x000001c1;
@@ -221,39 +244,56 @@ void initScreens(void)
         *(vu32 *)0x10400590 = 0x000002D0;
         *(vu32 *)0x1040059C = 0x00000000;
 
-        // Disco register
+        //Disco register
         for(u32 i = 0; i < 256; i++)
            *(vu32 *)0x10400584 = 0x10101 * i;
-
-        *(vu32 *)0x10400468 = 0x18300000;
-        *(vu32 *)0x1040046c = 0x18300000;
-        *(vu32 *)0x10400494 = 0x18300000;
-        *(vu32 *)0x10400498 = 0x18300000;
-        *(vu32 *)0x10400568 = 0x18346500;
-        *(vu32 *)0x1040056c = 0x18346500;
-
-        //Set CakeBrah framebuffers
-        fb->top_left = (u8 *)0x18300000;
-        fb->top_right = (u8 *)0x18300000;
-        fb->bottom = (u8 *)0x18346500;
 
         WAIT_FOR_ARM9();
     }
 
-    if(PDN_GPU_CNT == 1)
+    //Set CakeBrah framebuffers
+    void __attribute__((naked)) setupFramebuffers(void)
     {
-        flushDCacheRange(&configData, sizeof(CfgData));
-        flushDCacheRange((void *)fb, sizeof(struct fb));
-        invokeArm11Function(ARM11);
+        //Disable interrupts
+        __asm(".word 0xF10C01C0");
 
-        clearScreens();
+        fbs[0].top_left = (u8 *)0x18300000;
+        fbs[1].top_left = (u8 *)0x18400000;
+        fbs[0].top_right = (u8 *)0x18300000;
+        fbs[1].top_right = (u8 *)0x18400000;
+        fbs[0].bottom = (u8 *)0x18346500;
+        fbs[1].bottom = (u8 *)0x18446500;
 
-        //Turn on backlight
-        i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
+        *(vu32 *)0x10400468 = (u32)fbs[0].top_left;
+        *(vu32 *)0x1040046c = (u32)fbs[1].top_left;
+        *(vu32 *)0x10400494 = (u32)fbs[0].top_right;
+        *(vu32 *)0x10400498 = (u32)fbs[1].top_right;
+        *(vu32 *)0x10400568 = (u32)fbs[0].bottom;
+        *(vu32 *)0x1040056c = (u32)fbs[1].bottom;
+
+        WAIT_FOR_ARM9();
     }
-    else
+
+    static bool needToSetup = true;
+
+    if(needToSetup)
     {
-        clearScreens();
-        updateBrightness(CONFIG_BRIGHTNESS);
+        if(!ARESCREENSINITIALIZED)
+        {
+            flushDCacheRange(&configData, sizeof(CfgData));
+            invokeArm11Function(initSequence);
+
+            //Turn on backlight
+            i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
+            wait(3ULL);
+        }
+        else updateBrightness(MULTICONFIG(BRIGHTNESS));
+
+        flushDCacheRange((void *)fbs, 2 * sizeof(struct fb));
+        invokeArm11Function(setupFramebuffers);
+        needToSetup = false;
     }
+
+    clearScreens(false);
+    swapFramebuffers(false);
 }

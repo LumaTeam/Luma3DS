@@ -20,6 +20,10 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   waitInput function based on code by d0k3 https://github.com/d0k3/Decrypt9WIP/blob/master/source/hid.c
+*/
+
 #include "utils.h"
 #include "i2c.h"
 #include "buttons.h"
@@ -27,98 +31,91 @@
 #include "draw.h"
 #include "cache.h"
 
-u32 waitInput(void)
+static void startChrono(void)
 {
-    u32 pressedKey = 0,
-        key;
-
-    //Wait for no keys to be pressed
-    while(HID_PAD);
-
-    do
-    {
-        //Wait for a key to be pressed
-        while(!HID_PAD);
-
-        key = HID_PAD;
-
-        //Make sure it's pressed
-        for(u32 i = 0x13000; i > 0; i--)
-        {
-            if(key != HID_PAD) break;
-            if(i == 1) pressedKey = 1;
-        }
-    }
-    while(!pressedKey);
-
-    return key;
-}
-
-void mcuReboot(void)
-{
-    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens();
-
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
-
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
-    while(true);
-}
-
-void mcuPowerOff(void)
-{
-    if(!isFirmlaunch && PDN_GPU_CNT != 1) clearScreens();
-
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
-    
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
-    while(true);
-}
-
-//TODO: add support for TIMER IRQ
-static inline void startChrono(u64 initialTicks)
-{
-    //Based on a NATIVE_FIRM disassembly
-
     REG_TIMER_CNT(0) = 0; //67MHz
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
 
-    for(u32 i = 0; i < 4; i++) REG_TIMER_VAL(i) = (u16)(initialTicks >> (16 * i));
+    for(u32 i = 0; i < 4; i++) REG_TIMER_VAL(i) = 0;
 
     REG_TIMER_CNT(0) = 0x80; //67MHz; enabled
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
 }
 
-static inline void stopChrono(void)
+static u64 chrono(void)
 {
-    for(u32 i = 0; i < 4; i++) REG_TIMER_CNT(i) &= ~0x80;
+    u64 res = 0;
+    for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
+
+    res /= (TICKS_PER_SEC / 1000);
+
+    return res;
 }
 
-void chrono(u32 seconds)
+u32 waitInput(bool isMenu)
 {
-    startChrono(0);
+    static u64 dPadDelay = 0ULL;
+    u32 key,
+        oldKey = HID_PAD;
 
-    u64 startingTicks = 0;
-    for(u32 i = 0; i < 4; i++) startingTicks |= REG_TIMER_VAL(i) << (16 * i);
-
-    u64 res;
-    do
+    if(isMenu)
     {
-        res = 0;
-        for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
+        dPadDelay = dPadDelay > 0ULL ? 87ULL : 143ULL;
+        startChrono();
     }
-    while(res - startingTicks < seconds * TICKS_PER_SEC);
 
-    stopChrono();
+    while(true)
+    {
+        key = HID_PAD;
+
+        if(!key)
+        {
+            if(i2cReadRegister(I2C_DEV_MCU, 0x10) == 1) mcuPowerOff();
+            oldKey = 0;
+            dPadDelay = 0;
+            continue;
+        }
+
+        if(key == oldKey && (!isMenu || (!(key & DPAD_BUTTONS) || chrono() < dPadDelay))) continue;
+
+        //Make sure the key is pressed
+        u32 i;
+        for(i = 0; i < 0x13000 && key == HID_PAD; i++);
+        if(i == 0x13000) break;
+    }
+
+    return key;
+}
+
+void mcuPowerOff(void)
+{
+    if(!ISFIRMLAUNCH && ARESCREENSINITIALIZED) clearScreens(false);
+
+    //Ensure that all memory transfers have completed and that the data cache has been flushed
+    flushEntireDCache();
+
+    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
+    while(true);
+}
+
+void wait(u64 amount)
+{
+    startChrono();
+    while(chrono() < amount);
 }
 
 void error(const char *message)
 {
-    initScreens();
+    if(!ISFIRMLAUNCH)
+    {
+        initScreens();
 
-    drawString("An error has occurred:", 10, 10, COLOR_RED);
-    int posY = drawString(message, 10, 30, COLOR_WHITE);
-    drawString("Press any button to shutdown", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+        drawString("An error has occurred:", true, 10, 10, COLOR_RED);
+        u32 posY = drawString(message, true, 10, 30, COLOR_WHITE);
+        drawString("Press any button to shutdown", true, 10, posY + 2 * SPACING_Y, COLOR_WHITE);
 
-    waitInput();
+        waitInput(false);
+    }
+
     mcuPowerOff();
 }

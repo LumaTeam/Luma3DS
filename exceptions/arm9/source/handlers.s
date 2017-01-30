@@ -62,6 +62,7 @@ _commonHandler:
     bic r5, r3, #0xf
     orr r5, #0x3
     msr cpsr_c, r5             @ switch to supervisor mode
+    ldmfd sp, {r8-r11}^
     ldr r2, [sp, #0x1c]        @ implementation details of the official svc handler
     ldr r4, [sp, #0x18]
     msr cpsr_c, r3             @ restore processor mode

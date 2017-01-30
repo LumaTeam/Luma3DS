@@ -31,6 +31,7 @@ void main(void)
 
     memcpy(payloadAddress, (void *)0x24F00000, payloadSize);
 
+    //Ensure that all memory transfers have completed and that the caches have been flushed
     flushCaches();
 
     ((void (*)())payloadAddress)();

@@ -24,49 +24,49 @@
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 21)) & 1) != 0)
-#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 7)) & 3)
+#define CONFIG(a)        (((configData.config >> (a + 20)) & 1) != 0)
+#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 8)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
-#define CONFIG_PATH         "/luma/config.bin"
+#define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 3
+#define CONFIG_VERSIONMINOR 8
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
-#define BOOTCFG_FIRM         BOOTCONFIG(3, 1)
-#define BOOTCFG_A9LH         BOOTCONFIG(4, 1)
-#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(5, 1)
-#define BOOTCFG_SAFEMODE     BOOTCONFIG(6, 1)
-#define CONFIG_DEFAULTEMU    MULTICONFIG(0)
-#define CONFIG_BRIGHTNESS    MULTICONFIG(1)
-#define CONFIG_PIN           MULTICONFIG(2)
-#define CONFIG_AUTOBOOTSYS   CONFIG(0)
-#define CONFIG_USESYSFIRM    CONFIG(1)
-#define CONFIG_SHOWGBABOOT   CONFIG(4)
-#define CONFIG_PAYLOADSPLASH CONFIG(5)
+#define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
+#define BOOTCFG_A9LH         BOOTCONFIG(6, 1)
+#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(7, 1)
 
-#ifdef DEV
-#define CONFIG_DEVOPTIONS    MULTICONFIG(4)
-#define CONFIG_PATCHACCESS   CONFIG(6)
-#endif
-
-typedef struct __attribute__((packed))
+enum multiOptions
 {
-    char magic[4];
-    u16 formatVersionMajor, formatVersionMinor;
+    DEFAULTEMU = 0,
+    BRIGHTNESS,
+    SPLASH,
+    PIN,
+    NEWCPU,
+    DEVOPTIONS
+};
 
-    u32 config;
-} CfgData;
+enum singleOptions
+{
+    AUTOBOOTSYS = 0,
+    USESYSFIRM,
+    LOADEXTFIRMSANDMODULES,
+    USECUSTOMPATH,
+    PATCHGAMES,
+    PATCHVERSTRING,
+    SHOWGBABOOT,
+    PATCHACCESS,
+    HIDEPIN
+};
 
 typedef enum ConfigurationStatus
 {
     DONT_CONFIGURE = 0,
-    MODIFY_CONFIGURATION = 1,
-    CREATE_CONFIGURATION = 2
+    MODIFY_CONFIGURATION,
+    CREATE_CONFIGURATION
 } ConfigurationStatus;
-
-extern CfgData configData;
 
 bool readConfig(void);
 void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(bool oldPinStatus);
+void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode);

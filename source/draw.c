@@ -34,32 +34,41 @@
 
 bool loadSplash(void)
 {
-    //Don't delay boot nor init the screens if no splash image is on the SD
-    if(getFileSize("/luma/splash.bin") + getFileSize("/luma/splashbottom.bin") == 0)
-        return false;
-    
+    const char *topSplashFile = "splash.bin",
+               *bottomSplashFile = "splashbottom.bin";
+
+    bool isTopSplashValid = getFileSize(topSplashFile) == SCREEN_TOP_FBSIZE,
+         isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE;
+
+    //Don't delay boot nor init the screens if no splash images or invalid splash images are on the SD
+    if(!isTopSplashValid && !isBottomSplashValid) return false;
+
     initScreens();
+    clearScreens(true);
 
-    fileRead(fb->top_left, "/luma/splash.bin");
-    fileRead(fb->bottom, "/luma/splashbottom.bin");
+    if(isTopSplashValid) isTopSplashValid = fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE) == SCREEN_TOP_FBSIZE;
+    if(isBottomSplashValid) isBottomSplashValid = fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
 
-    chrono(3);
+    if(!isTopSplashValid && !isBottomSplashValid) return false;
+
+    swapFramebuffers(true);
+    wait(3000ULL);
 
     return true;
 }
 
-void drawCharacter(char character, int posX, int posY, u32 color)
+void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color)
 {
-    u8 *const select = fb->top_left;
+    u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
 
-    for(int y = 0; y < 8; y++)
+    for(u32 y = 0; y < 8; y++)
     {
         char charPos = font[character * 8 + y];
 
-        for(int x = 7; x >= 0; x--)
-            if ((charPos >> x) & 1)
+        for(u32 x = 0; x < 8; x++)
+            if(((charPos >> (7 - x)) & 1) == 1)
             {
-                int screenPos = (posX * SCREEN_TOP_HEIGHT * 3 + (SCREEN_TOP_HEIGHT - y - posY - 1) * 3) + (7 - x) * 3 * SCREEN_TOP_HEIGHT;
+                u32 screenPos = (posX * SCREEN_HEIGHT * 3 + (SCREEN_HEIGHT - y - posY - 1) * 3) + x * 3 * SCREEN_HEIGHT;
 
                 select[screenPos] = color >> 16;
                 select[screenPos + 1] = color >> 8;
@@ -68,26 +77,34 @@ void drawCharacter(char character, int posX, int posY, u32 color)
     }
 }
 
-int drawString(const char *string, int posX, int posY, u32 color)
+u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color)
 {
-    for(int i = 0, line_i = 0; i < strlen(string); i++, line_i++)
-    {
-        if(string[i] == '\n')
+    for(u32 i = 0, line_i = 0; i < strlen(string); i++)
+        switch(string[i])
         {
-            posY += SPACING_Y;
-            line_i = 0;
-            i++;
-        }
-        else if(line_i >= (SCREEN_TOP_WIDTH - posX) / SPACING_X)
-        {
-            // Make sure we never get out of the screen.
-            posY += SPACING_Y;
-            line_i = 2; //Little offset so we know the same string continues.
-            if(string[i] == ' ') i++; //Spaces at the start look weird
-        }
+            case '\n':
+                posY += SPACING_Y;
+                line_i = 0;
+                break;
 
-        drawCharacter(string[i], posX + line_i * SPACING_X, posY, color);
-    }
+            case '\t':
+                line_i += 2;
+                break;
+
+            default:
+                //Make sure we never get out of the screen
+                if(line_i >= ((isTopScreen ? SCREEN_TOP_WIDTH : SCREEN_BOTTOM_WIDTH) - posX) / SPACING_X)
+                {
+                    posY += SPACING_Y;
+                    line_i = 1; //Little offset so we know the same string continues
+                    if(string[i] == ' ') break; //Spaces at the start look weird
+                }
+
+                drawCharacter(string[i], isTopScreen, posX + line_i * SPACING_X, posY, color);
+
+                line_i++;
+                break;
+        }
 
     return posY;
 }

@@ -83,7 +83,8 @@ _commonHandler:
     cps #0x13                   @ switch to supervisor mode
     cmp r10, #0
     addne sp, #0x28
-    ldr r2, [sp, #0x1c]         @ implementation details of the official svc handler
+    ldmfd sp, {r8-r11}^         @ implementation details of the official svc handler
+    ldr r2, [sp, #0x1c]         
     ldr r4, [sp, #0x18]
     msr cpsr_c, r3              @ restore processor mode
     tst r2, #0x20
