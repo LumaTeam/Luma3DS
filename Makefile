@@ -31,6 +31,8 @@ else ifeq ($(FONT),ACORN)
 CFLAGS	+=	-DFONT_ACORN
 else ifeq ($(FONT),GB)
 CFLAGS	+=	-DFONT_GB
+else ifeq ($(FONT),PEARL)
+CFLAGS	+=	-DFONT_PEARL
 else
 CFLAGS	+=	-DFONT_6X10
 endif
@@ -50,7 +52,7 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh
+all: a9lh haxloader
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
