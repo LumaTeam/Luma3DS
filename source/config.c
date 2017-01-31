@@ -70,7 +70,8 @@ u32 getPAD()
     initScreens();
 
     drawString("Set key combo with ABXY, START, SELECT & D-Pad.\n"
-               "Press R while holding down combo to finish.",
+               "Press R while holding down combo to finish.\n"
+                "This may take a few seconds.",
                 true, 10, 10, COLOR_WHITE);
 
     u32 pressed;
@@ -250,9 +251,10 @@ void configMenu(bool isSdMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = isSdMode },
         { .visible = true },
         { .visible = true },
+        { .visible = true },
+        { .visible = true }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
@@ -423,6 +425,5 @@ void configMenu(bool isSdMode)
 
     if (CONFIG(KECCOMBO)) configData.combo = getPAD();
 
-    while(HID_PAD & PIN_BUTTONS);
     wait(2000ULL);
 }

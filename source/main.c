@@ -62,9 +62,6 @@ void main(void)
         needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
     }
 
-    //Attempt to read the configuration file
-    needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
-
     //Determine if this is a firmlaunch boot
     if(ISFIRMLAUNCH)
     {
