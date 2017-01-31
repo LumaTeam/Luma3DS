@@ -1,3 +1,9 @@
+# Luma3DS - Kecleon
+
+Please read the [gbatemp thread](https://gbatemp.net/threads/release-kecleon-patch-for-luma3ds.455090/).
+
+Original Readme:
+
 # Luma3DS
 *Noob-proof (N)3DS "Custom Firmware"*
 
