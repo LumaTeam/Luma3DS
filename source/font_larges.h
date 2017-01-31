@@ -1,15 +1,3 @@
-/*
- * Linux kernel default 8x16 VGA font replacement based on Terminus (ter-i16f, cp437).
- *
- * Converted by ermo | Rune Morling for Foresight Linux using psf2inc from the
- * PSF Tools suite (http://www.seasip.info/Unix/PSF/) by John Elliot.
- *
- * The excellent Terminus bitmapped font (http://www.is-vn.bg/hamster/) 
- * was created by Dimitar Zhekov.
- * 
- * This file may be redistributed under the terms of the GNU GPL v2
- */
-
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 16
 
