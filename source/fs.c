@@ -138,6 +138,8 @@ void fileDelete(const char *path)
 
 void loadPayload(u32 pressed, const char *payloadPath)
 {
+    changeDrive(true);
+
     u32 *loaderAddress = (u32 *)0x24FFFE00;
     u8 *payloadAddress = (u8 *)0x24F00000;
     u32 payloadSize = 0,
