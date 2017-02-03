@@ -41,12 +41,16 @@ void rmEmptyDir()
     FILINFO fno;
 
     if (f_chdir("/") != FR_OK) error("Filesystem Error!");
-    if (f_opendir(&dir, "luma") != FR_OK) error("Directory luma does not exist");
+    if (f_opendir(&dir, "luma") != FR_OK)
+        error("Directory /luma does not exist");
     f_readdir(&dir, &fno);
     f_closedir(&dir);
     
     if (fno.fname[0] == 0) {
         f_unlink("luma");
+    } else {
+        if (f_opendir(&dir, "luma") != FR_OK)
+            error("Directory /luma does not exist");
     }
 
 }
@@ -67,9 +71,9 @@ static bool switchToMainDir(bool isSd)
     }
 }
 
-bool mountFs(bool isSd, bool switchToCtrNand)
+bool mountFs(bool isSdMode, bool switchToCtrNand)
 {
-    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) :
+    return isSdMode ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) :
                   f_mount(&nandFs, "1:", 1) == FR_OK && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
 }
 
@@ -136,9 +140,21 @@ void fileDelete(const char *path)
     f_unlink(path);
 }
 
-void loadPayload(u32 pressed, const char *payloadPath)
+void loadPayload(u32 pressed, const char *payloadPath, bool isSdMode)
 {
-    changeDrive(true);
+    DIR dir;
+    FILINFO info;
+    char path[22] = "payloads";
+    FRESULT result;
+
+    /* Test SD for payloads. On fail, use NAND. */
+    if (isSdMode) {
+        changeDrive(true);
+        result = f_findfirst(&dir, &info, path, "*.bin");
+        if (result != FR_OK) {
+            changeDrive(false);
+        }
+    }
 
     u32 *loaderAddress = (u32 *)0x24FFFE00;
     u8 *payloadAddress = (u8 *)0x24F00000;
@@ -160,11 +176,6 @@ void loadPayload(u32 pressed, const char *payloadPath)
         else if(pressed & BUTTON_R1) pattern = PATTERN("r");
         else if(pressed & BUTTON_A) pattern = PATTERN("a");
         else pattern = PATTERN("select");
-
-        DIR dir;
-        FILINFO info;
-        FRESULT result;
-        char path[22] = "payloads";
 
         result = f_findfirst(&dir, &info, path, pattern);
 
@@ -194,14 +205,25 @@ void loadPayload(u32 pressed, const char *payloadPath)
     ((void (*)())loaderAddress)();
 }
 
-void payloadMenu(void)
+void payloadMenu(bool isSdMode)
 {
     DIR dir;
+    FILINFO info;
     char path[62] = "payloads";
+    FRESULT result;
+
+    /* Test SD for payloads. On fail, use NAND. */
+    if (isSdMode) {
+        changeDrive(true);
+        result = f_findfirst(&dir, &info, path, "*.bin");
+        if (result != FR_OK) {
+            changeDrive(false);
+        }
+    }
+
 
     if(f_opendir(&dir, path) != FR_OK) return;
 
-    FILINFO info;
     u32 payloadNum = 0;
     char payloadList[20][49];
 
@@ -279,7 +301,7 @@ void payloadMenu(void)
         concatenateStrings(path, "/");
         concatenateStrings(path, payloadList[selectedPayload]);
         concatenateStrings(path, ".bin");
-        loadPayload(0, path);
+        loadPayload(0, path, isSdMode);
         error("The payload is too large or corrupted.");
     }
 

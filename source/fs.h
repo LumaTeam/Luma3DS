@@ -27,13 +27,13 @@
 #define PATTERN(a) a "_*.bin"
 
 void rmEmptyDir();
-bool mountFs(bool isSd, bool switchToCtrNand);
+bool mountFs(bool isSdMode, bool switchToCtrNand);
 bool changeDrive(bool switchToSd);
 u32 fileRead(void *dest, const char *path, u32 maxSize);
 u32 getFileSize(const char *path);
 bool fileWrite(const void *buffer, const char *path, u32 size);
 void fileDelete(const char *path);
-void loadPayload(u32 pressed, const char *payloadPath);
-void payloadMenu(void);
+void loadPayload(u32 pressed, const char *payloadPath, bool isSdMode);
+void payloadMenu(bool isSdMode);
 u32 firmRead(void *dest, u32 firmType);
 void findDumpFile(const char *path, char *fileName);

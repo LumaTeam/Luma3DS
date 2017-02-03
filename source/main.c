@@ -161,11 +161,11 @@ void main(void)
 
     if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
-        payloadMenu();
+        payloadMenu(isSdMode);
         pressed = HID_PAD;
     }
     else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
+            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL, isSdMode);
 
     if(splashMode == 2) loadSplash();
 
