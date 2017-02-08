@@ -393,7 +393,7 @@ void set6x7xKeys(void)
     aes_setkey(0x25, keyX0x25s[ISDEVUNIT ? 1 : 0], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_setkey(0x2F, keyY0x2Fs[ISDEVUNIT ? 1 : 0], AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function, 
+    /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function,
                 when non-zero it clears this block and continues to do the key generation.
                 Otherwise when this block was already all-zero, it immediately returns. */
     memset32((void *)0x01FFCD00, 0, 0x10);
@@ -442,6 +442,28 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
     return decryptExeFs(cxi);
 }
 
+void setN3DS96Keys(void)
+{
+    //Set 0x11 keyslot
+    __attribute__((aligned(4))) const u8 key2s[2][AES_BLOCK_SIZE] = {
+        {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0},
+        {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
+    };
+
+    aes_setkey(0x11, key2s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    __attribute__((aligned(4))) u8 keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
+                                   decKey[sizeof(keyData)];
+
+    //Set keys 0x19..0x1F keyXs
+    aes_use_keyslot(0x11);
+    for(u8 slot = 0x19; slot < 0x20; slot++, keyData[0xF]++)
+    {
+        aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    }
+}
+
 void kernel9Loader(Arm9Bin *arm9Section)
 {
     //Determine the kernel9loader version
@@ -462,36 +484,27 @@ void kernel9Loader(Arm9Bin *arm9Section)
     u32 *startOfArm9Bin = (u32 *)((u8 *)arm9Section + 0x800);
     bool needToDecrypt = *startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000;
 
-    if(k9lVersion == 2 || (k9lVersion == 1 && needToDecrypt))
-    {
-        //Set 0x11 keyslot
-        __attribute__((aligned(4))) const u8 key1s[2][AES_BLOCK_SIZE] = {
-            {0x07, 0x29, 0x44, 0x38, 0xF8, 0xC9, 0x75, 0x93, 0xAA, 0x0E, 0x4A, 0xB4, 0xAE, 0x84, 0xC1, 0xD8},
-            {0xA2, 0xF4, 0x00, 0x3C, 0x7A, 0x95, 0x10, 0x25, 0xDF, 0x4E, 0x9E, 0x74, 0xE3, 0x0C, 0x92, 0x99}
-        },
-                                             key2s[2][AES_BLOCK_SIZE] = {
-            {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0},
-            {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
-        };
+    //Set 0x11 keyslot
+    __attribute__((aligned(4))) const u8 key1s[2][AES_BLOCK_SIZE] = {
+        {0x07, 0x29, 0x44, 0x38, 0xF8, 0xC9, 0x75, 0x93, 0xAA, 0x0E, 0x4A, 0xB4, 0xAE, 0x84, 0xC1, 0xD8},
+        {0xA2, 0xF4, 0x00, 0x3C, 0x7A, 0x95, 0x10, 0x25, 0xDF, 0x4E, 0x9E, 0x74, 0xE3, 0x0C, 0x92, 0x99}
+    },
+                                         key2s[2][AES_BLOCK_SIZE] = {
+        {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0},
+        {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
+    };
 
-        aes_setkey(0x11, k9lVersion == 2 ? key2s[ISDEVUNIT ? 1 : 0] : key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
+    aes_setkey(0x11, k9lVersion == 2 ? key2s[ISDEVUNIT ? 1 : 0] : key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     if(needToDecrypt)
     {
-        u8 arm9BinSlot;
+        u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
 
-        if(!k9lVersion) arm9BinSlot = 0x15;
-        else
-        {
-            arm9BinSlot = 0x16;
-
-            //Set keyX
-            __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
-            aes_use_keyslot(0x11);
-            aes(keyX, arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-            aes_setkey(0x16, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        }
+        //Set keyX
+        __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
+        aes_use_keyslot(0x11);
+        aes(keyX, k9lVersion == 0 ? arm9Section->keyX : arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         //Set keyY
         __attribute__((aligned(4))) u8 keyY[AES_BLOCK_SIZE];
@@ -507,21 +520,6 @@ void kernel9Loader(Arm9Bin *arm9Section)
         aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
-    }
-
-    //Set >=9.6 KeyXs
-    if(k9lVersion == 2)
-    {
-        __attribute__((aligned(4))) u8 keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
-                                       decKey[sizeof(keyData)];
-
-        //Set keys 0x19..0x1F keyXs
-        aes_use_keyslot(0x11);
-        for(u8 slot = 0x19; slot < 0x20; slot++, keyData[0xF]++)
-        {
-            aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-            aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        }
     }
 }
 
