@@ -172,6 +172,13 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         ret += reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
 
+    //11.3 FIRM patches
+    if(firmVersion >= (ISN3DS ? 0x2D : 0x5C))
+    {
+        //Stub svc 0x59
+        ret += stubSvcRestrictGpuDma(arm11Section1, arm11SvcTable, baseK11VA);
+    }
+
     ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
 
     //Apply UNITINFO patches
@@ -294,7 +301,7 @@ u32 patch1x2xNativeAndSafeFirm(u32 devMode)
         ret = 0;
 
     ret += ISN3DS ? patchFirmWrites(process9Offset, process9Size) : patchOldFirmWrites(process9Offset, process9Size);
-    
+
     ret += ISN3DS ? patchSignatureChecks(process9Offset, process9Size) : patchOldSignatureChecks(process9Offset, process9Size);
 
     if(devMode != 0)
