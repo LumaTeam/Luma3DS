@@ -85,15 +85,36 @@ __asm__\
 
 static void aes_setkey(u8 keyslot, const void *key, u32 keyType, u32 mode)
 {
-    if(keyslot <= 0x03) return; //Ignore TWL keys for now
     u32 *key32 = (u32 *)key;
     *REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
-    *REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
 
-    REG_AESKEYFIFO[keyType] = key32[0];
-    REG_AESKEYFIFO[keyType] = key32[1];
-    REG_AESKEYFIFO[keyType] = key32[2];
-    REG_AESKEYFIFO[keyType] = key32[3];
+    if(keyslot <= 3)
+    {
+        if((mode & AES_CNT_INPUT_ORDER) == AES_INPUT_REVERSED)
+        {
+            REGs_AESTWLKEYS[keyslot][keyType][0] = key32[3];
+            REGs_AESTWLKEYS[keyslot][keyType][1] = key32[2];
+            REGs_AESTWLKEYS[keyslot][keyType][2] = key32[1];
+            REGs_AESTWLKEYS[keyslot][keyType][3] = key32[0];
+        }
+        else
+        {
+            REGs_AESTWLKEYS[keyslot][keyType][0] = key32[0];
+            REGs_AESTWLKEYS[keyslot][keyType][1] = key32[1];
+            REGs_AESTWLKEYS[keyslot][keyType][2] = key32[2];
+            REGs_AESTWLKEYS[keyslot][keyType][3] = key32[3];
+        }
+    }
+
+    else if(keyslot < 0x40)
+    {
+        *REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
+
+        REG_AESKEYFIFO[keyType] = key32[0];
+        REG_AESKEYFIFO[keyType] = key32[1];
+        REG_AESKEYFIFO[keyType] = key32[2];
+        REG_AESKEYFIFO[keyType] = key32[3];
+    }
 }
 
 static void aes_use_keyslot(u8 keyslot)
@@ -298,6 +319,25 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 }
 
 /*****************************************************************/
+
+void twlConsoleInfoInit(void)
+{
+    if(CFG_SYSPROT9 & 0x10) return; //sorry, the lennies are currently missing
+
+    u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
+    CFG_TWLUNITINFO = CFG_UNITINFO;
+    OTP_TWLCONSOLEID = twlConsoleId;
+
+    *REG_AESCNT = 0;
+
+    vu32 *k3X = REGs_AESTWLKEYS[3][1], *k1X = REGs_AESTWLKEYS[1][1];
+
+    k3X[0] = (u32)twlConsoleId;
+    k3X[3] = (u32)(twlConsoleId >> 32);
+
+    k1X[2] = (u32)(twlConsoleId >> 32);
+    k1X[3] = (u32)twlConsoleId;
+}
 
 __attribute__((aligned(4))) static u8 nandCtr[AES_BLOCK_SIZE];
 static u8 nandSlot;
