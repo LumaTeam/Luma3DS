@@ -322,7 +322,7 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 
 void twlConsoleInfoInit(void)
 {
-    if(CFG_SYSPROT9 & 0x10) return; //sorry, the lennies are currently missing
+    if(CFG_SYSPROT9 & 2) return; //sorry, the lennies are currently missing
 
     u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
     CFG_TWLUNITINFO = CFG_UNITINFO;
