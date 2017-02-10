@@ -357,6 +357,17 @@ u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
     return 0;
 }
 
+u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA)
+{
+    if(arm11SvcTable[0x59] != 0)
+    {
+        u32 *off = (u32 *)(pos + arm11SvcTable[0x59] - baseK11VA);
+        off[1] = 0xE1A00000; //replace call to inner function by a NOP
+    }
+
+    return 0;
+}
+
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode)
 {
     if(*(u32 *)(*freeK11Space + svcGetCFWInfo_bin_size - 4) != 0xFFFFFFFF) return 1;

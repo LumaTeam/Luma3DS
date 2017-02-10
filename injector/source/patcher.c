@@ -530,7 +530,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             0x42, 0xE0, 0x1E, 0xFF
         };
 
-        u8 mostRecentFpdVer = 8;
+        u8 mostRecentFpdVer = 9;
 
         u8 *off = memsearch(code, pattern, size, sizeof(pattern));
 
