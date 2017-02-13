@@ -21,7 +21,7 @@ INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
 ASFLAGS := -mcpu=mpcore -mfloat-abi=hard
 CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -O2 -flto -ffast-math $(INCLUDE) -DARM11 -D_3DS
-LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS)
+LDFLAGS := -specs=3dsx.specs $(ASFLAGS) -Wl,--section-start,.text=0x14000000
 
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
