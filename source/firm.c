@@ -180,6 +180,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     {
         //Stub svc 0x59
         ret += stubSvcRestrictGpuDma(arm11Section1, arm11SvcTable, baseK11VA);
+        ret += stubTimerQueueSanityCheck(arm11Section1, firm->section[1].size);
     }
 
     ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
