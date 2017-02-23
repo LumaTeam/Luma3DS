@@ -30,8 +30,6 @@ bundled = $(dir_build)/romfsredir.bin.o
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
-	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $(dir_build)/bundled.h
-	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $(dir_build)/bundled.h
 endef
 
 .PHONY: all
@@ -60,7 +58,13 @@ $(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 
-$(dir_build)/%.o: $(dir_source)/%.c
+$(dir_build)/bundled.h: $(bundled)
+	@$(foreach f, $(bundled),\
+	echo "extern const u8" `(echo $(basename $(notdir $(f))) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
+	echo "extern const u32" `(echo $(basename $(notdir $(f)))| sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
+	)
+
+$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/bundled.h
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
