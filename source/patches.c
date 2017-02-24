@@ -283,6 +283,45 @@ u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
     return 0;
 }
 
+u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA)
+{
+    if(arm11SvcTable[0x59] != 0)
+    {
+        u32 *off = (u32 *)(pos + arm11SvcTable[0x59] - baseK11VA);
+        off[1] = 0xE1A00000; //replace call to inner function by a NOP
+    }
+
+    return 0;
+}
+
+u32 stubTimerQueueSanityCheck(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0xF0, 0x41, 0x2D, 0xE9, 0x00, 0x60, 0xA0, 0xE1, 0x00, 0x70,
+                          0xA0, 0xE3, 0x20, 0x00, 0x86, 0xE2};
+
+/*            pattern2[] = {0x01, 0x20, 0xB0, 0xE1, 0xF5, 0xFF, 0xFF, 0x1A},
+            pattern3[] = {0x02, 0x00, 0x51, 0xE1, 0x01, 0x00, 0x00, 0x1A};
+*/
+    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+    if(off == NULL) return 1;
+    *off = 0xE12FFF1E;
+    return 0;
+
+/*
+This results in UAFs, rip.. I could do patterns for all of the incref/decref code they added, but this is a PITA
+The idea was to tell the make stuff think the timer was always in the queue and that the refcount shouldn't be incremented.
+That was worth trying, though.
+
+    off = (u32 *)memsearch(pos, pattern2, size, sizeof(pattern2));
+    if(off == NULL) return 1;
+    off[8] = 0xE3A00000;
+
+    off = (u32 *)memsearch(pos, pattern3, size, sizeof(pattern3));
+    if(off == NULL) return 1;
+    off[4] = 0xE3A00001;
+*/
+}
+
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode)
 {
     if(*(u32 *)(*freeK11Space + svcGetCFWInfo_bin_size - 4) != 0xFFFFFFFF) return 1;

@@ -34,8 +34,6 @@ bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/svcG
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
-	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $(dir_build)/bundled.h
-	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $(dir_build)/bundled.h
 endef
 
 .PHONY: all
@@ -56,7 +54,7 @@ clean:
 	@$(MAKE) -C $(dir_haxloader) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
-	@$(MAKE) -C $(dir_arm11_exceptions) clean	
+	@$(MAKE) -C $(dir_arm11_exceptions) clean
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
@@ -99,7 +97,13 @@ $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
-$(dir_build)/%.o: $(dir_source)/%.c $(bundled)
+$(dir_build)/bundled.h: $(bundled)
+	@$(foreach f, $(bundled),\
+	echo "extern const u8" `(echo $(basename $(notdir $(f))) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
+	echo "extern const u32" `(echo $(basename $(notdir $(f)))| sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
+	)
+
+$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/bundled.h
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 

@@ -31,9 +31,9 @@
 
 #define PDN_GPU_CNT (*(vu8  *)0x10141200)
 
-#define ARESCREENSINITED (PDN_GPU_CNT != 1)
+#define ARESCREENSINITIALIZED (PDN_GPU_CNT != 1)
 
-#define ARM11_STUB_ADDRESS 0x1FFFFFC8
+#define ARM11_STUB_ADDRESS 0x1FFFFD00
 #define WAIT_FOR_ARM9()    *arm11Entry = 0; while(!*arm11Entry); ((void (*)())*arm11Entry)();
 
 #define SCREEN_TOP_WIDTH     400
