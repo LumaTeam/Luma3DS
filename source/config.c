@@ -178,15 +178,15 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "Only change this if you know what you\n"
                                           "are doing!",
 
-                                          "Makes the console be always detected\n"
+                                          "Make the console be always detected\n"
                                           "as a development unit\n"
                                           "(which breaks online features, amiibo\n"
                                           "and retail CIAs, but allows installing\n"
                                           "and booting some developer software).\n\n"
-                                          "Only change this if you know what you\n"
+                                          "Only select this if you know what you\n"
                                           "are doing!",
 
-                                          "Enables Luma3DS's ARM9/ARM11 exception\n"
+                                          "Enable Luma3DS's ARM9/ARM11 exception\n"
                                           "handlers.\n"
                                           "A9LH is required, and Luma3DS should\n"
                                           "be ran as arm9loaderhax.bin.\n"
