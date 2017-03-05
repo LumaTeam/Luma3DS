@@ -22,7 +22,6 @@ enum multiOptions
     SPLASH,
     PIN,
     NEWCPU,
-    DEVOPTIONS
 };
 
 enum singleOptions
@@ -34,7 +33,9 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    PATCHUNITINFO,
+    ENABLEEXCEPTIONHANDLERS
 };
 
 enum flags
