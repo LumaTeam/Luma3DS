@@ -546,7 +546,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
              progId == 0x0004001000026000LL || //CHN MSET
              progId == 0x0004001000027000LL || //KOR MSET
              progId == 0x0004001000028000LL) //TWN MSET
-            && CONFIG(PATCHVERSTRING)) 
+            && CONFIG(PATCHVERSTRING))
     {
         static const u16 pattern[] = u"Ve";
         static u16 *patch;
@@ -704,9 +704,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             )) goto error;
     }
 
-    else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) //ErrDisp
+    else if(progId == 0x0004003000008A02LL) //ErrDisp
     {
-        static const u8 pattern[] = { 
+        static const u8 pattern[] = {
             0x00, 0xD0, 0xE5, 0xDB
         },
                         pattern2[] = {
@@ -748,7 +748,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                 sizeof(patch), 1
             )) goto error;
     }
-   
+
     if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
     {
         u8 regionId = 0xFF,

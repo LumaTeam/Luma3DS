@@ -128,8 +128,7 @@ void main(void)
     }
 
     u32 pinMode = MULTICONFIG(PIN);
-    bool hidePin = CONFIG(HIDEPIN);
-    bool pinExists = pinMode != 0 && verifyPin(pinMode, hidePin);
+    bool pinExists = pinMode != 0 && verifyPin(pinMode, true);
 
     //If no configuration file exists or SELECT is held, load configuration menu
     bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
@@ -246,24 +245,23 @@ boot:
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
     u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
-    u32 devMode = MULTICONFIG(DEVOPTIONS);
-
+    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO), enableExceptionHandlers = CONFIG(PATCHUNITINFO);
     u32 res;
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, devMode);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
-            res = patchTwlFirm(firmVersion, devMode);
+            res = patchTwlFirm(firmVersion, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(devMode);
+            res = patchAgbFirm(doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(devMode) : 0;
+            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(enableExceptionHandlers) : 0;
             break;
     }
 
