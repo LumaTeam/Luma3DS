@@ -294,16 +294,6 @@ u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA)
     return 0;
 }
 
-u32 stubTimerQueueSanityCheck(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {0xF0, 0x41, 0x2D, 0xE9, 0x00, 0x60, 0xA0, 0xE1, 0x00, 0x70,
-                          0xA0, 0xE3, 0x20, 0x00, 0x86, 0xE2};
-
-    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
-    if(off != NULL) *off = 0xE12FFF1E; // Do not error, since we could be using an external FIRM, ...
-    return 0;
-}
-
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode)
 {
     if(*(u32 *)(*freeK11Space + svcGetCFWInfo_bin_size - 4) != 0xFFFFFFFF) return 1;
