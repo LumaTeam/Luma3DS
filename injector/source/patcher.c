@@ -2,6 +2,7 @@
 #include "patcher.h"
 #include "memory.h"
 #include "strings.h"
+#include "fsldr.h"
 #include "ifile.h"
 #include "CFWInfo.h"
 #include "../build/bundled.h"
@@ -39,6 +40,25 @@ static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, in
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
+static bool dirCheck(FS_ArchiveID archiveId, const char *path)
+{
+    bool ret;
+    Handle handle;
+    FS_Archive archive;
+    FS_Path dirPath = {PATH_ASCII, strnlen(path, 255) + 1, path},
+            archivePath = {PATH_EMPTY, 1, (u8 *)""};
+
+    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = false;
+    else
+    {
+        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath));
+        if(ret) FSDIRLDR_Close(handle);
+        FSLDR_CloseArchive(archive);
+    }
+
+    return ret;
+}
+
 static u32 openLumaFile(IFile *file, const char *path)
 {
     Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
@@ -47,6 +67,11 @@ static u32 openLumaFile(IFile *file, const char *path)
 
     //Returned if SD is not mounted
     return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)) ? ARCHIVE_NAND_RW : 0;
+}
+
+static bool checkLumaDir(const char *path)
+{
+    return dirCheck(ARCHIVE_SDMC, path);
 }
 
 static inline void loadCFWInfo(void)
@@ -249,7 +274,7 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
     }
 }
 
-static u32 findNearestStmfd(u8* code, u32 pos)
+static u32 findStart(u8* code, u32 pos)
 {
     while(pos >= 4)
     {
@@ -260,36 +285,82 @@ static u32 findNearestStmfd(u8* code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static u32 findFunctionCommand(u8* code, u32 size, u32 command)
+static bool findSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly, u32 *throwFatalError)
 {
-    u32 func;
+    u32 svcConnectToPort = 0xFFFFFFFF;
 
-    for(func = 4; *(u32 *)(code + func) != command; func += 4)
-        if(func > size - 8) return 0xFFFFFFFF;
-
-    return findNearestStmfd(code, func);
-}
-
-static inline u32 findThrowFatalError(u8* code, u32 size)
-{
-    u32 connectToPort;
-
-    for(connectToPort = 0; *(u32 *)(code + connectToPort + 4) != 0xEF00002D; connectToPort += 4)
-        if(connectToPort > size - 12) return 0xFFFFFFFF;
-
-    u32 func = 0xFFFFFFFF;
-
-    for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+    for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
-        if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, connectToPort)) continue;
+        if(*fsMountArchive == 0xFFFFFFFF)
+        {
+            if(addr <= size - 12 && *(u32 *)(code + addr) == 0xE5970010)
+            {
+                if((*(u32 *)(code + addr + 4) == 0xE1CD20D8) && ((*(u32 *)(code + addr + 8) & 0xFFFFFF) == 0x008D0000))
+                    *fsMountArchive = findStart(code, addr);
+            } 
+            else if(addr <= size - 16 && *(u32 *)(code + addr) == 0xE24DD028)
+            {
+                if((*(u32 *)(code + addr + 4) == 0xE1A04000) && (*(u32 *)(code + addr + 8) == 0xE59F60A8) && (*(u32 *)(code + addr + 0xC) == 0xE3A0C001))
+                    *fsMountArchive = findStart(code, addr);
+            }
+        }
 
-        func = findNearestStmfd(code, i);
+        if(*fsRegisterArchive == 0xFFFFFFFF && addr <= size - 8)
+        {
+            if(*(u32 *)(code + addr) == 0xC82044B4)
+            {
+                if(*(u32 *)(code + addr + 4) == 0xD8604659)
+                    *fsRegisterArchive = findStart(code, addr);
+            }
+        }
 
-        for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
-            if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
+        if(*fsTryOpenFile == 0xFFFFFFFF && addr <= size - 12)
+        {
+            if(*(u32 *)(code + addr + 0xC) == 0xE12FFF3C)
+            {
+                if(((*(u32 *)(code + addr) == 0xE1A0100D) || (*(u32 *)(code + addr) == 0xE28D1010)) && 
+                    (*(u32 *)(code + addr + 4) == 0xE590C000) && ((*(u32 *)(code + addr + 8) == 0xE1A00004) || (*(u32 *)(code + addr + 8) == 0xE1A00005)))
+                {
+                    *fsTryOpenFile = findStart(code, addr);
+                }
+            }
+        }
+
+        if(*fsOpenFileDirectly == 0xFFFFFFFF)
+        {
+            if(*(u32 *)(code + addr) == 0x08030204)
+            {
+                *fsOpenFileDirectly = findStart(code, addr);
+            }
+        }
+
+        if(svcConnectToPort == 0xFFFFFFFF && addr >= 4)
+        {
+            if(*(u32 *)(code + addr) == 0xEF00002D)
+                svcConnectToPort = addr - 4;
+        }
     }
 
-    return func;
+    if(svcConnectToPort != 0xFFFFFFFF && *fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF)
+    {
+        u32 func = 0xFFFFFFFF;
+
+        for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+        {
+            if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
+
+            func = findStart(code, i);
+
+            for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+                if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
+        }
+
+        *throwFatalError = func;
+
+        if(func != 0xFFFFFFFF) return true;
+    }
+
+    return false;
 }
 
 static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
@@ -442,57 +513,56 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
     char path[] = "/luma/titles/0000000000000000/romfs";
     progIdToStr(path + 28, progId);
 
-    IFile file;
-    u32 archive = openLumaFile(&file, path);
+    if(!checkLumaDir(path)) return true;
 
-    if(!archive) return true;
+    u32 fsMountArchive = 0xFFFFFFFF,
+        fsRegisterArchive = 0xFFFFFFFF,
+        fsTryOpenFile = 0xFFFFFFFF,
+        fsOpenFileDirectly = 0xFFFFFFFF,
+        throwFatalError;
 
-    bool ret = false;
-    u64 romfsSize;
-
-    if(R_FAILED(IFile_GetSize(&file, &romfsSize))) goto exit;
-
-    u64 total;
-    u32 magic;
-
-    if(R_FAILED(IFile_Read(&file, &total, &magic, 4)) || total != 4 || magic != 0x43465649) goto exit;
-
-    u32 fsOpenFileDirectly = findFunctionCommand(code, size, 0x08030204),
-        throwFatalError = findThrowFatalError(code, size);
-
-    if(fsOpenFileDirectly == 0xFFFFFFFF || throwFatalError == 0xFFFFFFFF) goto exit;
+    if(!findSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly, &throwFatalError)) return false;
 
     //Setup the payload
     u8 *payload = code + throwFatalError;
     memcpy(payload, romfsredir_bin, romfsredir_bin_size);
-    memcpy(payload + romfsredir_bin_size, path, sizeof(path));
-    *(u32 *)(payload + 0xC) = *(u32 *)(code + fsOpenFileDirectly);
 
-    u32 *payloadSymbols = (u32 *)(payload + romfsredir_bin_size - 0x24);
-    payloadSymbols[0] = 0x100000 + fsOpenFileDirectly + 4;
-    *(u64 *)(payloadSymbols + 2) = 0x1000ULL;
-    *(u64 *)(payloadSymbols + 4) = romfsSize - 0x1000ULL;
-    payloadSymbols[6] = archive;
-    payloadSymbols[7] = sizeof(path);
-    payloadSymbols[8] = 0x100000 + throwFatalError + romfsredir_bin_size; //String pointer
+    //Insert symbols in the payload
+    u32 *payload32 = (u32 *)payload;
+    for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
+    {
+        switch (payload32[i])
+        {
+            case 0xdead0000:
+                payload32[i] = *(u32 *)(code + fsOpenFileDirectly);
+                break;
+            case 0xdead0001:
+                payload32[i] = MAKE_BRANCH(throwFatalError + i * 4, fsOpenFileDirectly + 4);
+                break;
+            case 0xdead0002:
+                payload32[i] = *(u32 *)(code + fsTryOpenFile);
+                break;
+            case 0xdead0003:
+                payload32[i] = MAKE_BRANCH(throwFatalError + i * 4, fsTryOpenFile + 4);
+                break;
+            case 0xdead0004:
+                memcpy(payload32 + i, "sdmc:", 5);
+                memcpy((u8 *)(payload32 + i) + 5, path, sizeof(path));
+                break;
+            case 0xdead0005:
+                payload32[i] = 0x100000 + fsMountArchive;
+                break;
+            case 0xdead0006:
+                payload32[i] = 0x100000 + fsRegisterArchive;
+                break;
+        }
+    }
 
     //Place the hooks
     *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, throwFatalError);
+    *(u32 *)(code + fsTryOpenFile) = MAKE_BRANCH(fsTryOpenFile, throwFatalError + 12);
 
-    u32 fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000);
-
-    if(fsOpenLinkFile != 0xFFFFFFFF)
-    {
-        *(u32 *)(code + fsOpenLinkFile) = 0xE3A03003; //mov r3, #3
-        *(u32 *)(code + fsOpenLinkFile + 4) = MAKE_BRANCH(fsOpenLinkFile + 4, throwFatalError);
-    }
-
-    ret = true;
-
-exit:
-    IFile_Close(&file);
-
-    return ret;
+    return true;
 }
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
