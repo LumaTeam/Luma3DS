@@ -40,18 +40,18 @@ static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, in
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
-static bool dirCheck(FS_ArchiveID archiveId, const char *path)
+static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
 {
-    bool ret;
+    u32 ret;
     Handle handle;
     FS_Archive archive;
     FS_Path dirPath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
-    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = false;
+    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = 1;
     else
     {
-        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath));
+        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath)) ? 0 : 2;
         if(ret) FSDIRLDR_Close(handle);
         FSLDR_CloseArchive(archive);
     }
@@ -59,19 +59,23 @@ static bool dirCheck(FS_ArchiveID archiveId, const char *path)
     return ret;
 }
 
-static u32 openLumaFile(IFile *file, const char *path)
+static bool openLumaFile(IFile *file, const char *path)
 {
     Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
 
-    if(R_SUCCEEDED(res)) return ARCHIVE_SDMC;
+    if(R_SUCCEEDED(res)) return false;
 
     //Returned if SD is not mounted
-    return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)) ? ARCHIVE_NAND_RW : 0;
+    return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ));
 }
 
-static bool checkLumaDir(const char *path)
+static u32 checkLumaDir(const char *path)
 {
-    return dirCheck(ARCHIVE_SDMC, path);
+    u32 res = dirCheck(ARCHIVE_SDMC, path);
+
+    if(!res) return ARCHIVE_SDMC;
+
+    return res == 1 && !dirCheck(ARCHIVE_NAND_RW, path) ? ARCHIVE_NAND_RW : 0;
 }
 
 static inline void loadCFWInfo(void)
@@ -513,7 +517,11 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
     char path[] = "/luma/titles/0000000000000000/romfs";
     progIdToStr(path + 28, progId);
 
-    if(!checkLumaDir(path)) return true;
+    u32 archive = checkLumaDir(path);
+
+    if(!archive) return true;
+
+    const char *mount = archive == ARCHIVE_SDMC ? "sdmc:" : "nand:";
 
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
@@ -546,7 +554,7 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
                 payload32[i] = MAKE_BRANCH(throwFatalError + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
-                memcpy(payload32 + i, "sdmc:", 5);
+                memcpy(payload32 + i, mount, 5);
                 memcpy((u8 *)(payload32 + i) + 5, path, sizeof(path));
                 break;
             case 0xdead0005:
@@ -554,6 +562,12 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
                 break;
             case 0xdead0006:
                 payload32[i] = 0x100000 + fsRegisterArchive;
+                break;
+            case 0xdead0007:
+                memcpy(payload32 + i, mount, 4);
+                break;
+            case 0xdead0008:
+                payload32[i] = archive;
                 break;
         }
     }

@@ -322,8 +322,6 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 
 void twlConsoleInfoInit(void)
 {
-    if(CFG_SYSPROT9 & 2) return; //sorry, the lennies are currently missing
-
     u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
     CFG_TWLUNITINFO = CFG_UNITINFO;
     OTP_TWLCONSOLEID = twlConsoleId;
@@ -482,28 +480,6 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
     return decryptExeFs(cxi);
 }
 
-void setN3DS96Keys(void)
-{
-    //Set 0x11 keyslot
-    __attribute__((aligned(4))) const u8 key2s[2][AES_BLOCK_SIZE] = {
-        {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0},
-        {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
-    };
-
-    aes_setkey(0x11, key2s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-    __attribute__((aligned(4))) u8 keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
-                                   decKey[sizeof(keyData)];
-
-    //Set keys 0x19..0x1F keyXs
-    aes_use_keyslot(0x11);
-    for(u8 slot = 0x19; slot < 0x20; slot++, keyData[0xF]++)
-    {
-        aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
-}
-
 void kernel9Loader(Arm9Bin *arm9Section)
 {
     //Determine the kernel9loader version
@@ -560,6 +536,21 @@ void kernel9Loader(Arm9Bin *arm9Section)
         aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
+    }
+
+    //Set >=9.6 KeyXs
+    if(k9lVersion == 2)
+    {
+        __attribute__((aligned(4))) u8 keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
+                                       decKey[sizeof(keyData)];
+
+        //Set keys 0x19..0x1F keyXs
+        aes_use_keyslot(0x11);
+        for(u8 slot = 0x19; slot < 0x20; slot++, keyData[0xF]++)
+        {
+            aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+            aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        }
     }
 }
 

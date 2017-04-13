@@ -98,12 +98,10 @@ void main(void)
     //Save old options and begin saving the new boot configuration
     configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
 
-    twlConsoleInfoInit();
-    setN3DS96Keys();
-
     //If it's a MCU reboot, try to force boot options
     if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
+
         //Always force a SysNAND boot when quitting AGB_FIRM
         if(CFG_BOOTENV == 7)
         {

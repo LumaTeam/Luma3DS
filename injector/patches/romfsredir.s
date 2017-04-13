@@ -34,7 +34,7 @@ _start:
         bne     _mountSd+4
         stmfd   sp!, {r0-r4, lr}
         sub     sp, sp, #4
-        mov     r1, #9
+        load r1, archive
         mov     r0, sp
         load    r4, fsMountArchive
         blx     r4
@@ -97,10 +97,12 @@ _start:
 
 .pool
 .align 4
-    sdmcArchiveName :       .dcb "sdmc:", 0
+    sdmcArchiveName :       .word 0xdead0007
+                            .dcb ":", 0
     .align 4
     fsMountArchive :        .word 0xdead0005
     fsRegisterArchive :     .word 0xdead0006
+    archive        :        .word 0xdead0008
     sdmcCustomPath :        .word 0xdead0004
 
 .close
