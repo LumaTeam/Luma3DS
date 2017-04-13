@@ -33,17 +33,16 @@
 #include "crypto.h"
 
 extern CfgData configData;
+extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 void main(void)
 {
     bool isA9lhInstalled,
          isSafeMode = false;
-    u32 configTemp,
-        emuHeader;
+    u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
-    ConfigurationStatus needConfig;
 
     //Mount SD or CTRNAND
     bool isSdMode;
@@ -95,8 +94,8 @@ void main(void)
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
-    //Save old options and begin saving the new boot configuration
-    configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
+    //Begin saving the new boot configuration
+    configData.config = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
 
     //If it's a MCU reboot, try to force boot options
     if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
@@ -109,7 +108,7 @@ void main(void)
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
             //Flag to prevent multiple boot options-forcing
-            configTemp |= 1 << 7;
+            configData.config |= 1 << 7;
 
             goto boot;
         }
@@ -234,8 +233,8 @@ boot:
 
     if(!ISFIRMLAUNCH)
     {
-        configTemp |= (u32)nandType | ((u32)firmSource << 3);
-        writeConfig(needConfig, configTemp);
+        configData.config |= (u32)nandType | ((u32)firmSource << 3);
+        writeConfig(false);
     }
 
     if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");

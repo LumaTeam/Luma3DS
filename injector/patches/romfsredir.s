@@ -7,9 +7,6 @@
 .macro load, reg, func
     ldr reg, [pc, #func-.-8]
 .endmacro
-.macro svc, svcnum
-    .word 0xef000000 + svcnum
-.endmacro
 
 ; Patch by delebile
 
@@ -34,7 +31,7 @@ _start:
         bne     _mountSd+4
         stmfd   sp!, {r0-r4, lr}
         sub     sp, sp, #4
-        load r1, archive
+        load    r1, archive
         mov     r0, sp
         load    r4, fsMountArchive
         blx     r4
@@ -106,4 +103,3 @@ _start:
     sdmcCustomPath :        .word 0xdead0004
 
 .close
-

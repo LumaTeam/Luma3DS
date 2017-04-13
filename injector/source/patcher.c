@@ -278,7 +278,7 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
     }
 }
 
-static u32 findStart(u8* code, u32 pos)
+static u32 findFunctionStart(u8* code, u32 pos)
 {
     while(pos >= 4)
     {
@@ -289,7 +289,7 @@ static u32 findStart(u8* code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static bool findSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly, u32 *throwFatalError)
+static bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly, u32 *throwFatalError)
 {
     u32 svcConnectToPort = 0xFFFFFFFF;
 
@@ -300,49 +300,28 @@ static bool findSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegister
             if(addr <= size - 12 && *(u32 *)(code + addr) == 0xE5970010)
             {
                 if((*(u32 *)(code + addr + 4) == 0xE1CD20D8) && ((*(u32 *)(code + addr + 8) & 0xFFFFFF) == 0x008D0000))
-                    *fsMountArchive = findStart(code, addr);
+                    *fsMountArchive = findFunctionStart(code, addr);
             } 
             else if(addr <= size - 16 && *(u32 *)(code + addr) == 0xE24DD028)
             {
                 if((*(u32 *)(code + addr + 4) == 0xE1A04000) && (*(u32 *)(code + addr + 8) == 0xE59F60A8) && (*(u32 *)(code + addr + 0xC) == 0xE3A0C001))
-                    *fsMountArchive = findStart(code, addr);
+                    *fsMountArchive = findFunctionStart(code, addr);
             }
         }
 
-        if(*fsRegisterArchive == 0xFFFFFFFF && addr <= size - 8)
-        {
-            if(*(u32 *)(code + addr) == 0xC82044B4)
-            {
-                if(*(u32 *)(code + addr + 4) == 0xD8604659)
-                    *fsRegisterArchive = findStart(code, addr);
-            }
-        }
+        if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 && (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
+            *fsRegisterArchive = findFunctionStart(code, addr);
 
-        if(*fsTryOpenFile == 0xFFFFFFFF && addr <= size - 12)
-        {
-            if(*(u32 *)(code + addr + 0xC) == 0xE12FFF3C)
-            {
-                if(((*(u32 *)(code + addr) == 0xE1A0100D) || (*(u32 *)(code + addr) == 0xE28D1010)) && 
-                    (*(u32 *)(code + addr + 4) == 0xE590C000) && ((*(u32 *)(code + addr + 8) == 0xE1A00004) || (*(u32 *)(code + addr + 8) == 0xE1A00005)))
-                {
-                    *fsTryOpenFile = findStart(code, addr);
-                }
-            }
-        }
+        if(addr <= size - 16 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 0xC) == 0xE12FFF3C &&
+           ((*(u32 *)(code + addr) == 0xE1A0100D) || (*(u32 *)(code + addr) == 0xE28D1010)) && (*(u32 *)(code + addr + 4) == 0xE590C000) &&
+           ((*(u32 *)(code + addr + 8) == 0xE1A00004) || (*(u32 *)(code + addr + 8) == 0xE1A00005)))
+            *fsTryOpenFile = findFunctionStart(code, addr);
 
-        if(*fsOpenFileDirectly == 0xFFFFFFFF)
-        {
-            if(*(u32 *)(code + addr) == 0x08030204)
-            {
-                *fsOpenFileDirectly = findStart(code, addr);
-            }
-        }
+        if(*fsOpenFileDirectly == 0xFFFFFFFF && *(u32 *)(code + addr) == 0x08030204)
+            *fsOpenFileDirectly = findFunctionStart(code, addr);
 
-        if(svcConnectToPort == 0xFFFFFFFF && addr >= 4)
-        {
-            if(*(u32 *)(code + addr) == 0xEF00002D)
-                svcConnectToPort = addr - 4;
-        }
+        if(addr >= 4 && svcConnectToPort == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xEF00002D)
+            svcConnectToPort = addr - 4;
     }
 
     if(svcConnectToPort != 0xFFFFFFFF && *fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF)
@@ -353,7 +332,7 @@ static bool findSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegister
         {
             if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
 
-            func = findStart(code, i);
+            func = findFunctionStart(code, i);
 
             for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
                 if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
@@ -509,10 +488,10 @@ exit:
     return ret;
 }
 
-static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
-       If it exists it should be a decrypted raw RomFS */
+       If it exists it should be a folder containing ROMFS files */
 
     char path[] = "/luma/titles/0000000000000000/romfs";
     progIdToStr(path + 28, progId);
@@ -529,7 +508,7 @@ static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
         fsOpenFileDirectly = 0xFFFFFFFF,
         throwFatalError;
 
-    if(!findSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly, &throwFatalError)) return false;
+    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly, &throwFatalError)) return false;
 
     //Setup the payload
     u8 *payload = code + throwFatalError;
@@ -788,7 +767,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             )) goto error;
     }
 
-    else if(progId == 0x0004003000008A02LL) //ErrDisp
+    else if(CONFIG(ENABLEEXCEPTIONHANDLERS) && !CONFIG(PATCHUNITINFO) && progId == 0x0004003000008A02LL) //ErrDisp
     {
         static const u8 pattern[] = {
             0x00, 0xD0, 0xE5, 0xDB
@@ -839,9 +818,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            languageId;
 
         if(!loadTitleCodeSection(progId, code, size) ||
+           !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchRomfsRedirection(progId, code, size) ||
-           !applyCodeIpsPatch(progId, code, size)) goto error;
+           !patchLayeredFs(progId, code, size)) goto error;
 
         if(regionId != 0xFF)
         {

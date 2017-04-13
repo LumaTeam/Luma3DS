@@ -28,6 +28,7 @@
 #include "screen.h"
 #include "draw.h"
 #include "utils.h"
+#include "config.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
 #include "../build/bundled.h"
@@ -157,6 +158,8 @@ void loadPayload(u32 pressed, const char *payloadPath)
     else payloadSize = fileRead(payloadAddress, payloadPath, maxPayloadSize);
 
     if(!payloadSize) return;
+
+    writeConfig(true);
 
     memcpy(loaderAddress, loader_bin, loader_bin_size);
     loaderAddress[1] = payloadSize;

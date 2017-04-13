@@ -30,9 +30,13 @@
 #include "pin.h"
 
 CfgData configData;
+ConfigurationStatus needConfig;
+static CfgData oldConfig;
 
 bool readConfig(void)
 {
+    bool ret;
+
     if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
@@ -40,17 +44,23 @@ bool readConfig(void)
     {
         configData.config = 0;
 
-        return false;
+        ret = false;
     }
+    else ret = true;
 
-    return true;
+    oldConfig = configData;
+
+    return ret;
 }
 
-void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
+void writeConfig(bool isPayloadLaunch)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && (configTemp & 0xFFFFFF7F) == configData.config) return;
+
+    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF00) | (oldConfig.config & 0xFF);
+
+    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFF7F) == oldConfig.config) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -58,9 +68,6 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
     }
-
-    //Merge the new options and new boot configuration
-    configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
 
     if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
         error("Error writing the configuration file");

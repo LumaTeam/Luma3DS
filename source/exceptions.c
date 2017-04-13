@@ -85,8 +85,6 @@ u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffse
                 va_src = dAbtHandlerMemAddress +  ((u8 *)pos - (u8 *)dAbtHandler);
                 *pos = MAKE_BRANCH((u8 *)va_src, (u8 *)va_dst);
                 break;
-            default:
-                break;
         }
     }
 
