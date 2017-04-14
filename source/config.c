@@ -153,10 +153,11 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
-                                          "of patched code binaries and\n"
-                                          "LayeredFS for specific games.\n\n"
-                                          "Also makes certain DLCs for\n"
-                                          "out-of-region games work.\n\n"
+                                          "of patched code binaries,\n"
+                                          "IPS code patches and LayeredFS\n"
+                                          "for specific games.\n\n"
+                                          "Also makes certain DLCs\n"
+                                          "for out-of-region games work.\n\n"
                                           "Enabling this requires the\n"
                                           "archive patch to be applied.\n\n"
                                           "Refer to the wiki for instructions.",
