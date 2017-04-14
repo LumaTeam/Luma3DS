@@ -84,13 +84,8 @@ _start:
     endRedir:
         ldmfd   sp!, {r0-r12, lr}
         moveq   r0, #0
-        beq panic
         bxeq    lr
         b       _fsRedir+4
-
-    panic:
-        swi 0x3C
-        b panic
 
 .pool
 .align 4
