@@ -39,7 +39,8 @@ extern FirmwareSource firmSource;
 void main(void)
 {
     bool isA9lhInstalled,
-         isSafeMode = false;
+         isSafeMode = false,
+         isNoForceFlagSet = false;
     u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
@@ -104,8 +105,8 @@ void main(void)
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
-            //Flag to prevent multiple boot options-forcing
-            configData.config |= 1 << 7;
+            //Prevent multiple boot options-forcing
+            isNoForceFlagSet = true;
 
             goto boot;
         }
@@ -230,7 +231,7 @@ boot:
 
     if(!ISFIRMLAUNCH)
     {
-        configData.config = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.config = (configData.config & 0xFFFFFF00) | ((u32)isNoForceFlagSet << 7) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 
