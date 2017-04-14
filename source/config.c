@@ -31,7 +31,7 @@
 
 CfgData configData;
 ConfigurationStatus needConfig;
-static CfgData oldConfig;
+static u32 oldConfig;
 
 bool readConfig(void)
 {
@@ -48,19 +48,18 @@ bool readConfig(void)
     }
     else ret = true;
 
-    oldConfig = configData;
+    oldConfig = configData.config;
 
     return ret;
 }
 
 void writeConfig(bool isPayloadLaunch)
 {
+    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF00) | (oldConfig & 0xFF);
+
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-
-    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF00) | (oldConfig.config & 0xFF);
-
-    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFF7F) == oldConfig.config) return;
+    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFF7F) == oldConfig) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
