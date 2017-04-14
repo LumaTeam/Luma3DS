@@ -94,9 +94,6 @@ void main(void)
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
-    //Begin saving the new boot configuration
-    configData.config = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
-
     //If it's a MCU reboot, try to force boot options
     if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
@@ -233,7 +230,7 @@ boot:
 
     if(!ISFIRMLAUNCH)
     {
-        configData.config |= (u32)nandType | ((u32)firmSource << 3);
+        configData.config = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 
