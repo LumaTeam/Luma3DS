@@ -1,13 +1,13 @@
 /*----------------------------------------------------------------------------/
-/  FatFs - Generic FAT file system module  R0.12b                             /
+/  FatFs - Generic FAT file system module  R0.12c                             /
 /-----------------------------------------------------------------------------/
 /
-/ Copyright (C) 2016, ChaN, all right reserved.
+/ Copyright (C) 2017, ChaN, all right reserved.
 /
 / FatFs module is an open source software. Redistribution and use of FatFs in
 / source and binary forms, with or without modification, are permitted provided
 / that the following condition is met:
-
+/
 / 1. Redistributions of source code must retain the above copyright notice,
 /    this condition and the following disclaimer.
 /
@@ -28,63 +28,9 @@
 
 ---------------------------------------------------------------------------*/
 
-#if _FATFS != 68020	/* Revision ID */
+#if _FATFS != 68300	/* Revision ID */
 #error Wrong include file (ff.h).
 #endif
-
-
-#define	ABORT(fs, res)		{ fp->err = (BYTE)(res); LEAVE_FF(fs, res); }
-
-
-/* Reentrancy related */
-#if _FS_REENTRANT
-#if _USE_LFN == 1
-#error Static LFN work area cannot be used at thread-safe configuration
-#endif
-#define	ENTER_FF(fs)		{ if (!lock_fs(fs)) return FR_TIMEOUT; }
-#define	LEAVE_FF(fs, res)	{ unlock_fs(fs, res); return res; }
-#else
-#define	ENTER_FF(fs)
-#define LEAVE_FF(fs, res)	return res
-#endif
-
-
-
-/* Definitions of sector size */
-#if (_MAX_SS < _MIN_SS) || (_MAX_SS != 512 && _MAX_SS != 1024 && _MAX_SS != 2048 && _MAX_SS != 4096) || (_MIN_SS != 512 && _MIN_SS != 1024 && _MIN_SS != 2048 && _MIN_SS != 4096)
-#error Wrong sector size configuration
-#endif
-#if _MAX_SS == _MIN_SS
-#define	SS(fs)	((UINT)_MAX_SS)	/* Fixed sector size */
-#else
-#define	SS(fs)	((fs)->ssize)	/* Variable sector size */
-#endif
-
-
-/* Timestamp */
-#if _FS_NORTC == 1
-#if _NORTC_YEAR < 1980 || _NORTC_YEAR > 2107 || _NORTC_MON < 1 || _NORTC_MON > 12 || _NORTC_MDAY < 1 || _NORTC_MDAY > 31
-#error Invalid _FS_NORTC settings
-#endif
-#define GET_FATTIME()	((DWORD)(_NORTC_YEAR - 1980) << 25 | (DWORD)_NORTC_MON << 21 | (DWORD)_NORTC_MDAY << 16)
-#else
-#define GET_FATTIME()	get_fattime()
-#endif
-
-
-/* File lock controls */
-#if _FS_LOCK != 0
-#if _FS_READONLY
-#error _FS_LOCK must be 0 at read-only configuration
-#endif
-typedef struct {
-	FATFS *fs;		/* Object ID 1, volume (NULL:blank entry) */
-	DWORD clu;		/* Object ID 2, directory (0:root) */
-	DWORD ofs;		/* Object ID 3, directory offset */
-	WORD ctr;		/* Object open counter, 0:none, 0x01..0xFF:read mode open count, 0x100:write mode */
-} FILESEM;
-#endif
-
 
 
 /* DBCS code ranges and SBCS upper conversion tables */
@@ -351,20 +297,20 @@ typedef struct {
 #endif /* _DF1S */
 
 
-/* File attribute bits (internal use) */
+/* Additional file attribute bits for internal use */
 #define	AM_VOL		0x08	/* Volume label */
 #define AM_LFN		0x0F	/* LFN entry */
 #define AM_MASK		0x3F	/* Mask of defined bits */
 
 
-/* File access control and file status flags (internal use) */
+/* Additional file access control and file status flags for internal use */
 #define FA_SEEKEND	0x20	/* Seek to end of the file on file open */
 #define FA_MODIFIED	0x40	/* File has been modified */
 #define FA_DIRTY	0x80	/* FIL.buf[] needs to be written-back */
 
 
-/* Name status flags */
-#define NSFLAG		11		/* Index of name status byte in fn[] */
+/* Name status flags in fn[] */
+#define NSFLAG		11		/* Index of the name status byte */
 #define NS_LOSS		0x01	/* Out of 8.3 format */
 #define NS_LFN		0x02	/* Force to create LFN entry */
 #define NS_LAST		0x04	/* Last segment */
@@ -375,18 +321,17 @@ typedef struct {
 #define NS_NONAME	0x80	/* Not followed */
 
 
-/* Limits and boundaries (differ from specs but correct for real DOS/Windows) */
-#define MAX_FAT12	0xFF5			/* Maximum number of FAT12 clusters */
-#define	MAX_FAT16	0xFFF5			/* Maximum number of FAT16 clusters */
-#define	MAX_FAT32	0xFFFFFF5		/* Maximum number of FAT32 clusters */
-#define	MAX_EXFAT	0x7FFFFFFD		/* Maximum number of exFAT clusters (limited by implementation) */
-#define MAX_DIR		0x200000		/* Maximum size of FAT directory */
-#define MAX_DIR_EX	0x10000000		/* Maximum size of exFAT directory */
+/* Limits and boundaries */
+#define MAX_DIR		0x200000		/* Max size of FAT directory */
+#define MAX_DIR_EX	0x10000000		/* Max size of exFAT directory */
+#define MAX_FAT12	0xFF5			/* Max FAT12 clusters (differs from specs, but correct for real DOS/Windows behavior) */
+#define	MAX_FAT16	0xFFF5			/* Max FAT16 clusters (differs from specs, but correct for real DOS/Windows behavior) */
+#define	MAX_FAT32	0x0FFFFFF5		/* Max FAT32 clusters (not specified, practical limit) */
+#define	MAX_EXFAT	0x7FFFFFFD		/* Max exFAT clusters (differs from specs, implementation limit) */
 
 
-/* FatFs refers the members in the FAT structures as byte array instead of
-/ structure members because the structure is not binary compatible between
-/ different platforms */
+/* FatFs refers the FAT structure as simple byte array instead of structure member
+/ because the C structure is not binary compatible between different platforms */
 
 #define BS_JmpBoot			0		/* x86 jump instruction (3-byte) */
 #define BS_OEMName			3		/* OEM name (8-byte) */
@@ -432,18 +377,60 @@ typedef struct {
 #define BPB_FatSzEx			84		/* exFAT: FAT size [sector] (DWORD) */
 #define BPB_DataOfsEx		88		/* exFAT: Data offset from top of the volume [sector] (DWORD) */
 #define BPB_NumClusEx		92		/* exFAT: Number of clusters (DWORD) */
-#define BPB_RootClusEx		96		/* exFAT: Root directory cluster (DWORD) */
+#define BPB_RootClusEx		96		/* exFAT: Root directory start cluster (DWORD) */
 #define BPB_VolIDEx			100		/* exFAT: Volume serial number (DWORD) */
 #define BPB_FSVerEx			104		/* exFAT: File system version (WORD) */
 #define BPB_VolFlagEx		106		/* exFAT: Volume flags (BYTE) */
 #define BPB_ActFatEx		107		/* exFAT: Active FAT flags (BYTE) */
-#define BPB_BytsPerSecEx	108		/* exFAT: Log2 of sector size in byte (BYTE) */
-#define BPB_SecPerClusEx	109		/* exFAT: Log2 of cluster size in sector (BYTE) */
+#define BPB_BytsPerSecEx	108		/* exFAT: Log2 of sector size in unit of byte (BYTE) */
+#define BPB_SecPerClusEx	109		/* exFAT: Log2 of cluster size in unit of sector (BYTE) */
 #define BPB_NumFATsEx		110		/* exFAT: Number of FATs (BYTE) */
 #define BPB_DrvNumEx		111		/* exFAT: Physical drive number for int13h (BYTE) */
 #define BPB_PercInUseEx		112		/* exFAT: Percent in use (BYTE) */
 #define	BPB_RsvdEx			113		/* exFAT: Reserved (7-byte) */
 #define BS_BootCodeEx		120		/* exFAT: Boot code (390-byte) */
+
+#define	DIR_Name			0		/* Short file name (11-byte) */
+#define	DIR_Attr			11		/* Attribute (BYTE) */
+#define	DIR_NTres			12		/* Lower case flag (BYTE) */
+#define DIR_CrtTime10		13		/* Created time sub-second (BYTE) */
+#define	DIR_CrtTime			14		/* Created time (DWORD) */
+#define DIR_LstAccDate		18		/* Last accessed date (WORD) */
+#define	DIR_FstClusHI		20		/* Higher 16-bit of first cluster (WORD) */
+#define	DIR_ModTime			22		/* Modified time (DWORD) */
+#define	DIR_FstClusLO		26		/* Lower 16-bit of first cluster (WORD) */
+#define	DIR_FileSize		28		/* File size (DWORD) */
+#define	LDIR_Ord			0		/* LFN: LFN order and LLE flag (BYTE) */
+#define	LDIR_Attr			11		/* LFN: LFN attribute (BYTE) */
+#define	LDIR_Type			12		/* LFN: Entry type (BYTE) */
+#define	LDIR_Chksum			13		/* LFN: Checksum of the SFN (BYTE) */
+#define	LDIR_FstClusLO		26		/* LFN: MBZ field (WORD) */
+#define	XDIR_Type			0		/* exFAT: Type of exFAT directory entry (BYTE) */
+#define	XDIR_NumLabel		1		/* exFAT: Number of volume label characters (BYTE) */
+#define	XDIR_Label			2		/* exFAT: Volume label (11-WORD) */
+#define	XDIR_CaseSum		4		/* exFAT: Sum of case conversion table (DWORD) */
+#define	XDIR_NumSec			1		/* exFAT: Number of secondary entries (BYTE) */
+#define	XDIR_SetSum			2		/* exFAT: Sum of the set of directory entries (WORD) */
+#define	XDIR_Attr			4		/* exFAT: File attribute (WORD) */
+#define	XDIR_CrtTime		8		/* exFAT: Created time (DWORD) */
+#define	XDIR_ModTime		12		/* exFAT: Modified time (DWORD) */
+#define	XDIR_AccTime		16		/* exFAT: Last accessed time (DWORD) */
+#define	XDIR_CrtTime10		20		/* exFAT: Created time subsecond (BYTE) */
+#define	XDIR_ModTime10		21		/* exFAT: Modified time subsecond (BYTE) */
+#define	XDIR_CrtTZ			22		/* exFAT: Created timezone (BYTE) */
+#define	XDIR_ModTZ			23		/* exFAT: Modified timezone (BYTE) */
+#define	XDIR_AccTZ			24		/* exFAT: Last accessed timezone (BYTE) */
+#define	XDIR_GenFlags		33		/* exFAT: General secondary flags (WORD) */
+#define	XDIR_NumName		35		/* exFAT: Number of file name characters (BYTE) */
+#define	XDIR_NameHash		36		/* exFAT: Hash of file name (WORD) */
+#define XDIR_ValidFileSize	40		/* exFAT: Valid file size (QWORD) */
+#define	XDIR_FstClus		52		/* exFAT: First cluster of the file data (DWORD) */
+#define	XDIR_FileSize		56		/* exFAT: File/Directory size (QWORD) */
+
+#define	SZDIRE				32		/* Size of a directory entry */
+#define	DDEM				0xE5	/* Deleted directory entry mark set to DIR_Name[0] */
+#define	RDDEM				0x05	/* Replacement of the character collides with DDEM */
+#define	LLEF				0x40	/* Last long entry flag in LDIR_Ord */
 
 #define	FSI_LeadSig			0		/* FAT32 FSI: Leading signature (DWORD) */
 #define	FSI_StrucSig		484		/* FAT32 FSI: Structure signature (DWORD) */
@@ -463,47 +450,68 @@ typedef struct {
 #define PTE_StLba			8		/* MBR PTE: Start in LBA */
 #define PTE_SizLba			12		/* MBR PTE: Size in LBA */
 
-#define	DIR_Name			0		/* Short file name (11-byte) */
-#define	DIR_Attr			11		/* Attribute (BYTE) */
-#define	DIR_NTres			12		/* Lower case flag (BYTE) */
-#define DIR_CrtTime10		13		/* Created time sub-second (BYTE) */
-#define	DIR_CrtTime			14		/* Created time (DWORD) */
-#define DIR_LstAccDate		18		/* Last accessed date (WORD) */
-#define	DIR_FstClusHI		20		/* Higher 16-bit of first cluster (WORD) */
-#define	DIR_ModTime			22		/* Modified time (DWORD) */
-#define	DIR_FstClusLO		26		/* Lower 16-bit of first cluster (WORD) */
-#define	DIR_FileSize		28		/* File size (DWORD) */
-#define	LDIR_Ord			0		/* LFN entry order and LLE flag (BYTE) */
-#define	LDIR_Attr			11		/* LFN attribute (BYTE) */
-#define	LDIR_Type			12		/* LFN type (BYTE) */
-#define	LDIR_Chksum			13		/* Checksum of the SFN entry (BYTE) */
-#define	LDIR_FstClusLO		26		/* Must be zero (WORD) */
-#define	XDIR_Type			0		/* Type of exFAT directory entry (BYTE) */
-#define	XDIR_NumLabel		1		/* Number of volume label characters (BYTE) */
-#define	XDIR_Label			2		/* Volume label (11-WORD) */
-#define	XDIR_CaseSum		4		/* Sum of case conversion table (DWORD) */
-#define	XDIR_NumSec			1		/* Number of secondary entries (BYTE) */
-#define	XDIR_SetSum			2		/* Sum of the set of directory entries (WORD) */
-#define	XDIR_Attr			4		/* File attribute (WORD) */
-#define	XDIR_CrtTime		8		/* Created time (DWORD) */
-#define	XDIR_ModTime		12		/* Modified time (DWORD) */
-#define	XDIR_AccTime		16		/* Last accessed time (DWORD) */
-#define	XDIR_CrtTime10		20		/* Created time subsecond (BYTE) */
-#define	XDIR_ModTime10		21		/* Modified time subsecond (BYTE) */
-#define	XDIR_CrtTZ			22		/* Created timezone (BYTE) */
-#define	XDIR_ModTZ			23		/* Modified timezone (BYTE) */
-#define	XDIR_AccTZ			24		/* Last accessed timezone (BYTE) */
-#define	XDIR_GenFlags		33		/* Gneral secondary flags (WORD) */
-#define	XDIR_NumName		35		/* Number of file name characters (BYTE) */
-#define	XDIR_NameHash		36		/* Hash of file name (WORD) */
-#define XDIR_ValidFileSize	40		/* Valid file size (QWORD) */
-#define	XDIR_FstClus		52		/* First cluster of the file data (DWORD) */
-#define	XDIR_FileSize		56		/* File/Directory size (QWORD) */
 
-#define	SZDIRE				32		/* Size of a directory entry */
-#define	LLEF				0x40	/* Last long entry flag in LDIR_Ord */
-#define	DDEM				0xE5	/* Deleted directory entry mark set to DIR_Name[0] */
-#define	RDDEM				0x05	/* Replacement of the character collides with DDEM */
+/* Post process after fatal error on file operation */
+#define	ABORT(fs, res)		{ fp->err = (BYTE)(res); LEAVE_FF(fs, res); }
+
+
+/* Reentrancy related */
+#if _FS_REENTRANT
+#if _USE_LFN == 1
+#error Static LFN work area cannot be used at thread-safe configuration
+#endif
+#define	ENTER_FF(fs)		{ if (!lock_fs(fs)) return FR_TIMEOUT; }
+#define	LEAVE_FF(fs, res)	{ unlock_fs(fs, res); return res; }
+#else
+#define	ENTER_FF(fs)
+#define LEAVE_FF(fs, res)	return res
+#endif
+
+
+/* Definitions of volume - partition conversion */
+#if _MULTI_PARTITION
+#define LD2PD(vol) VolToPart[vol].pd	/* Get physical drive number */
+#define LD2PT(vol) VolToPart[vol].pt	/* Get partition index */
+#else
+#define LD2PD(vol) (BYTE)(vol)	/* Each logical drive is bound to the same physical drive number */
+#define LD2PT(vol) 0			/* Find first valid partition or in SFD */
+#endif
+
+
+/* Definitions of sector size */
+#if (_MAX_SS < _MIN_SS) || (_MAX_SS != 512 && _MAX_SS != 1024 && _MAX_SS != 2048 && _MAX_SS != 4096) || (_MIN_SS != 512 && _MIN_SS != 1024 && _MIN_SS != 2048 && _MIN_SS != 4096)
+#error Wrong sector size configuration
+#endif
+#if _MAX_SS == _MIN_SS
+#define	SS(fs)	((UINT)_MAX_SS)	/* Fixed sector size */
+#else
+#define	SS(fs)	((fs)->ssize)	/* Variable sector size */
+#endif
+
+
+/* Timestamp */
+#if _FS_NORTC == 1
+#if _NORTC_YEAR < 1980 || _NORTC_YEAR > 2107 || _NORTC_MON < 1 || _NORTC_MON > 12 || _NORTC_MDAY < 1 || _NORTC_MDAY > 31
+#error Invalid _FS_NORTC settings
+#endif
+#define GET_FATTIME()	((DWORD)(_NORTC_YEAR - 1980) << 25 | (DWORD)_NORTC_MON << 21 | (DWORD)_NORTC_MDAY << 16)
+#else
+#define GET_FATTIME()	get_fattime()
+#endif
+
+
+/* File lock controls */
+#if _FS_LOCK != 0
+#if _FS_READONLY
+#error _FS_LOCK must be 0 at read-only configuration
+#endif
+typedef struct {
+	FATFS *fs;		/* Object ID 1, volume (NULL:blank entry) */
+	DWORD clu;		/* Object ID 2, containing directory (0:root) */
+	DWORD ofs;		/* Object ID 3, offset in the directory */
+	WORD ctr;		/* Object open counter, 0:none, 0x01..0xFF:read mode open count, 0x100:write mode */
+} FILESEM;
+#endif
 
 
 
@@ -515,11 +523,11 @@ typedef struct {
 
 ---------------------------------------------------------------------------*/
 
-/* Remark: Variables here without initial value shall be guaranteed zero/null
-/  at start-up. If not, either the linker or start-up routine being used is
+/* Remark: Variables defined here without initial value shall be guaranteed
+/  zero/null at start-up. If not, the linker option or start-up routine is
 /  not compliance with C standard. */
 
-#if _VOLUMES < 1 || _VOLUMES > 9
+#if _VOLUMES < 1 || _VOLUMES > 10
 #error Wrong _VOLUMES setting
 #endif
 static FATFS *FatFs[_VOLUMES];	/* Pointer to the file system objects (logical drives) */
@@ -533,27 +541,29 @@ static BYTE CurrVol;			/* Current drive */
 static FILESEM Files[_FS_LOCK];	/* Open object lock semaphores */
 #endif
 
-#if _USE_LFN == 0			/* Non-LFN configuration */
+#if _USE_LFN == 0		/* Non-LFN configuration */
 #define	DEF_NAMBUF
 #define INIT_NAMBUF(fs)
 #define	FREE_NAMBUF()
-#else
+
+#else					/* LFN configuration */
 #if _MAX_LFN < 12 || _MAX_LFN > 255
-#error Wrong _MAX_LFN setting
+#error Wrong _MAX_LFN value
 #endif
+#define MAXDIRB(nc)	((nc + 44U) / 15 * SZDIRE)
 
 #if _USE_LFN == 1		/* LFN enabled with static working buffer */
 #if _FS_EXFAT
-static BYTE	DirBuf[SZDIRE*19];	/* Directory entry block scratchpad buffer (19 entries in size) */
+static BYTE	DirBuf[MAXDIRB(_MAX_LFN)];	/* Directory entry block scratchpad buffer */
 #endif
-static WCHAR LfnBuf[_MAX_LFN+1];	/* LFN enabled with static working buffer */
+static WCHAR LfnBuf[_MAX_LFN + 1];	/* LFN enabled with static working buffer */
 #define	DEF_NAMBUF
 #define INIT_NAMBUF(fs)
 #define	FREE_NAMBUF()
 
 #elif _USE_LFN == 2 	/* LFN enabled with dynamic working buffer on the stack */
 #if _FS_EXFAT
-#define	DEF_NAMBUF		WCHAR lbuf[_MAX_LFN+1]; BYTE dbuf[SZDIRE*19];
+#define	DEF_NAMBUF		WCHAR lbuf[_MAX_LFN+1]; BYTE dbuf[MAXDIRB(_MAX_LFN)];
 #define INIT_NAMBUF(fs)	{ (fs)->lfnbuf = lbuf; (fs)->dirbuf = dbuf; }
 #define	FREE_NAMBUF()
 #else
@@ -565,7 +575,7 @@ static WCHAR LfnBuf[_MAX_LFN+1];	/* LFN enabled with static working buffer */
 #elif _USE_LFN == 3 	/* LFN enabled with dynamic working buffer on the heap */
 #if _FS_EXFAT
 #define	DEF_NAMBUF		WCHAR *lfn;
-#define INIT_NAMBUF(fs)	{ lfn = ff_memalloc((_MAX_LFN+1)*2 + SZDIRE*19); if (!lfn) LEAVE_FF(fs, FR_NOT_ENOUGH_CORE); (fs)->lfnbuf = lfn; (fs)->dirbuf = (BYTE*)(lfn+_MAX_LFN+1); }
+#define INIT_NAMBUF(fs)	{ lfn = ff_memalloc((_MAX_LFN+1)*2 + MAXDIRB(_MAX_LFN)); if (!lfn) LEAVE_FF(fs, FR_NOT_ENOUGH_CORE); (fs)->lfnbuf = lfn; (fs)->dirbuf = (BYTE*)(lfn+_MAX_LFN+1); }
 #define	FREE_NAMBUF()	ff_memfree(lfn)
 #else
 #define	DEF_NAMBUF		WCHAR *lfn;
@@ -575,8 +585,9 @@ static WCHAR LfnBuf[_MAX_LFN+1];	/* LFN enabled with static working buffer */
 
 #else
 #error Wrong _USE_LFN setting
+
 #endif
-#endif
+#endif	/* else _USE_LFN == 0 */
 
 #ifdef _EXCVT
 static const BYTE ExCvt[] = _EXCVT;	/* Upper conversion table for SBCS extended characters */
@@ -684,7 +695,9 @@ void mem_cpy (void* dst, const void* src, UINT cnt) {
 	const BYTE *s = (const BYTE*)src;
 
 	if (cnt) {
-		do *d++ = *s++; while (--cnt);
+		do {
+			*d++ = *s++;
+		} while (--cnt);
 	}
 }
 
@@ -693,7 +706,9 @@ static
 void mem_set (void* dst, int val, UINT cnt) {
 	BYTE *d = (BYTE*)dst;
 
-	do *d++ = (BYTE)val; while (--cnt);
+	do {
+		*d++ = (BYTE)val;
+	} while (--cnt);
 }
 
 /* Compare memory block */
@@ -728,7 +743,7 @@ int lock_fs (
 	FATFS* fs		/* File system object */
 )
 {
-	return ff_req_grant(fs->sobj);
+	return (fs && ff_req_grant(fs->sobj)) ? 1 : 0;
 }
 
 
@@ -1030,17 +1045,21 @@ DWORD get_fat (	/* 0xFFFFFFFF:Disk error, 1:Internal error, 2..0x7FFFFFFF:Cluste
 						break;
 					}
 				}
-				if (obj->stat == 3 && cofs < obj->n_cont) {	/* Is it in the contiguous part? */
+				if (obj->stat == 3 && cofs < obj->n_cont) {	/* Is it in the 1st fragment? */
 					val = clst + 1; 	/* Generate the value */
 					break;
 				}
 				if (obj->stat != 2) {	/* Get value from FAT if FAT chain is valid */
-					if (move_window(fs, fs->fatbase + (clst / (SS(fs) / 4))) != FR_OK) break;
-					val = ld_dword(fs->win + clst * 4 % SS(fs)) & 0x7FFFFFFF;
+					if (obj->n_frag != 0) {	/* Is it on the growing edge? */
+						val = 0x7FFFFFFF;	/* Generate EOC */
+					} else {
+						if (move_window(fs, fs->fatbase + (clst / (SS(fs) / 4))) != FR_OK) break;
+						val = ld_dword(fs->win + clst * 4 % SS(fs)) & 0x7FFFFFFF;
+					}
 					break;
 				}
 			}
-			/* go next */
+			/* go to default */
 #endif
 		default:
 			val = 1;	/* Internal error */
@@ -1068,7 +1087,6 @@ FRESULT put_fat (	/* FR_OK(0):succeeded, !=0:error */
 	UINT bc;
 	BYTE *p;
 	FRESULT res = FR_INT_ERR;
-
 
 	if (clst >= 2 && clst < fs->n_fatent) {	/* Check if in valid range */
 		switch (fs->fs_type) {
@@ -1120,12 +1138,12 @@ FRESULT put_fat (	/* FR_OK(0):succeeded, !=0:error */
 /* exFAT: Accessing FAT and Allocation Bitmap                            */
 /*-----------------------------------------------------------------------*/
 
-/*---------------------------------------------*/
-/* exFAT: Find a contiguous free cluster block */
-/*---------------------------------------------*/
+/*--------------------------------------*/
+/* Find a contiguous free cluster block */
+/*--------------------------------------*/
 
 static
-DWORD find_bitmap (	/* 0:No free cluster, 2..:Free cluster found, 0xFFFFFFFF:Disk error */
+DWORD find_bitmap (	/* 0:Not found, 2..:Cluster block found, 0xFFFFFFFF:Disk error */
 	FATFS* fs,	/* File system object */
 	DWORD clst,	/* Cluster number to scan from */
 	DWORD ncl	/* Number of contiguous clusters to find (1..) */
@@ -1146,12 +1164,12 @@ DWORD find_bitmap (	/* 0:No free cluster, 2..:Free cluster found, 0xFFFFFFFF:Dis
 			do {
 				bv = fs->win[i] & bm; bm <<= 1;		/* Get bit value */
 				if (++val >= fs->n_fatent - 2) {	/* Next cluster (with wrap-around) */
-					val = 0; bm = 0; i = 4096;
+					val = 0; bm = 0; i = SS(fs);
 				}
 				if (!bv) {	/* Is it a free cluster? */
-					if (++ctr == ncl) return scl + 2;	/* Check run length */
+					if (++ctr == ncl) return scl + 2;	/* Check if run length is sufficient for required */
 				} else {
-					scl = val; ctr = 0;		/* Encountered a live cluster, restart to scan */
+					scl = val; ctr = 0;		/* Encountered a cluster in-use, restart to scan */
 				}
 				if (val == clst) return 0;	/* All cluster scanned? */
 			} while (bm);
@@ -1161,9 +1179,9 @@ DWORD find_bitmap (	/* 0:No free cluster, 2..:Free cluster found, 0xFFFFFFFF:Dis
 }
 
 
-/*------------------------------------*/
-/* exFAT: Set/Clear a block of bitmap */
-/*------------------------------------*/
+/*----------------------------------------*/
+/* Set/Clear a block of allocation bitmap */
+/*----------------------------------------*/
 
 static
 FRESULT change_bitmap (
@@ -1176,7 +1194,6 @@ FRESULT change_bitmap (
 	BYTE bm;
 	UINT i;
 	DWORD sect;
-
 
 	clst -= 2;	/* The first bit corresponds to cluster #2 */
 	sect = fs->database + clst / 8 / SS(fs);	/* Sector address (assuming bitmap is located top of the cluster heap) */
@@ -1199,11 +1216,11 @@ FRESULT change_bitmap (
 
 
 /*---------------------------------------------*/
-/* Complement contiguous part of the FAT chain */
+/* Fill the first fragment of the FAT chain    */
 /*---------------------------------------------*/
 
 static
-FRESULT fill_fat_chain (
+FRESULT fill_first_frag (
 	_FDID* obj	/* Pointer to the corresponding object */
 )
 {
@@ -1216,6 +1233,28 @@ FRESULT fill_fat_chain (
 			if (res != FR_OK) return res;
 		}
 		obj->stat = 0;	/* Change status 'FAT chain is valid' */
+	}
+	return FR_OK;
+}
+
+
+/*---------------------------------------------*/
+/* Fill the last fragment of the FAT chain     */
+/*---------------------------------------------*/
+
+static
+FRESULT fill_last_frag (
+	_FDID* obj,	/* Pointer to the corresponding object */
+	DWORD lcl,	/* Last cluster of the fragment */
+	DWORD term	/* Value to set the last FAT entry */
+)
+{
+	FRESULT res;
+
+	while (obj->n_frag > 0) {	/* Create the last chain on the FAT */
+		res = put_fat(obj->fs, lcl - obj->n_frag + 1, (obj->n_frag > 1) ? lcl - obj->n_frag + 2 : term);
+		if (res != FR_OK) return res;
+		obj->n_frag--;
 	}
 	return FR_OK;
 }
@@ -1270,7 +1309,7 @@ FRESULT remove_chain (	/* FR_OK(0):succeeded, !=0:error */
 #if _FS_EXFAT || _USE_TRIM
 		if (ecl + 1 == nxt) {	/* Is next cluster contiguous? */
 			ecl = nxt;
-		} else {				/* End of contiguous cluster block */ 
+		} else {				/* End of contiguous cluster block */
 #if _FS_EXFAT
 			if (fs->fs_type == FS_EXFAT) {
 				res = change_bitmap(fs, scl, ecl - scl + 1, 0);	/* Mark the cluster block 'free' on the bitmap */
@@ -1290,11 +1329,25 @@ FRESULT remove_chain (	/* FR_OK(0):succeeded, !=0:error */
 
 #if _FS_EXFAT
 	if (fs->fs_type == FS_EXFAT) {
-		if (pclst == 0) {	/* Does object have no chain? */
+		if (pclst == 0) {	/* Does the object have no chain? */
 			obj->stat = 0;		/* Change the object status 'initial' */
 		} else {
-			if (obj->stat == 3 && pclst >= obj->sclust && pclst <= obj->sclust + obj->n_cont) {	/* Did the chain got contiguous? */
-				obj->stat = 2;	/* Change the object status 'contiguous' */
+			if (obj->stat == 0) {	/* Is it a fragmented chain from the beginning of this session? */
+				clst = obj->sclust;		/* Follow the chain to check if it gets contiguous */
+				while (clst != pclst) {
+					nxt = get_fat(obj, clst);
+					if (nxt < 2) return FR_INT_ERR;
+					if (nxt == 0xFFFFFFFF) return FR_DISK_ERR;
+					if (nxt != clst + 1) break;	/* Not contiguous? */
+					clst++;
+				}
+				if (clst == pclst) {	/* Has the chain got contiguous again? */
+					obj->stat = 2;		/* Change the chain status 'contiguous' */
+				}
+			} else {
+				if (obj->stat == 3 && pclst >= obj->sclust && pclst <= obj->sclust + obj->n_cont) {	/* Was the chain fragmented in this session and got contiguous again? */
+					obj->stat = 2;	/* Change the chain status 'contiguous' */
+				}
 			}
 		}
 	}
@@ -1325,7 +1378,7 @@ DWORD create_chain (	/* 0:No free cluster, 1:Internal error, 0xFFFFFFFF:Disk err
 	}
 	else {				/* Stretch current chain */
 		cs = get_fat(obj, clst);			/* Check the cluster status */
-		if (cs < 2) return 1;				/* Invalid value */
+		if (cs < 2) return 1;				/* Invalid FAT value */
 		if (cs == 0xFFFFFFFF) return cs;	/* A disk error occurred */
 		if (cs < fs->n_fatent) return cs;	/* It is already followed by next cluster */
 		scl = clst;
@@ -1339,11 +1392,20 @@ DWORD create_chain (	/* 0:No free cluster, 1:Internal error, 0xFFFFFFFF:Disk err
 		if (res == FR_INT_ERR) return 1;
 		if (res == FR_DISK_ERR) return 0xFFFFFFFF;
 		if (clst == 0) {							/* Is it a new chain? */
-			obj->stat = 2;							/* Set status 'contiguous chain' */
-		} else {									/* This is a stretched chain */
+			obj->stat = 2;							/* Set status 'contiguous' */
+		} else {									/* It is a stretched chain */
 			if (obj->stat == 2 && ncl != scl + 1) {	/* Is the chain got fragmented? */
 				obj->n_cont = scl - obj->sclust;	/* Set size of the contiguous part */
 				obj->stat = 3;						/* Change status 'just fragmented' */
+			}
+		}
+		if (obj->stat != 2) {	/* Is the file non-contiguous? */
+			if (ncl == clst + 1) {	/* Is the cluster next to previous one? */
+				obj->n_frag = obj->n_frag ? obj->n_frag + 1 : 2;	/* Increment size of last framgent */
+			} else {				/* New fragment */
+				if (obj->n_frag == 0) obj->n_frag = 1;
+				res = fill_last_frag(obj, clst, ncl);	/* Fill last fragment on the FAT and link it to new one */
+				if (res == FR_OK) obj->n_frag = 1;
 			}
 		}
 	} else
@@ -1361,23 +1423,18 @@ DWORD create_chain (	/* 0:No free cluster, 1:Internal error, 0xFFFFFFFF:Disk err
 			if (cs == 1 || cs == 0xFFFFFFFF) return cs;	/* An error occurred */
 			if (ncl == scl) return 0;		/* No free cluster */
 		}
-	}
-
-	if (_FS_EXFAT && fs->fs_type == FS_EXFAT && obj->stat == 2) {	/* Is it a contiguous chain? */
-		res = FR_OK;						/* FAT does not need to be written */
-	} else {
 		res = put_fat(fs, ncl, 0xFFFFFFFF);	/* Mark the new cluster 'EOC' */
-		if (res == FR_OK && clst) {
+		if (res == FR_OK && clst != 0) {
 			res = put_fat(fs, clst, ncl);	/* Link it from the previous one if needed */
 		}
 	}
 
 	if (res == FR_OK) {			/* Update FSINFO if function succeeded. */
 		fs->last_clst = ncl;
-		if (fs->free_clst < fs->n_fatent - 2) fs->free_clst--;
+		if (fs->free_clst <= fs->n_fatent - 2) fs->free_clst--;
 		fs->fsi_flag |= 1;
 	} else {
-		ncl = (res == FR_DISK_ERR) ? 0xFFFFFFFF : 1;	/* Failed. Create error status */
+		ncl = (res == FR_DISK_ERR) ? 0xFFFFFFFF : 1;	/* Failed. Generate error status */
 	}
 
 	return ncl;		/* Return new cluster number or error status */
@@ -1519,7 +1576,7 @@ FRESULT dir_next (	/* FR_OK(0):succeeded, FR_NO_FILE:End of table, FR_DENIED:Cou
 					}
 					fs->winsect -= n;							/* Restore window offset */
 #else
-					if (!stretch) dp->sect = 0;					/* If no stretch, report EOT (this is to suppress warning) */
+					if (!stretch) dp->sect = 0;					/* (this line is to suppress compiler warning) */
 					dp->sect = 0; return FR_NO_FILE;			/* Report EOT */
 #endif
 				}
@@ -1676,9 +1733,9 @@ int pick_lfn (			/* 1:succeeded, 0:buffer overflow or invalid LFN entry */
 	WCHAR wc, uc;
 
 
-	if (ld_word(dir + LDIR_FstClusLO) != 0) return 0;	/* Check LDIR_FstClusLO */
+	if (ld_word(dir + LDIR_FstClusLO) != 0) return 0;	/* Check LDIR_FstClusLO is 0 */
 
-	i = ((dir[LDIR_Ord] & 0x3F) - 1) * 13;	/* Offset in the LFN buffer */
+	i = ((dir[LDIR_Ord] & ~LLEF) - 1) * 13;	/* Offset in the LFN buffer */
 
 	for (wc = 1, s = 0; s < 13; s++) {		/* Process all characters in the entry */
 		uc = ld_word(dir + LfnOfs[s]);		/* Pick an LFN character */
@@ -1809,7 +1866,9 @@ BYTE sum_sfn (
 	BYTE sum = 0;
 	UINT n = 11;
 
-	do sum = (sum >> 1) + (sum << 7) + *dir++; while (--n);
+	do {
+		sum = (sum >> 1) + (sum << 7) + *dir++;
+	} while (--n);
 	return sum;
 }
 
@@ -1893,30 +1952,26 @@ void get_xdir_info (
 #endif
 
 	/* Get file name */
+	di = 0;
 #if _LFN_UNICODE
-	if (dirb[XDIR_NumName] <= _MAX_LFN) {
-		for (si = SZDIRE * 2, di = 0; di < dirb[XDIR_NumName]; si += 2, di++) {
-			if ((si % SZDIRE) == 0) si += 2;	/* Skip entry type field */
-			w = ld_word(dirb + si);				/* Get a character */
-			fno->fname[di] = w;					/* Store it */
-		}
-	} else {
-		di = 0;	/* Buffer overflow and inaccessible object */
+	for (si = SZDIRE * 2; di < dirb[XDIR_NumName]; si += 2, di++) {
+		if ((si % SZDIRE) == 0) si += 2;		/* Skip entry type field */
+		w = ld_word(dirb + si);					/* Get a character */
+		if (di >= _MAX_LFN) { di = 0; break; }	/* Buffer overflow --> inaccessible object name */
+		fno->fname[di] = w;						/* Store it */
 	}
 #else
-	for (si = SZDIRE * 2, di = nc = 0; nc < dirb[XDIR_NumName]; si += 2, nc++) {
-		if ((si % SZDIRE) == 0) si += 2;	/* Skip entry type field */
-		w = ld_word(dirb + si);				/* Get a character */
-		w = ff_convert(w, 0);				/* Unicode -> OEM */
-		if (w == 0) { di = 0; break; }		/* Could not be converted and inaccessible object */
-		if (_DF1S && w >= 0x100) {			/* Put 1st byte if it is a DBC (always false at SBCS cfg) */
-			fno->fname[di++] = (char)(w >> 8);
+	for (si = SZDIRE * 2, nc = 0; nc < dirb[XDIR_NumName]; si += 2, nc++) {
+		if ((si % SZDIRE) == 0) si += 2;		/* Skip entry type field */
+		w = ff_convert(ld_word(dirb + si), 0);	/* Get a character and Unicode -> OEM */
+		if (_DF1S && w >= 0x100) {				/* Is it a double byte char? (always false at SBCS cfg) */
+			fno->fname[di++] = (char)(w >> 8);	/* Put 1st byte of the DBC */
 		}
-		if (di >= _MAX_LFN) { di = 0; break; }	/* Buffer overflow and inaccessible object */
+		if (w == 0 || di >= _MAX_LFN) { di = 0; break; }	/* Invalid char or buffer overflow --> inaccessible object name */
 		fno->fname[di++] = (char)w;
 	}
 #endif
-	if (di == 0) fno->fname[di++] = '?';	/* Inaccessible object? */
+	if (di == 0) fno->fname[di++] = '?';	/* Inaccessible object name? */
 	fno->fname[di] = 0;						/* Terminate file name */
 
 	fno->altname[0] = 0;							/* No SFN */
@@ -1939,7 +1994,7 @@ FRESULT load_xdir (	/* FR_INT_ERR: invalid entry block */
 )
 {
 	FRESULT res;
-	UINT i, nent;
+	UINT i, sz_ent;
 	BYTE* dirb = dp->obj.fs->dirbuf;	/* Pointer to the on-memory direcotry entry block 85+C0+C1s */
 
 
@@ -1947,8 +2002,9 @@ FRESULT load_xdir (	/* FR_INT_ERR: invalid entry block */
 	res = move_window(dp->obj.fs, dp->sect);
 	if (res != FR_OK) return res;
 	if (dp->dir[XDIR_Type] != 0x85) return FR_INT_ERR;
-	mem_cpy(dirb, dp->dir, SZDIRE);
-	nent = dirb[XDIR_NumSec] + 1;
+	mem_cpy(dirb + 0, dp->dir, SZDIRE);
+	sz_ent = (dirb[XDIR_NumSec] + 1) * SZDIRE;
+	if (sz_ent < 3 * SZDIRE || sz_ent > 19 * SZDIRE) return FR_INT_ERR;
 
 	/* Load C0 entry */
 	res = dir_next(dp, 0);
@@ -1957,39 +2013,38 @@ FRESULT load_xdir (	/* FR_INT_ERR: invalid entry block */
 	if (res != FR_OK) return res;
 	if (dp->dir[XDIR_Type] != 0xC0) return FR_INT_ERR;
 	mem_cpy(dirb + SZDIRE, dp->dir, SZDIRE);
+	if (MAXDIRB(dirb[XDIR_NumName]) > sz_ent) return FR_INT_ERR;
 
 	/* Load C1 entries */
-	if (nent < 3 || nent > 19) return FR_NO_FILE;
-	i = SZDIRE * 2; nent *= SZDIRE;
+	i = SZDIRE * 2;	/* C1 offset */
 	do {
 		res = dir_next(dp, 0);
 		if (res != FR_OK) return res;
 		res = move_window(dp->obj.fs, dp->sect);
 		if (res != FR_OK) return res;
 		if (dp->dir[XDIR_Type] != 0xC1) return FR_INT_ERR;
-		mem_cpy(dirb + i, dp->dir, SZDIRE);
-		i += SZDIRE;
-	} while (i < nent);
+		if (i < MAXDIRB(_MAX_LFN)) mem_cpy(dirb + i, dp->dir, SZDIRE);
+	} while ((i += SZDIRE) < sz_ent);
 
-	/* Sanity check */
-	if (xdir_sum(dirb) != ld_word(dirb + XDIR_SetSum)) return FR_INT_ERR;
-
+	/* Sanity check (do it when accessible object name) */
+	if (i <= MAXDIRB(_MAX_LFN)) {
+		if (xdir_sum(dirb) != ld_word(dirb + XDIR_SetSum)) return FR_INT_ERR;
+	}
 	return FR_OK;
 }
 
 
-#if !_FS_READONLY || _FS_RPATH != 0 
+#if !_FS_READONLY || _FS_RPATH != 0
 /*------------------------------------------------*/
 /* exFAT: Load the object's directory entry block */
 /*------------------------------------------------*/
 static
 FRESULT load_obj_dir (	
 	DIR* dp,			/* Blank directory object to be used to access containing direcotry */
-	const _FDID* obj	/* Object with containing directory information */
+	const _FDID* obj	/* Object with its containing directory information */
 )
 {
 	FRESULT res;
-
 
 	/* Open object containing directory */
 	dp->obj.fs = obj->fs;
@@ -1998,7 +2053,7 @@ FRESULT load_obj_dir (
 	dp->obj.objsize = obj->c_size & 0xFFFFFF00;
 	dp->blk_ofs = obj->c_ofs;
 
-	res = dir_sdi(dp, dp->blk_ofs);	/* Goto the block location */
+	res = dir_sdi(dp, dp->blk_ofs);	/* Goto object's entry block */
 	if (res == FR_OK) {
 		res = load_xdir(dp);		/* Load the object's entry block */
 	}
@@ -2055,24 +2110,25 @@ void create_xdir (
 	WCHAR chr;
 
 
-	mem_set(dirb, 0, 2 * SZDIRE);			/* Initialize 85+C0 entry */
+	/* Create 85+C0 entry */
+	mem_set(dirb, 0, 2 * SZDIRE);
 	dirb[XDIR_Type] = 0x85;
 	dirb[XDIR_Type + SZDIRE] = 0xC0;
-	st_word(dirb + XDIR_NameHash, xname_sum(lfn));	/* Set name hash */
 
-	i = SZDIRE * 2;	/* C1 offset */
-	nc = 0; nb = 1; chr = 1;
+	/* Create C1 entries */
+	nc = 0; nb = 1; chr = 1; i = SZDIRE * 2;
 	do {
 		dirb[i++] = 0xC1; dirb[i++] = 0;	/* Entry type C1 */
 		do {	/* Fill name field */
 			if (chr && (chr = lfn[nc]) != 0) nc++;	/* Get a character if exist */
-			st_word(dirb + i, chr); i += 2;	/* Store it */
-		} while (i % SZDIRE);
+			st_word(dirb + i, chr); 		/* Store it */
+		} while ((i += 2) % SZDIRE != 0);
 		nb++;
 	} while (lfn[nc]);	/* Fill next entry if any char follows */
 
 	dirb[XDIR_NumName] = nc;	/* Set name length */
-	dirb[XDIR_NumSec] = nb;		/* Set number of C0+C1s */
+	dirb[XDIR_NumSec] = nb;		/* Set block length */
+	st_word(dirb + XDIR_NameHash, xname_sum(lfn));	/* Set name hash */
 }
 
 #endif	/* !_FS_READONLY */
@@ -2102,7 +2158,9 @@ FRESULT dir_read (
 		res = move_window(fs, dp->sect);
 		if (res != FR_OK) break;
 		c = dp->dir[DIR_Name];	/* Test for the entry type */
-		if (c == 0) { res = FR_NO_FILE; break; }	/* Reached to end of the directory */
+		if (c == 0) {
+			res = FR_NO_FILE; break; /* Reached to end of the directory */
+		}
 #if _FS_EXFAT
 		if (fs->fs_type == FS_EXFAT) {	/* On the exFAT volume */
 			if (_USE_LABEL && vol) {
@@ -2183,7 +2241,10 @@ FRESULT dir_find (	/* FR_OK(0):succeeded, !=0:error */
 		WORD hash = xname_sum(fs->lfnbuf);		/* Hash value of the name to find */
 
 		while ((res = dir_read(dp, 0)) == FR_OK) {	/* Read an item */
-			if (ld_word(fs->dirbuf + XDIR_NameHash) != hash) continue;	/* Skip the comparison if hash value mismatched */
+#if _MAX_LFN < 255
+			if (fs->dirbuf[XDIR_NumName] > _MAX_LFN) continue;			/* Skip comparison if inaccessible object name */
+#endif
+			if (ld_word(fs->dirbuf + XDIR_NameHash) != hash) continue;	/* Skip comparison if hash mismatched */
 			for (nc = fs->dirbuf[XDIR_NumName], di = SZDIRE * 2, ni = 0; nc; nc--, di += 2, ni++) {	/* Compare the name */
 				if ((di % SZDIRE) == 0) di += 2;
 				if (ff_wtoupper(ld_word(fs->dirbuf + di)) != ff_wtoupper(fs->lfnbuf[ni])) break;
@@ -2263,19 +2324,20 @@ FRESULT dir_register (	/* FR_OK:succeeded, FR_DENIED:no free entry or too many S
 		nent = (nlen + 14) / 15 + 2;	/* Number of entries to allocate (85+C0+C1s) */
 		res = dir_alloc(dp, nent);		/* Allocate entries */
 		if (res != FR_OK) return res;
-		dp->blk_ofs = dp->dptr - SZDIRE * (nent - 1);			/* Set block position */
+		dp->blk_ofs = dp->dptr - SZDIRE * (nent - 1);	/* Set the allocated entry block offset */
 
 		if (dp->obj.sclust != 0 && (dp->obj.stat & 4)) {	/* Has the sub-directory been stretched? */
-			dp->obj.stat &= 3;
-			dp->obj.objsize += (DWORD)fs->csize * SS(fs);	/* Increase object size by cluster size */
-			res = fill_fat_chain(&dp->obj);	/* Complement FAT chain if needed */
+			dp->obj.objsize += (DWORD)fs->csize * SS(fs);	/* Increase the directory size by cluster size */
+			res = fill_first_frag(&dp->obj);				/* Fill first fragment on the FAT if needed */
 			if (res != FR_OK) return res;
-			res = load_obj_dir(&dj, &dp->obj);
-			if (res != FR_OK) return res;	/* Load the object status */
+			res = fill_last_frag(&dp->obj, dp->clust, 0xFFFFFFFF);	/* Fill last fragment on the FAT if needed */
+			if (res != FR_OK) return res;
+			res = load_obj_dir(&dj, &dp->obj);				/* Load the object status */
+			if (res != FR_OK) return res;
 			st_qword(fs->dirbuf + XDIR_FileSize, dp->obj.objsize);		/* Update the allocation status */
 			st_qword(fs->dirbuf + XDIR_ValidFileSize, dp->obj.objsize);
 			fs->dirbuf[XDIR_GenFlags] = dp->obj.stat | 1;
-			res = store_xdir(&dj);			/* Store the object status */
+			res = store_xdir(&dj);							/* Store the object status */
 			if (res != FR_OK) return res;
 		}
 
@@ -2454,7 +2516,7 @@ void get_fileinfo (		/* No return code */
 #endif
 		fno->altname[j] = c;
 		if (!lfv) {
-			if (IsUpper(c) && (dp->dir[DIR_NTres] & (i >= 9 ? NS_EXT : NS_BODY))) {
+			if (IsUpper(c) && (dp->dir[DIR_NTres] & ((i >= 9) ? NS_EXT : NS_BODY))) {
 				c += 0x20;			/* To lower */
 			}
 			fno->fname[j] = c;
@@ -2775,14 +2837,16 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 
 #if _FS_RPATH != 0
 	if (*path != '/' && *path != '\\') {	/* Without heading separator */
-		obj->sclust = fs->cdir;				/* Start from the current directory */
+		obj->sclust = fs->cdir;				/* Start from current directory */
 	} else
 #endif
 	{										/* With heading separator */
 		while (*path == '/' || *path == '\\') path++;	/* Strip heading separator */
-		obj->sclust = 0;					/* Start from the root directory */
+		obj->sclust = 0;					/* Start from root directory */
 	}
-#if _FS_EXFAT && _FS_RPATH != 0
+#if _FS_EXFAT
+	obj->n_frag = 0;	/* Invalidate last fragment counter of the object */
+#if _FS_RPATH != 0
 	if (fs->fs_type == FS_EXFAT && obj->sclust) {	/* Retrieve the sub-directory status if needed */
 		DIR dj;
 
@@ -2794,6 +2858,7 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 		obj->objsize = ld_dword(fs->dirbuf + XDIR_FileSize);
 		obj->stat = fs->dirbuf[XDIR_GenFlags] & 2;
 	}
+#endif
 #endif
 
 	if ((UINT)*path < ' ') {				/* Null path name is the origin directory itself */
@@ -2824,8 +2889,8 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 				res = FR_NO_PATH; break;
 			}
 #if _FS_EXFAT
-			if (fs->fs_type == FS_EXFAT) {
-				obj->c_scl = obj->sclust;		/* Save containing directory information for next dir */
+			if (fs->fs_type == FS_EXFAT) {		/* Save containing directory information for next dir */
+				obj->c_scl = obj->sclust;
 				obj->c_size = ((DWORD)obj->objsize & 0xFFFFFF00) | obj->stat;
 				obj->c_ofs = dp->blk_ofs;
 				obj->sclust = ld_dword(fs->dirbuf + XDIR_FstClus);	/* Open next directory */
@@ -2858,7 +2923,7 @@ int get_ldnumber (		/* Returns logical drive number (-1:invalid drive) */
 	UINT i;
 	int vol = -1;
 #if _STR_VOLUME_ID		/* Find string drive id */
-	static const char* const str[] = {_VOLUME_STRS};
+	static const char* const volid[] = {_VOLUME_STRS};
 	const char *sp;
 	char c;
 	TCHAR tc;
@@ -2869,7 +2934,7 @@ int get_ldnumber (		/* Returns logical drive number (-1:invalid drive) */
 		for (tt = *path; (UINT)*tt >= (_USE_LFN ? ' ' : '!') && *tt != ':'; tt++) ;	/* Find ':' in the path */
 		if (*tt == ':') {	/* If a ':' is exist in the path name */
 			tp = *path;
-			i = *tp++ - '0'; 
+			i = *tp++ - '0';
 			if (i < 10 && tp == tt) {	/* Is there a numeric drive id? */
 				if (i < _VOLUMES) {	/* If a drive id is found, get the value and strip it */
 					vol = (int)i;
@@ -2880,7 +2945,7 @@ int get_ldnumber (		/* Returns logical drive number (-1:invalid drive) */
 			 else {	/* No numeric drive number, find string drive id */
 				i = 0; tt++;
 				do {
-					sp = str[i]; tp = *path;
+					sp = volid[i]; tp = *path;
 					do {	/* Compare a string drive id with path name */
 						c = *sp++; tc = *tp++;
 						if (IsLower(tc)) tc -= 0x20;
@@ -2913,13 +2978,13 @@ int get_ldnumber (		/* Returns logical drive number (-1:invalid drive) */
 static
 BYTE check_fs (	/* 0:FAT, 1:exFAT, 2:Valid BS but not FAT, 3:Not a BS, 4:Disk error */
 	FATFS* fs,	/* File system object */
-	DWORD sect	/* Sector# (lba) to check if it is an FAT-VBR or not */
+	DWORD sect	/* Sector# (lba) to load and check if it is an FAT-VBR or not */
 )
 {
 	fs->wflag = 0; fs->winsect = 0xFFFFFFFF;		/* Invaidate window */
 	if (move_window(fs, sect) != FR_OK) return 4;	/* Load boot record */
 
-	if (ld_word(fs->win + BS_55AA) != 0xAA55) return 3;	/* Check boot record signature (always placed at offset 510 even if the sector size is >512) */
+	if (ld_word(fs->win + BS_55AA) != 0xAA55) return 3;	/* Check boot record signature (always placed here even if the sector size is >512) */
 
 	if (fs->win[BS_JmpBoot] == 0xE9 || (fs->win[BS_JmpBoot] == 0xEB && fs->win[BS_JmpBoot + 2] == 0x90)) {
 		if ((ld_dword(fs->win + BS_FilSysType) & 0xFFFFFF) == 0x544146) return 0;	/* Check "FAT" string */
@@ -2989,29 +3054,30 @@ FRESULT find_volume (	/* FR_OK(0): successful, !=0: any error occurred */
 	if (!_FS_READONLY && mode && (stat & STA_PROTECT)) { /* Check disk write protection if needed */
 		return FR_WRITE_PROTECTED;
 	}
-#if _MAX_SS != _MIN_SS						/* Get sector size (multiple sector size cfg only) */
+#if _MAX_SS != _MIN_SS					/* Get sector size (multiple sector size cfg only) */
 	if (disk_ioctl(fs->drv, GET_SECTOR_SIZE, &SS(fs)) != RES_OK) return FR_DISK_ERR;
 	if (SS(fs) > _MAX_SS || SS(fs) < _MIN_SS || (SS(fs) & (SS(fs) - 1))) return FR_DISK_ERR;
 #endif
-	/* Find an FAT partition on the drive. Supports only generic partitioning, FDISK and SFD. */
+
+	/* Find an FAT partition on the drive. Supports only generic partitioning rules, FDISK and SFD. */
 	bsect = 0;
 	fmt = check_fs(fs, bsect);			/* Load sector 0 and check if it is an FAT-VBR as SFD */
 	if (fmt == 2 || (fmt < 2 && LD2PT(vol) != 0)) {	/* Not an FAT-VBR or forced partition number */
-		for (i = 0; i < 4; i++) {			/* Get partition offset */
+		for (i = 0; i < 4; i++) {		/* Get partition offset */
 			pt = fs->win + (MBR_Table + i * SZ_PTE);
 			br[i] = pt[PTE_System] ? ld_dword(pt + PTE_StLba) : 0;
 		}
-		i = LD2PT(vol);						/* Partition number: 0:auto, 1-4:forced */
+		i = LD2PT(vol);					/* Partition number: 0:auto, 1-4:forced */
 		if (i) i--;
-		do {								/* Find an FAT volume */
+		do {							/* Find an FAT volume */
 			bsect = br[i];
 			fmt = bsect ? check_fs(fs, bsect) : 3;	/* Check the partition */
-		} while (!LD2PT(vol) && fmt >= 2 && ++i < 4);
+		} while (LD2PT(vol) == 0 && fmt >= 2 && ++i < 4);
 	}
 	if (fmt == 4) return FR_DISK_ERR;		/* An error occured in the disk I/O layer */
 	if (fmt >= 2) return FR_NO_FILESYSTEM;	/* No FAT volume is found */
 
-	/* An FAT volume is found. Following code initializes the file system object */
+	/* An FAT volume is found (bsect). Following code initializes the file system object */
 
 #if _FS_EXFAT
 	if (fmt == 1) {
@@ -3022,8 +3088,9 @@ FRESULT find_volume (	/* FR_OK(0): successful, !=0: any error occurred */
 
 		if (ld_word(fs->win + BPB_FSVerEx) != 0x100) return FR_NO_FILESYSTEM;	/* Check exFAT revision (Must be 1.0) */
 
-		if (1 << fs->win[BPB_BytsPerSecEx] != SS(fs))	/* (BPB_BytsPerSecEx must be equal to the physical sector size) */
+		if (1 << fs->win[BPB_BytsPerSecEx] != SS(fs)) {	/* (BPB_BytsPerSecEx must be equal to the physical sector size) */
 			return FR_NO_FILESYSTEM;
+		}
 
 		maxlba = ld_qword(fs->win + BPB_TotSecEx) + bsect;	/* Last LBA + 1 of the volume */
 		if (maxlba >= 0x100000000) return FR_NO_FILESYSTEM;	/* (It cannot be handled in 32-bit LBA) */
@@ -3062,49 +3129,49 @@ FRESULT find_volume (	/* FR_OK(0): successful, !=0: any error occurred */
 	{
 		if (ld_word(fs->win + BPB_BytsPerSec) != SS(fs)) return FR_NO_FILESYSTEM;	/* (BPB_BytsPerSec must be equal to the physical sector size) */
 
-		fasize = ld_word(fs->win + BPB_FATSz16);			/* Number of sectors per FAT */
+		fasize = ld_word(fs->win + BPB_FATSz16);		/* Number of sectors per FAT */
 		if (fasize == 0) fasize = ld_dword(fs->win + BPB_FATSz32);
 		fs->fsize = fasize;
 
-		fs->n_fats = fs->win[BPB_NumFATs];					/* Number of FATs */
+		fs->n_fats = fs->win[BPB_NumFATs];				/* Number of FATs */
 		if (fs->n_fats != 1 && fs->n_fats != 2) return FR_NO_FILESYSTEM;	/* (Must be 1 or 2) */
-		fasize *= fs->n_fats;								/* Number of sectors for FAT area */
+		fasize *= fs->n_fats;							/* Number of sectors for FAT area */
 
-		fs->csize = fs->win[BPB_SecPerClus];				/* Cluster size */
+		fs->csize = fs->win[BPB_SecPerClus];			/* Cluster size */
 		if (fs->csize == 0 || (fs->csize & (fs->csize - 1))) return FR_NO_FILESYSTEM;	/* (Must be power of 2) */
 
 		fs->n_rootdir = ld_word(fs->win + BPB_RootEntCnt);	/* Number of root directory entries */
 		if (fs->n_rootdir % (SS(fs) / SZDIRE)) return FR_NO_FILESYSTEM;	/* (Must be sector aligned) */
 
-		tsect = ld_word(fs->win + BPB_TotSec16);			/* Number of sectors on the volume */
+		tsect = ld_word(fs->win + BPB_TotSec16);		/* Number of sectors on the volume */
 		if (tsect == 0) tsect = ld_dword(fs->win + BPB_TotSec32);
 
-		nrsv = ld_word(fs->win + BPB_RsvdSecCnt);			/* Number of reserved sectors */
-		if (nrsv == 0) return FR_NO_FILESYSTEM;				/* (Must not be 0) */
+		nrsv = ld_word(fs->win + BPB_RsvdSecCnt);		/* Number of reserved sectors */
+		if (nrsv == 0) return FR_NO_FILESYSTEM;			/* (Must not be 0) */
 
 		/* Determine the FAT sub type */
 		sysect = nrsv + fasize + fs->n_rootdir / (SS(fs) / SZDIRE);	/* RSV + FAT + DIR */
-		if (tsect < sysect) return FR_NO_FILESYSTEM;		/* (Invalid volume size) */
-		nclst = (tsect - sysect) / fs->csize;				/* Number of clusters */
-		if (nclst == 0) return FR_NO_FILESYSTEM;			/* (Invalid volume size) */
+		if (tsect < sysect) return FR_NO_FILESYSTEM;	/* (Invalid volume size) */
+		nclst = (tsect - sysect) / fs->csize;			/* Number of clusters */
+		if (nclst == 0) return FR_NO_FILESYSTEM;		/* (Invalid volume size) */
 		fmt = FS_FAT32;
 		if (nclst <= MAX_FAT16) fmt = FS_FAT16;
 		if (nclst <= MAX_FAT12) fmt = FS_FAT12;
 
 		/* Boundaries and Limits */
-		fs->n_fatent = nclst + 2;							/* Number of FAT entries */
-		fs->volbase = bsect;								/* Volume start sector */
-		fs->fatbase = bsect + nrsv; 						/* FAT start sector */
-		fs->database = bsect + sysect;						/* Data start sector */
+		fs->n_fatent = nclst + 2;						/* Number of FAT entries */
+		fs->volbase = bsect;							/* Volume start sector */
+		fs->fatbase = bsect + nrsv; 					/* FAT start sector */
+		fs->database = bsect + sysect;					/* Data start sector */
 		if (fmt == FS_FAT32) {
 			if (ld_word(fs->win + BPB_FSVer32) != 0) return FR_NO_FILESYSTEM;	/* (Must be FAT32 revision 0.0) */
-			if (fs->n_rootdir) return FR_NO_FILESYSTEM;		/* (BPB_RootEntCnt must be 0) */
+			if (fs->n_rootdir) return FR_NO_FILESYSTEM;	/* (BPB_RootEntCnt must be 0) */
 			fs->dirbase = ld_dword(fs->win + BPB_RootClus32);	/* Root directory start cluster */
-			szbfat = fs->n_fatent * 4;						/* (Needed FAT size) */
+			szbfat = fs->n_fatent * 4;					/* (Needed FAT size) */
 		} else {
 			if (fs->n_rootdir == 0)	return FR_NO_FILESYSTEM;/* (BPB_RootEntCnt must not be 0) */
-			fs->dirbase = fs->fatbase + fasize;				/* Root directory start sector */
-			szbfat = (fmt == FS_FAT16) ?					/* (Needed FAT size) */
+			fs->dirbase = fs->fatbase + fasize;			/* Root directory start sector */
+			szbfat = (fmt == FS_FAT16) ?				/* (Needed FAT size) */
 				fs->n_fatent * 2 : fs->n_fatent * 3 / 2 + (fs->n_fatent & 1);
 		}
 		if (fs->fsize < (szbfat + (SS(fs) - 1)) / SS(fs)) return FR_NO_FILESYSTEM;	/* (BPB_FATSz must not be less than the size needed) */
@@ -3135,18 +3202,18 @@ FRESULT find_volume (	/* FR_OK(0): successful, !=0: any error occurred */
 #endif	/* !_FS_READONLY */
 	}
 
-	fs->fs_type = fmt;	/* FAT sub-type */
-	fs->id = ++Fsid;	/* File system mount ID */
+	fs->fs_type = fmt;		/* FAT sub-type */
+	fs->id = ++Fsid;		/* File system mount ID */
 #if _USE_LFN == 1
 	fs->lfnbuf = LfnBuf;	/* Static LFN working buffer */
 #if _FS_EXFAT
-	fs->dirbuf = DirBuf;	/* Static directory block working buuffer */
+	fs->dirbuf = DirBuf;	/* Static directory block scratchpad buuffer */
 #endif
 #endif
 #if _FS_RPATH != 0
-	fs->cdir = 0;		/* Initialize current directory */
+	fs->cdir = 0;			/* Initialize current directory */
 #endif
-#if _FS_LOCK != 0		/* Clear file lock semaphores */
+#if _FS_LOCK != 0			/* Clear file lock semaphores */
 	clear_lock(fs);
 #endif
 	return FR_OK;
@@ -3167,14 +3234,13 @@ FRESULT validate (	/* Returns FR_OK or FR_INVALID_OBJECT */
 {
 	FRESULT res;
 
-
 	if (!obj || !obj->fs || !obj->fs->fs_type || obj->fs->id != obj->id || (disk_status(obj->fs->drv) & STA_NOINIT)) {
-		*fs = 0;				/* The object is invalid */
-		res = FR_INVALID_OBJECT;
+		*fs = 0;
+		res = FR_INVALID_OBJECT;	/* The object is invalid */
 	} else {
 		*fs = obj->fs;			/* Owner file sytem object */
 		ENTER_FF(obj->fs);		/* Lock file system */
-		res = FR_OK;
+		res = FR_OK;			/* Valid object */
 	}
 	return res;
 }
@@ -3281,12 +3347,13 @@ FRESULT f_open (
 		/* Create or Open a file */
 		if (mode & (FA_CREATE_ALWAYS | FA_OPEN_ALWAYS | FA_CREATE_NEW)) {
 			if (res != FR_OK) {					/* No file, create new */
-				if (res == FR_NO_FILE)			/* There is no file to open, create a new entry */
+				if (res == FR_NO_FILE) {		/* There is no file to open, create a new entry */
 #if _FS_LOCK != 0
 					res = enq_lock() ? dir_register(&dj) : FR_TOO_MANY_OPEN_FILES;
 #else
 					res = dir_register(&dj);
 #endif
+				}
 				mode |= FA_CREATE_ALWAYS;		/* File is created */
 			}
 			else {								/* Any object is already existing */
@@ -3305,6 +3372,7 @@ FRESULT f_open (
 					fp->obj.sclust = ld_dword(fs->dirbuf + XDIR_FstClus);
 					fp->obj.objsize = ld_qword(fs->dirbuf + XDIR_FileSize);
 					fp->obj.stat = fs->dirbuf[XDIR_GenFlags] & 2;
+					fp->obj.n_frag = 0;
 					/* Initialize directory entry block */
 					st_dword(fs->dirbuf + XDIR_CrtTime, dw);	/* Set created time */
 					fs->dirbuf[XDIR_CrtTime10] = 0;
@@ -3379,16 +3447,17 @@ FRESULT f_open (
 		if (res == FR_OK) {
 #if _FS_EXFAT
 			if (fs->fs_type == FS_EXFAT) {
-				fp->obj.sclust = ld_dword(fs->dirbuf + XDIR_FstClus);		/* Get allocation info */
-				fp->obj.objsize = ld_qword(fs->dirbuf + XDIR_FileSize);
-				fp->obj.stat = fs->dirbuf[XDIR_GenFlags] & 2;
-				fp->obj.c_scl = dj.obj.sclust;
+				fp->obj.c_scl = dj.obj.sclust;							/* Get containing directory info */
 				fp->obj.c_size = ((DWORD)dj.obj.objsize & 0xFFFFFF00) | dj.obj.stat;
 				fp->obj.c_ofs = dj.blk_ofs;
+				fp->obj.sclust = ld_dword(fs->dirbuf + XDIR_FstClus);	/* Get object allocation info */
+				fp->obj.objsize = ld_qword(fs->dirbuf + XDIR_FileSize);
+				fp->obj.stat = fs->dirbuf[XDIR_GenFlags] & 2;
+ 				fp->obj.n_frag = 0;
 			} else
 #endif
 			{
-				fp->obj.sclust = ld_clust(fs, dj.dir);				/* Get allocation info */
+				fp->obj.sclust = ld_clust(fs, dj.dir);					/* Get object allocation info */
 				fp->obj.objsize = ld_dword(dj.dir + DIR_FileSize);
 			}
 #if _USE_FASTSEEK
@@ -3673,9 +3742,9 @@ FRESULT f_sync (
 	DWORD tm;
 	BYTE *dir;
 #if _FS_EXFAT
+	DIR dj;
 	DEF_NAMBUF
 #endif
-
 
 	res = validate(&fp->obj, &fs);	/* Check validity of the file object */
 	if (res == FR_OK) {
@@ -3690,10 +3759,11 @@ FRESULT f_sync (
 			tm = GET_FATTIME();				/* Modified time */
 #if _FS_EXFAT
 			if (fs->fs_type == FS_EXFAT) {
-				res = fill_fat_chain(&fp->obj);	/* Create FAT chain if needed */
+				res = fill_first_frag(&fp->obj);	/* Fill first fragment on the FAT if needed */
 				if (res == FR_OK) {
-					DIR dj;
-
+					res = fill_last_frag(&fp->obj, fp->clust, 0xFFFFFFFF);	/* Fill last fragment on the FAT if needed */
+				}
+				if (res == FR_OK) {
 					INIT_NAMBUF(fs);
 					res = load_obj_dir(&dj, &fp->obj);	/* Load directory entry block */
 					if (res == FR_OK) {
@@ -3946,7 +4016,14 @@ FRESULT f_lseek (
 #endif
 
 	res = validate(&fp->obj, &fs);		/* Check validity of the file object */
-	if (res != FR_OK || (res = (FRESULT)fp->err) != FR_OK) LEAVE_FF(fs, res);	/* Check validity */
+	if (res == FR_OK) res = (FRESULT)fp->err;
+#if _FS_EXFAT && !_FS_READONLY
+	if (res == FR_OK && fs->fs_type == FS_EXFAT) {
+		res = fill_last_frag(&fp->obj, fp->clust, 0xFFFFFFFF);	/* Fill last fragment on the FAT if needed */
+	}
+#endif
+	if (res != FR_OK) LEAVE_FF(fs, res);
+
 #if _USE_FASTSEEK
 	if (fp->cltbl) {	/* Fast seek */
 		if (ofs == CREATE_LINKMAP) {	/* Create CLMT */
@@ -4111,16 +4188,16 @@ FRESULT f_opendir (
 				if (obj->attr & AM_DIR) {		/* This object is a sub-directory */
 #if _FS_EXFAT
 					if (fs->fs_type == FS_EXFAT) {
-						obj->c_scl = obj->sclust;	/* Save containing directory inforamation */
+						obj->c_scl = obj->sclust;							/* Get containing directory inforamation */
 						obj->c_size = ((DWORD)obj->objsize & 0xFFFFFF00) | obj->stat;
 						obj->c_ofs = dp->blk_ofs;
-						obj->sclust = ld_dword(fs->dirbuf + XDIR_FstClus);	/* Get object location and status */
+						obj->sclust = ld_dword(fs->dirbuf + XDIR_FstClus);	/* Get object allocation info */
 						obj->objsize = ld_qword(fs->dirbuf + XDIR_FileSize);
 						obj->stat = fs->dirbuf[XDIR_GenFlags] & 2;
 					} else
 #endif
 					{
-						obj->sclust = ld_clust(fs, dp->dir);	/* Get object location */
+						obj->sclust = ld_clust(fs, dp->dir);	/* Get object allocation info */
 					}
 				} else {						/* This object is a file */
 					res = FR_NO_PATH;
@@ -4412,7 +4489,7 @@ FRESULT f_truncate (
 	if (res != FR_OK || (res = (FRESULT)fp->err) != FR_OK) LEAVE_FF(fs, res);
 	if (!(fp->flag & FA_WRITE)) LEAVE_FF(fs, FR_DENIED);	/* Check access mode */
 
-	if (fp->obj.objsize > fp->fptr) {
+	if (fp->fptr < fp->obj.objsize) {	/* Process when fptr is not on the eof */
 		if (fp->fptr == 0) {	/* When set file size to zero, remove entire cluster chain */
 			res = remove_chain(&fp->obj, fp->obj.sclust, 0);
 			fp->obj.sclust = 0;
@@ -4495,7 +4572,7 @@ FRESULT f_unlink (
 				{
 					dclst = ld_clust(fs, dj.dir);
 				}
-				if (dj.obj.attr & AM_DIR) {			/* Is it a sub-directory ? */
+				if (dj.obj.attr & AM_DIR) {			/* Is it a sub-directory? */
 #if _FS_RPATH != 0
 					if (dclst == fs->cdir) {		 		/* Is it the current directory? */
 						res = FR_DENIED;
@@ -4599,7 +4676,9 @@ FRESULT f_mkdir (
 					mem_set(dir, 0, SS(fs));
 				}
 			}
-			if (res == FR_OK) res = dir_register(&dj);	/* Register the object to the directoy */
+			if (res == FR_OK) {
+				res = dir_register(&dj);	/* Register the object to the directoy */
+			}
 			if (res == FR_OK) {
 #if _FS_EXFAT
 				if (fs->fs_type == FS_EXFAT) {	/* Initialize directory entry block */
@@ -4619,7 +4698,9 @@ FRESULT f_mkdir (
 					dir[DIR_Attr] = AM_DIR;				/* Attribute */
 					fs->wflag = 1;
 				}
-				if (res == FR_OK) res = sync_fs(fs);
+				if (res == FR_OK) {
+					res = sync_fs(fs);
+				}
 			} else {
 				remove_chain(&dj.obj, dcl, 0);		/* Could not register, remove cluster chain */
 			}
@@ -4650,7 +4731,7 @@ FRESULT f_rename (
 	DEF_NAMBUF
 
 
-	get_ldnumber(&path_new);						/* Ignore drive number of new name */
+	get_ldnumber(&path_new);						/* Snip drive number of new name off */
 	res = find_volume(&path_old, &fs, FA_WRITE);	/* Get logical drive of the old object */
 	if (res == FR_OK) {
 		djo.obj.fs = fs;
@@ -4658,7 +4739,9 @@ FRESULT f_rename (
 		res = follow_path(&djo, path_old);		/* Check old object */
 		if (res == FR_OK && (djo.fn[NSFLAG] & (NS_DOT | NS_NONAME))) res = FR_INVALID_NAME;	/* Check validity of name */
 #if _FS_LOCK != 0
-		if (res == FR_OK) res = chk_lock(&djo, 2);
+		if (res == FR_OK) {
+			res = chk_lock(&djo, 2);
+		}
 #endif
 		if (res == FR_OK) {						/* Object to be renamed is found */
 #if _FS_EXFAT
@@ -4680,7 +4763,7 @@ FRESULT f_rename (
 						mem_cpy(fs->dirbuf, buf, SZDIRE * 2);
 						fs->dirbuf[XDIR_NumSec] = nf; fs->dirbuf[XDIR_NumName] = nn;
 						st_word(fs->dirbuf + XDIR_NameHash, nh);
-/* Start of critical section where any interruption can cause a cross-link */
+/* Start of critical section where an interruption can cause a cross-link */
 						res = store_xdir(&djn);
 					}
 				}
@@ -4705,7 +4788,7 @@ FRESULT f_rename (
 							if (!dw) {
 								res = FR_INT_ERR;
 							} else {
-/* Start of critical section where any interruption can cause a cross-link */
+/* Start of critical section where an interruption can cause a cross-link */
 								res = move_window(fs, dw);
 								dir = fs->win + SZDIRE * 1;	/* Ptr to .. entry */
 								if (res == FR_OK && dir[1] == '.') {
@@ -4723,7 +4806,7 @@ FRESULT f_rename (
 					res = sync_fs(fs);
 				}
 			}
-/* End of critical section */
+/* End of the critical section */
 		}
 		FREE_NAMBUF();
 	}
@@ -4773,7 +4856,9 @@ FRESULT f_chmod (
 				dj.dir[DIR_Attr] = (attr & mask) | (dj.dir[DIR_Attr] & (BYTE)~mask);	/* Apply attribute change */
 				fs->wflag = 1;
 			}
-			if (res == FR_OK) res = sync_fs(fs);
+			if (res == FR_OK) {
+				res = sync_fs(fs);
+			}
 		}
 		FREE_NAMBUF();
 	}
@@ -4816,7 +4901,9 @@ FRESULT f_utime (
 				st_dword(dj.dir + DIR_ModTime, (DWORD)fno->fdate << 16 | fno->ftime);
 				fs->wflag = 1;
 			}
-			if (res == FR_OK) res = sync_fs(fs);
+			if (res == FR_OK) {
+				res = sync_fs(fs);
+			}
 		}
 		FREE_NAMBUF();
 	}
@@ -4904,9 +4991,14 @@ FRESULT f_getlabel (
 		res = move_window(fs, fs->volbase);
 		if (res == FR_OK) {
 			switch (fs->fs_type) {
-			case FS_EXFAT: di = BPB_VolIDEx; break;
-			case FS_FAT32: di = BS_VolID32; break;
-			default:       di = BS_VolID;
+			case FS_EXFAT:
+				di = BPB_VolIDEx; break;
+
+			case FS_FAT32:
+				di = BS_VolID32; break;
+
+			default:
+				di = BS_VolID;
 			}
 			*vsn = ld_dword(fs->win + di);
 		}
@@ -5076,11 +5168,11 @@ FRESULT f_expand (
 		scl = find_bitmap(fs, stcl, tcl);			/* Find a contiguous cluster block */
 		if (scl == 0) res = FR_DENIED;				/* No contiguous cluster block was found */
 		if (scl == 0xFFFFFFFF) res = FR_DISK_ERR;
-		if (res == FR_OK) {
-			if (opt) {
+		if (res == FR_OK) {	/* A contiguous free area is found */
+			if (opt) {		/* Allocate it now */
 				res = change_bitmap(fs, scl, tcl, 1);	/* Mark the cluster block 'in use' */
 				lclst = scl + tcl - 1;
-			} else {
+			} else {		/* Set it as suggested point for next allocation */
 				lclst = scl - 1;
 			}
 		}
@@ -5100,14 +5192,14 @@ FRESULT f_expand (
 			}
 			if (clst == stcl) { res = FR_DENIED; break; }	/* No contiguous cluster? */
 		}
-		if (res == FR_OK) {
-			if (opt) {
+		if (res == FR_OK) {	/* A contiguous free area is found */
+			if (opt) {		/* Allocate it now */
 				for (clst = scl, n = tcl; n; clst++, n--) {	/* Create a cluster chain on the FAT */
 					res = put_fat(fs, clst, (n == 1) ? 0xFFFFFFFF : clst + 1);
 					if (res != FR_OK) break;
 					lclst = clst;
 				}
-			} else {
+			} else {		/* Set it as suggested point for next allocation */
 				lclst = scl - 1;
 			}
 		}
@@ -5115,12 +5207,12 @@ FRESULT f_expand (
 
 	if (res == FR_OK) {
 		fs->last_clst = lclst;		/* Set suggested start cluster to start next */
-		if (opt) {
+		if (opt) {	/* Is it allocated now? */
 			fp->obj.sclust = scl;		/* Update object allocation information */
 			fp->obj.objsize = fsz;
 			if (_FS_EXFAT) fp->obj.stat = 2;	/* Set status 'contiguous chain' */
 			fp->flag |= FA_MODIFIED;
-			if (fs->free_clst  < fs->n_fatent - 2) {	/* Update FSINFO */
+			if (fs->free_clst <= fs->n_fatent - 2) {	/* Update FSINFO */
 				fs->free_clst -= tcl;
 				fs->fsi_flag |= 1;
 			}
@@ -5207,13 +5299,13 @@ FRESULT f_forward (
 
 #if _USE_MKFS && !_FS_READONLY
 /*-----------------------------------------------------------------------*/
-/* Create FAT file system on the logical drive                           */
+/* Create an FAT/exFAT volume                                            */
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_mkfs (
 	const TCHAR* path,	/* Logical drive number */
 	BYTE opt,			/* Format option */
-	DWORD au,			/* Size of allocation unit [byte] */
+	DWORD au,			/* Size of allocation unit (cluster) [byte] */
 	void* work,			/* Pointer to working buffer */
 	UINT len			/* Size of working buffer */
 )
@@ -5238,7 +5330,7 @@ FRESULT f_mkfs (
 	/* Check mounted drive and clear work area */
 	vol = get_ldnumber(&path);					/* Get target logical drive */
 	if (vol < 0) return FR_INVALID_DRIVE;
-	if (FatFs[vol]) FatFs[vol]->fs_type = 0;	/* Clear mounted volume */
+	if (FatFs[vol]) FatFs[vol]->fs_type = 0;	/* Clear the volume */
 	pdrv = LD2PD(vol);	/* Physical drive */
 	part = LD2PT(vol);	/* Partition (0:create as new, 1-4:get from partition table) */
 
@@ -5247,7 +5339,7 @@ FRESULT f_mkfs (
 	if (stat & STA_NOINIT) return FR_NOT_READY;
 	if (stat & STA_PROTECT) return FR_WRITE_PROTECTED;
 	if (disk_ioctl(pdrv, GET_BLOCK_SIZE, &sz_blk) != RES_OK || !sz_blk || sz_blk > 32768 || (sz_blk & (sz_blk - 1))) sz_blk = 1;	/* Erase block to align data area */
-#if _MAX_SS != _MIN_SS		/* Get sector size of the medium */
+#if _MAX_SS != _MIN_SS		/* Get sector size of the medium if variable sector size cfg. */
 	if (disk_ioctl(pdrv, GET_SECTOR_SIZE, &ss) != RES_OK) return FR_DISK_ERR;
 	if (ss > _MAX_SS || ss < _MIN_SS || (ss & (ss - 1))) return FR_DISK_ERR;
 #else
@@ -5306,7 +5398,7 @@ FRESULT f_mkfs (
 
 		if (sz_vol < 0x1000) return FR_MKFS_ABORTED;	/* Too small volume? */
 #if _USE_TRIM
-		tbl[0] = b_vol; tbl[1] = b_vol + sz_vol - 1;	/* Inform the device the volume area can be erased */
+		tbl[0] = b_vol; tbl[1] = b_vol + sz_vol - 1;	/* Inform the device the volume area may be erased */
 		disk_ioctl(pdrv, CTRL_TRIM, tbl);
 #endif
 		/* Determine FAT location, data location and number of clusters */
@@ -5342,11 +5434,12 @@ FRESULT f_mkfs (
 					ch = 0xFFFF; st = 2; break;	/* Compress the no-case block if run is >= 128 */
 				}
 				st = 1;			/* Do not compress short run */
-				/* continue */
+				/* go to next case */
 			case 1:
 				ch = si++;		/* Fill the short run */
 				if (--j == 0) st = 0;
 				break;
+
 			default:
 				ch = (WCHAR)j; si += j;	/* Number of chars to skip */
 				st = 0;
@@ -5628,14 +5721,14 @@ FRESULT f_mkfs (
 		}
 	}
 
-	if (_MULTI_PARTITION && part != 0) {
+	/* Update partition information */
+	if (_MULTI_PARTITION && part != 0) {	/* Created in the existing partition */
 		/* Update system ID in the partition table */
 		if (disk_read(pdrv, buf, 0, 1) != RES_OK) return FR_DISK_ERR;	/* Read the MBR */
-		buf[MBR_Table + (part - 1) * SZ_PTE + PTE_System] = sys;		/* Set system type */
+		buf[MBR_Table + (part - 1) * SZ_PTE + PTE_System] = sys;		/* Set system ID */
 		if (disk_write(pdrv, buf, 0, 1) != RES_OK) return FR_DISK_ERR;	/* Write it back to the MBR */
-	} else {
-		if (!(opt & FM_SFD)) {
-			/* Create partition table in FDISK format */
+	} else {								/* Created as a new single partition */
+		if (!(opt & FM_SFD)) {	/* Create partition table if in FDISK format */
 			mem_set(buf, 0, ss);
 			st_word(buf + BS_55AA, 0xAA55);		/* MBR signature */
 			pte = buf + MBR_Table;				/* Create partition table for single partition in the drive */
@@ -5644,7 +5737,7 @@ FRESULT f_mkfs (
 			pte[PTE_StSec] = 1;					/* Start sector */
 			pte[PTE_StCyl] = 0;					/* Start cylinder */
 			pte[PTE_System] = sys;				/* System type */
-			n = (b_vol + sz_vol) / (63 * 255);	/* (End CHS is incorrect) */
+			n = (b_vol + sz_vol) / (63 * 255);	/* (End CHS may be invalid) */
 			pte[PTE_EdHead] = 254;				/* End head */
 			pte[PTE_EdSec] = (BYTE)(n >> 2 | 63);	/* End sector */
 			pte[PTE_EdCyl] = (BYTE)n;			/* End cylinder */
@@ -5683,7 +5776,7 @@ FRESULT f_fdisk (
 	if (stat & STA_PROTECT) return FR_WRITE_PROTECTED;
 	if (disk_ioctl(pdrv, GET_SECTOR_COUNT, &sz_disk)) return FR_DISK_ERR;
 
-	/* Determine the CHS without any care of the drive geometry */
+	/* Determine the CHS without any consideration of the drive geometry */
 	for (n = 16; n < 256 && sz_disk / n / 63 > 1024; n *= 2) ;
 	if (n == 256) n--;
 	e_hd = n - 1;
@@ -5694,7 +5787,7 @@ FRESULT f_fdisk (
 	mem_set(buf, 0, _MAX_SS);
 	p = buf + MBR_Table; b_cyl = 0;
 	for (i = 0; i < 4; i++, p += SZ_PTE) {
-		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * szt[i] / 100 : szt[i] / sz_cyl;
+		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * szt[i] / 100 : szt[i] / sz_cyl;	/* Number of cylinders */
 		if (!p_cyl) continue;
 		s_part = (DWORD)sz_cyl * b_cyl;
 		sz_part = (DWORD)sz_cyl * p_cyl;
@@ -5704,19 +5797,19 @@ FRESULT f_fdisk (
 		} else {
 			s_hd = 0;
 		}
-		e_cyl = b_cyl + p_cyl - 1;
+		e_cyl = b_cyl + p_cyl - 1;	/* End cylinder */
 		if (e_cyl >= tot_cyl) return FR_INVALID_PARAMETER;
 
 		/* Set partition table */
 		p[1] = s_hd;						/* Start head */
 		p[2] = (BYTE)((b_cyl >> 2) + 1);	/* Start sector */
 		p[3] = (BYTE)b_cyl;					/* Start cylinder */
-		p[4] = 0x06;						/* System type (temporary setting) */
+		p[4] = 0x07;						/* System type (temporary setting) */
 		p[5] = e_hd;						/* End head */
 		p[6] = (BYTE)((e_cyl >> 2) + 63);	/* End sector */
 		p[7] = (BYTE)e_cyl;					/* End cylinder */
 		st_dword(p + 8, s_part);			/* Start sector in LBA */
-		st_dword(p + 12, sz_part);			/* Partition size */
+		st_dword(p + 12, sz_part);			/* Number of sectors */
 
 		/* Next partition */
 		b_cyl += p_cyl;
@@ -5758,17 +5851,17 @@ TCHAR* f_gets (
 		c = s[0];
 		if (c >= 0x80) {
 			if (c < 0xC0) continue;	/* Skip stray trailer */
-			if (c < 0xE0) {			/* Two-byte sequence */
+			if (c < 0xE0) {			/* Two-byte sequence (0x80-0x7FF) */
 				f_read(fp, s, 1, &rc);
 				if (rc != 1) break;
 				c = (c & 0x1F) << 6 | (s[0] & 0x3F);
-				if (c < 0x80) c = '?';
+				if (c < 0x80) c = '?';	/* Reject invalid code range */
 			} else {
-				if (c < 0xF0) {		/* Three-byte sequence */
+				if (c < 0xF0) {		/* Three-byte sequence (0x800-0xFFFF) */
 					f_read(fp, s, 2, &rc);
 					if (rc != 2) break;
 					c = c << 12 | (s[0] & 0x3F) << 6 | (s[1] & 0x3F);
-					if (c < 0x800) c = '?';
+					if (c < 0x800) c = '?';	/* Reject invalid code range */
 				} else {			/* Reject four-byte sequence */
 					c = '?';
 				}
@@ -6000,17 +6093,23 @@ int f_printf (
 			while (*p) putc_bfd(&pb, *p++);
 			while (j++ < w) putc_bfd(&pb, ' ');
 			continue;
+
 		case 'C' :					/* Character */
 			putc_bfd(&pb, (TCHAR)va_arg(arp, int)); continue;
+
 		case 'B' :					/* Binary */
 			r = 2; break;
+
 		case 'O' :					/* Octal */
 			r = 8; break;
+
 		case 'D' :					/* Signed decimal */
 		case 'U' :					/* Unsigned decimal */
 			r = 10; break;
+
 		case 'X' :					/* Hexdecimal */
 			r = 16; break;
+
 		default:					/* Unknown type (pass-through) */
 			putc_bfd(&pb, c); continue;
 		}
@@ -6030,7 +6129,9 @@ int f_printf (
 		if (f & 8) str[i++] = '-';
 		j = i; d = (f & 1) ? '0' : ' ';
 		while (!(f & 2) && j++ < w) putc_bfd(&pb, d);
-		do putc_bfd(&pb, str[--i]); while (i);
+		do {
+			putc_bfd(&pb, str[--i]);
+		} while (i);
 		while (j++ < w) putc_bfd(&pb, d);
 	}
 
