@@ -63,7 +63,7 @@ static bool openLumaFile(IFile *file, const char *path)
 {
     Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
 
-    if(R_SUCCEEDED(res)) return false;
+    if(R_SUCCEEDED(res)) return true;
 
     //Returned if SD is not mounted
     return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ));
