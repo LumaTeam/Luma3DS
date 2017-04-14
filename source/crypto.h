@@ -107,7 +107,6 @@
 extern u32 emuOffset;
 extern FirmwareSource firmSource;
 
-void twlConsoleInfoInit(void);
 void ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);

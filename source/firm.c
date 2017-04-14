@@ -117,9 +117,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
 
-    //On sighax cold boot, initialize TWL keys
-    if(!(CFG_SYSPROT9 & 2)) twlConsoleInfoInit();
-
     if(ISN3DS)
     {
         //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
