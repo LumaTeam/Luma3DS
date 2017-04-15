@@ -10,9 +10,7 @@ SECTIONS
     .rodata     : ALIGN(4) { *(.rodata*); . = ALIGN(4); }
     .data       : ALIGN(4) { *(.data*); . = ALIGN(4); }
 
-     __bss_start = .;
-    .bss        : ALIGN(8) { *(.bss* COMMON); . = ALIGN(8); }
-    __bss_end = .;
+    .bss        : ALIGN(8) { __bss_start = .; *(.bss* COMMON); . = ALIGN(8); __bss_end = .; }
 
     . = ALIGN(4);
 }
