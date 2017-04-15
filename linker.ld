@@ -6,10 +6,13 @@ SECTIONS
 {
     . = 0x23F00000;
 
-    .text       : ALIGN(4) { *(.text.start) *(.text*) }
-    .rodata     : ALIGN(4) { *(.rodata*) }
-    .data       : ALIGN(4) { *(.data*) }
-    .bss        : ALIGN(4) { __bss_start = .; *(.bss* COMMON); __bss_end = .;}
+    .text       : ALIGN(4) { *(.text.start) *(.text*); . = ALIGN(4); }
+    .rodata     : ALIGN(4) { *(.rodata*); . = ALIGN(4); }
+    .data       : ALIGN(4) { *(.data*); . = ALIGN(4); }
+
+     __bss_start = .;
+    .bss        : ALIGN(8) { *(.bss* COMMON); . = ALIGN(8); }
+    __bss_end = .;
 
     . = ALIGN(4);
 }
