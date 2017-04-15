@@ -564,17 +564,16 @@ void kernel9Loader(Arm9Bin *arm9Section)
         aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
-    if(ISSIGHAX)
-    {
-        twlConsoleInfoInit();
+    if(!ISSIGHAX) return;
 
-        if(k9lVersion == 2)
-        {
-            aes_setkey(0x11, key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-            aes_use_keyslot(0x11);
-            aes(decKey, keyBlocks[0], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-            aes_setkey(0x18, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        }
+    twlConsoleInfoInit();
+
+    if(k9lVersion == 2)
+    {
+        aes_setkey(0x11, key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_use_keyslot(0x11);
+        aes(decKey, keyBlocks[0], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(0x18, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 }
 

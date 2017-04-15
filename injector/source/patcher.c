@@ -291,9 +291,10 @@ static u32 findFunctionStart(u8* code, u32 pos)
 
 static bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly, u32 *throwFatalError)
 {
+    bool found = false;
     u32 svcConnectToPort = 0xFFFFFFFF;
 
-    for(u32 addr = 0; addr <= size - 4; addr += 4)
+    for(u32 addr = 0; !found && addr <= size - 4; addr += 4)
     {
         if(*fsMountArchive == 0xFFFFFFFF)
         {
@@ -322,9 +323,11 @@ static bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *f
 
         if(addr >= 4 && svcConnectToPort == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xEF00002D)
             svcConnectToPort = addr - 4;
+
+        if(svcConnectToPort != 0xFFFFFFFF && *fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF) found = true;
     }
 
-    if(svcConnectToPort != 0xFFFFFFFF && *fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF)
+    if(found)
     {
         u32 func = 0xFFFFFFFF;
 
