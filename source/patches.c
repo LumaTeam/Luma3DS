@@ -404,10 +404,10 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     return 0;
 }
 
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
+void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA)
 {
     //Same as above, for NATIVE_FIRM ARM11
-    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
+    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - baseK11VA);
     *addr = 0xE12FFF7F;
 }
 
