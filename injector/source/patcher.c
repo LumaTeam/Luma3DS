@@ -289,12 +289,9 @@ static u32 findFunctionStart(u8* code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly, u32 *throwFatalError)
+static bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
 {
-    bool found = false;
-    u32 svcConnectToPort = 0xFFFFFFFF;
-
-    for(u32 addr = 0; !found && addr <= size - 4; addr += 4)
+    for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
         if(*fsMountArchive == 0xFFFFFFFF)
         {
@@ -321,29 +318,46 @@ static bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *f
         if(*fsOpenFileDirectly == 0xFFFFFFFF && *(u32 *)(code + addr) == 0x08030204)
             *fsOpenFileDirectly = findFunctionStart(code, addr);
 
-        if(addr >= 4 && svcConnectToPort == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xEF00002D)
-            svcConnectToPort = addr - 4;
-
-        if(svcConnectToPort != 0xFFFFFFFF && *fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF) found = true;
+        if(*fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF) return true;
     }
 
-    if(found)
+    return false;
+}
+
+static bool findLayeredFsPayloadOffset(u8* code, u32 text_size, u32* payload_offset) {
+    // First check for sufficient padding at the end of the .text segment
+    if (((text_size + 4095) & 0xfffff000) - text_size >= romfsredir_bin_size) {
+        *payload_offset = text_size;
+        return true;
+    }
+
+    // If there isn't enough padding look for the "throwFatalError" function to replace
+    u32 svcConnectToPort = 0xFFFFFFFF;
+
+    for(u32 addr = 4; svcConnectToPort == 0xFFFFFFFF && addr <= text_size - 4; addr += 4)
+    {
+        if(*(u32 *)(code + addr) == 0xEF00002D)
+            svcConnectToPort = addr - 4;
+    }
+
+    if(svcConnectToPort != 0xFFFFFFFF)
     {
         u32 func = 0xFFFFFFFF;
 
-        for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+        for(u32 i = 4; func == 0xFFFFFFFF && i <= text_size - 4; i += 4)
         {
             if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
 
             func = findFunctionStart(code, i);
 
-            for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+            for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= text_size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
                 if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
         }
 
-        *throwFatalError = func;
-
-        if(func != 0xFFFFFFFF) return true;
+        if(func != 0xFFFFFFFF) {
+            *payload_offset = func;
+            return true;
+        }
     }
 
     return false;
@@ -491,7 +505,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8* code, u32 size, u32 text_size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -508,13 +522,14 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
         fsTryOpenFile = 0xFFFFFFFF,
-        fsOpenFileDirectly = 0xFFFFFFFF,
-        throwFatalError;
+        fsOpenFileDirectly = 0xFFFFFFFF;
 
-    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly, &throwFatalError)) return false;
+    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly)) return false;
 
     //Setup the payload
-    u8 *payload = code + throwFatalError;
+    u32 payload_offset;
+    if(!findLayeredFsPayloadOffset(code, text_size, &payload_offset)) return false;
+    u8 *payload = code + payload_offset;
     memcpy(payload, romfsredir_bin, romfsredir_bin_size);
 
     //Insert symbols in the payload
@@ -527,13 +542,13 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
                 payload32[i] = *(u32 *)(code + fsOpenFileDirectly);
                 break;
             case 0xdead0001:
-                payload32[i] = MAKE_BRANCH(throwFatalError + i * 4, fsOpenFileDirectly + 4);
+                payload32[i] = MAKE_BRANCH(payload_offset + i * 4, fsOpenFileDirectly + 4);
                 break;
             case 0xdead0002:
                 payload32[i] = *(u32 *)(code + fsTryOpenFile);
                 break;
             case 0xdead0003:
-                payload32[i] = MAKE_BRANCH(throwFatalError + i * 4, fsTryOpenFile + 4);
+                payload32[i] = MAKE_BRANCH(payload_offset + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
                 memcpy(payload32 + i, mount, 5);
@@ -555,13 +570,13 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
     }
 
     //Place the hooks
-    *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, throwFatalError);
-    *(u32 *)(code + fsTryOpenFile) = MAKE_BRANCH(fsTryOpenFile, throwFatalError + 12);
+    *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, payload_offset);
+    *(u32 *)(code + fsTryOpenFile) = MAKE_BRANCH(fsTryOpenFile, payload_offset + 12);
 
     return true;
 }
 
-void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 text_size)
 {
     loadCFWInfo();
 
@@ -823,7 +838,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, size)) goto error;
+           !patchLayeredFs(progId, code, size, text_size)) goto error;
 
         if(regionId != 0xFF)
         {

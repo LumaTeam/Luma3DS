@@ -158,7 +158,7 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
   u16 progver = g_exheader.codesetinfo.flags.remasterversion[0] | (g_exheader.codesetinfo.flags.remasterversion[1] << 8);
 
   // patch
-  patchCode(progid, progver, (u8 *)shared->text_addr, shared->total_size << 12);
+  patchCode(progid, progver, (u8 *)shared->text_addr, shared->total_size << 12, g_exheader.codesetinfo.text.codesize);
 
   return 0;
 }
