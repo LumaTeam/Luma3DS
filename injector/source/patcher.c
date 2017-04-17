@@ -324,19 +324,19 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
     return false;
 }
 
-static inline bool findLayeredFsPayloadOffset(u8* code, u32 textSize, u32 *payloadOffset)
+static inline bool findLayeredFsPayloadOffset(u8* code, u32 size, u32 *payloadOffset)
 {
     //First check for sufficient padding at the end of the .text segment
-    if(((textSize + 4095) & 0xfffff000) - textSize >= romfsredir_bin_size)
+    if(((size + 4095) & 0xfffff000) - size >= romfsredir_bin_size)
     {
-        *payloadOffset = textSize;
+        *payloadOffset = size;
         return true;
     }
 
     //If there isn't enough padding look for the "throwFatalError" function to replace
     u32 svcConnectToPort = 0xFFFFFFFF;
 
-    for(u32 addr = 4; svcConnectToPort == 0xFFFFFFFF && addr <= textSize - 4; addr += 4)
+    for(u32 addr = 4; svcConnectToPort == 0xFFFFFFFF && addr <= size - 4; addr += 4)
     {
         if(*(u32 *)(code + addr) == 0xEF00002D)
             svcConnectToPort = addr - 4;
@@ -346,13 +346,13 @@ static inline bool findLayeredFsPayloadOffset(u8* code, u32 textSize, u32 *paylo
     {
         u32 func = 0xFFFFFFFF;
 
-        for(u32 i = 4; func == 0xFFFFFFFF && i <= textSize - 4; i += 4)
+        for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
         {
             if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
 
             func = findFunctionStart(code, i);
 
-            for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= textSize - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+            for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
                 if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
         }
 
@@ -508,7 +508,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8* code, u32 size, u32 textSize)
+static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -529,7 +529,7 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size, u32 textSize)
         payloadOffset;
 
     if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
-       !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
+       !findLayeredFsPayloadOffset(code, size, &payloadOffset)) return false;
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
@@ -579,7 +579,7 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size, u32 textSize)
     return true;
 }
 
-void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize)
 {
     loadCFWInfo();
 
@@ -600,7 +600,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         };
 
         //Patch SMDH region checks
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -31,
                 patch,
@@ -616,7 +616,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
 
         u8 mostRecentFpdVer = 10;
 
-        u8 *off = memsearch(code, pattern, size, sizeof(pattern));
+        u8 *off = memsearch(code, pattern, textSize, sizeof(pattern));
 
         if(off == NULL) goto error;
 
@@ -667,7 +667,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         }
 
         //Patch Ver. string
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern) - 2, 0,
                 patch,
@@ -687,7 +687,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
             };
 
             //Disable updates from foreign carts (makes carts region-free)
-            u32 ret = patchMemory(code, size,
+            u32 ret = patchMemory(code, textSize,
                           pattern,
                           sizeof(pattern), 0,
                           patch,
@@ -707,7 +707,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
                     0x0C, 0x00, 0x94, 0x15
                 };
 
-                u32 *off = (u32 *)memsearch(code, pattern, size, sizeof(pattern));
+                u32 *off = (u32 *)memsearch(code, pattern, textSize, sizeof(pattern));
 
                 if(off == NULL) goto error;
 
@@ -730,7 +730,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         };
 
         //Disable SecureInfo signature check
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
@@ -743,7 +743,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
                              patch[] = u"C";
 
             //Use SecureInfo_C
-            if(patchMemory(code, size,
+            if(patchMemory(code + textSize, roSize,
                    pattern,
                    sizeof(pattern) - 2, 22,
                    patch,
@@ -768,19 +768,19 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         };
 
         //Disable CRR0 signature (RSA2048 with SHA256) check and CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -9,
                 patch,
                 sizeof(patch), 1
             ) ||
-           !patchMemory(code, size,
+           !patchMemory(code, textSize,
                 pattern2,
                 sizeof(pattern2), 1,
                 patch,
                 sizeof(patch), 1
             ) ||
-           !patchMemory(code, size,
+           !patchMemory(code, textSize,
                 pattern3,
                 sizeof(pattern3), -2,
                 patch,
@@ -801,13 +801,13 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         };
 
         //Patch UNITINFO checks to make ErrDisp more verbose
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -1,
                 patch,
                 sizeof(patch), 1
             ) ||
-           patchMemory(code, size,
+           patchMemory(code, textSize,
                pattern2,
                sizeof(pattern2), 0,
                patch,
@@ -825,7 +825,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         };
 
         //Patch DLP region checks
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
@@ -841,17 +841,17 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize)
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, size, textSize)) goto error;
+           !patchLayeredFs(progId, code, textSize)) goto error;
 
         if(regionId != 0xFF)
         {
             u32 CFGUHandleOffset;
-            u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
+            u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
 
             if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
-               !patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+               !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
 
-            patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
+            patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
         }
     }
 
