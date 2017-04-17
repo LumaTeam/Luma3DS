@@ -103,7 +103,7 @@ diff -uNr a/source/brahma.c b/source/brahma.c
 diff -uNr a/source/main.c b/source/main.c
 --- a/source/main.c	2016-09-26 16:05:36.363067000 +0200
 +++ b/source/main.c	2016-09-26 21:40:35.202513018 +0200
-@@ -10,7 +10,7 @@
+@@ -38,7 +38,7 @@
  
  int main (void) {
      if (brahma_init()) {
@@ -112,7 +112,7 @@ diff -uNr a/source/main.c b/source/main.c
              goto error;
          firm_reboot();
          brahma_exit();
-@@ -22,7 +22,7 @@
+@@ -50,7 +50,7 @@
  error:
      gfxInitDefault();
      consoleInit(GFX_BOTTOM, NULL);
