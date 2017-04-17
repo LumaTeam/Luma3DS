@@ -91,6 +91,7 @@ start:
     mov r1, #0x340
     str r1, [r0]
 
+    @ Clear BSS
     ldr r0, =__bss_start
     mov r1, #0
     ldr r2, =__bss_end
