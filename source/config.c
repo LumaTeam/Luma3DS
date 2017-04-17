@@ -182,11 +182,11 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "The service and archive patches\n"
                                           "don't work on New 3DS FIRMs between\n"
                                           "9.3 and 10.4.\n\n"
-                                          "Only change this if you know what you\n"
+                                          "Only select this if you know what you\n"
                                           "are doing!",
 
                                           "Make the console be always detected\n"
-                                          "as a development unit\n"
+                                          "as a development unit, and conversely.\n"
                                           "(which breaks online features, amiibo\n"
                                           "and retail CIAs, but allows installing\n"
                                           "and booting some developer software).\n\n"
