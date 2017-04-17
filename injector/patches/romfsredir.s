@@ -55,7 +55,7 @@ _start:
         ldrb    r12, [r1]
         cmp     r12, #0x72  ; 'r', should include "rom:" and "rom2:"
         cmpne   r12, #0x70  ; 'p', should include "patch:"
-	bne 	endRedir
+        bne 	endRedir
         sub     sp, sp, #0x400
         pathRedir:
             stmfd   sp!, {r0-r3}
