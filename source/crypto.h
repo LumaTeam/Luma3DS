@@ -107,14 +107,12 @@
 extern u32 emuOffset;
 extern FirmwareSource firmSource;
 
-void twlConsoleInfoInit(void);
 void ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);
 void set6x7xKeys(void);
 bool decryptExeFs(Cxi *cxi);
 bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
-void setN3DS96Keys(void);
 void kernel9Loader(Arm9Bin *arm9Section);
 void computePinHash(u8 *outbuf, const u8 *inbuf);
 void backupAndRestoreShaHash(bool isRestore);

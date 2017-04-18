@@ -9,11 +9,12 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
 .arm
     ; Interesting registers and locations to keep in mind, set just before this code is ran:
     ; - r1: FIRM path in exefs.
-    ; - r7: pointer to file object
+    ; - r7 (or r8): pointer to file object
     ;   - *r7: vtable
     ;       - *(vtable + 0x28): fread function 
     ;   - *(r7 + 8): file handle
 
+    sub r7, r0, #8
     mov r8, r1
 
     pxi_wait_recv:
@@ -105,6 +106,8 @@ nand_mount: .dcw "nand"
 .align 4
     kernelcode_start:
 
+    ldr sp, =0x080FF000
+
     ; Disable MPU
     ldr r0, =0x42078 ; alt vector select, enable itcm
     mcr p15, 0, r0, c1, c0, 0
@@ -137,3 +140,4 @@ nand_mount: .dcw "nand"
 
 .pool
 .close
+

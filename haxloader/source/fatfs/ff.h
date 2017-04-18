@@ -1,8 +1,8 @@
 /*----------------------------------------------------------------------------/
-/  FatFs - Generic FAT file system module  R0.12b                             /
+/  FatFs - Generic FAT file system module  R0.12c                             /
 /-----------------------------------------------------------------------------/
 /
-/ Copyright (C) 2016, ChaN, all right reserved.
+/ Copyright (C) 2017, ChaN, all right reserved.
 /
 / FatFs module is an open source software. Redistribution and use of FatFs in
 / source and binary forms, with or without modification, are permitted provided
@@ -19,7 +19,7 @@
 
 
 #ifndef _FATFS
-#define _FATFS	68020	/* Revision ID */
+#define _FATFS	68300	/* Revision ID */
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,13 +42,6 @@ typedef struct {
 	BYTE pt;	/* Partition: 0:Auto detect, 1-4:Forced partition) */
 } PARTITION;
 extern PARTITION VolToPart[];	/* Volume - Partition resolution table */
-#define LD2PD(vol) (VolToPart[vol].pd)	/* Get physical drive number */
-#define LD2PT(vol) (VolToPart[vol].pt)	/* Get partition index */
-
-#else							/* Single partition configuration */
-#define LD2PD(vol) (BYTE)(vol)	/* Each logical drive is bound to the same physical drive number */
-#define LD2PT(vol) 0			/* Find first valid partition or in SFD */
-
 #endif
 
 
@@ -140,14 +133,15 @@ typedef struct {
 	FATFS*	fs;			/* Pointer to the owner file system object */
 	WORD	id;			/* Owner file system mount ID */
 	BYTE	attr;		/* Object attribute */
-	BYTE	stat;		/* Object chain status (b1-0: =0:not contiguous, =2:contiguous (no data on FAT), =3:got flagmented, b2:sub-directory stretched) */
+	BYTE	stat;		/* Object chain status (b1-0: =0:not contiguous, =2:contiguous (no data on FAT), =3:flagmented in this session, b2:sub-directory stretched) */
 	DWORD	sclust;		/* Object start cluster (0:no cluster or root directory) */
 	FSIZE_t	objsize;	/* Object size (valid when sclust != 0) */
 #if _FS_EXFAT
-	DWORD	n_cont;		/* Size of coutiguous part, clusters - 1 (valid when stat == 3) */
+	DWORD	n_cont;		/* Size of first fragment, clusters - 1 (valid when stat == 3) */
+	DWORD	n_frag;		/* Size of last fragment needs to be written (valid when not zero) */
 	DWORD	c_scl;		/* Containing directory start cluster (valid when sclust != 0) */
 	DWORD	c_size;		/* b31-b8:Size of containing directory, b7-b0: Chain status (valid when c_scl != 0) */
-	DWORD	c_ofs;		/* Offset in the containing directory (valid when sclust != 0) */
+	DWORD	c_ofs;		/* Offset in the containing directory (valid when sclust != 0 and non-directory object) */
 #endif
 #if _FS_LOCK != 0
 	UINT	lockid;		/* File lock ID origin from 1 (index of file semaphore table Files[]) */
@@ -163,7 +157,7 @@ typedef struct {
 	BYTE	flag;			/* File status flags */
 	BYTE	err;			/* Abort flag (error code) */
 	FSIZE_t	fptr;			/* File read/write pointer (Zeroed on file open) */
-	DWORD	clust;			/* Current cluster of fpter (invalid when fprt is 0) */
+	DWORD	clust;			/* Current cluster of fpter (invalid when fptr is 0) */
 	DWORD	sect;			/* Sector number appearing in buf[] (0:invalid) */
 #if !_FS_READONLY
 	DWORD	dir_sect;		/* Sector number containing the directory entry */
@@ -185,7 +179,7 @@ typedef struct {
 	_FDID	obj;			/* Object identifier */
 	DWORD	dptr;			/* Current read/write offset */
 	DWORD	clust;			/* Current cluster */
-	DWORD	sect;			/* Current sector */
+	DWORD	sect;			/* Current sector (0:Read operation has terminated) */
 	BYTE*	dir;			/* Pointer to the directory item in the win[] */
 	BYTE	fn[12];			/* SFN (in/out) {body[8],ext[3],status[1]} */
 #if _USE_LFN != 0
@@ -285,6 +279,7 @@ TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the fil
 #define f_size(fp) ((fp)->obj.objsize)
 #define f_rewind(fp) f_lseek((fp), 0)
 #define f_rewinddir(dp) f_readdir((dp), 0)
+#define f_rmdir(path) f_unlink(path)
 
 #ifndef EOF
 #define EOF (-1)

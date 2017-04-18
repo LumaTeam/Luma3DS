@@ -47,9 +47,6 @@ static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
 {
-    //Disable interrupts
-    __asm(".word 0xF10C01C0");
-
     WAIT_FOR_ARM9();
 }
 

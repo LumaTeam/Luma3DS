@@ -33,17 +33,17 @@
 #include "crypto.h"
 
 extern CfgData configData;
+extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 void main(void)
 {
     bool isA9lhInstalled,
-         isSafeMode = false;
-    u32 configTemp,
-        emuHeader;
+         isSafeMode = false,
+         isNoForceFlagSet = false;
+    u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
-    ConfigurationStatus needConfig;
 
     //Mount SD or CTRNAND
     bool isSdMode;
@@ -95,23 +95,18 @@ void main(void)
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
-    //Save old options and begin saving the new boot configuration
-    configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
-
-    twlConsoleInfoInit();
-    setN3DS96Keys();
-
     //If it's a MCU reboot, try to force boot options
     if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
+
         //Always force a SysNAND boot when quitting AGB_FIRM
         if(CFG_BOOTENV == 7)
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
-            //Flag to prevent multiple boot options-forcing
-            configTemp |= 1 << 7;
+            //Prevent multiple boot options-forcing
+            isNoForceFlagSet = true;
 
             goto boot;
         }
@@ -128,7 +123,7 @@ void main(void)
     }
 
     u32 pinMode = MULTICONFIG(PIN);
-    bool pinExists = pinMode != 0 && verifyPin(pinMode, true);
+    bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
     //If no configuration file exists or SELECT is held, load configuration menu
     bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
@@ -236,8 +231,8 @@ boot:
 
     if(!ISFIRMLAUNCH)
     {
-        configTemp |= (u32)nandType | ((u32)firmSource << 3);
-        writeConfig(needConfig, configTemp);
+        configData.config = (configData.config & 0xFFFFFF00) | ((u32)isNoForceFlagSet << 7) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        writeConfig(false);
     }
 
     if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");

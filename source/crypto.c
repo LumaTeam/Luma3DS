@@ -320,25 +320,6 @@ static void sha(void *res, const void *src, u32 size, u32 mode)
 
 /*****************************************************************/
 
-void twlConsoleInfoInit(void)
-{
-    if(CFG_SYSPROT9 & 2) return; //sorry, the lennies are currently missing
-
-    u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
-    CFG_TWLUNITINFO = CFG_UNITINFO;
-    OTP_TWLCONSOLEID = twlConsoleId;
-
-    *REG_AESCNT = 0;
-
-    vu32 *k3X = REGs_AESTWLKEYS[3][1], *k1X = REGs_AESTWLKEYS[1][1];
-
-    k3X[0] = (u32)twlConsoleId;
-    k3X[3] = (u32)(twlConsoleId >> 32);
-
-    k1X[2] = (u32)(twlConsoleId >> 32);
-    k1X[3] = (u32)twlConsoleId;
-}
-
 __attribute__((aligned(4))) static u8 nandCtr[AES_BLOCK_SIZE];
 static u8 nandSlot;
 static u32 fatStart;
@@ -482,26 +463,21 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
     return decryptExeFs(cxi);
 }
 
-void setN3DS96Keys(void)
+static inline void twlConsoleInfoInit(void)
 {
-    //Set 0x11 keyslot
-    __attribute__((aligned(4))) const u8 key2s[2][AES_BLOCK_SIZE] = {
-        {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0},
-        {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
-    };
+    u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
+    CFG_TWLUNITINFO = CFG_UNITINFO;
+    OTP_TWLCONSOLEID = twlConsoleId;
 
-    aes_setkey(0x11, key2s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+    *REG_AESCNT = 0;
 
-    __attribute__((aligned(4))) u8 keyData[AES_BLOCK_SIZE] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
-                                   decKey[sizeof(keyData)];
+    vu32 *k3X = REGs_AESTWLKEYS[3][1], *k1X = REGs_AESTWLKEYS[1][1];
 
-    //Set keys 0x19..0x1F keyXs
-    aes_use_keyslot(0x11);
-    for(u8 slot = 0x19; slot < 0x20; slot++, keyData[0xF]++)
-    {
-        aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
+    k3X[0] = (u32)twlConsoleId;
+    k3X[3] = (u32)(twlConsoleId >> 32);
+
+    k1X[2] = (u32)(twlConsoleId >> 32);
+    k1X[3] = (u32)twlConsoleId;
 }
 
 void kernel9Loader(Arm9Bin *arm9Section)
@@ -560,6 +536,44 @@ void kernel9Loader(Arm9Bin *arm9Section)
         aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
         if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
+    }
+
+    __attribute__((aligned(4))) u8 keyBlocks[2][AES_BLOCK_SIZE] = {
+        {0xA4, 0x8D, 0xE4, 0xF1, 0x0B, 0x36, 0x44, 0xAA, 0x90, 0x31, 0x28, 0xFF, 0x4D, 0xCA, 0x76, 0xDF},
+        {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98}
+    },                             decKey[AES_BLOCK_SIZE];
+
+    u8 firstKey;
+    u32 keyBlocksIndex;
+
+    if(k9lVersion == 2)
+    {
+        firstKey = 0x19;
+        keyBlocksIndex = 1;
+    }
+    else
+    {
+        firstKey = 0x18;
+        keyBlocksIndex = 0;
+    }
+
+    aes_use_keyslot(0x11);
+    for(u8 slot = firstKey; slot < 0x20; slot++, keyBlocks[keyBlocksIndex][0xF]++)
+    {
+        aes(decKey, keyBlocks[keyBlocksIndex], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+    }
+
+    if(!ISSIGHAX) return;
+
+    twlConsoleInfoInit();
+
+    if(k9lVersion == 2)
+    {
+        aes_setkey(0x11, key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_use_keyslot(0x11);
+        aes(decKey, keyBlocks[0], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+        aes_setkey(0x18, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 }
 

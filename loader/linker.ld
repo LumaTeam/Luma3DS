@@ -5,8 +5,10 @@ ENTRY(_start)
 SECTIONS
 {
     . = 0x24FFFE00;
-    .text   : ALIGN(4) { *(.text.start) *(.text*)}
-    .rodata : ALIGN(4) { *(.rodata*) }
-    .data   : ALIGN(4) { *(.data*) *(.bss* COMMON)}
+
+    .text   : ALIGN(4) { *(.text.start) *(.text*); . = ALIGN(4); }
+    .rodata : ALIGN(4) { *(.rodata*); . = ALIGN(4); }
+    .data   : ALIGN(4) { *(.data*); . = ALIGN(8); *(.bss* COMMON); . = ALIGN(8); }
+
     . = ALIGN(4);
 }

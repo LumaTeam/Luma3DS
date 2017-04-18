@@ -30,9 +30,13 @@
 #include "pin.h"
 
 CfgData configData;
+ConfigurationStatus needConfig;
+static u32 oldConfig;
 
 bool readConfig(void)
 {
+    bool ret;
+
     if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
@@ -40,17 +44,22 @@ bool readConfig(void)
     {
         configData.config = 0;
 
-        return false;
+        ret = false;
     }
+    else ret = true;
 
-    return true;
+    oldConfig = configData.config;
+
+    return ret;
 }
 
-void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
+void writeConfig(bool isPayloadLaunch)
 {
+    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF00) | (oldConfig & 0xFF);
+
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && (configTemp & 0xFFFFFF7F) == configData.config) return;
+    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFF7F) == oldConfig) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -58,9 +67,6 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
     }
-
-    //Merge the new options and new boot configuration
-    configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
 
     if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
         error("Error writing the configuration file");
@@ -147,10 +153,11 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
-                                          "of patched code binaries and\n"
-                                          "custom RomFS for specific games.\n\n"
-                                          "Also makes certain DLCs for\n"
-                                          "out-of-region games work.\n\n"
+                                          "of patched code binaries,\n"
+                                          "IPS code patches and LayeredFS\n"
+                                          "for specific games.\n\n"
+                                          "Also makes certain DLCs\n"
+                                          "for out-of-region games work.\n\n"
                                           "Enabling this requires the\n"
                                           "archive patch to be applied.\n\n"
                                           "Refer to the wiki for instructions.",
@@ -175,11 +182,11 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "The service and archive patches\n"
                                           "don't work on New 3DS FIRMs between\n"
                                           "9.3 and 10.4.\n\n"
-                                          "Only change this if you know what you\n"
+                                          "Only select this if you know what you\n"
                                           "are doing!",
 
                                           "Make the console be always detected\n"
-                                          "as a development unit\n"
+                                          "as a development unit, and conversely.\n"
                                           "(which breaks online features, amiibo\n"
                                           "and retail CIAs, but allows installing\n"
                                           "and booting some developer software).\n\n"

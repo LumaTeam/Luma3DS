@@ -22,10 +22,12 @@
 
 /*
 *   Signature patches by an unknown author
+*   Signature patches for old FIRMs by SciresM
 *   firmlaunches patching code originally by delebile
 *   FIRM partition writes patches by delebile
 *   ARM11 modules patching code originally by Subv
 *   Idea for svcBreak patches from yellows8 and others on #3dsdev
+*   TWL_FIRM patches by Steveice10 and others
 */
 
 #pragma once
@@ -49,12 +51,11 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size);
 u32 patchPsKeyslotSelection(u8 *pos, u32 size);
 u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
 u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA);
-u32 stubTimerQueueSanityCheck(u8 *pos, u32 size);
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode);
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable);
+void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA);
 u32 patchKernel9Panic(u8 *pos, u32 size);
 u32 patchKernel11Panic(u8 *pos, u32 size);
 u32 patchP9AccessChecks(u8 *pos, u32 size);

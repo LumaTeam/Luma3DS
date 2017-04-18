@@ -77,6 +77,11 @@ clean:
 
 .PRECIOUS: $(dir_build)/%.bin
 
+.PHONY: $(dir_loader)
+.PHONY: $(dir_arm9_exceptions)
+.PHONY: $(dir_arm11_exceptions)
+.PHONY: $(dir_injector)
+
 $(dir_out) $(dir_build):
 	@mkdir -p "$@"
 

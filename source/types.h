@@ -52,6 +52,7 @@ typedef volatile u64 vu64;
 #define ISN3DS       (PDN_MPCORE_CFG == 7)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 #define ISA9LH       (!PDN_SPI_CNT)
+#define ISSIGHAX     (!(CFG_SYSPROT9 & 2))
 #define ISFIRMLAUNCH (launchedFirmTidLow[5] != 0)
 
 typedef struct __attribute__((packed))
