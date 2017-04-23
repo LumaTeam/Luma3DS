@@ -310,9 +310,8 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
         if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 && (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
             *fsRegisterArchive = findFunctionStart(code, addr);
 
-        if(addr <= size - 16 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 0xC) == 0xE12FFF3C &&
-           ((*(u32 *)(code + addr) == 0xE1A0100D) || (*(u32 *)(code + addr) == 0xE28D1010)) && (*(u32 *)(code + addr + 4) == 0xE590C000) &&
-           ((*(u32 *)(code + addr + 8) == 0xE1A00004) || (*(u32 *)(code + addr + 8) == 0xE1A00005)))
+        if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0x1AFFFFFC && *(u32 *)(code + addr) == 0xE351003A &&
+            *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C)
             *fsTryOpenFile = findFunctionStart(code, addr);
 
         if(*fsOpenFileDirectly == 0xFFFFFFFF && *(u32 *)(code + addr) == 0x08030204)
@@ -520,7 +519,7 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
 
     if(!archiveId) return true;
 
-    static const char *archiveName = "lfs:";
+    static const char *archiveName = "lf:";
 
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
@@ -554,8 +553,8 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
                 payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
-                memcpy(payload32 + i, archiveName, 4);
-                memcpy((u8 *)(payload32 + i) + 4, path, sizeof(path));
+                memcpy(payload32 + i, archiveName, 3);
+                memcpy((u8 *)(payload32 + i) + 3, path, sizeof(path));
                 break;
             case 0xdead0005:
                 payload32[i] = 0x100000 + fsMountArchive;

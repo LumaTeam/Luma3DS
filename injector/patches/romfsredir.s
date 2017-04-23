@@ -25,7 +25,7 @@ _start:
         .word   0xdead0002  ; Substituted opcode
         .word   0xdead0003  ; Branch to hooked function
 
-    ; Mounts the archive and registers it as 'lfs:'
+    ; Mounts the archive and registers it as 'lf:'
     mountArchive:
         cmp     r3, #3
         bne     _mountArchive + 4
@@ -90,7 +90,7 @@ _start:
 
 .pool
 .align 4
-    archiveName       : .dcb "lfs:"
+    archiveName       : .dcb "lf:", 0
     fsMountArchive    : .word 0xdead0005
     fsRegisterArchive : .word 0xdead0006
     archiveId         : .word 0xdead0007
