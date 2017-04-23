@@ -520,7 +520,7 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
 
     if(!archiveId) return true;
 
-    const char *archiveName = archiveId == ARCHIVE_SDMC ? "sdc:" : "nnd:";
+    static const char *archiveName = "lfs:";
 
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
@@ -564,9 +564,6 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
                 payload32[i] = 0x100000 + fsRegisterArchive;
                 break;
             case 0xdead0007:
-                memcpy(payload32 + i, archiveName, 4);
-                break;
-            case 0xdead0008:
                 payload32[i] = archiveId;
                 break;
         }
