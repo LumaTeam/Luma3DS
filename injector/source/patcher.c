@@ -307,11 +307,12 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
             }
         }
 
-        if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 && (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
+        if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 &&
+           (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
             *fsRegisterArchive = findFunctionStart(code, addr);
 
         if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0x1AFFFFFC && *(u32 *)(code + addr) == 0xE351003A &&
-            *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C)
+           *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C)
             *fsTryOpenFile = findFunctionStart(code, addr);
 
         if(*fsOpenFileDirectly == 0xFFFFFFFF && *(u32 *)(code + addr) == 0x08030204)
@@ -326,9 +327,10 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
 static inline bool findLayeredFsPayloadOffset(u8* code, u32 size, u32 *payloadOffset)
 {
     //First check for sufficient padding at the end of the .text segment
-    if(((size + 4095) & 0xfffff000) - size >= romfsredir_bin_size)
+    if(((size + 4095) & 0xFFFFF000) - size >= romfsredir_bin_size)
     {
         *payloadOffset = size;
+
         return true;
     }
 
@@ -358,6 +360,7 @@ static inline bool findLayeredFsPayloadOffset(u8* code, u32 size, u32 *payloadOf
         if(func != 0xFFFFFFFF)
         {
             *payloadOffset = func;
+
             return true;
         }
     }
