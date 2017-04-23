@@ -520,7 +520,7 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
 
     if(!archive) return true;
 
-    const char *mount = archive == ARCHIVE_SDMC ? "sdmc:" : "nand:";
+    const char *mount = archive == ARCHIVE_SDMC ? "sdc:" : "nnd:";
 
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
@@ -554,8 +554,8 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
                 payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
-                memcpy(payload32 + i, mount, 5);
-                memcpy((u8 *)(payload32 + i) + 5, path, sizeof(path));
+                memcpy(payload32 + i, mount, 4);
+                memcpy((u8 *)(payload32 + i) + 4, path, sizeof(path));
                 break;
             case 0xdead0005:
                 payload32[i] = 0x100000 + fsMountArchive;

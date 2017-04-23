@@ -31,14 +31,14 @@ _start:
         bne     _mountSd+4
         stmfd   sp!, {r0-r4, lr}
         sub     sp, sp, #4
-        load    r1, archive
+        load    r1, archiveId
         mov     r0, sp
         load    r4, fsMountArchive
         blx     r4
         mov     r3, #0
         mov     r2, #0
         ldr     r1, [sp]
-        addr    r0, sdmcArchiveName
+        addr    r0, archiveName
         load    r4, fsRegisterArchive
         blx     r4
         add     sp, sp, #4
@@ -60,7 +60,7 @@ _start:
         pathRedir:
             stmfd   sp!, {r0-r3}
             add     r0, sp, #0x10
-            addr    r3, sdmcCustomPath
+            addr    r3, customPath
             pathRedir_1:
                 ldrb    r2, [r3], #1
                 strh    r2, [r0], #2
@@ -90,12 +90,10 @@ _start:
 
 .pool
 .align 4
-    sdmcArchiveName :       .word 0xdead0007
-                            .dcb ":", 0
-    .align 4
-    fsMountArchive :        .word 0xdead0005
-    fsRegisterArchive :     .word 0xdead0006
-    archive        :        .word 0xdead0008
-    sdmcCustomPath :        .word 0xdead0004
+    archiveName       : .word 0xdead0007
+    fsMountArchive    : .word 0xdead0005
+    fsRegisterArchive : .word 0xdead0006
+    archiveId         : .word 0xdead0008
+    customPath        : .word 0xdead0004
 
 .close
