@@ -278,7 +278,7 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
     }
 }
 
-static u32 findFunctionStart(u8* code, u32 pos)
+static u32 findFunctionStart(u8 *code, u32 pos)
 {
     while(pos >= 4)
     {
@@ -289,7 +289,7 @@ static u32 findFunctionStart(u8* code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
+static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
 {
     for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
@@ -324,7 +324,7 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
     return false;
 }
 
-static inline bool findLayeredFsPayloadOffset(u8* code, u32 size, u32 *payloadOffset)
+static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 *payloadOffset)
 {
     //First check for sufficient padding at the end of the .text segment
     if(((size + 4095) & 0xFFFFF000) - size >= romfsredir_bin_size)
@@ -510,7 +510,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
