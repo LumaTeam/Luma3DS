@@ -13,7 +13,7 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
 {
     u32 i;
 
-    for(i = 0; i < count; i++)
+    for(i = 0; !count || i < count; i++)
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
@@ -510,7 +510,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -530,8 +530,22 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset;
 
-    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
-       !findLayeredFsPayloadOffset(code, size, &payloadOffset)) return false;
+    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
+       !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
+
+    static const char *updateRomFsMounts[] = { "patch:",
+                                               "ext:" };
+
+    //Change update RomFS mountpoints to start with "r"
+    for(u32 i = 0, ret = 0; i < sizeof(updateRomFsMounts) / sizeof(char *) && !ret; i++)
+    {
+        ret = patchMemory(code, size,
+                  updateRomFsMounts[i],
+                  strnlen(updateRomFsMounts[i], 255), 0,
+                  "r",
+                  1, 0
+              );
+    }
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
@@ -840,7 +854,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, textSize)) goto error;
+           !patchLayeredFs(progId, code, size, textSize)) goto error;
 
         if(regionId != 0xFF)
         {
