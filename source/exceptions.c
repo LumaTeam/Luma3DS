@@ -157,10 +157,10 @@ void detectAndProcessExceptionDumps(void)
     {
         char processName[45] = "Current process:         ";
         memcpy(processName + 17, (void *)additionalData, 8);
-        hexItoa(*((u32 *)additionalData + 3), hexString, 8, true);
+        hexItoa(*(vu32 *)(additionalData + 12), hexString, 8, true);
         concatenateStrings(processName, " (");
         concatenateStrings(processName, hexString);
-        hexItoa(*((u32 *)additionalData + 2), hexString, 8, true);
+        hexItoa(*(vu32 *)(additionalData + 8), hexString, 8, true);
         concatenateStrings(processName, hexString);
         concatenateStrings(processName, ")");
         posY = drawString(processName, true, 10, posY + SPACING_Y, COLOR_WHITE);
