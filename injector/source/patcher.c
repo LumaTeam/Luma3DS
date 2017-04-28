@@ -52,7 +52,7 @@ static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
     else
     {
         ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath)) ? 0 : 2;
-        if(ret) FSDIRLDR_Close(handle);
+        if(ret) FSDIR_Close(handle);
         FSLDR_CloseArchive(archive);
     }
 
@@ -522,8 +522,6 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
 
     if(!archiveId) return true;
 
-    static const char *archiveName = "lf:";
-
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
         fsTryOpenFile = 0xFFFFFFFF,
@@ -534,7 +532,8 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
        !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
 
     static const char *updateRomFsMounts[] = { "patch:",
-                                               "ext:" };
+                                               "ext:" },
+                      patch = 'r';
 
     //Change update RomFS mountpoints to start with "r"
     for(u32 i = 0, ret = 0; i < sizeof(updateRomFsMounts) / sizeof(char *) && !ret; i++)
@@ -542,8 +541,8 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
         ret = patchMemory(code, size,
                   updateRomFsMounts[i],
                   strnlen(updateRomFsMounts[i], 255), 0,
-                  "r",
-                  1, 0
+                  &patch,
+                  sizeof(patch), 0
               );
     }
 
@@ -570,7 +569,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
                 payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
-                memcpy(payload32 + i, archiveName, 3);
+                memcpy(payload32 + i, "lf:", 3);
                 memcpy((u8 *)(payload32 + i) + 3, path, sizeof(path));
                 break;
             case 0xdead0005:
