@@ -87,8 +87,7 @@ static inline void loadCFWInfo(void)
     svcGetCFWInfo(&info);
 
     IFile file;
-    if(LOADERFLAG(ISSAFEMODE) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
-        IFile_Close(&file);
+    if(LOADERFLAG(ISSAFEMODE)) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 
     infoLoaded = true;
 }
