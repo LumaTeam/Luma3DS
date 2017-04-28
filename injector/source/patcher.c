@@ -13,7 +13,7 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
 {
     u32 i;
 
-    for(i = 0; i < count; i++)
+    for(i = 0; !count || i < count; i++)
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
@@ -52,7 +52,7 @@ static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
     else
     {
         ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath)) ? 0 : 2;
-        if(ret) FSDIRLDR_Close(handle);
+        if(ret) FSDIR_Close(handle);
         FSLDR_CloseArchive(archive);
     }
 
@@ -87,8 +87,7 @@ static inline void loadCFWInfo(void)
     svcGetCFWInfo(&info);
 
     IFile file;
-    if(LOADERFLAG(ISSAFEMODE) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
-        IFile_Close(&file);
+    if(LOADERFLAG(ISSAFEMODE)) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 
     infoLoaded = true;
 }
@@ -278,7 +277,7 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
     }
 }
 
-static u32 findFunctionStart(u8* code, u32 pos)
+static u32 findFunctionStart(u8 *code, u32 pos)
 {
     while(pos >= 4)
     {
@@ -289,7 +288,7 @@ static u32 findFunctionStart(u8* code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
+static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
 {
     for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
@@ -307,12 +306,12 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
             }
         }
 
-        if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 && (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
+        if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 &&
+           (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
             *fsRegisterArchive = findFunctionStart(code, addr);
 
-        if(addr <= size - 16 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 0xC) == 0xE12FFF3C &&
-           ((*(u32 *)(code + addr) == 0xE1A0100D) || (*(u32 *)(code + addr) == 0xE28D1010)) && (*(u32 *)(code + addr + 4) == 0xE590C000) &&
-           ((*(u32 *)(code + addr + 8) == 0xE1A00004) || (*(u32 *)(code + addr + 8) == 0xE1A00005)))
+        if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0x1AFFFFFC && *(u32 *)(code + addr) == 0xE351003A &&
+           *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C)
             *fsTryOpenFile = findFunctionStart(code, addr);
 
         if(*fsOpenFileDirectly == 0xFFFFFFFF && *(u32 *)(code + addr) == 0x08030204)
@@ -324,12 +323,13 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
     return false;
 }
 
-static inline bool findLayeredFsPayloadOffset(u8* code, u32 size, u32 *payloadOffset)
+static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 *payloadOffset)
 {
     //First check for sufficient padding at the end of the .text segment
-    if(((size + 4095) & 0xfffff000) - size >= romfsredir_bin_size)
+    if(((size + 4095) & 0xFFFFF000) - size >= romfsredir_bin_size)
     {
         *payloadOffset = size;
+
         return true;
     }
 
@@ -359,6 +359,7 @@ static inline bool findLayeredFsPayloadOffset(u8* code, u32 size, u32 *payloadOf
         if(func != 0xFFFFFFFF)
         {
             *payloadOffset = func;
+
             return true;
         }
     }
@@ -508,7 +509,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -516,11 +517,9 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
     char path[] = "/luma/titles/0000000000000000/romfs";
     progIdToStr(path + 28, progId);
 
-    u32 archive = checkLumaDir(path);
+    u32 archiveId = checkLumaDir(path);
 
-    if(!archive) return true;
-
-    const char *mount = archive == ARCHIVE_SDMC ? "sdmc:" : "nand:";
+    if(!archiveId) return true;
 
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
@@ -528,8 +527,23 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset;
 
-    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
-       !findLayeredFsPayloadOffset(code, size, &payloadOffset)) return false;
+    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
+       !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
+
+    static const char *updateRomFsMounts[] = { "patch:",
+                                               "ext:" },
+                      patch = 'r';
+
+    //Change update RomFS mountpoints to start with "r"
+    for(u32 i = 0, ret = 0; i < sizeof(updateRomFsMounts) / sizeof(char *) && !ret; i++)
+    {
+        ret = patchMemory(code, size,
+                  updateRomFsMounts[i],
+                  strnlen(updateRomFsMounts[i], 255), 0,
+                  &patch,
+                  sizeof(patch), 0
+              );
+    }
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
@@ -554,8 +568,8 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
                 payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
-                memcpy(payload32 + i, mount, 5);
-                memcpy((u8 *)(payload32 + i) + 5, path, sizeof(path));
+                memcpy(payload32 + i, "lf:", 3);
+                memcpy((u8 *)(payload32 + i) + 3, path, sizeof(path));
                 break;
             case 0xdead0005:
                 payload32[i] = 0x100000 + fsMountArchive;
@@ -564,10 +578,7 @@ static inline bool patchLayeredFs(u64 progId, u8* code, u32 size)
                 payload32[i] = 0x100000 + fsRegisterArchive;
                 break;
             case 0xdead0007:
-                memcpy(payload32 + i, mount, 4);
-                break;
-            case 0xdead0008:
-                payload32[i] = archive;
+                payload32[i] = archiveId;
                 break;
         }
     }
@@ -841,7 +852,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, textSize)) goto error;
+           !patchLayeredFs(progId, code, size, textSize)) goto error;
 
         if(regionId != 0xFF)
         {

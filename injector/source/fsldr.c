@@ -164,18 +164,3 @@ Result FSLDR_OpenDirectory(Handle* out, FS_Archive archive, FS_Path path)
 
   return cmdbuf[1];
 }
-
-Result FSDIRLDR_Close(Handle handle)
-{
-  u32 *cmdbuf = getThreadCommandBuffer();
-
-  cmdbuf[0] = IPC_MakeHeader(0x802,0,0); // 0x8020000
-
-  Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(handle))) return ret;
-
-  ret = cmdbuf[1];
-  if(R_SUCCEEDED(ret)) ret = svcCloseHandle(handle);
-
-  return ret;
-}

@@ -155,8 +155,14 @@ void detectAndProcessExceptionDumps(void)
 
     if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
     {
-        char processName[] = "Current process:         ";
-        memcpy(processName + sizeof(processName) - 9, (void *)additionalData, 8);
+        char processName[45] = "Current process:         ";
+        memcpy(processName + 17, (void *)additionalData, 8);
+        hexItoa(*(vu32 *)(additionalData + 12), hexString, 8, true);
+        concatenateStrings(processName, " (");
+        concatenateStrings(processName, hexString);
+        hexItoa(*(vu32 *)(additionalData + 8), hexString, 8, true);
+        concatenateStrings(processName, hexString);
+        concatenateStrings(processName, ")");
         posY = drawString(processName, true, 10, posY + SPACING_Y, COLOR_WHITE);
     }
 

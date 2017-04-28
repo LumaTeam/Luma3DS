@@ -240,7 +240,8 @@ boot:
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
     u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
-    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO), enableExceptionHandlers = CONFIG(ENABLEEXCEPTIONHANDLERS);
+    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO),
+         enableExceptionHandlers = CONFIG(ENABLEEXCEPTIONHANDLERS);
     u32 res;
     switch(firmType)
     {
