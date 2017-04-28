@@ -52,7 +52,7 @@ static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
     else
     {
         ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath)) ? 0 : 2;
-        if(ret) FSDIR_Close(handle);
+        if(!ret) FSDIR_Close(handle);
         FSLDR_CloseArchive(archive);
     }
 
