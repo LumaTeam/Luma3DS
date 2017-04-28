@@ -186,17 +186,16 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 
     for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos <= code + size - 12; CFGU_GetConfigInfoBlk2_endPos += 4)
     {
-        static const u32 CFGU_GetConfigInfoBlk2_endPattern[] = {0xE8BD8010, 0x00010082};
-
         //There might be multiple implementations of GetConfigInfoBlk2 but let's search for the one we want
         u32 *cmp = (u32 *)CFGU_GetConfigInfoBlk2_endPos;
 
-        if(cmp[0] != CFGU_GetConfigInfoBlk2_endPattern[0] || cmp[1] != CFGU_GetConfigInfoBlk2_endPattern[1]) continue;
+        if(cmp[0] != 0xE8BD8010 || cmp[1] != 0x00010082) continue;
 
         for(u32 i = 0; i < n; i++)
             if(possible[i] == cmp[2])
         {
             *CFGUHandleOffset = cmp[2];
+
             return CFGU_GetConfigInfoBlk2_endPos;
         }
 
@@ -256,14 +255,12 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
 {
     for(u8 *cmdPos = code; cmdPos <= code + size - 28; cmdPos += 4)
     {
-        static const u32 cfgSecureInfoGetRegionCmdPattern[] = {0xEE1D0F70, 0xE3A00802};
-
         u32 *cmp = (u32 *)cmdPos;
 
-        if(*cmp != cfgSecureInfoGetRegionCmdPattern[1]) continue;
+        if(*cmp != 0xE3A00802) continue;
 
         for(u32 i = 1; i < 3; i++)
-            if((*(cmp - i) & 0xFFFF0FFF) == cfgSecureInfoGetRegionCmdPattern[0] && *((u16 *)cmdPos + 5) == 0xE59F &&
+            if((*(cmp - i) & 0xFFFF0FFF) == 0xEE1D0F70 && *((u16 *)cmdPos + 5) == 0xE59F &&
                *(u32 *)(cmdPos + 16 + *((u16 *)cmdPos + 4)) == CFGUHandleOffset)
         {
             cmp[3] = 0xE3A00000 | regionId; //mov    r0, =regionId
@@ -290,37 +287,45 @@ static u32 findFunctionStart(u8 *code, u32 pos)
 
 static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
 {
+    u32 found = 0,
+        *temp = NULL;
+
     for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
-        if(*fsMountArchive == 0xFFFFFFFF)
+        switch(*(u32 *)(code + addr))
         {
-            if(addr <= size - 12 && *(u32 *)(code + addr) == 0xE5970010)
-            {
-                if((*(u32 *)(code + addr + 4) == 0xE1CD20D8) && ((*(u32 *)(code + addr + 8) & 0xFFFFFF) == 0x008D0000))
-                    *fsMountArchive = findFunctionStart(code, addr);
-            } 
-            else if(addr <= size - 16 && *(u32 *)(code + addr) == 0xE24DD028)
-            {
-                if((*(u32 *)(code + addr + 4) == 0xE1A04000) && (*(u32 *)(code + addr + 8) == 0xE59F60A8) && (*(u32 *)(code + addr + 0xC) == 0xE3A0C001))
-                    *fsMountArchive = findFunctionStart(code, addr);
-            }
+            case 0xE5970010:
+                if(addr <= size - 12 && *fsMountArchive == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0xE1CD20D8 && (*(u32 *)(code + addr + 8) & 0xFFFFFF) == 0x008D0000) temp = fsMountArchive;
+                break;
+            case 0xE24DD028:
+                if(addr <= size - 16 && *fsMountArchive == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0xE1A04000 && *(u32 *)(code + addr + 8) == 0xE59F60A8 && *(u32 *)(code + addr + 0xC) == 0xE3A0C001) temp = fsMountArchive;
+                break;
+            case 0xE3500008:
+                if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0) temp = fsRegisterArchive;
+                break;
+            case 0xE351003A:
+                if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0x1AFFFFFC && *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C) temp = fsTryOpenFile;
+                break;
+            case 0x08030204:
+                if(*fsOpenFileDirectly == 0xFFFFFFFF) temp = fsOpenFileDirectly;
+                break;
         }
 
-        if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && *(u32 *)(code + addr) == 0xE3500008 &&
-           (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0)
-            *fsRegisterArchive = findFunctionStart(code, addr);
+        if(temp != NULL)
+        {
+            *temp = findFunctionStart(code, addr);
 
-        if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0x1AFFFFFC && *(u32 *)(code + addr) == 0xE351003A &&
-           *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C)
-            *fsTryOpenFile = findFunctionStart(code, addr);
+            if(*temp != 0xFFFFFFFF)
+            {
+                found++;
+                if(found == 4) break;
+            }
 
-        if(*fsOpenFileDirectly == 0xFFFFFFFF && *(u32 *)(code + addr) == 0x08030204)
-            *fsOpenFileDirectly = findFunctionStart(code, addr);
-
-        if(*fsMountArchive != 0xFFFFFFFF && *fsRegisterArchive != 0xFFFFFFFF && *fsTryOpenFile != 0xFFFFFFFF && *fsOpenFileDirectly != 0xFFFFFFFF) return true;
+            temp = NULL;
+        }
     }
 
-    return false;
+    return found == 4;
 }
 
 static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 *payloadOffset)
@@ -476,13 +481,13 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
 
     if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) goto exit;
 
-    u32 i,
-        j;
+    static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"},
+                      *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
 
-    for(i = 0; i < 7; i++)
+    u32 i;
+
+    for(i = 0; i < sizeof(regions) / sizeof(char *); i++)
     {
-        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
-
         if(memcmp(buf, regions[i], 3) == 0)
         {
             *regionId = (u8)i;
@@ -490,18 +495,18 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
         }
     }
 
-    for(j = 0; j < 12; j++)
+    if(i != sizeof(regions) / sizeof(char *))
     {
-        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
-
-        if(memcmp(buf + 4, languages[j], 2) == 0)
+        for(i = 0; i < sizeof(languages) / sizeof(char *); i++)
         {
-            *languageId = (u8)j;
-            break;
+            if(memcmp(buf + 4, languages[i], 2) == 0)
+            {
+                *languageId = (u8)i;
+                ret = true;
+                break;
+            }
         }
     }
-
-    ret = i != 7 && j != 12;
 
 exit:
     IFile_Close(&file);
@@ -553,7 +558,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
     u32 *payload32 = (u32 *)payload;
     for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
     {
-        switch (payload32[i])
+        switch(payload32[i])
         {
             case 0xdead0000:
                 payload32[i] = *(u32 *)(code + fsOpenFileDirectly);
