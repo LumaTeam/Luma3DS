@@ -54,6 +54,8 @@ _start:
         stmfd   sp!, {r0-r12, lr}
         ldrb    r12, [r1]
         cmp     r12, #0x72 ; 'r', should include "rom:", "rom2:" and "rex:"
+        cmpne   r12, #0x70 ; 'p', should include "patch:"
+        cmpne   r12, #0x65 ; 'e', should include "ext:"
         bne 	endRedir
         sub     sp, sp, #0x400
         pathRedir:

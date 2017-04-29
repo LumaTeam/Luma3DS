@@ -514,7 +514,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -532,23 +532,8 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset;
 
-    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
-       !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
-
-    static const char *updateRomFsMounts[] = { "patch:",
-                                               "ext:" },
-                      patch = 'r';
-
-    //Change update RomFS mountpoints to start with "r"
-    for(u32 i = 0, ret = 0; i < sizeof(updateRomFsMounts) / sizeof(char *) && !ret; i++)
-    {
-        ret = patchMemory(code, size,
-                  updateRomFsMounts[i],
-                  strnlen(updateRomFsMounts[i], 255), 0,
-                  &patch,
-                  sizeof(patch), 0
-              );
-    }
+    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
+       !findLayeredFsPayloadOffset(code, size, &payloadOffset)) return false;
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
@@ -857,7 +842,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, size, textSize)) goto error;
+           !patchLayeredFs(progId, code, textSize)) goto error;
 
         if(regionId != 0xFF)
         {
