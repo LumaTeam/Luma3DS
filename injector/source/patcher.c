@@ -514,7 +514,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -532,8 +532,21 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset;
 
-    if(!findLayeredFsSymbols(code, size, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
-       !findLayeredFsPayloadOffset(code, size, &payloadOffset)) return false;
+    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
+       !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
+
+    static const char *updateRomFsMounts[] = { "patch:",
+                                               "ext:" };
+    char updateRomFsStart = 'r';
+    u32 i;    
+
+    //Locate update RomFSes
+    for(i = 0; i < sizeof(updateRomFsMounts) / sizeof(char *); i++)
+    {
+        if(memsearch(code, updateRomFsMounts[i], size, strnlen(updateRomFsMounts[i], 255)) != NULL) break;
+    }
+
+    if(i != sizeof(updateRomFsMounts) / sizeof(char *)) updateRomFsStart = updateRomFsMounts[i][0];
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
@@ -541,7 +554,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
 
     //Insert symbols in the payload
     u32 *payload32 = (u32 *)payload;
-    for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
+    for(i = 0; i < romfsredir_bin_size / 4; i++)
     {
         switch(payload32[i])
         {
@@ -569,6 +582,9 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size)
                 break;
             case 0xdead0007:
                 payload32[i] = archiveId;
+                break;
+            case 0xdead0008:
+                payload32[i] = (u32)updateRomFsStart;
                 break;
         }
     }
@@ -842,7 +858,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, textSize)) goto error;
+           !patchLayeredFs(progId, code, size, textSize)) goto error;
 
         if(regionId != 0xFF)
         {

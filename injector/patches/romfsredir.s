@@ -54,8 +54,8 @@ _start:
         stmfd   sp!, {r0-r12, lr}
         ldrb    r12, [r1]
         cmp     r12, #0x72 ; 'r', should include "rom:", "rom2:" and "rex:"
-        cmpne   r12, #0x70 ; 'p', should include "patch:"
-        cmpne   r12, #0x65 ; 'e', should include "ext:"
+        ldrne   r11, [pc, #updateRomFsStart-.-8]
+        cmpne   r12, r11
         bne 	endRedir
         sub     sp, sp, #0x400
         pathRedir:
@@ -95,6 +95,7 @@ _start:
     fsMountArchive    : .word 0xdead0005
     fsRegisterArchive : .word 0xdead0006
     archiveId         : .word 0xdead0007
+    updateRomFsStart  : .word 0xdead0008
     customPath        : .word 0xdead0004
 
 .close
