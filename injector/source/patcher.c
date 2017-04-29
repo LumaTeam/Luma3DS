@@ -13,7 +13,7 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, in
 {
     u32 i;
 
-    for(i = 0; !count || i < count; i++)
+    for(i = 0; i < count; i++)
     {
         u8 *found = memsearch(start, pattern, size, patSize);
 
