@@ -538,7 +538,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
     static const char *updateRomFsMounts[] = { "patch:",
                                                "ext:" };
     char updateRomFsStart = 'r';
-    u32 i;    
+    u32 i;
 
     //Locate update RomFSes
     for(i = 0; i < sizeof(updateRomFsMounts) / sizeof(char *); i++)
@@ -850,25 +850,29 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
+    if(CONFIG(PATCHGAMES))
     {
-        u8 regionId = 0xFF,
-           languageId;
-
         if(!loadTitleCodeSection(progId, code, size) ||
-           !applyCodeIpsPatch(progId, code, size) ||
-           !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, size, textSize)) goto error;
+           !applyCodeIpsPatch(progId, code, size)) goto error;
 
-        if(regionId != 0xFF)
+        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
         {
-            u32 CFGUHandleOffset;
-            u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
+            u8 regionId = 0xFF,
+            languageId;
 
-            if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
-               !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+            if(!loadTitleLocaleConfig(progId, &regionId, &languageId) ||
+               !patchLayeredFs(progId, code, size, textSize)) goto error;
 
-            patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
+            if(regionId != 0xFF)
+            {
+                u32 CFGUHandleOffset;
+                u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
+
+                if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
+                   !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+
+                patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
+            }
         }
     }
 
