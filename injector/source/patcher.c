@@ -876,25 +876,29 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
+    if(CONFIG(PATCHGAMES))
     {
-        u8 regionId = 0xFF,
-           languageId;
-
         if(!loadTitleCodeSection(progId, code, size) ||
-           !applyCodeIpsPatch(progId, code, size) ||
-           !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
+           !applyCodeIpsPatch(progId, code, size)) goto error;
 
-        if(regionId != 0xFF)
+        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
         {
-            u32 CFGUHandleOffset;
-            u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
+            u8 regionId = 0xFF,
+            languageId;
 
-            if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
-               !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+            if(!loadTitleLocaleConfig(progId, &regionId, &languageId) ||
+               !patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
 
-            patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
+            if(regionId != 0xFF)
+            {
+                u32 CFGUHandleOffset;
+                u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
+
+                if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
+                   !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+
+                patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
+            }
         }
     }
 
