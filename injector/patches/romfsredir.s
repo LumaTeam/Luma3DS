@@ -52,16 +52,16 @@ _start:
     ; it from its original archive like nothing happened
     fsRedir:
         stmfd   sp!, {r0-r12, lr}
-        ldrb    r12, [r1]
-        cmp     r12, #0x72 ; 'r', should include "rom:", "rom2:" and "rex:"
-        ldrne   r11, [pc, #updateRomFsStart-.-8]
-        cmpne   r12, r11
-        bne 	endRedir
+        addr    r3, romFsMount
+        bl      compare
+        addne   r3, pc, #updateRomFsMount-.-8
+        blne    compare
+        bne     endRedir
         sub     sp, sp, #0x400
         pathRedir:
             stmfd   sp!, {r0-r3}
             add     r0, sp, #0x10
-            addr    r3, customPath
+            load    r3, customPath
             pathRedir_1:
                 ldrb    r2, [r3], #1
                 strh    r2, [r0], #2
@@ -89,13 +89,26 @@ _start:
         bxeq    lr
         b       _fsRedir + 4
 
+    compare:
+        mov     r9, r1
+        add     r10, r3, #4
+        loop:
+            ldrb    r12, [r3], #1
+            ldrb    r11, [r9], #2
+            cmp     r11, r12
+            bxne    lr
+            cmp     r10, r3
+            bne     loop
+        bx lr
+
 .pool
 .align 4
     archiveName       : .dcb "lf:", 0
     fsMountArchive    : .word 0xdead0005
     fsRegisterArchive : .word 0xdead0006
     archiveId         : .word 0xdead0007
-    updateRomFsStart  : .word 0xdead0008
+    romFsMount        : .dcb "rom:"
+    updateRomFsMount  : .word 0xdead0008
     customPath        : .word 0xdead0004
 
 .close

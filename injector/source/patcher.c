@@ -328,48 +328,72 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
     return found == 4;
 }
 
-static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 *payloadOffset)
+static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress, u32 *payloadOffset, u32 *pathOffset, u32 *pathAddress)
 {
+    u32 roundedTextSize = ((size + 4095) & 0xFFFFF000),
+        roundedRoSize = ((roSize + 4095) & 0xFFFFF000),
+        roundedDataSize = ((dataSize + 4095) & 0xFFFFF000);
+
     //First check for sufficient padding at the end of the .text segment
-    if(((size + 4095) & 0xFFFFF000) - size >= romfsredir_bin_size)
+    if(roundedTextSize - size >= romfsredir_bin_size) *payloadOffset = size;
+    else
     {
-        *payloadOffset = size;
+        //If there isn't enough padding look for the "throwFatalError" function to replace
+        u32 svcConnectToPort = 0xFFFFFFFF;
 
-        return true;
-    }
-
-    //If there isn't enough padding look for the "throwFatalError" function to replace
-    u32 svcConnectToPort = 0xFFFFFFFF;
-
-    for(u32 addr = 4; svcConnectToPort == 0xFFFFFFFF && addr <= size - 4; addr += 4)
-    {
-        if(*(u32 *)(code + addr) == 0xEF00002D)
-            svcConnectToPort = addr - 4;
-    }
-
-    if(svcConnectToPort != 0xFFFFFFFF)
-    {
-        u32 func = 0xFFFFFFFF;
-
-        for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+        for(u32 addr = 4; svcConnectToPort == 0xFFFFFFFF && addr <= size - 4; addr += 4)
         {
-            if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
-
-            func = findFunctionStart(code, i);
-
-            for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
-                if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
+            if(*(u32 *)(code + addr) == 0xEF00002D)
+                svcConnectToPort = addr - 4;
         }
 
-        if(func != 0xFFFFFFFF)
+        if(svcConnectToPort != 0xFFFFFFFF)
         {
-            *payloadOffset = func;
+            u32 func = 0xFFFFFFFF;
 
-            return true;
+            for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+            {
+                if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
+
+                func = findFunctionStart(code, i);
+
+                for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+                    if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
+            }
+
+            if(func != 0xFFFFFFFF)
+                *payloadOffset = func;
         }
     }
 
-    return false;
+    if(roundedRoSize - roSize >= 39)
+    {
+        *pathOffset = roundedTextSize + roSize;
+        *pathAddress = roAddress + roSize;
+    }
+    else if(roundedDataSize - dataSize >= 39)
+    {
+        *pathOffset = roundedTextSize + roundedRoSize + dataSize;
+        *pathAddress = dataAddress + dataSize;
+    }
+    else
+    {
+        u32 strSpace = 0xFFFFFFFF;
+
+        for(u32 addr = 0; strSpace == 0xFFFFFFFF && addr <= size - 4; addr += 4)
+        {
+            if(*(u32 *)(code + addr) == 0xE3A00B42)
+                strSpace = findFunctionStart(code, addr);
+        }
+
+        if(strSpace != 0xFFFFFFFF)
+        {
+            *pathOffset = strSpace;
+            *pathAddress = 0x100000 + strSpace;
+        }
+    }
+
+    return *payloadOffset != 0 && *pathOffset != 0;
 }
 
 static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
@@ -514,7 +538,7 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -530,23 +554,23 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
         fsRegisterArchive = 0xFFFFFFFF,
         fsTryOpenFile = 0xFFFFFFFF,
         fsOpenFileDirectly = 0xFFFFFFFF,
-        payloadOffset;
+        payloadOffset = 0,
+        pathOffset = 0,
+        pathAddress;
 
     if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
-       !findLayeredFsPayloadOffset(code, textSize, &payloadOffset)) return false;
+       !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
-    static const char *updateRomFsMounts[] = { "patch:",
-                                               "ext:" };
-    char updateRomFsStart = 'r';
-    u32 i;    
+    static const char *updateRomFsMounts[] = { "rom2:",
+                                               "rex:"
+                                               "patch:",
+                                               "ext:",
+                                               "rom:" };
+    u32 updateRomFsIndex;    
 
     //Locate update RomFSes
-    for(i = 0; i < sizeof(updateRomFsMounts) / sizeof(char *); i++)
-    {
-        if(memsearch(code, updateRomFsMounts[i], size, strnlen(updateRomFsMounts[i], 255)) != NULL) break;
-    }
-
-    if(i != sizeof(updateRomFsMounts) / sizeof(char *)) updateRomFsStart = updateRomFsMounts[i][0];
+    for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
+        if(memsearch(code, updateRomFsMounts[updateRomFsIndex], size, strnlen(updateRomFsMounts[updateRomFsIndex], 255)) != NULL) break;
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
@@ -554,7 +578,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
 
     //Insert symbols in the payload
     u32 *payload32 = (u32 *)payload;
-    for(i = 0; i < romfsredir_bin_size / 4; i++)
+    for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
     {
         switch(payload32[i])
         {
@@ -571,8 +595,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
                 payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
                 break;
             case 0xdead0004:
-                memcpy(payload32 + i, "lf:", 3);
-                memcpy((u8 *)(payload32 + i) + 3, path, sizeof(path));
+                payload32[i] = pathAddress;
                 break;
             case 0xdead0005:
                 payload32[i] = 0x100000 + fsMountArchive;
@@ -584,10 +607,13 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
                 payload32[i] = archiveId;
                 break;
             case 0xdead0008:
-                payload32[i] = (u32)updateRomFsStart;
+                memcpy(payload32 + i, updateRomFsMounts[updateRomFsIndex], 4);
                 break;
         }
     }
+
+    memcpy(code + pathOffset, "lf:", 3);
+    memcpy(code + pathOffset + 3, path, sizeof(path));
 
     //Place the hooks
     *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, payloadOffset);
@@ -596,7 +622,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize)
     return true;
 }
 
-void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize)
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
     loadCFWInfo();
 
@@ -760,7 +786,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                              patch[] = u"C";
 
             //Use SecureInfo_C
-            if(patchMemory(code + textSize, roSize,
+            if(patchMemory(code + ((textSize + 4095) & 0xFFFFF000), roSize,
                    pattern,
                    sizeof(pattern) - 2, 22,
                    patch,
@@ -858,7 +884,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if(!loadTitleCodeSection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size) ||
            !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchLayeredFs(progId, code, size, textSize)) goto error;
+           !patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
 
         if(regionId != 0xFF)
         {
