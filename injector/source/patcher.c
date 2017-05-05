@@ -292,19 +292,21 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
 
     for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
-        switch(*(u32 *)(code + addr))
+        u32 *addr32 = (u32 *)(code + addr);
+
+        switch(*addr32)
         {
             case 0xE5970010:
-                if(addr <= size - 12 && *fsMountArchive == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0xE1CD20D8 && (*(u32 *)(code + addr + 8) & 0xFFFFFF) == 0x008D0000) temp = fsMountArchive;
+                if(addr <= size - 12 && *fsMountArchive == 0xFFFFFFFF && addr32[1] == 0xE1CD20D8 && (addr32[2] & 0xFFFFFF) == 0x008D0000) temp = fsMountArchive;
                 break;
             case 0xE24DD028:
-                if(addr <= size - 16 && *fsMountArchive == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0xE1A04000 && *(u32 *)(code + addr + 8) == 0xE59F60A8 && *(u32 *)(code + addr + 0xC) == 0xE3A0C001) temp = fsMountArchive;
+                if(addr <= size - 16 && *fsMountArchive == 0xFFFFFFFF && addr32[1] == 0xE1A04000 && addr32[2] == 0xE59F60A8 && addr32[3] == 0xE3A0C001) temp = fsMountArchive;
                 break;
             case 0xE3500008:
-                if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && (*(u32 *)(code + addr + 4) & 0xFFF00FF0) == 0xE1800400 && (*(u32 *)(code + addr + 8) & 0xFFF00FF0) == 0xE1800FC0) temp = fsRegisterArchive;
+                if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && (addr32[1] & 0xFFF00FF0) == 0xE1800400 && (addr32[2] & 0xFFF00FF0) == 0xE1800FC0) temp = fsRegisterArchive;
                 break;
             case 0xE351003A:
-                if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && *(u32 *)(code + addr + 4) == 0x1AFFFFFC && *(u32 *)(code + addr + 0x34) == 0xE590C000 && *(u32 *)(code + addr + 0x3C) == 0xE12FFF3C) temp = fsTryOpenFile;
+                if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && addr32[1] == 0x1AFFFFFC && addr32[0xD] == 0xE590C000 && addr32[0xF] == 0xE12FFF3C) temp = fsTryOpenFile;
                 break;
             case 0x08030204:
                 if(*fsOpenFileDirectly == 0xFFFFFFFF) temp = fsOpenFileDirectly;
@@ -884,7 +886,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
         {
             u8 regionId = 0xFF,
-            languageId;
+               languageId;
 
             if(!loadTitleLocaleConfig(progId, &regionId, &languageId) ||
                !patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
