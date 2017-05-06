@@ -564,7 +564,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
     static const char *updateRomFsMounts[] = { "rom2:",
-                                               "rex:"
+                                               "rex:",
                                                "patch:",
                                                "ext:",
                                                "rom:" };
