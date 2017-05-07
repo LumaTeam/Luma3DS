@@ -188,10 +188,10 @@ void detectAndProcessExceptionDumps(void)
             drawFormattedString(false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE, "%02X", *stackDump);
     }
 
-    char folderPath[36],
+    char folderPath[12],
          path[36],
-         fileName[] = "crash_dump_00010000.dmp";
-    
+         fileName[24];
+
     sprintf(folderPath, "dumps/arm%u", dumpHeader->processor);
     findDumpFile(folderPath, fileName);
     sprintf(path, "%s/%s", folderPath, fileName);
