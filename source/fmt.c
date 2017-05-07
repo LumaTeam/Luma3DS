@@ -53,17 +53,6 @@ This code is based on a file that contains the following:
 static char *lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-/*
-static size_t strnlen(const char *s, size_t count);
-
-static size_t strnlen(const char *s, size_t count)
-{
-  const char *sc;
-  for (sc = s; *sc != '\0' && count--; ++sc);
-  return sc - s;
-}
-*/
-
 static int ee_skip_atoi(const char **s)
 {
   int i = 0;
@@ -144,67 +133,6 @@ static char *ee_number(char *str, long long num, int base, int size, int precisi
   while (i < precision--) *str++ = '0';
   while (i-- > 0) *str++ = tmp[i];
   while (size-- > 0) *str++ = ' ';
-
-  return str;
-}
-
-static char *eaddr(char *str, unsigned char *addr, int size, int precision __attribute__((unused)), int type)
-{
-  char tmp[24];
-  char *dig = lower_digits;
-  int i, len;
-
-  if (type & UPPERCASE)  dig = upper_digits;
-  len = 0;
-  for (i = 0; i < 6; i++)
-  {
-    if (i != 0) tmp[len++] = ':';
-    tmp[len++] = dig[addr[i] >> 4];
-    tmp[len++] = dig[addr[i] & 0x0F];
-  }
-
-  if (!(type & LEFT)) while (len < size--) *str++ = ' ';
-  for (i = 0; i < len; ++i) *str++ = tmp[i];
-  while (len < size--) *str++ = ' ';
-
-  return str;
-}
-
-static char *iaddr(char *str, unsigned char *addr, int size, int precision __attribute__((unused)), int type)
-{
-  char tmp[24];
-  int i, n, len;
-
-  len = 0;
-  for (i = 0; i < 4; i++)
-  {
-    if (i != 0) tmp[len++] = '.';
-    n = addr[i];
-
-    if (n == 0)
-      tmp[len++] = lower_digits[0];
-    else
-    {
-      if (n >= 100)
-      {
-        tmp[len++] = lower_digits[n / 100];
-        n = n % 100;
-        tmp[len++] = lower_digits[n / 10];
-        n = n % 10;
-      }
-      else if (n >= 10)
-      {
-        tmp[len++] = lower_digits[n / 10];
-        n = n % 10;
-      }
-
-      tmp[len++] = lower_digits[n];
-    }
-  }
-
-  if (!(type & LEFT)) while (len < size--) *str++ = ' ';
-  for (i = 0; i < len; ++i) *str++ = tmp[i];
-  while (len < size--) *str++ = ' ';
 
   return str;
 }
@@ -321,16 +249,6 @@ repeat:
         str = ee_number(str, (unsigned long) va_arg(args, void *), 16, field_width, precision, flags);
         continue;
 
-      case 'A':
-        flags |= UPPERCASE;
-
-      case 'a':
-        if (qualifier == 'l')
-          str = eaddr(str, va_arg(args, unsigned char *), field_width, precision, flags);
-        else
-          str = iaddr(str, va_arg(args, unsigned char *), field_width, precision, flags);
-        continue;
-
       // Integer number formats - set up the flags and "break"
       case 'o':
         base = 8;
@@ -367,10 +285,6 @@ repeat:
             num = va_arg(args, long long int);
         else if(qualifier == 'l')
             num = va_arg(args, long int);
-/*        else if(qualifier == 'h' && qualifier == 'h')
-            num = va_arg(args, signed char);
-        else if(qualifier == 'h')
-            num = va_arg(args, short);*/
         else
             num = va_arg(args, int);
     }
@@ -380,10 +294,6 @@ repeat:
         num = va_arg(args, unsigned long long int);
       else if(qualifier == 'l')
         num = va_arg(args, unsigned long int);
-/*      else if(qualifier == 'h' && qualifier == 'h')
-          num = va_arg(args, unsigned char);
-        else if(qualifier == 'h')
-          num = va_arg(args, unsigned short);*/
       else
         num = va_arg(args, unsigned int);
     }
