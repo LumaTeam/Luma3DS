@@ -142,7 +142,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
         DIR dir;
         FILINFO info;
         FRESULT result;
-        char path[128];
+        char path[22];
 
         result = f_findfirst(&dir, &info, "payloads", pattern);
 
@@ -272,8 +272,9 @@ u32 firmRead(void *dest, u32 firmType)
                                     {"00000003", "20000003"},
                                     {"00000001", "20000001"}};
 
-    char folderPath[48];
-    char path[48];
+    char folderPath[35],
+         path[48];
+
     sprintf(folderPath, "1:/title/00040138/%s/content", firmFolders[firmType][ISN3DS ? 1 : 0]);
 
     DIR dir;

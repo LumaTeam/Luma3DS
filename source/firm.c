@@ -326,10 +326,10 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         if(loadFromStorage)
         {
-            char fileName[64];
+            char fileName[24];
 
             //Read modules from files if they exist
-            sprintf(fileName, "%.8s.cxi", moduleName);
+            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
 
             dstModuleSize = getFileSize(fileName);
 
@@ -349,7 +349,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         const u8 *module;
 
-        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6 + 1) == 0)
+        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
         {
             module = injector_bin;
             dstModuleSize = injector_bin_size;

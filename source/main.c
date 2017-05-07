@@ -264,7 +264,7 @@ boot:
 
     if(res != 0)
     {
-        char patchesError[64];
+        char patchesError[43];
         sprintf(patchesError, "Failed to apply %u FIRM patch(es).", res);
         error(patchesError);
     }

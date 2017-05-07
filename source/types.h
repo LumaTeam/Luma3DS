@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 //Common data types
 typedef uint8_t u8;

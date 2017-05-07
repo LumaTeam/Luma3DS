@@ -35,6 +35,7 @@ u32 strlen(const char *string)
 u32 strnlen(const char *string, u32 maxlen)
 {
     u32 size;
+
     for(size = 0; size < maxlen && *string; string++, size++);
 
     return size;

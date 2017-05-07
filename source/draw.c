@@ -30,9 +30,8 @@
 #include "screen.h"
 #include "utils.h"
 #include "fs.h"
-#include "font.h"
-#include <stdarg.h>
 #include "fmt.h"
+#include "font.h"
 
 bool loadSplash(void)
 {
