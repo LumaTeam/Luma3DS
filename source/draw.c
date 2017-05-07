@@ -31,6 +31,8 @@
 #include "utils.h"
 #include "fs.h"
 #include "font.h"
+#include <stdarg.h>
+#include "fmt.h"
 
 bool loadSplash(void)
 {
@@ -57,7 +59,7 @@ bool loadSplash(void)
     return true;
 }
 
-void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color)
+void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character)
 {
     u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
 
@@ -77,7 +79,7 @@ void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 col
     }
 }
 
-u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color)
+u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string)
 {
     for(u32 i = 0, line_i = 0; i < strlen(string); i++)
         switch(string[i])
@@ -100,11 +102,22 @@ u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 col
                     if(string[i] == ' ') break; //Spaces at the start look weird
                 }
 
-                drawCharacter(string[i], isTopScreen, posX + line_i * SPACING_X, posY, color);
+                drawCharacter(isTopScreen, posX + line_i * SPACING_X, posY, color, string[i]);
 
                 line_i++;
                 break;
         }
 
     return posY;
+}
+
+u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...)
+{
+    char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+
+    return drawString(isTopScreen, posX, posY, color, buf);
 }

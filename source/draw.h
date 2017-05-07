@@ -38,6 +38,9 @@
 #define COLOR_BLACK  0x000000
 #define COLOR_YELLOW 0x00FFFF
 
+#define DRAW_MAX_FORMATTED_STRING_SIZE  512
+
 bool loadSplash(void);
-void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color);
-u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color);
+void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character);
+u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string);
+u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...);
