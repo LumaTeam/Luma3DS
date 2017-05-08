@@ -34,4 +34,4 @@ void fileDelete(const char *path);
 void loadPayload(u32 pressed, const char *payloadPath);
 void payloadMenu(void);
 u32 firmRead(void *dest, u32 firmType);
-void findDumpFile(const char *path, char *fileName);
+void findDumpFile(const char *folderPath, char *fileName);

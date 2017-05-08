@@ -30,7 +30,7 @@
 
 #define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 7
+#define CONFIG_VERSIONMINOR 9
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -44,7 +44,6 @@ enum multiOptions
     SPLASH,
     PIN,
     NEWCPU,
-    DEVOPTIONS
 };
 
 enum singleOptions
@@ -56,7 +55,9 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    PATCHUNITINFO,
+    ENABLEEXCEPTIONHANDLERS
 };
 
 typedef enum ConfigurationStatus
@@ -67,5 +68,5 @@ typedef enum ConfigurationStatus
 } ConfigurationStatus;
 
 bool readConfig(void);
-void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
+void writeConfig(bool isPayloadLaunch);
 void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode);

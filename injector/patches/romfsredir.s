@@ -1,80 +1,114 @@
-; Code from delebile
-
 .arm.little
 .create "build/romfsredir.bin", 0
 
+.macro addr, reg, func
+    add reg, pc, #func-.-8
+.endmacro
 .macro load, reg, func
     ldr reg, [pc, #func-.-8]
 .endmacro
 
+; Patch by delebile
+
 .arm
-    ; fsOpenFileDirectly function will be redirected here.
-    ; If the requested archive is not ROMFS, we'll return
-    ; to the original function.
-    openFileDirectlyHook:
-        cmp r3, #3
-        beq openRomfs
-        load r12, fsOpenFileDirectly
-        nop ; Will be replaced with the original function opcode
-        bx r12
+_start:
 
-    ; We redirect ROMFS file opening by changing the parameters and call
-    ; the fsOpenFileDirectly function recursively. The parameter format:
-    ; r0          : fsUserHandle
-    ; r1          : Output FileHandle
-    ; r2          : Transaction (usually 0)
-    ; r3          : Archive ID
-    ; [sp, #0x00] : Archive PathType
-    ; [sp, #0x04] : Archive DataPointer
-    ; [sp, #0x08] : Archive PathSize
-    ; [sp, #0x0C] : File PathType
-    ; [sp, #0x10] : File DataPointer
-    ; [sp, #0x14] : File PathSize
-    ; [sp, #0x18] : File OpenFlags
-    ; [sp, #0x1C] : Attributes (usually 0)
-    openRomfs:
-        sub sp, sp, #0x50
-        stmfd sp!, {r0, r1, lr}
-        add sp, sp, #0x5C
-        str r3, [sp, #0x0C] ; File PathType (ASCII = 3)
-        load r12, romfsFileName
-        str r12, [sp, #0x10] ; File DataPointer
-        load r12, romfsFileNameSize
-        str r12, [sp, #0x14] ; File PathSize
-        load r3, archive
-        bl openFileDirectlyHook
-        sub sp, sp, #0x5C
-        ldmfd sp!, {r0, r1, lr}
-        add sp, sp, #0x50
-        mov r0, r1 ; Substitute fsUserHandle with the fileHandle
+    ; Jumps here before the fsOpenFileDirectly call
+    _mountArchive:
+        b       mountArchive
+        .word   0xdead0000  ; Substituted opcode
+        .word   0xdead0001  ; Branch to hooked function
 
-    ; Once we have the sd romfs file opened, we'll open a subfile
-    ; in order to skip the useless data.
-        stmfd sp!, {r1, r3-r11}
-        mrc p15, 0, r4, c13, c0, 3
-        add r4, r4, #0x80
-        mov r1, r4
-        add r3, pc, #fsOpenSubFileCmd-.-8
-        ldmia r3!, {r5-r9}
-        stmia r1!, {r5-r9}
-        ldr r0, [r0]
-        swi 0x32
-        ldr r0, [r4, #0x0C]
-        ldmfd sp!, {r1, r3-r11}
-        str r0, [r1]
-        mov r0, #0
+    ; Jumps here before every iFileOpen call
+    _fsRedir:
+        b       fsRedir
+        .word   0xdead0002  ; Substituted opcode
+        .word   0xdead0003  ; Branch to hooked function
+
+    ; Mounts the archive and registers it as 'lf:'
+    mountArchive:
+        cmp     r3, #3
+        bne     _mountArchive + 4
+        stmfd   sp!, {r0-r4, lr}
+        sub     sp, sp, #4
+        load    r1, archiveId
+        mov     r0, sp
+        load    r4, fsMountArchive
+        blx     r4
+        mov     r3, #0
+        mov     r2, #0
+        ldr     r1, [sp]
+        addr    r0, archiveName
+        load    r4, fsRegisterArchive
+        blx     r4
+        add     sp, sp, #4
+        ldmfd   sp!, {r0-r4, lr}
+        b       _mountArchive + 4
+
+    ; Check the path passed to iFileOpen.
+    ; If it is trying to access a RomFS file, we try to
+    ; open it from the LayeredFS folder.
+    ; If the file cannot be opened, we just open
+    ; it from its original archive like nothing happened
+    fsRedir:
+        stmfd   sp!, {r0-r12, lr}
+        addr    r3, romFsMount
+        bl      compare
+        addne   r3, pc, #updateRomFsMount-.-8
+        blne    compare
+        bne     endRedir
+        sub     sp, sp, #0x400
+        pathRedir:
+            stmfd   sp!, {r0-r3}
+            add     r0, sp, #0x10
+            load    r3, customPath
+            pathRedir_1:
+                ldrb    r2, [r3], #1
+                strh    r2, [r0], #2
+                cmp     r2, #0
+                bne     pathRedir_1
+            sub     r0, r0, #2
+            pathRedir_2:
+                ldrh    r2, [r1], #2
+                cmp     r2, #0x3A ; ':'
+                bne     pathRedir_2
+            pathRedir_3:
+                ldrh    r2, [r1], #2
+                strh    r2, [r0], #2
+                cmp     r2, #0
+                bne     pathRedir_3
+            ldmfd   sp!, {r0-r3}
+        mov     r1, sp
+        bl      _fsRedir + 4
+        add     sp, sp, #0x400
+        cmp     r0, #0
+
+    endRedir:
+        ldmfd   sp!, {r0-r12, lr}
+        moveq   r0, #0
+        bxeq    lr
+        b       _fsRedir + 4
+
+    compare:
+        mov     r9, r1
+        add     r10, r3, #4
+        loop:
+            ldrb    r12, [r3], #1
+            ldrb    r11, [r9], #2
+            cmp     r11, r12
+            bxne    lr
+            cmp     r10, r3
+            bne     loop
         bx lr
 
 .pool
 .align 4
-; Part of these symbols will be set from outside
-    fsOpenFileDirectly : .word 0
-    fsOpenSubFileCmd   : .word 0x08010100
-                         .word 0 ; File Offset
-                         .word 0
-                         .word 0 ; File Size
-                         .word 0
-    archive            : .word 0
-    romfsFileNameSize  : .word 0
-    romfsFileName      : .word 0 ; File DataPointer
+    archiveName       : .dcb "lf:", 0
+    fsMountArchive    : .word 0xdead0005
+    fsRegisterArchive : .word 0xdead0006
+    archiveId         : .word 0xdead0007
+    romFsMount        : .dcb "rom:"
+    updateRomFsMount  : .word 0xdead0008
+    customPath        : .word 0xdead0004
+
 .close

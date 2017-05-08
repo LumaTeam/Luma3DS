@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 //Common data types
 typedef uint8_t u8;
@@ -35,19 +36,32 @@ typedef volatile u8 vu8;
 typedef volatile u16 vu16;
 typedef volatile u32 vu32;
 typedef volatile u64 vu64;
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+typedef volatile s8 vs8;
+typedef volatile s16 vs16;
+typedef volatile s32 vs32;
+typedef volatile s64 vs64;
 
 #include "3dsheaders.h"
 
 #define BRAHMA_ARM11_ENTRY 0x1FFFFFF8
 
-#define CFG_BOOTENV    (*(vu32 *)0x10010000)
-#define CFG_UNITINFO   (*(vu8  *)0x10010010)
-#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
-#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
+#define CFG_SYSPROT9        (*(vu8  *)0x10000000)
+#define CFG_BOOTENV         (*(vu32 *)0x10010000)
+#define CFG_UNITINFO        (*(vu8  *)0x10010010)
+#define CFG_TWLUNITINFO     (*(vu8  *)0x10010014)
+#define OTP_DEVCONSOLEID    (*(vu64 *)0x10012000)
+#define OTP_TWLCONSOLEID    (*(vu64 *)0x10012100)
+#define PDN_MPCORE_CFG      (*(vu32 *)0x10140FFC)
+#define PDN_SPI_CNT         (*(vu32 *)0x101401C0)
 
 #define ISN3DS       (PDN_MPCORE_CFG == 7)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 #define ISA9LH       (!PDN_SPI_CNT)
+#define ISSIGHAX     (!(CFG_SYSPROT9 & 2))
 #define ISFIRMLAUNCH (launchedFirmTidLow[5] != 0)
 
 typedef struct __attribute__((packed))

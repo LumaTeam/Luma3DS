@@ -30,19 +30,21 @@
 #include "strings.h"
 #include "buttons.h"
 #include "pin.h"
+#include "crypto.h"
+#include "fmt.h"
 
 extern CfgData configData;
+extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 void main(void)
 {
     bool isA9lhInstalled,
-         isSafeMode = false;
-    u32 configTemp,
-        emuHeader;
+         isSafeMode = false,
+         isNoForceFlagSet = false;
+    u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
-    ConfigurationStatus needConfig;
 
     //Mount SD or CTRNAND
     bool isSdMode;
@@ -94,20 +96,18 @@ void main(void)
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
-    //Save old options and begin saving the new boot configuration
-    configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
-
     //If it's a MCU reboot, try to force boot options
     if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
+
         //Always force a SysNAND boot when quitting AGB_FIRM
         if(CFG_BOOTENV == 7)
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
-            //Flag to prevent multiple boot options-forcing
-            configTemp |= 1 << 7;
+            //Prevent multiple boot options-forcing
+            isNoForceFlagSet = true;
 
             goto boot;
         }
@@ -232,8 +232,8 @@ boot:
 
     if(!ISFIRMLAUNCH)
     {
-        configTemp |= (u32)nandType | ((u32)firmSource << 3);
-        writeConfig(needConfig, configTemp);
+        configData.config = (configData.config & 0xFFFFFF00) | ((u32)isNoForceFlagSet << 7) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        writeConfig(false);
     }
 
     if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
@@ -241,31 +241,31 @@ boot:
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
     u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
-    u32 devMode = MULTICONFIG(DEVOPTIONS);
-
+    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO),
+         enableExceptionHandlers = CONFIG(ENABLEEXCEPTIONHANDLERS);
     u32 res;
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, devMode);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
-            res = patchTwlFirm(firmVersion, devMode);
+            res = patchTwlFirm(firmVersion, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(devMode);
+            res = patchAgbFirm(doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(devMode) : 0;
+            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(enableExceptionHandlers) : 0;
             break;
     }
 
     if(res != 0)
     {
-        char patchesError[] = "Failed to apply    FIRM patch(es).";
-        decItoa(res, patchesError + 16, 2);
+        char patchesError[43];
+        sprintf(patchesError, "Failed to apply %u FIRM patch(es).", res);
         error(patchesError);
     }
 

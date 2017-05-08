@@ -22,10 +22,12 @@
 
 /*
 *   Signature patches by an unknown author
+*   Signature patches for old FIRMs by SciresM
 *   firmlaunches patching code originally by delebile
 *   FIRM partition writes patches by delebile
 *   ARM11 modules patching code originally by Subv
 *   Idea for svcBreak patches from yellows8 and others on #3dsdev
+*   TWL_FIRM patches by Steveice10 and others
 */
 
 #include "patches.h"
@@ -121,19 +123,15 @@ u32 patchSignatureChecks(u8 *pos, u32 size)
 u32 patchOldSignatureChecks(u8 *pos, u32 size)
 {
     // Look for signature checks
-    // Pattern 2 works for 1.x, 2.x + factory FIRM.
-    // For patchSignatureChecks-style (temp - 1 instead of temp - 3):
-    // 1.x+2.x: pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
-    // factory: pattern2[] = {0xB5, 0x16, 0x4E, 0x0C};
     const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
-             pattern2[] = {0x4E, 0x0C, 0x00, 0x71, 0x68};
+             pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
 
     if(off == NULL || temp == NULL) return 1;
 
-    u16 *off2 = (u16 *)(temp - 3);
+    u16 *off2 = (u16 *)(temp - 1);
     *off = off2[0] = 0x2000;
     off2[1] = 0x4770;
 
@@ -298,6 +296,17 @@ u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
     return 0;
 }
 
+u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA)
+{
+    if(arm11SvcTable[0x59] != 0)
+    {
+        u32 *off = (u32 *)(pos + arm11SvcTable[0x59] - baseK11VA);
+        off[1] = 0xE1A00000; //replace call to inner function by a NOP
+    }
+
+    return 0;
+}
+
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode)
 {
     if(*(u32 *)(*freeK11Space + svcGetCFWInfo_bin_size - 4) != 0xFFFFFFFF) return 1;
@@ -410,10 +419,10 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     return 0;
 }
 
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
+void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA)
 {
     //Same as above, for NATIVE_FIRM ARM11
-    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
+    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - baseK11VA);
     *addr = 0xE12FFF7F;
 }
 

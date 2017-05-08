@@ -2,13 +2,14 @@
 #include "patcher.h"
 #include "memory.h"
 #include "strings.h"
+#include "fsldr.h"
 #include "ifile.h"
 #include "CFWInfo.h"
 #include "../build/bundled.h"
 
 static CFWInfo info;
 
-static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, int offset, const void *replace, u32 repSize, u32 count)
+static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
 {
     u32 i;
 
@@ -39,14 +40,42 @@ static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, in
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
-static u32 openLumaFile(IFile *file, const char *path)
+static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
+{
+    u32 ret;
+    Handle handle;
+    FS_Archive archive;
+    FS_Path dirPath = {PATH_ASCII, strnlen(path, 255) + 1, path},
+            archivePath = {PATH_EMPTY, 1, (u8 *)""};
+
+    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = 1;
+    else
+    {
+        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath)) ? 0 : 2;
+        if(!ret) FSDIR_Close(handle);
+        FSLDR_CloseArchive(archive);
+    }
+
+    return ret;
+}
+
+static bool openLumaFile(IFile *file, const char *path)
 {
     Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
 
-    if(R_SUCCEEDED(res)) return ARCHIVE_SDMC;
+    if(R_SUCCEEDED(res)) return true;
 
     //Returned if SD is not mounted
-    return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ)) ? ARCHIVE_NAND_RW : 0;
+    return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ));
+}
+
+static u32 checkLumaDir(const char *path)
+{
+    u32 res = dirCheck(ARCHIVE_SDMC, path);
+
+    if(!res) return ARCHIVE_SDMC;
+
+    return res == 1 && !dirCheck(ARCHIVE_NAND_RW, path) ? ARCHIVE_NAND_RW : 0;
 }
 
 static inline void loadCFWInfo(void)
@@ -58,8 +87,7 @@ static inline void loadCFWInfo(void)
     svcGetCFWInfo(&info);
 
     IFile file;
-    if(LOADERFLAG(ISSAFEMODE) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
-        IFile_Close(&file);
+    if(LOADERFLAG(ISSAFEMODE)) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 
     infoLoaded = true;
 }
@@ -158,17 +186,16 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 
     for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos <= code + size - 12; CFGU_GetConfigInfoBlk2_endPos += 4)
     {
-        static const u32 CFGU_GetConfigInfoBlk2_endPattern[] = {0xE8BD8010, 0x00010082};
-
         //There might be multiple implementations of GetConfigInfoBlk2 but let's search for the one we want
         u32 *cmp = (u32 *)CFGU_GetConfigInfoBlk2_endPos;
 
-        if(cmp[0] != CFGU_GetConfigInfoBlk2_endPattern[0] || cmp[1] != CFGU_GetConfigInfoBlk2_endPattern[1]) continue;
+        if(cmp[0] != 0xE8BD8010 || cmp[1] != 0x00010082) continue;
 
         for(u32 i = 0; i < n; i++)
             if(possible[i] == cmp[2])
         {
             *CFGUHandleOffset = cmp[2];
+
             return CFGU_GetConfigInfoBlk2_endPos;
         }
 
@@ -228,14 +255,12 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
 {
     for(u8 *cmdPos = code; cmdPos <= code + size - 28; cmdPos += 4)
     {
-        static const u32 cfgSecureInfoGetRegionCmdPattern[] = {0xEE1D0F70, 0xE3A00802};
-
         u32 *cmp = (u32 *)cmdPos;
 
-        if(*cmp != cfgSecureInfoGetRegionCmdPattern[1]) continue;
+        if(*cmp != 0xE3A00802) continue;
 
         for(u32 i = 1; i < 3; i++)
-            if((*(cmp - i) & 0xFFFF0FFF) == cfgSecureInfoGetRegionCmdPattern[0] && *((u16 *)cmdPos + 5) == 0xE59F &&
+            if((*(cmp - i) & 0xFFFF0FFF) == 0xEE1D0F70 && *((u16 *)cmdPos + 5) == 0xE59F &&
                *(u32 *)(cmdPos + 16 + *((u16 *)cmdPos + 4)) == CFGUHandleOffset)
         {
             cmp[3] = 0xE3A00000 | regionId; //mov    r0, =regionId
@@ -249,7 +274,7 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
     }
 }
 
-static u32 findNearestStmfd(u8* code, u32 pos)
+static u32 findFunctionStart(u8 *code, u32 pos)
 {
     while(pos >= 4)
     {
@@ -260,36 +285,117 @@ static u32 findNearestStmfd(u8* code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static u32 findFunctionCommand(u8* code, u32 size, u32 command)
+static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
 {
-    u32 func;
+    u32 found = 0,
+        *temp = NULL;
 
-    for(func = 4; *(u32 *)(code + func) != command; func += 4)
-        if(func > size - 8) return 0xFFFFFFFF;
-
-    return findNearestStmfd(code, func);
-}
-
-static inline u32 findThrowFatalError(u8* code, u32 size)
-{
-    u32 connectToPort;
-
-    for(connectToPort = 0; *(u32 *)(code + connectToPort + 4) != 0xEF00002D; connectToPort += 4)
-        if(connectToPort > size - 12) return 0xFFFFFFFF;
-
-    u32 func = 0xFFFFFFFF;
-
-    for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+    for(u32 addr = 0; addr <= size - 4; addr += 4)
     {
-        if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, connectToPort)) continue;
+        u32 *addr32 = (u32 *)(code + addr);
 
-        func = findNearestStmfd(code, i);
+        switch(*addr32)
+        {
+            case 0xE5970010:
+                if(addr <= size - 12 && *fsMountArchive == 0xFFFFFFFF && addr32[1] == 0xE1CD20D8 && (addr32[2] & 0xFFFFFF) == 0x008D0000) temp = fsMountArchive;
+                break;
+            case 0xE24DD028:
+                if(addr <= size - 16 && *fsMountArchive == 0xFFFFFFFF && addr32[1] == 0xE1A04000 && addr32[2] == 0xE59F60A8 && addr32[3] == 0xE3A0C001) temp = fsMountArchive;
+                break;
+            case 0xE3500008:
+                if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && (addr32[1] & 0xFFF00FF0) == 0xE1800400 && (addr32[2] & 0xFFF00FF0) == 0xE1800FC0) temp = fsRegisterArchive;
+                break;
+            case 0xE351003A:
+                if(addr <= size - 0x40 && *fsTryOpenFile == 0xFFFFFFFF && addr32[1] == 0x1AFFFFFC && addr32[0xD] == 0xE590C000 && addr32[0xF] == 0xE12FFF3C) temp = fsTryOpenFile;
+                break;
+            case 0x08030204:
+                if(*fsOpenFileDirectly == 0xFFFFFFFF) temp = fsOpenFileDirectly;
+                break;
+        }
 
-        for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
-            if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
+        if(temp != NULL)
+        {
+            *temp = findFunctionStart(code, addr);
+
+            if(*temp != 0xFFFFFFFF)
+            {
+                found++;
+                if(found == 4) break;
+            }
+
+            temp = NULL;
+        }
     }
 
-    return func;
+    return found == 4;
+}
+
+static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress, u32 *payloadOffset, u32 *pathOffset, u32 *pathAddress)
+{
+    u32 roundedTextSize = ((size + 4095) & 0xFFFFF000),
+        roundedRoSize = ((roSize + 4095) & 0xFFFFF000),
+        roundedDataSize = ((dataSize + 4095) & 0xFFFFF000);
+
+    //First check for sufficient padding at the end of the .text segment
+    if(roundedTextSize - size >= romfsredir_bin_size) *payloadOffset = size;
+    else
+    {
+        //If there isn't enough padding look for the "throwFatalError" function to replace
+        u32 svcConnectToPort = 0xFFFFFFFF;
+
+        for(u32 addr = 4; svcConnectToPort == 0xFFFFFFFF && addr <= size - 4; addr += 4)
+        {
+            if(*(u32 *)(code + addr) == 0xEF00002D)
+                svcConnectToPort = addr - 4;
+        }
+
+        if(svcConnectToPort != 0xFFFFFFFF)
+        {
+            u32 func = 0xFFFFFFFF;
+
+            for(u32 i = 4; func == 0xFFFFFFFF && i <= size - 4; i += 4)
+            {
+                if(*(u32 *)(code + i) != MAKE_BRANCH_LINK(i, svcConnectToPort)) continue;
+
+                func = findFunctionStart(code, i);
+
+                for(u32 pos = func + 4; func != 0xFFFFFFFF && pos <= size - 4 && *(u16 *)(code + pos + 2) != 0xE92D; pos += 4)
+                    if(*(u32 *)(code + pos) == 0xE200167E) func = 0xFFFFFFFF;
+            }
+
+            if(func != 0xFFFFFFFF)
+                *payloadOffset = func;
+        }
+    }
+
+    if(roundedRoSize - roSize >= 39)
+    {
+        *pathOffset = roundedTextSize + roSize;
+        *pathAddress = roAddress + roSize;
+    }
+    else if(roundedDataSize - dataSize >= 39)
+    {
+        *pathOffset = roundedTextSize + roundedRoSize + dataSize;
+        *pathAddress = dataAddress + dataSize;
+    }
+    else
+    {
+        u32 strSpace = 0xFFFFFFFF;
+
+        for(u32 addr = 0; strSpace == 0xFFFFFFFF && addr <= size - 4; addr += 4)
+        {
+            if(*(u32 *)(code + addr) == 0xE3A00B42)
+                strSpace = findFunctionStart(code, addr);
+        }
+
+        if(strSpace != 0xFFFFFFFF)
+        {
+            *pathOffset = strSpace;
+            *pathAddress = 0x100000 + strSpace;
+        }
+    }
+
+    return *payloadOffset != 0 && *pathOffset != 0;
 }
 
 static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
@@ -401,13 +507,13 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
 
     if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) goto exit;
 
-    u32 i,
-        j;
+    static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"},
+                      *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
 
-    for(i = 0; i < 7; i++)
+    u32 i;
+
+    for(i = 0; i < sizeof(regions) / sizeof(char *); i++)
     {
-        static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"};
-
         if(memcmp(buf, regions[i], 3) == 0)
         {
             *regionId = (u8)i;
@@ -415,18 +521,18 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageI
         }
     }
 
-    for(j = 0; j < 12; j++)
+    if(i != sizeof(regions) / sizeof(char *))
     {
-        static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
-
-        if(memcmp(buf + 4, languages[j], 2) == 0)
+        for(i = 0; i < sizeof(languages) / sizeof(char *); i++)
         {
-            *languageId = (u8)j;
-            break;
+            if(memcmp(buf + 4, languages[i], 2) == 0)
+            {
+                *languageId = (u8)i;
+                ret = true;
+                break;
+            }
         }
     }
-
-    ret = i != 7 && j != 12;
 
 exit:
     IFile_Close(&file);
@@ -434,68 +540,91 @@ exit:
     return ret;
 }
 
-static inline bool patchRomfsRedirection(u64 progId, u8* code, u32 size)
+static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
-       If it exists it should be a decrypted raw RomFS */
+       If it exists it should be a folder containing ROMFS files */
 
     char path[] = "/luma/titles/0000000000000000/romfs";
     progIdToStr(path + 28, progId);
 
-    IFile file;
-    u32 archive = openLumaFile(&file, path);
+    u32 archiveId = checkLumaDir(path);
 
-    if(!archive) return true;
+    if(!archiveId) return true;
 
-    bool ret = false;
-    u64 romfsSize;
+    u32 fsMountArchive = 0xFFFFFFFF,
+        fsRegisterArchive = 0xFFFFFFFF,
+        fsTryOpenFile = 0xFFFFFFFF,
+        fsOpenFileDirectly = 0xFFFFFFFF,
+        payloadOffset = 0,
+        pathOffset = 0,
+        pathAddress;
 
-    if(R_FAILED(IFile_GetSize(&file, &romfsSize))) goto exit;
+    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
+       !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
-    u64 total;
-    u32 magic;
+    static const char *updateRomFsMounts[] = { "rom2:",
+                                               "rex:",
+                                               "patch:",
+                                               "ext:",
+                                               "rom:" };
+    u32 updateRomFsIndex;    
 
-    if(R_FAILED(IFile_Read(&file, &total, &magic, 4)) || total != 4 || magic != 0x43465649) goto exit;
-
-    u32 fsOpenFileDirectly = findFunctionCommand(code, size, 0x08030204),
-        throwFatalError = findThrowFatalError(code, size);
-
-    if(fsOpenFileDirectly == 0xFFFFFFFF || throwFatalError == 0xFFFFFFFF) goto exit;
+    //Locate update RomFSes
+    for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
+        if(memsearch(code, updateRomFsMounts[updateRomFsIndex], size, strnlen(updateRomFsMounts[updateRomFsIndex], 255)) != NULL) break;
 
     //Setup the payload
-    u8 *payload = code + throwFatalError;
+    u8 *payload = code + payloadOffset;
     memcpy(payload, romfsredir_bin, romfsredir_bin_size);
-    memcpy(payload + romfsredir_bin_size, path, sizeof(path));
-    *(u32 *)(payload + 0xC) = *(u32 *)(code + fsOpenFileDirectly);
 
-    u32 *payloadSymbols = (u32 *)(payload + romfsredir_bin_size - 0x24);
-    payloadSymbols[0] = 0x100000 + fsOpenFileDirectly + 4;
-    *(u64 *)(payloadSymbols + 2) = 0x1000ULL;
-    *(u64 *)(payloadSymbols + 4) = romfsSize - 0x1000ULL;
-    payloadSymbols[6] = archive;
-    payloadSymbols[7] = sizeof(path);
-    payloadSymbols[8] = 0x100000 + throwFatalError + romfsredir_bin_size; //String pointer
-
-    //Place the hooks
-    *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, throwFatalError);
-
-    u32 fsOpenLinkFile = findFunctionCommand(code, size, 0x80C0000);
-
-    if(fsOpenLinkFile != 0xFFFFFFFF)
+    //Insert symbols in the payload
+    u32 *payload32 = (u32 *)payload;
+    for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
     {
-        *(u32 *)(code + fsOpenLinkFile) = 0xE3A03003; //mov r3, #3
-        *(u32 *)(code + fsOpenLinkFile + 4) = MAKE_BRANCH(fsOpenLinkFile + 4, throwFatalError);
+        switch(payload32[i])
+        {
+            case 0xdead0000:
+                payload32[i] = *(u32 *)(code + fsOpenFileDirectly);
+                break;
+            case 0xdead0001:
+                payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsOpenFileDirectly + 4);
+                break;
+            case 0xdead0002:
+                payload32[i] = *(u32 *)(code + fsTryOpenFile);
+                break;
+            case 0xdead0003:
+                payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
+                break;
+            case 0xdead0004:
+                payload32[i] = pathAddress;
+                break;
+            case 0xdead0005:
+                payload32[i] = 0x100000 + fsMountArchive;
+                break;
+            case 0xdead0006:
+                payload32[i] = 0x100000 + fsRegisterArchive;
+                break;
+            case 0xdead0007:
+                payload32[i] = archiveId;
+                break;
+            case 0xdead0008:
+                memcpy(payload32 + i, updateRomFsMounts[updateRomFsIndex], 4);
+                break;
+        }
     }
 
-    ret = true;
+    memcpy(code + pathOffset, "lf:", 3);
+    memcpy(code + pathOffset + 3, path, sizeof(path));
 
-exit:
-    IFile_Close(&file);
+    //Place the hooks
+    *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, payloadOffset);
+    *(u32 *)(code + fsTryOpenFile) = MAKE_BRANCH(fsTryOpenFile, payloadOffset + 12);
 
-    return ret;
+    return true;
 }
 
-void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
     loadCFWInfo();
 
@@ -516,7 +645,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Patch SMDH region checks
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -31,
                 patch,
@@ -530,9 +659,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             0x42, 0xE0, 0x1E, 0xFF
         };
 
-        u8 mostRecentFpdVer = 8;
+        u8 mostRecentFpdVer = 10;
 
-        u8 *off = memsearch(code, pattern, size, sizeof(pattern));
+        u8 *off = memsearch(code, pattern, textSize, sizeof(pattern));
 
         if(off == NULL) goto error;
 
@@ -546,7 +675,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
              progId == 0x0004001000026000LL || //CHN MSET
              progId == 0x0004001000027000LL || //KOR MSET
              progId == 0x0004001000028000LL) //TWN MSET
-            && CONFIG(PATCHVERSTRING)) 
+            && CONFIG(PATCHVERSTRING))
     {
         static const u16 pattern[] = u"Ve";
         static u16 *patch;
@@ -583,7 +712,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         }
 
         //Patch Ver. string
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern) - 2, 0,
                 patch,
@@ -603,7 +732,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             };
 
             //Disable updates from foreign carts (makes carts region-free)
-            u32 ret = patchMemory(code, size,
+            u32 ret = patchMemory(code, textSize,
                           pattern,
                           sizeof(pattern), 0,
                           patch,
@@ -623,7 +752,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                     0x0C, 0x00, 0x94, 0x15
                 };
 
-                u32 *off = (u32 *)memsearch(code, pattern, size, sizeof(pattern));
+                u32 *off = (u32 *)memsearch(code, pattern, textSize, sizeof(pattern));
 
                 if(off == NULL) goto error;
 
@@ -646,7 +775,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Disable SecureInfo signature check
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
@@ -659,7 +788,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                              patch[] = u"C";
 
             //Use SecureInfo_C
-            if(patchMemory(code, size,
+            if(patchMemory(code + ((textSize + 4095) & 0xFFFFF000), roSize,
                    pattern,
                    sizeof(pattern) - 2, 22,
                    patch,
@@ -684,19 +813,19 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Disable CRR0 signature (RSA2048 with SHA256) check and CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -9,
                 patch,
                 sizeof(patch), 1
             ) ||
-           !patchMemory(code, size,
+           !patchMemory(code, textSize,
                 pattern2,
                 sizeof(pattern2), 1,
                 patch,
                 sizeof(patch), 1
             ) ||
-           !patchMemory(code, size,
+           !patchMemory(code, textSize,
                 pattern3,
                 sizeof(pattern3), -2,
                 patch,
@@ -704,9 +833,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             )) goto error;
     }
 
-    else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) //ErrDisp
+    else if(progId == 0x0004003000008A02LL && CONFIG(ENABLEEXCEPTIONHANDLERS) && !CONFIG(PATCHUNITINFO)) //ErrDisp
     {
-        static const u8 pattern[] = { 
+        static const u8 pattern[] = {
             0x00, 0xD0, 0xE5, 0xDB
         },
                         pattern2[] = {
@@ -717,13 +846,13 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Patch UNITINFO checks to make ErrDisp more verbose
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -1,
                 patch,
                 sizeof(patch), 1
             ) ||
-           patchMemory(code, size,
+           patchMemory(code, textSize,
                pattern2,
                sizeof(pattern2), 0,
                patch,
@@ -731,7 +860,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
            ) != 3) goto error;
     }
 
-    else if(progId == 0x0004013000002802LL && progVer > 0) //DLP
+    else if(progId == 0x0004013000002802LL) //DLP
     {
         static const u8 pattern[] = {
             0x0C, 0xAC, 0xC0, 0xD8
@@ -741,33 +870,37 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
         };
 
         //Patch DLP region checks
-        if(!patchMemory(code, size,
+        if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
                 sizeof(patch), 1
             )) goto error;
     }
-   
-    if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
-    {
-        u8 regionId = 0xFF,
-           languageId;
 
+    if(CONFIG(PATCHGAMES))
+    {
         if(!loadTitleCodeSection(progId, code, size) ||
-           !loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-           !patchRomfsRedirection(progId, code, size) ||
            !applyCodeIpsPatch(progId, code, size)) goto error;
 
-        if(regionId != 0xFF)
+        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
         {
-            u32 CFGUHandleOffset;
-            u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, size, &CFGUHandleOffset);
+            u8 regionId = 0xFF,
+               languageId;
 
-            if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
-               !patchCfgGetLanguage(code, size, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+            if(!loadTitleLocaleConfig(progId, &regionId, &languageId) ||
+               !patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
 
-            patchCfgGetRegion(code, size, regionId, CFGUHandleOffset);
+            if(regionId != 0xFF)
+            {
+                u32 CFGUHandleOffset;
+                u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
+
+                if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
+                   !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
+
+                patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
+            }
         }
     }
 

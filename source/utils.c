@@ -89,7 +89,7 @@ u32 waitInput(bool isMenu)
 
 void mcuPowerOff(void)
 {
-    if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(false);
+    if(!ISFIRMLAUNCH && ARESCREENSINITIALIZED) clearScreens(false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
@@ -110,9 +110,9 @@ void error(const char *message)
     {
         initScreens();
 
-        drawString("An error has occurred:", true, 10, 10, COLOR_RED);
-        u32 posY = drawString(message, true, 10, 30, COLOR_WHITE);
-        drawString("Press any button to shutdown", true, 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+        drawString(true, 10, 10, COLOR_RED, "An error has occurred:");
+        u32 posY = drawString(true, 10, 30, COLOR_WHITE, message);
+        drawString(true, 10, posY + 2 * SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
 
         waitInput(false);
     }

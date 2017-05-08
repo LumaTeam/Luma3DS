@@ -21,8 +21,7 @@ enum multiOptions
     BRIGHTNESS,
     SPLASH,
     PIN,
-    NEWCPU,
-    DEVOPTIONS
+    NEWCPU
 };
 
 enum singleOptions
@@ -34,7 +33,9 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    PATCHUNITINFO,
+    ENABLEEXCEPTIONHANDLERS
 };
 
 enum flags
@@ -43,4 +44,4 @@ enum flags
     ISSAFEMODE
 };
 
-void patchCode(u64 progId, u16 progVer, u8 *code, u32 size);
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress);

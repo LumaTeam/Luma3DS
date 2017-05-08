@@ -32,35 +32,13 @@ u32 strlen(const char *string)
     return stringEnd - string;
 }
 
-void concatenateStrings(char *destination, const char *source)
+u32 strnlen(const char *string, u32 maxlen)
 {
-    u32 i = strlen(source),
-        j = strlen(destination);
+    u32 size;
 
-    memcpy(&destination[j], source, i + 1);
-}
+    for(size = 0; size < maxlen && *string; string++, size++);
 
-void hexItoa(u32 number, char *out, u32 digits, bool fillString)
-{
-    const char hexDigits[] = "0123456789ABCDEF";
-    u32 i;
-
-    for(i = 0; number > 0; i++)
-    {
-        out[digits - 1 - i] = hexDigits[number & 0xF];
-        number >>= 4;
-    }
-
-    if(fillString) while(i < digits) out[digits - 1 - i++] = '0';
-}
-
-void decItoa(u32 number, char *out, u32 digits)
-{
-    for(u32 i = 0; number > 0; i++)
-    {
-        out[digits - 1 - i] = '0' + number % 10;
-        number /= 10;
-    }
+    return size;
 }
 
 u32 hexAtoi(const char *in, u32 digits)

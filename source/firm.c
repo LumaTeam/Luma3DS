@@ -32,6 +32,7 @@
 #include "emunand.h"
 #include "crypto.h"
 #include "screen.h"
+#include "fmt.h"
 #include "../build/bundled.h"
 
 static Firm *firm = (Firm *)0x24000000;
@@ -112,7 +113,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSafeMode, u32 devMode)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -172,22 +173,25 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         ret += reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
 
+    //Stub svc 0x59 on 11.3+ FIRMs
+    if(firmVersion >= (ISN3DS ? 0x2D : 0x5C)) ret += stubSvcRestrictGpuDma(arm11Section1, arm11SvcTable, baseK11VA);
+
     ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
 
     //Apply UNITINFO patches
-    if(devMode == 2)
+    if(doUnitinfoPatch)
     {
         ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
         if(!ISDEVUNIT) ret += patchCheckForDevCommonKey(process9Offset, process9Size);
     }
 
-    if(devMode != 0 && isA9lhInstalled)
+    if(enableExceptionHandlers && isA9lhInstalled)
     {
         //ARM11 exception handlers
         u32 codeSetOffset,
             stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset);
         ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
-        patchSvcBreak11(arm11Section1, arm11SvcTable);
+        patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
         ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
 
         //ARM9 exception handlers
@@ -213,7 +217,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     return ret;
 }
 
-u32 patchTwlFirm(u32 firmVersion, u32 devMode)
+u32 patchTwlFirm(u32 firmVersion, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
@@ -241,12 +245,12 @@ u32 patchTwlFirm(u32 firmVersion, u32 devMode)
     ret += patchTwlShaHashChecks(process9Offset, process9Size);
 
     //Apply UNITINFO patch
-    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
+    if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
     return ret;
 }
 
-u32 patchAgbFirm(u32 devMode)
+u32 patchAgbFirm(bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
@@ -269,12 +273,12 @@ u32 patchAgbFirm(u32 devMode)
     if(CONFIG(SHOWGBABOOT)) ret += patchAgbBootSplash(process9Offset, process9Size);
 
     //Apply UNITINFO patch
-    if(devMode == 2) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
+    if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
     return ret;
 }
 
-u32 patch1x2xNativeAndSafeFirm(u32 devMode)
+u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
 
@@ -294,10 +298,10 @@ u32 patch1x2xNativeAndSafeFirm(u32 devMode)
         ret = 0;
 
     ret += ISN3DS ? patchFirmWrites(process9Offset, process9Size) : patchOldFirmWrites(process9Offset, process9Size);
-    
-    ret += patchOldSignatureChecks(process9Offset, process9Size);
 
-    if(devMode != 0)
+    ret += ISN3DS ? patchSignatureChecks(process9Offset, process9Size) : patchOldSignatureChecks(process9Offset, process9Size);
+
+    if(enableExceptionHandlers)
     {
         //ARM9 exception handlers
         ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
@@ -322,11 +326,10 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         if(loadFromStorage)
         {
-            char fileName[24] = "sysmodules/";
+            char fileName[24];
 
             //Read modules from files if they exist
-            concatenateStrings(fileName, moduleName);
-            concatenateStrings(fileName, ".cxi");
+            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
 
             dstModuleSize = getFileSize(fileName);
 

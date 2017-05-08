@@ -30,9 +30,13 @@
 #include "pin.h"
 
 CfgData configData;
+ConfigurationStatus needConfig;
+static u32 oldConfig;
 
 bool readConfig(void)
 {
+    bool ret;
+
     if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
@@ -40,17 +44,22 @@ bool readConfig(void)
     {
         configData.config = 0;
 
-        return false;
+        ret = false;
     }
+    else ret = true;
 
-    return true;
+    oldConfig = configData.config;
+
+    return ret;
 }
 
-void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
+void writeConfig(bool isPayloadLaunch)
 {
+    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF00) | (oldConfig & 0xFF);
+
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && (configTemp & 0xFFFFFF7F) == configData.config) return;
+    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFF7F) == oldConfig) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -58,9 +67,6 @@ void writeConfig(ConfigurationStatus needConfig, u32 configTemp)
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
     }
-
-    //Merge the new options and new boot configuration
-    configData.config = (configData.config & 0xFFFFFF00) | (configTemp & 0xFF);
 
     if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
         error("Error writing the configuration file");
@@ -73,7 +79,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "Splash: Off( ) Before( ) After( ) payloads",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
-                                        "Dev. features: Off( ) ErrDisp( ) UNITINFO( )"
                                       };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
@@ -83,7 +88,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Patch SVC/service/archive/ARM9 access"
+                                        "( ) Patch SVC/service/archive/ARM9 access",
+                                        "( ) Set developer UNITINFO",
+                                        "( ) Enable exception handlers"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -114,20 +121,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "New 3DS exclusive/enhanced games.\n\n"
                                           "'Clock+L2' can cause issues with some\n"
                                           "games.",
-
-                                          "Select the developer features.\n\n"
-                                          "\t* If 'Off' is not checked, exception\n"
-                                          "handlers will be enabled on A9LH.\n"
-                                          "\t* 'ErrDisp' also displays debug info\n"
-                                          "on the 'An error has occurred' screen.\n"
-                                          "\t* 'UNITINFO' also makes the console\n"
-                                          "be always detected as a\n"
-                                          "development unit\n"
-                                          "(which breaks online features, amiibos\n"
-                                          "and retail CIAs, but allows installing\n"
-                                          "and booting some developer software).\n\n"
-                                          "Only change this if you know what you\n"
-                                          "are doing!",
 
                                           "If enabled, SysNAND will be launched\n"
                                           "on boot.\n\n"
@@ -160,10 +153,11 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
-                                          "of patched code binaries and\n"
-                                          "custom RomFS for specific games.\n\n"
-                                          "Also makes certain DLCs for\n"
-                                          "out-of-region games work.\n\n"
+                                          "of patched code binaries,\n"
+                                          "IPS code patches and LayeredFS\n"
+                                          "for specific games.\n\n"
+                                          "Also makes certain DLCs\n"
+                                          "for out-of-region games work.\n\n"
                                           "Enabling this requires the\n"
                                           "archive patch to be applied.\n\n"
                                           "Refer to the wiki for instructions.",
@@ -188,8 +182,22 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "The service and archive patches\n"
                                           "don't work on New 3DS FIRMs between\n"
                                           "9.3 and 10.4.\n\n"
-                                          "Only change this if you know what you\n"
+                                          "Only select this if you know what you\n"
                                           "are doing!",
+
+                                          "Make the console be always detected\n"
+                                          "as a development unit, and conversely.\n"
+                                          "(which breaks online features, amiibo\n"
+                                          "and retail CIAs, but allows installing\n"
+                                          "and booting some developer software).\n\n"
+                                          "Only select this if you know what you\n"
+                                          "are doing!",
+
+                                          "Enable Luma3DS's ARM9/ARM11 exception\n"
+                                          "handlers.\n"
+                                          "A9LH is required, and Luma3DS should\n"
+                                          "be ran as arm9loaderhax.bin.\n"
+                                          "Useful for debugging."
                                        };
 
     struct multiOption {
@@ -203,7 +211,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .posXs = {12, 22, 31, 0}, .visible = true  },
         { .posXs = {14, 19, 24, 29}, .visible = true },
         { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
-        { .posXs = {19, 30, 42, 0}, .visible = true  }
     };
 
     struct singleOption {
@@ -218,7 +225,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true }
+        { .visible = true },
+        { .visible = true },
+        { .visible = true}
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
@@ -237,8 +246,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
     initScreens();
 
-    drawString(CONFIG_TITLE, true, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+    drawString(true, 10, 10, COLOR_TITLE, CONFIG_TITLE);
+    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to save");
 
     //Character to display a selected option
     char selected = 'x';
@@ -251,8 +260,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         if(!multiOptions[i].visible) continue;
 
         multiOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
-        drawCharacter(selected, true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+        endPos = drawString(true, 10, multiOptions[i].posY, COLOR_WHITE, multiOptionsText[i]);
+        drawCharacter(true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE, selected);
     }
 
     endPos += SPACING_Y / 2;
@@ -263,8 +272,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         if(!singleOptions[i].visible) continue;
 
         singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
-        if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
+        endPos = drawString(true, 10, singleOptions[i].posY, color, singleOptionsText[i]);
+        if(singleOptions[i].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[i].posY, color, selected);
 
         if(color == COLOR_RED)
         {
@@ -274,7 +283,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         }
     }
 
-    drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
+    drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
 
     //Boring configuration menu
     while(true)
@@ -338,21 +347,21 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
             {
-                drawString(multiOptionsText[oldSelectedOption], true, 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
-                drawCharacter(selected, true, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
+                drawString(true, 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE, multiOptionsText[oldSelectedOption]);
+                drawCharacter(true, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE, selected);
             }
             else
             {
                 u32 singleOldSelected = oldSelectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleOldSelected], true, 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
-                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
+                drawString(true, 10, singleOptions[singleOldSelected].posY, COLOR_WHITE, singleOptionsText[singleOldSelected]);
+                if(singleOptions[singleOldSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE, selected);
             }
 
-            if(isMultiOption) drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
-            else drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
+            if(isMultiOption) drawString(true, 10, multiOptions[selectedOption].posY, COLOR_RED, multiOptionsText[selectedOption]);
+            else drawString(true, 10, singleOptions[singleSelected].posY, COLOR_RED, singleOptionsText[singleSelected]);
 
-            drawString(optionsDescription[oldSelectedOption], false, 10, 10, COLOR_BLACK);
-            drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
+            drawString(false, 10, 10, COLOR_BLACK, optionsDescription[oldSelectedOption]);
+            drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
         }
         else
         {
@@ -360,7 +369,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             if(isMultiOption)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
-                drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
+                drawCharacter(true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK, selected);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
                 if(selectedOption == BRIGHTNESS) updateBrightness(multiOptions[BRIGHTNESS].enabled);
@@ -369,13 +378,13 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             {
                 bool oldEnabled = singleOptions[singleSelected].enabled;
                 singleOptions[singleSelected].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK);
+                if(oldEnabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK, selected);
             }
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-        if(isMultiOption) drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        else if(singleOptions[singleSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
+        if(isMultiOption) drawCharacter(true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED, selected);
+        else if(singleOptions[singleSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
     }
 
     //Preserve the last-used boot options (first 9 bits)

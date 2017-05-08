@@ -44,6 +44,8 @@
 #define REG_AESKEYXFIFO     ((vu32 *)0x10009104)
 #define REG_AESKEYYFIFO     ((vu32 *)0x10009108)
 
+#define REGs_AESTWLKEYS     (*((vu32 (*)[4][3][4])0x10009040))
+
 #define AES_CCM_DECRYPT_MODE    (0u << 27)
 #define AES_CCM_ENCRYPT_MODE    (1u << 27)
 #define AES_CTR_MODE            (2u << 27)
