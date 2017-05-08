@@ -56,8 +56,6 @@ static u32 skipAtoi(const char **s)
 
 static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precision, u32 type)
 {
-    if(type & LEFT) type &= ~ZEROPAD;
-
     char sign = 0;
 
     if(type & SIGN)
@@ -80,20 +78,21 @@ static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precisi
         }
     }
 
-    if(type & HEX_PREP && isHex) size -= 2;
-
     static const char *lowerDigits = "0123456789abcdef",
                       *upperDigits = "0123456789ABCDEF";
 
     s32 i = 0;
-    char tmp[66],
-         c = (type & ZEROPAD) ? '0' : ' ';
+    char tmp[20];
     const char *dig = (type & UPPERCASE) ? upperDigits : lowerDigits;
 
-    if(num == 0) tmp[i++] = '0';
+    if(num == 0)
+    {
+        if(precision != 0) tmp[i++] = '0';
+        type &= ~HEX_PREP;
+    }
     else
     {
-        while (num != 0)
+        while(num != 0)
         {
             u64 base = isHex ? 16ULL : 10ULL;
             tmp[i++] = dig[(u64)num % base];
@@ -101,6 +100,8 @@ static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precisi
         }
     }
 
+    if(type & LEFT || precision != -1) type &= ~ZEROPAD;
+    if(type & HEX_PREP && isHex) size -= 2;
     if(i > precision) precision = i;
     size -= precision;
     if(!(type & (ZEROPAD | LEFT))) while(size-- > 0) *str++ = ' ';
@@ -112,7 +113,7 @@ static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precisi
         *str++ = 'x';
     }
 
-    if(!(type & LEFT)) while(size-- > 0) *str++ = c;
+    if(type & ZEROPAD) while(size-- > 0) *str++ = '0';
     while(i < precision--) *str++ = '0';
     while(i-- > 0) *str++ = tmp[i];
     while(size-- > 0) *str++ = ' ';
@@ -182,18 +183,27 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
         }
 
         //Get the conversion qualifier
-        bool isLongLong = false;
+        u32 integerType = 0;
         if(*fmt == 'l')
         {
             if(*++fmt == 'l')
             {
                 fmt++;
-                isLongLong = true;
+                integerType = 1;
             }
+            
+        }
+        else if(*fmt == 'h')
+        {
+            if(*++fmt == 'h')
+            {
+                fmt++;
+                integerType = 3;
+            }
+            else integerType = 2;
         }
 
-        //Default base
-        bool isHex = false;
+        bool isHex;
 
         switch(*fmt)
         {
@@ -236,6 +246,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
                 flags |= SIGN;
 
             case 'u':
+                isHex = false;
                 break;
 
             default:
@@ -249,13 +260,19 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
 
         if(flags & SIGN)
         {
-            if(isLongLong) num = va_arg(args, s64);
+            if(integerType == 1) va_arg(args, s64);
             else num = va_arg(args, s32);
+
+            if(integerType == 2) num = (s16)num;
+            else if(integerType == 3) num = (s8)num;
         }
         else
         {
-            if(isLongLong) num = va_arg(args, u64);
+            if(integerType == 1) va_arg(args, u64);
             else num = va_arg(args, u32);
+
+            if(integerType == 2) num = (u16)num;
+            else if(integerType == 3) num = (u8)num;
         }
 
         str = processNumber(str, num, isHex, fieldWidth, precision, flags);
