@@ -260,7 +260,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
 
         if(flags & SIGN)
         {
-            if(integerType == 1) va_arg(args, s64);
+            if(integerType == 1) num = va_arg(args, s64);
             else num = va_arg(args, s32);
 
             if(integerType == 2) num = (s16)num;
@@ -268,7 +268,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
         }
         else
         {
-            if(integerType == 1) va_arg(args, u64);
+            if(integerType == 1) num = va_arg(args, u64);
             else num = va_arg(args, u32);
 
             if(integerType == 2) num = (u16)num;
