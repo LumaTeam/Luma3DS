@@ -572,7 +572,13 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
     //Locate update RomFSes
     for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
-        if(memsearch(code, updateRomFsMounts[updateRomFsIndex], size, strnlen(updateRomFsMounts[updateRomFsIndex], 255)) != NULL) break;
+    {
+        u32 patternSize = strnlen(updateRomFsMounts[updateRomFsIndex], 255);
+        u8 temp[7];
+        temp[0] = 0;
+        memcpy(temp + 1, updateRomFsMounts[updateRomFsIndex], patternSize);
+        if(memsearch(code, temp, size, patternSize + 1) != NULL) break;
+    }
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
