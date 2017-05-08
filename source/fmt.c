@@ -31,11 +31,10 @@ This code is based on a file that contains the following:
 
 */
 
-/* TuxSH's changes: add support for 64-bit numbers, remove floating-point code
-   TODO! fix left-padding handling with > 10 characters. */
+//TuxSH's changes: add support for 64-bit numbers, remove floating-point code
 
-#include "fmt.h"
 #include "strings.h"
+#include "fmt.h"
 
 #define ZEROPAD   (1<<0) //Pad with zero
 #define SIGN      (1<<1) //Unsigned/signed long
@@ -47,10 +46,12 @@ This code is based on a file that contains the following:
 
 #define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
 
-static u32 skipAtoi(const char **s)
+static s32 skipAtoi(const char **s)
 {
-    u32 i = 0;
+    s32 i = 0;
+
     while(IS_DIGIT(**s)) i = i * 10 + *((*s)++) - '0';
+
     return i;
 }
 
@@ -135,9 +136,9 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
 
         //Process flags
         u32 flags = 0; //Flags to number()
-        bool loop = false;
+        bool loop = true;
 
-        while(!loop)
+        while(loop)
         {
             switch(*++fmt)
             {
@@ -146,7 +147,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
                 case ' ': flags |= SPACE; break;
                 case '#': flags |= HEX_PREP; break;
                 case '0': flags |= ZEROPAD; break;
-                default: loop = true; break;
+                default: loop = false; break;
             }
         }
 
@@ -230,7 +231,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
                     fieldWidth = 8;
                     flags |= ZEROPAD;
                 }
-                str = processNumber(str, (s64)va_arg(args, u32), true, fieldWidth, precision, flags);
+                str = processNumber(str, va_arg(args, u32), true, fieldWidth, precision, flags);
                 continue;
 
             //Integer number formats - set up the flags and "break"
