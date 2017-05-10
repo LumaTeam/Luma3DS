@@ -205,55 +205,58 @@ void payloadMenu(void)
 
     if(!payloadNum) return;
 
-    initScreens();
-
-    drawString(true, 10, 10, COLOR_TITLE, "Luma3DS chainloader");
-    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
-
-    for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
-    {
-        drawString(true, 10, posY, color, payloadList[i]);
-        if(color == COLOR_RED) color = COLOR_WHITE;
-    }
-
     u32 pressed = 0,
         selectedPayload = 0;
 
-    while(pressed != BUTTON_A && pressed != BUTTON_START)
+    if(payloadNum != 1)
     {
-        do
-        {
-            pressed = waitInput(true);
-        }
-        while(!(pressed & MENU_BUTTONS));
+        initScreens();
 
-        u32 oldSelectedPayload = selectedPayload;
+        drawString(true, 10, 10, COLOR_TITLE, "Luma3DS chainloader");
+        drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
 
-        switch(pressed)
+        for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
         {
-            case BUTTON_UP:
-                selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
-                break;
-            case BUTTON_DOWN:
-                selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
-                break;
-            case BUTTON_LEFT:
-                selectedPayload = 0;
-                break;
-            case BUTTON_RIGHT:
-                selectedPayload = payloadNum - 1;
-                break;
-            default:
-                continue;
+            drawString(true, 10, posY, color, payloadList[i]);
+            if(color == COLOR_RED) color = COLOR_WHITE;
         }
 
-        if(oldSelectedPayload == selectedPayload) continue;
+        while(pressed != BUTTON_A && pressed != BUTTON_START)
+        {
+            do
+            {
+                pressed = waitInput(true);
+            }
+            while(!(pressed & MENU_BUTTONS));
 
-        drawString(true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE, payloadList[oldSelectedPayload]);
-        drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED, payloadList[selectedPayload]);
+            u32 oldSelectedPayload = selectedPayload;
+
+            switch(pressed)
+            {
+                case BUTTON_UP:
+                    selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
+                    break;
+                case BUTTON_DOWN:
+                    selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
+                    break;
+                case BUTTON_LEFT:
+                    selectedPayload = 0;
+                    break;
+                case BUTTON_RIGHT:
+                    selectedPayload = payloadNum - 1;
+                    break;
+                default:
+                    continue;
+            }
+
+            if(oldSelectedPayload == selectedPayload) continue;
+
+            drawString(true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE, payloadList[oldSelectedPayload]);
+            drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED, payloadList[selectedPayload]);
+        }
     }
 
-    if(pressed == BUTTON_A)
+    if(pressed != BUTTON_START)
     {
         sprintf(path, "payloads/%s.bin", payloadList[selectedPayload]);
         loadPayload(0, path);
