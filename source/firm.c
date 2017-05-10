@@ -32,6 +32,7 @@
 #include "emunand.h"
 #include "crypto.h"
 #include "screen.h"
+#include "fmt.h"
 #include "../build/bundled.h"
 
 static Firm *firm = (Firm *)0x24000000;
@@ -328,11 +329,10 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
 
         if(loadFromStorage)
         {
-            char fileName[24] = "sysmodules/";
+            char fileName[24];
 
             //Read modules from files if they exist
-            concatenateStrings(fileName, moduleName);
-            concatenateStrings(fileName, ".cxi");
+            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
 
             dstModuleSize = getFileSize(fileName);
 

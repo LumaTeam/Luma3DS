@@ -246,8 +246,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
     initScreens();
 
-    drawString(CONFIG_TITLE, true, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to save", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+    drawString(true, 10, 10, COLOR_TITLE, CONFIG_TITLE);
+    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to save");
 
     //Character to display a selected option
     char selected = 'x';
@@ -260,8 +260,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         if(!multiOptions[i].visible) continue;
 
         multiOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(multiOptionsText[i], true, 10, multiOptions[i].posY, COLOR_WHITE);
-        drawCharacter(selected, true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE);
+        endPos = drawString(true, 10, multiOptions[i].posY, COLOR_WHITE, multiOptionsText[i]);
+        drawCharacter(true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE, selected);
     }
 
     endPos += SPACING_Y / 2;
@@ -272,8 +272,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         if(!singleOptions[i].visible) continue;
 
         singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(singleOptionsText[i], true, 10, singleOptions[i].posY, color);
-        if(singleOptions[i].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[i].posY, color);
+        endPos = drawString(true, 10, singleOptions[i].posY, color, singleOptionsText[i]);
+        if(singleOptions[i].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[i].posY, color, selected);
 
         if(color == COLOR_RED)
         {
@@ -283,7 +283,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         }
     }
 
-    drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
+    drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
 
     //Boring configuration menu
     while(true)
@@ -347,21 +347,21 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
             {
-                drawString(multiOptionsText[oldSelectedOption], true, 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
-                drawCharacter(selected, true, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE);
+                drawString(true, 10, multiOptions[oldSelectedOption].posY, COLOR_WHITE, multiOptionsText[oldSelectedOption]);
+                drawCharacter(true, 10 + multiOptions[oldSelectedOption].posXs[multiOptions[oldSelectedOption].enabled] * SPACING_X, multiOptions[oldSelectedOption].posY, COLOR_WHITE, selected);
             }
             else
             {
                 u32 singleOldSelected = oldSelectedOption - multiOptionsAmount;
-                drawString(singleOptionsText[singleOldSelected], true, 10, singleOptions[singleOldSelected].posY, COLOR_WHITE);
-                if(singleOptions[singleOldSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE);
+                drawString(true, 10, singleOptions[singleOldSelected].posY, COLOR_WHITE, singleOptionsText[singleOldSelected]);
+                if(singleOptions[singleOldSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE, selected);
             }
 
-            if(isMultiOption) drawString(multiOptionsText[selectedOption], true, 10, multiOptions[selectedOption].posY, COLOR_RED);
-            else drawString(singleOptionsText[singleSelected], true, 10, singleOptions[singleSelected].posY, COLOR_RED);
+            if(isMultiOption) drawString(true, 10, multiOptions[selectedOption].posY, COLOR_RED, multiOptionsText[selectedOption]);
+            else drawString(true, 10, singleOptions[singleSelected].posY, COLOR_RED, singleOptionsText[singleSelected]);
 
-            drawString(optionsDescription[oldSelectedOption], false, 10, 10, COLOR_BLACK);
-            drawString(optionsDescription[selectedOption], false, 10, 10, COLOR_WHITE);
+            drawString(false, 10, 10, COLOR_BLACK, optionsDescription[oldSelectedOption]);
+            drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
         }
         else
         {
@@ -369,7 +369,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             if(isMultiOption)
             {
                 u32 oldEnabled = multiOptions[selectedOption].enabled;
-                drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK);
+                drawCharacter(true, 10 + multiOptions[selectedOption].posXs[oldEnabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_BLACK, selected);
                 multiOptions[selectedOption].enabled = (oldEnabled == 3 || !multiOptions[selectedOption].posXs[oldEnabled + 1]) ? 0 : oldEnabled + 1;
 
                 if(selectedOption == BRIGHTNESS) updateBrightness(multiOptions[BRIGHTNESS].enabled);
@@ -378,13 +378,13 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
             {
                 bool oldEnabled = singleOptions[singleSelected].enabled;
                 singleOptions[singleSelected].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK);
+                if(oldEnabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK, selected);
             }
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-        if(isMultiOption) drawCharacter(selected, true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED);
-        else if(singleOptions[singleSelected].enabled) drawCharacter(selected, true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED);
+        if(isMultiOption) drawCharacter(true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED, selected);
+        else if(singleOptions[singleSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
     }
 
     //Preserve the last-used boot options (first 9 bits)

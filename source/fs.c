@@ -23,6 +23,7 @@
 #include "fs.h"
 #include "memory.h"
 #include "strings.h"
+#include "fmt.h"
 #include "crypto.h"
 #include "cache.h"
 #include "screen.h"
@@ -141,9 +142,9 @@ void loadPayload(u32 pressed, const char *payloadPath)
         DIR dir;
         FILINFO info;
         FRESULT result;
-        char path[22] = "payloads";
+        char path[22];
 
-        result = f_findfirst(&dir, &info, path, pattern);
+        result = f_findfirst(&dir, &info, "payloads", pattern);
 
         if(result != FR_OK) return;
 
@@ -151,8 +152,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
         if(!info.fname[0]) return;
 
-        concatenateStrings(path, "/");
-        concatenateStrings(path, info.altname);
+        sprintf(path, "payloads/%s", info.altname);
         payloadSize = fileRead(payloadAddress, path, maxPayloadSize);
     }
     else payloadSize = fileRead(payloadAddress, payloadPath, maxPayloadSize);
@@ -205,59 +205,60 @@ void payloadMenu(void)
 
     if(!payloadNum) return;
 
-    initScreens();
-
-    drawString("Luma3DS chainloader", true, 10, 10, COLOR_TITLE);
-    drawString("Press A to select, START to quit", true, 10, 10 + SPACING_Y, COLOR_TITLE);
-
-    for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
-    {
-        drawString(payloadList[i], true, 10, posY, color);
-        if(color == COLOR_RED) color = COLOR_WHITE;
-    }
-
     u32 pressed = 0,
         selectedPayload = 0;
 
-    while(pressed != BUTTON_A && pressed != BUTTON_START)
+    if(payloadNum != 1)
     {
-        do
-        {
-            pressed = waitInput(true);
-        }
-        while(!(pressed & MENU_BUTTONS));
+        initScreens();
 
-        u32 oldSelectedPayload = selectedPayload;
+        drawString(true, 10, 10, COLOR_TITLE, "Luma3DS chainloader");
+        drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
 
-        switch(pressed)
+        for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
         {
-            case BUTTON_UP:
-                selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
-                break;
-            case BUTTON_DOWN:
-                selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
-                break;
-            case BUTTON_LEFT:
-                selectedPayload = 0;
-                break;
-            case BUTTON_RIGHT:
-                selectedPayload = payloadNum - 1;
-                break;
-            default:
-                continue;
+            drawString(true, 10, posY, color, payloadList[i]);
+            if(color == COLOR_RED) color = COLOR_WHITE;
         }
 
-        if(oldSelectedPayload == selectedPayload) continue;
+        while(pressed != BUTTON_A && pressed != BUTTON_START)
+        {
+            do
+            {
+                pressed = waitInput(true);
+            }
+            while(!(pressed & MENU_BUTTONS));
 
-        drawString(payloadList[oldSelectedPayload], true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE);
-        drawString(payloadList[selectedPayload], true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED);
+            u32 oldSelectedPayload = selectedPayload;
+
+            switch(pressed)
+            {
+                case BUTTON_UP:
+                    selectedPayload = !selectedPayload ? payloadNum - 1 : selectedPayload - 1;
+                    break;
+                case BUTTON_DOWN:
+                    selectedPayload = selectedPayload == payloadNum - 1 ? 0 : selectedPayload + 1;
+                    break;
+                case BUTTON_LEFT:
+                    selectedPayload = 0;
+                    break;
+                case BUTTON_RIGHT:
+                    selectedPayload = payloadNum - 1;
+                    break;
+                default:
+                    continue;
+            }
+
+            if(oldSelectedPayload == selectedPayload) continue;
+
+            drawString(true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE, payloadList[oldSelectedPayload]);
+            drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED, payloadList[selectedPayload]);
+        }
     }
 
-    if(pressed == BUTTON_A)
+    if(pressed != BUTTON_START)
     {
-        concatenateStrings(path, "/");
-        concatenateStrings(path, payloadList[selectedPayload]);
-        concatenateStrings(path, ".bin");
+        sprintf(path, "payloads/%s.bin", payloadList[selectedPayload]);
         loadPayload(0, path);
         error("The payload is too large or corrupted.");
     }
@@ -274,14 +275,15 @@ u32 firmRead(void *dest, u32 firmType)
                                     {"00000003", "20000003"},
                                     {"00000001", "20000001"}};
 
-    char path[48] = "1:/title/00040138/";
-    concatenateStrings(path, firmFolders[firmType][ISN3DS ? 1 : 0]);
-    concatenateStrings(path, "/content");
+    char folderPath[35],
+         path[48];
+
+    sprintf(folderPath, "1:/title/00040138/%s/content", firmFolders[firmType][ISN3DS ? 1 : 0]);
 
     DIR dir;
     u32 firmVersion = 0xFFFFFFFF;
 
-    if(f_opendir(&dir, path) != FR_OK) goto exit;
+    if(f_opendir(&dir, folderPath) != FR_OK) goto exit;
 
     FILINFO info;
 
@@ -302,10 +304,7 @@ u32 firmRead(void *dest, u32 firmType)
     if(firmVersion == 0xFFFFFFFF) goto exit;
 
     //Complete the string with the .app name
-    concatenateStrings(path, "/00000000.app");
-
-    //Convert back the .app name from integer to array
-    hexItoa(firmVersion, path + 35, 8, false);
+    sprintf(path, "%s/%08x.app", folderPath, firmVersion);
 
     if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x200) firmVersion = 0xFFFFFFFF;
 
@@ -313,21 +312,19 @@ exit:
     return firmVersion;
 }
 
-void findDumpFile(const char *path, char *fileName)
+void findDumpFile(const char *folderPath, char *fileName)
 {
     DIR dir;
     FRESULT result;
-    u32 n = 0;
 
-    while(n <= 99999999)
+    for(u32 n = 0; n <= 99999999; n++)
     {
         FILINFO info;
 
-        result = f_findfirst(&dir, &info, path, fileName);
+        sprintf(fileName, "crash_dump_%08u.dmp", n);
+        result = f_findfirst(&dir, &info, folderPath, fileName);
 
         if(result != FR_OK || !info.fname[0]) break;
-
-        decItoa(++n, fileName + 11, 8);
     }
 
     if(result == FR_OK) f_closedir(&dir);
