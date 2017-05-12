@@ -37,10 +37,13 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh haxloader
+all: elf a9lh haxloader
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
+
+.PHONY: elf
+elf: $(dir_out)/Luma3DS.elf
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
@@ -73,6 +76,9 @@ $(dir_out)/$(name)$(revision).7z: all
 
 $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
+
+$(dir_out)/Luma3DS.elf: $(dir_build)/main.elf $(dir_out)
+	@cp -a $(dir_build)/main.elf $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OBJCOPY) -S -O binary $< $@
