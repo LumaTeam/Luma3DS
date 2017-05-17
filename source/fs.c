@@ -121,7 +121,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
     u32 *loaderAddress = (u32 *)0x27FFE000;
     u8 *payloadAddress = (u8 *)0x24000000;
     u32 payloadSize = 0,
-        maxPayloadSize = (u32)((u8 *)loaderAddress - payloadAddress - 0x1000);
+        maxPayloadSize = 0xFFE00;
 
     if(payloadPath == NULL)
     {
