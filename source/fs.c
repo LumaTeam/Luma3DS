@@ -163,6 +163,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
     memcpy(loaderAddress, loader_bin, loader_bin_size);
 
+    if(ISN3DS) kernel9Loader(NULL);
     backupAndRestoreShaHash(true);
     initScreens();
 

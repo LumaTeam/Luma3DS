@@ -124,9 +124,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
-
-    if(!ISN3DS)
-        kernel9Loader(NULL); //Just set the N3DS 9.6+ keys even on O3DS
     
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -227,8 +224,6 @@ u32 patchTwlFirm(u32 firmVersion, bool doUnitinfoPatch)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
-    else
-        kernel9Loader(NULL); //Just set the keys
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -262,8 +257,6 @@ u32 patchAgbFirm(bool doUnitinfoPatch)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
-    else
-        kernel9Loader(NULL); //Just set the keys
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -292,8 +285,6 @@ u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
-    else
-        kernel9Loader(NULL); //Just set the keys
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,

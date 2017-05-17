@@ -158,11 +158,7 @@ void main(void)
         pressed = HID_PAD;
     }
     else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1)))
-    {
-        kernel9Loader(NULL);
-        loadPayload(pressed, NULL);
-    }
+            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
 
     if(splashMode == 2) loadSplash();
 
