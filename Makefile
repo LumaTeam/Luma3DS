@@ -52,7 +52,7 @@ clean:
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
-#.PRECIOUS: $(dir_build)/%.bin
+.PRECIOUS: $(dir_build)/%.bin
 
 .PHONY: $(dir_loader)
 .PHONY: $(dir_arm9_exceptions)
