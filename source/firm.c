@@ -128,6 +128,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH
     else if(!ISA9LH && !ISFIRMLAUNCH && firmVersion >= 0x29) set6x7xKeys();
 
+    if(!ISN3DS)
+        kernel9Loader(NULL); //Just set the N3DS 9.6+ keys even on O3DS
+    
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;
@@ -227,6 +230,8 @@ u32 patchTwlFirm(u32 firmVersion, bool doUnitinfoPatch)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
+    else
+        kernel9Loader(NULL); //Just set the keys
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -260,6 +265,8 @@ u32 patchAgbFirm(bool doUnitinfoPatch)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
+    else
+        kernel9Loader(NULL); //Just set the keys
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -288,6 +295,8 @@ u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers)
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
+    else
+        kernel9Loader(NULL); //Just set the keys
 
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -381,17 +390,13 @@ void launchFirm(FirmwareType firmType, bool loadFromStorage)
     for(; sectionNum < 4 && firm->section[sectionNum].size != 0; sectionNum++)
         memcpy(firm->section[sectionNum].address, (u8 *)firm + firm->section[sectionNum].offset, firm->section[sectionNum].size);
 
-    //Determine the ARM11 entry to use
-    vu32 *arm11;
-    if(ISFIRMLAUNCH) arm11 = (vu32 *)0x1FFFFFFC;
-    else
-    {
-        deinitScreens();
-        arm11 = (vu32 *)BRAHMA_ARM11_ENTRY;
-    }
-
+    if(!ISFIRMLAUNCH) deinitScreens();
+    
     //Set ARM11 kernel entrypoint
-    *arm11 = (u32)firm->arm11Entry;
+    if(ISFIRMLAUNCH | ISSIGHAX)
+        ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;
+    else
+        BRAHMA_ARM11_ENTRYPOINT = (u32)firm->arm11Entry;
 
     //Ensure that all memory transfers have completed and that the caches have been flushed
     flushEntireDCache();

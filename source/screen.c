@@ -42,7 +42,8 @@
 #include "i2c.h"
 #include "utils.h"
 
-vu32 *arm11Entry = (vu32 *)BRAHMA_ARM11_ENTRY;
+static vu32 *arm11Entry;
+
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 void  __attribute__((naked)) arm11Stub(void)
@@ -56,6 +57,7 @@ static void invokeArm11Function(void (*func)())
 
     if(!hasCopiedStub)
     {
+        arm11Entry = (vu32 *)((ISFIRMLAUNCH | ISSIGHAX) ? 0x1FFFFFFC : 0x1FFFFFF8);
         memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x2C);
         hasCopiedStub = true;
     }

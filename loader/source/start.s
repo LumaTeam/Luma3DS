@@ -22,6 +22,7 @@
 .align 4
 .global _start
 _start:
+    ldr sp, =0x27ffe000
     b main
 
 .global payloadSize

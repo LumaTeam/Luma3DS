@@ -47,7 +47,8 @@ typedef volatile s64 vs64;
 
 #include "3dsheaders.h"
 
-#define BRAHMA_ARM11_ENTRY 0x1FFFFFF8
+#define BRAHMA_ARM11_ENTRYPOINT         *(vu32 *)0x1FFFFFF8
+#define ARM11_CORE0_MAILBOX_ENTRYPOINT  *(vu32 *)0x1FFFFFFC
 
 #define CFG_SYSPROT9        (*(vu8  *)0x10000000)
 #define CFG_BOOTENV         (*(vu32 *)0x10010000)
@@ -61,7 +62,7 @@ typedef volatile s64 vs64;
 #define ISN3DS       (PDN_MPCORE_CFG == 7)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 #define ISA9LH       (!PDN_SPI_CNT)
-#define ISSIGHAX     (!(CFG_SYSPROT9 & 2))
+#define ISSIGHAX     (!PDN_SPI_CNT && !(CFG_SYSPROT9 & 2))
 #define ISFIRMLAUNCH (launchedFirmTidLow[5] != 0)
 
 typedef struct __attribute__((packed))
