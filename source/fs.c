@@ -118,8 +118,8 @@ void fileDelete(const char *path)
 
 void loadPayload(u32 pressed, const char *payloadPath)
 {
-    u32 *loaderAddress = (u32 *)0x24FFFE00;
-    u8 *payloadAddress = (u8 *)0x27FFE000;
+    u32 *loaderAddress = (u32 *)0x27FFE000;
+    u8 *payloadAddress = (u8 *)0x24F00000;
     u32 payloadSize = 0,
         maxPayloadSize = (u32)((u8 *)loaderAddress - payloadAddress);
 
