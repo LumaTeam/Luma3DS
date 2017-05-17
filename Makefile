@@ -52,20 +52,19 @@ clean:
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
-.PRECIOUS: $(dir_build)/%.bin
+#.PRECIOUS: $(dir_build)/%.bin
 
 .PHONY: $(dir_loader)
 .PHONY: $(dir_arm9_exceptions)
 .PHONY: $(dir_arm11_exceptions)
 .PHONY: $(dir_injector)
 
-$(dir_out) $(dir_build):
-	@mkdir -p "$@"
-
 $(dir_out)/$(name)$(revision).7z: all
+	@mkdir -p "$(@D)"
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
+$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin
+	@mkdir -p "$(@D)"
 	@cp -a $(dir_build)/main.bin $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
@@ -77,19 +76,24 @@ $(dir_build)/main.elf: $(bundled) $(objects)
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
-$(dir_build)/injector.bin: $(dir_injector) $(dir_build)
+$(dir_build)/injector.bin: $(dir_injector)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/loader.bin: $(dir_loader) $(dir_build)
+$(dir_build)/loader.bin: $(dir_loader)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions) $(dir_build)
+$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions) $(dir_build)
+$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
+$(dir_build)/%.bin: $(dir_patches)/%.s
+	@mkdir -p "$(@D)"
 	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
