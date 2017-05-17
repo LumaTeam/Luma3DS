@@ -39,8 +39,7 @@ extern FirmwareSource firmSource;
 
 void main(void)
 {
-    bool isA9lhInstalled,
-         isSafeMode = false,
+    bool isSafeMode = false,
          isNoForceFlagSet = false;
     u32 emuHeader;
     FirmwareType firmType;
@@ -79,25 +78,20 @@ void main(void)
 
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
-        isA9lhInstalled = BOOTCFG_A9LH != 0;
 
         goto boot;
     }
 
-    if(ISA9LH)
-    {
-        detectAndProcessExceptionDumps();
-        installArm9Handlers();
-    }
+    detectAndProcessExceptionDumps();
+    installArm9Handlers();
 
     firmType = NATIVE_FIRM;
-    isA9lhInstalled = ISA9LH;
 
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
     //If it's a MCU reboot, try to force boot options
-    if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
+    if(CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
 
         //Always force a SysNAND boot when quitting AGB_FIRM
@@ -137,7 +131,7 @@ void main(void)
         pressed = HID_PAD;
     }
 
-    if(ISA9LH && !CFG_BOOTENV && pressed == SAFE_MODE)
+    if(!CFG_BOOTENV && pressed == SAFE_MODE)
     {
         nandType = FIRMWARE_SYSNAND;
         firmSource = FIRMWARE_SYSNAND;
@@ -174,21 +168,21 @@ void main(void)
     //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
     else if(pressed & BUTTON_R1)
     {
-        if(CONFIG(USESYSFIRM))
-        {
-            nandType = FIRMWARE_EMUNAND;
-            firmSource = FIRMWARE_SYSNAND;
-        }
-        else
+        if(CONFIG(USEEMUFIRM))
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = FIRMWARE_EMUNAND;
+        }
+        else
+        {
+            nandType = FIRMWARE_EMUNAND;
+            firmSource = FIRMWARE_SYSNAND;
         }
     }
 
     /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
        with their own FIRM */
-    else firmSource = nandType = (CONFIG(AUTOBOOTSYS) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+    else firmSource = nandType = (CONFIG(AUTOBOOTEMU) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
 
     //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
     if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
@@ -232,7 +226,7 @@ boot:
 
     if(!ISFIRMLAUNCH)
     {
-        configData.config = (configData.config & 0xFFFFFF00) | ((u32)isNoForceFlagSet << 7) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.config = (configData.config & 0xFFFFFF80) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 
@@ -247,7 +241,7 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, doUnitinfoPatch);
@@ -258,7 +252,7 @@ boot:
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(enableExceptionHandlers) : 0;
+            res = patch1x2xNativeAndSafeFirm(enableExceptionHandlers);
             break;
     }
 

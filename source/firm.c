@@ -113,7 +113,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isA9lhInstalled, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -124,9 +124,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
-
-    //Sets the 7.x NCCH KeyX and the 6.x gamecard save data KeyY on >= 6.0 O3DS FIRMs, if not using A9LH
-    else if(!ISA9LH && !ISFIRMLAUNCH && firmVersion >= 0x29) set6x7xKeys();
     
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
@@ -151,7 +148,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, emuHeader, firm->section[2].address);
 
     //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
-    else if(isA9lhInstalled) ret += patchFirmWrites(process9Offset, process9Size);
+    else ret += patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches
     ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
@@ -185,7 +182,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
         if(!ISDEVUNIT) ret += patchCheckForDevCommonKey(process9Offset, process9Size);
     }
 
-    if(enableExceptionHandlers && isA9lhInstalled)
+    if(enableExceptionHandlers)
     {
         //ARM11 exception handlers
         u32 codeSetOffset,

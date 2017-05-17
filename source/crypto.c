@@ -400,26 +400,6 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
     return result;
 }
 
-void set6x7xKeys(void)
-{
-    __attribute__((aligned(4))) const u8 keyX0x25s[2][AES_BLOCK_SIZE] = {
-        {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3},
-        {0x81, 0x90, 0x7A, 0x4B, 0x6F, 0x1B, 0x47, 0x32, 0x3A, 0x67, 0x79, 0x74, 0xCE, 0x4A, 0xD7, 0x1B}
-    },
-                                         keyY0x2Fs[2][AES_BLOCK_SIZE] = {
-        {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16},
-        {0x73, 0x25, 0xC4, 0xEB, 0x14, 0x3A, 0x0D, 0x5F, 0x5D, 0xB6, 0xE5, 0xC5, 0x7A, 0x21, 0x95, 0xAC}
-    };
-
-    aes_setkey(0x25, keyX0x25s[ISDEVUNIT ? 1 : 0], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setkey(0x2F, keyY0x2Fs[ISDEVUNIT ? 1 : 0], AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-    /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function,
-                when non-zero it clears this block and continues to do the key generation.
-                Otherwise when this block was already all-zero, it immediately returns. */
-    memset32((void *)0x01FFCD00, 0, 0x10);
-}
-
 bool decryptExeFs(Cxi *cxi)
 {
     if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return false;
@@ -590,7 +570,7 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
 
 void backupAndRestoreShaHash(bool isRestore)
 {
-    if(!ISA9LH) return;
+    if(ISSIGHAX) return;
 
     static bool didShaHashBackup = false;
     __attribute__((aligned(4))) static u8 shaHashBackup[SHA_256_HASH_SIZE];

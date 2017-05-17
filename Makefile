@@ -17,7 +17,6 @@ dir_injector := injector
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
-dir_haxloader := haxloader
 dir_build := build
 dir_out := out
 
@@ -37,7 +36,7 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh haxloader
+all: a9lh
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
@@ -45,13 +44,8 @@ release: $(dir_out)/$(name)$(revision).7z
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
 
-.PHONY: haxloader
-haxloader: a9lh
-	@$(MAKE) name=$(name) -C $(dir_haxloader)
-
 .PHONY: clean
 clean:
-	@$(MAKE) -C $(dir_haxloader) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean
