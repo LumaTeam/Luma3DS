@@ -84,7 +84,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     const char *singleOptionsText[] = { "( ) Autoboot EmuNAND",
                                         "( ) Use EmuNAND FIRM if booting with R",
                                         "( ) Enable loading external FIRMs and modules",
-                                        "( ) Use custom path",
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
@@ -147,10 +146,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "This isn't needed in most cases.\n\n"
                                           "Refer to the wiki for instructions.",
 
-                                          "Use a custom path for the\n"
-                                          "Luma3DS payload.\n\n"
-                                          "Refer to the wiki for instructions.",
-
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
                                           "of patched code binaries,\n"
@@ -195,8 +190,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable Luma3DS's ARM9/ARM11 exception\n"
                                           "handlers.\n"
-                                          "A9LH is required, and Luma3DS should\n"
-                                          "be ran as arm9loaderhax.bin.\n"
+                                          "Luma3DS should be ran as:\n"
+                                          "arm9loaderhax.bin\n\n"
                                           "Useful for debugging."
                                        };
 
@@ -226,8 +221,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true },
-        { .visible = true}
+        { .visible = true }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

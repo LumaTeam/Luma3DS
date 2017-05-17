@@ -32,12 +32,16 @@
 #include "pin.h"
 #include "crypto.h"
 #include "fmt.h"
+#include "memory.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-void main(void)
+u16 launchedFirmTidLow[8];
+u16 launchedPath[42];
+
+void main(int argc, char **argv)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
@@ -45,15 +49,59 @@ void main(void)
     FirmwareType firmType;
     FirmwareSource nandType;
 
+    switch(argc)
+    {
+        case 0:
+            error("Unsupported launcher.");
+            break;
+
+        case 1: //Normal boot
+        {
+            u32 i;
+            for(i = 0; i < 41 && launchedPath[i] != 0; i++) //Copy and convert the path to utf16
+                launchedPath[2 * i] = argv[0][i];
+            for(; i < 41; i++)
+                launchedPath[i] = 0;
+
+            for(u32 i = 0; i < 8; i++)
+                launchedFirmTidLow[i] = 0;
+            break;
+        }
+
+        case 2: //Firmlaunch
+        {
+            u32 i;
+            u16 *p = (u16 *)argv[0];
+            for(i = 0; i < 41 && launchedPath[i] != 0; i++)
+                launchedPath[i] = p[i];
+            for(; i < 41; i++)
+                launchedPath[i] = 0;
+
+            memcpy(launchedFirmTidLow, (u16 *)argv[1], 16);
+            break;
+        }
+    }
+
+    char mountPoint[5] = {0};
+    for(u32 i = 0; i < 4 && argv[0][i] != ':'; i++)
+        mountPoint[i] = argv[0][i];
+
     //Mount SD or CTRNAND
     bool isSdMode;
-    if(mountFs(true, false)) isSdMode = true;
-    else
+
+    if(memcmp(mountPoint, "sdmc", 4) == 0)
+    {
+        if(!mountFs(true, false)) error("Failed to mount SD.");
+        isSdMode = true;
+    }
+    else if(memcmp(mountPoint, "nand", 4) == 0)
     {
         firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
         isSdMode = false;
     }
+    else
+        error("Launched from an unsupported location");
 
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;

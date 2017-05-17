@@ -36,13 +36,13 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh
+all: firm
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
 
-.PHONY: a9lh
-a9lh: $(dir_out)/arm9loaderhax.bin
+.PHONY: firm
+firm: $(dir_out)/boot.firm
 
 .PHONY: clean
 clean:
@@ -63,12 +63,9 @@ $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin
+$(dir_out)/boot.firm: $(dir_build)/main.elf
 	@mkdir -p "$(@D)"
-	@cp -a $(dir_build)/main.bin $@
-
-$(dir_build)/main.bin: $(dir_build)/main.elf
-	$(OBJCOPY) -S -O binary $< $@
+	@firmtool build $@ -e 0 -D $^ -C NDMA
 
 $(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^

@@ -23,6 +23,9 @@
 #pragma once
 
 #include "types.h"
+#include "3dsheaders.h"
+
+static Firm *const firm = (Firm *const)0x24000000;
 
 u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode);
 u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers);

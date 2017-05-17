@@ -115,4 +115,5 @@ typedef enum FirmwareType
     NATIVE_FIRM1X2X
 } FirmwareType;
 
-extern u16 launchedFirmTidLow[8]; //Defined in start.s
+extern u16 launchedFirmTidLow[8];
+extern u16 launchedPath[42];

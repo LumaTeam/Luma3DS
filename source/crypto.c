@@ -230,7 +230,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
     }
 }
 
-static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
+void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
 {
     *REG_AESCNT =   mode |
                     AES_CNT_INPUT_ORDER | AES_CNT_OUTPUT_ORDER |
@@ -278,10 +278,8 @@ static void sha_wait_idle()
     while(*REG_SHA_CNT & 1);
 }
 
-static void sha(void *res, const void *src, u32 size, u32 mode)
+void sha(void *res, const void *src, u32 size, u32 mode)
 {
-    backupAndRestoreShaHash(false);
-
     sha_wait_idle();
     *REG_SHA_CNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
 
@@ -570,22 +568,4 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
     aes_use_keyslot(0x04); //Console-unique keyslot whose keys are set by the ARM9 bootROM
     aes(cipherText, inbuf, 1, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     sha(outbuf, cipherText, sizeof(cipherText), SHA_256_MODE);
-}
-
-void backupAndRestoreShaHash(bool isRestore)
-{
-    if(ISSIGHAX) return;
-
-    static bool didShaHashBackup = false;
-    __attribute__((aligned(4))) static u8 shaHashBackup[SHA_256_HASH_SIZE];
-
-    if(isRestore)
-    {
-        if(didShaHashBackup) memcpy((void *)REG_SHA_HASH, shaHashBackup, sizeof(shaHashBackup));
-    }
-    else if(!didShaHashBackup)
-    {
-        memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
-        didShaHashBackup = true;
-    }
 }

@@ -35,8 +35,6 @@
 #include "fmt.h"
 #include "../build/bundled.h"
 
-static Firm *firm = (Firm *)0x24000000;
-
 static inline bool loadFirmFromStorage(FirmwareType firmType)
 {
     const char *firmwareFiles[] = {

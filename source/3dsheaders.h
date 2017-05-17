@@ -24,6 +24,8 @@
 *   Adapted from 3DBrew and https://github.com/mid-kid/CakesForeveryWan/blob/master/source/headers.h
 */
 
+#pragma once
+
 typedef struct __attribute__((packed))
 {
     u32 address;
@@ -139,7 +141,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    u32 magic;
+    char magic[4];
     u32 reserved1;
     u8 *arm11Entry;
     u8 *arm9Entry;
