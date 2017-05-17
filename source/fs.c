@@ -162,7 +162,6 @@ void loadPayload(u32 pressed, const char *payloadPath)
     writeConfig(true);
 
     memcpy(loaderAddress, loader_bin, loader_bin_size);
-    loaderAddress[1] = payloadSize;
 
     backupAndRestoreShaHash(true);
     initScreens();
@@ -170,7 +169,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
     flushDCacheRange(loaderAddress, loader_bin_size);
     flushICacheRange(loaderAddress, loader_bin_size);
 
-    ((void (*)())loaderAddress)();
+    ((void (*)(u32))loaderAddress)(payloadSize);
 }
 
 void payloadMenu(void)

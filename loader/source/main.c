@@ -23,9 +23,7 @@
 #include "memory.h"
 #include "cache.h"
 
-extern u32 payloadSize; //Defined in start.s
-
-void main(void)
+void main(u32 payloadSize)
 {
     void *payloadAddress = (void *)0x23F00000;
 
