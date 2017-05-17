@@ -484,26 +484,21 @@ void kernel9Loader(Arm9Bin *arm9Section)
 {
     //Determine the kernel9loader version
     u32 k9lVersion;
-    if(arm9Section == NULL)
-        k9lVersion = 2;
-    else
+    switch(arm9Section->magic[3])
     {
-        switch(arm9Section->magic[3])
-        {
-            case 0xFF:
-                k9lVersion = 0;
-                break;
-            case '1':
-                k9lVersion = 1;
-                break;
-            default:
-                k9lVersion = 2;
-                break;
-        }
+        case 0xFF:
+            k9lVersion = 0;
+            break;
+        case '1':
+            k9lVersion = 1;
+            break;
+        default:
+            k9lVersion = 2;
+            break;
     }
 
     u32 *startOfArm9Bin = (u32 *)((u8 *)arm9Section + 0x800);
-    bool needToDecrypt = arm9Section != NULL && *startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000;
+    bool needToDecrypt = *startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000;
 
     //Set 0x11 keyslot
     __attribute__((aligned(4))) const u8 key1s[2][AES_BLOCK_SIZE] = {
@@ -569,6 +564,10 @@ void kernel9Loader(Arm9Bin *arm9Section)
         aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
+    if(!ISSIGHAX) return;
+
+    twlConsoleInfoInit();
+
     if(k9lVersion == 2)
     {
         aes_setkey(0x11, key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
@@ -576,9 +575,6 @@ void kernel9Loader(Arm9Bin *arm9Section)
         aes(decKey, keyBlocks[0], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
         aes_setkey(0x18, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
-
-    if(ISSIGHAX)
-        twlConsoleInfoInit();
 }
 
 void computePinHash(u8 *outbuf, const u8 *inbuf)
