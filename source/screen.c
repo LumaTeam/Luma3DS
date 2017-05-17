@@ -58,6 +58,7 @@ static void invokeArm11Function(void (*func)())
     if(!hasCopiedStub)
     {
         arm11Entry = (vu32 *)((ISSIGHAX) ? 0x1FFFFFFC : 0x1FFFFFF8);
+        flushDCacheRange(&arm11Entry, 4);
         memcpy((void *)ARM11_STUB_ADDRESS, arm11Stub, 0x2C);
         hasCopiedStub = true;
     }
