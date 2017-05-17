@@ -122,8 +122,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "'Clock+L2' can cause issues with some\n"
                                           "games.",
 
-                                          "If enabled, an EmuNAND will be\n"
-                                          "launched on boot.\n\n"
+                                          "If enabled, an EmuNAND\n"
+                                          "will be launched on boot.\n\n"
                                           "Otherwise, SysNAND will.\n\n"
                                           "Hold L on boot to switch NAND.\n\n"
                                           "To use a different EmuNAND from the\n"
@@ -132,7 +132,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "1/2/3/4).",
 
                                           "If enabled, when holding R on boot\n"
-                                          "SysNAND will be booted with the\n"
+                                          "SysNAND will be booted with an\n"
                                           "EmuNAND FIRM.\n\n"
                                           "Otherwise, an EmuNAND will be booted\n"
                                           "with the SysNAND FIRM.\n\n"
