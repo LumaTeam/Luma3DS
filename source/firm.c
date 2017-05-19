@@ -379,10 +379,7 @@ void launchFirm(FirmwareType firmType, bool loadFromStorage)
     if(!ISFIRMLAUNCH) deinitScreens();
     
     //Set ARM11 kernel entrypoint
-    if(ISFIRMLAUNCH || ISSIGHAX)
-        ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;
-    else
-        BRAHMA_ARM11_ENTRYPOINT = (u32)firm->arm11Entry;
+    ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;
 
     //Ensure that all memory transfers have completed and that the caches have been flushed
     flushEntireDCache();

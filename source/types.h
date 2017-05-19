@@ -47,7 +47,6 @@ typedef volatile s64 vs64;
 
 #include "3dsheaders.h"
 
-#define BRAHMA_ARM11_ENTRYPOINT         *(vu32 *)0x1FFFFFF8
 #define ARM11_CORE0_MAILBOX_ENTRYPOINT  *(vu32 *)0x1FFFFFFC
 
 #define CFG_SYSPROT9        (*(vu8  *)0x10000000)
