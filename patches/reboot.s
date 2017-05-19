@@ -105,8 +105,11 @@ arm11_entrypoint_addr equ 0x1FFFFFFC
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-fname: .dcw "sdmc:/arm9loaderha.firm"
-       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+.area 82, 0
+fname: .dcw "sdmc:/boot.firm"
+.endarea
+
 .pool
 nand_mount: .dcw "nand"
 

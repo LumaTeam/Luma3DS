@@ -33,13 +33,14 @@
 #include "crypto.h"
 #include "fmt.h"
 #include "memory.h"
+#include "i2c.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 u16 launchedFirmTidLow[8];
-u16 launchedPath[42];
+u16 launchedPath[41];
 
 void main(int argc, char **argv)
 {
@@ -58,7 +59,7 @@ void main(int argc, char **argv)
         case 1: //Normal boot
         {
             u32 i;
-            for(i = 0; i < 41 && launchedPath[i] != 0; i++) //Copy and convert the path to utf16
+            for(i = 0; i < 40 && launchedPath[i] != 0; i++) //Copy and convert the path to utf16
                 launchedPath[2 * i] = argv[0][i];
             for(; i < 41; i++)
                 launchedPath[i] = 0;
@@ -70,9 +71,12 @@ void main(int argc, char **argv)
 
         case 2: //Firmlaunch
         {
+            
+            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
+            while(true);
             u32 i;
             u16 *p = (u16 *)argv[0];
-            for(i = 0; i < 41 && launchedPath[i] != 0; i++)
+            for(i = 0; i < 40 && launchedPath[i] != 0; i++)
                 launchedPath[i] = p[i];
             for(; i < 41; i++)
                 launchedPath[i] = 0;
