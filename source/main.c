@@ -33,7 +33,6 @@
 #include "crypto.h"
 #include "fmt.h"
 #include "memory.h"
-#include "i2c.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
@@ -64,16 +63,12 @@ void main(int argc, char **argv)
             for(; i < 41; i++)
                 launchedPath[i] = 0;
 
-            for(u32 i = 0; i < 8; i++)
-                launchedFirmTidLow[i] = 0;
+            memset(launchedFirmTidLow, 0, 16);
             break;
         }
 
         case 2: //Firmlaunch
         {
-            
-            i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
-            while(true);
             u32 i;
             u16 *p = (u16 *)argv[0];
             for(i = 0; i < 40 && launchedPath[i] != 0; i++)
