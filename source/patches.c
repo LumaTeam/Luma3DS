@@ -135,8 +135,8 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_bin_size, 4);
     *pos_fopen = fOpenOffset;
 
-    u16 *fname = (u16 *)memsearch(off, u"sd", reboot_bin_size, 4);
-    memcpy(fname, launchedPath, 82);
+    u16 *fname = (u16 *)memsearch(off, u"sdmc", reboot_bin_size, 8);
+    memcpy(fname, launchedPath, sizeof(launchedPath));
 
     return 0;
 }

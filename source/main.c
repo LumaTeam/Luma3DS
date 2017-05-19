@@ -49,17 +49,19 @@ void main(int argc, char **argv)
     FirmwareType firmType;
     FirmwareSource nandType;
 
+    char errbuf[128];
+
     switch(argc)
     {
         case 0:
-            error("Unsupported launcher.");
+            error("Unsupported launcher (argc = 0).");
             break;
 
         case 1: //Normal boot
         {
             u32 i;
-            for(i = 0; i < 40 && launchedPath[i] != 0; i++) //Copy and convert the path to utf16
-                launchedPath[2 * i] = argv[0][i];
+            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
+                launchedPath[i] = argv[0][i];
             for(; i < 41; i++)
                 launchedPath[i] = 0;
 
@@ -71,7 +73,7 @@ void main(int argc, char **argv)
         {
             u32 i;
             u16 *p = (u16 *)argv[0];
-            for(i = 0; i < 40 && launchedPath[i] != 0; i++)
+            for(i = 0; i < 40 && p[i] != 0; i++)
                 launchedPath[i] = p[i];
             for(; i < 41; i++)
                 launchedPath[i] = 0;
@@ -79,28 +81,40 @@ void main(int argc, char **argv)
             memcpy(launchedFirmTidLow, (u16 *)argv[1], 16);
             break;
         }
+
+        default:
+            sprintf(errbuf, "Unsupported launcher (argc = %d > 2).", argc);
+            error(errbuf);
+            break;
     }
 
-    char mountPoint[5] = {0};
-    for(u32 i = 0; i < 4 && argv[0][i] != ':'; i++)
-        mountPoint[i] = argv[0][i];
+    u16 mountPoint[5] = {0};
+    for(u32 i = 0; i < 4 && launchedPath[i] != u':'; i++)
+        mountPoint[i] = launchedPath[i];
 
     //Mount SD or CTRNAND
     bool isSdMode;
 
-    if(memcmp(mountPoint, "sdmc", 4) == 0)
+    if(memcmp(mountPoint, u"sdmc", 8) == 0)
     {
         if(!mountFs(true, false)) error("Failed to mount SD.");
         isSdMode = true;
     }
-    else if(memcmp(mountPoint, "nand", 4) == 0)
+    else if(memcmp(mountPoint, u"nand", 8) == 0)
     {
         firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
         isSdMode = false;
     }
     else
-        error("Launched from an unsupported location");
+    {
+        char mount8[5] = {0};
+        for(u32 i = 0 ; i < 4; i++)
+            mount8[i] = (char)mountPoint[i];
+
+        sprintf(errbuf, "Launched from an unsupported location: %s.", mount8);
+        error(errbuf);
+    }
 
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
@@ -305,9 +319,8 @@ boot:
 
     if(res != 0)
     {
-        char patchesError[43];
-        sprintf(patchesError, "Failed to apply %u FIRM patch(es).", res);
-        error(patchesError);
+        sprintf(errbuf, "Failed to apply %u FIRM patch(es).", res);
+        error(errbuf);
     }
 
     launchFirm(firmType, loadFromStorage);

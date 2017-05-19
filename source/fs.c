@@ -189,8 +189,8 @@ void loadPayload(u32 pressed, const char *payloadPath)
     char path[62] = {0},
          absPath[92] = {0};
 
-    char mountPoint[5] = {0};
-    for(u32 i = 0; i < 4 && launchedPath[i] != ':'; i++)
+    u16 mountPoint[5] = {0};
+    for(u32 i = 0; i < 4 && launchedPath[i] != u':'; i++)
         mountPoint[i] = launchedPath[i];
 
     if(payloadPath == NULL)
@@ -222,7 +222,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
         if(!info.fname[0]) return;
 
         sprintf(path, "payloads/%s", info.altname);
-        if(memcmp(mountPoint, "nand", 4))
+        if(memcmp(mountPoint, u"nand", 8))
             sprintf(absPath, "nand:/rw/luma/payloads/%s", info.altname);
         else
             sprintf(absPath, "%s:/luma/payloads/%s", mountPoint, info.altname);
@@ -231,7 +231,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
     }
     else
     {
-        if(memcmp(mountPoint, "nand", 4))
+        if(memcmp(mountPoint, u"nand", 8))
             sprintf(absPath, "nand:/rw/luma/payloads/%s", payloadPath);
         else
             sprintf(absPath, "%s:/luma/payloads/%s", mountPoint, payloadPath);

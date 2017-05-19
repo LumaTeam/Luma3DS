@@ -181,6 +181,8 @@ nand_mount: .dcw "nand"
         blo copy_loop32
     bx lr
 
+    .pool
+
     copy_launch_stub_end:
 
     flushCaches:
@@ -209,5 +211,4 @@ nand_mount: .dcw "nand"
 
     bx lr
 
-.pool
 .close
