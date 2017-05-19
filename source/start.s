@@ -33,6 +33,9 @@ _start:
     cmp r2, r4
     movne r0, #0    @ check magic word
 
+    mov r9, r0
+    mov r10, r1
+
     @ Change the stack pointer
     mov sp, #0x27000000
 
@@ -46,8 +49,6 @@ _start:
     @ Flush caches
     bl flushEntireDCache
     bl flushEntireICache
-
-    push {r0-r3}
 
     @ Give read/write access to all the memory regions
     ldr r0, =0x3333333
@@ -97,5 +98,6 @@ _start:
     sub r2, r0
     bl memset32
 
-    pop {r0-r3}
+    mov r0, r9
+    mov r1, r10
     b main
