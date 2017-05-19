@@ -39,7 +39,7 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 u16 launchedFirmTidLow[8];
-u16 launchedPath[41];
+u16 launchedPath[7 + 255];
 
 void main(int argc, char **argv)
 {
@@ -60,9 +60,9 @@ void main(int argc, char **argv)
         case 1: //Normal boot
         {
             u32 i;
-            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
+            for(i = 0; i < 6 + 255 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
                 launchedPath[i] = argv[0][i];
-            for(; i < 41; i++)
+            for(; i < 7 + 255; i++)
                 launchedPath[i] = 0;
 
             memset(launchedFirmTidLow, 0, 16);
@@ -73,9 +73,9 @@ void main(int argc, char **argv)
         {
             u32 i;
             u16 *p = (u16 *)argv[0];
-            for(i = 0; i < 40 && p[i] != 0; i++)
+            for(i = 0; i < 6 + 255 && p[i] != 0; i++)
                 launchedPath[i] = p[i];
-            for(; i < 41; i++)
+            for(; i < 7 + 255; i++)
                 launchedPath[i] = 0;
 
             memcpy(launchedFirmTidLow, (u16 *)argv[1], 16);

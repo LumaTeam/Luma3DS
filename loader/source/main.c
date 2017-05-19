@@ -27,12 +27,12 @@
 void main(int argc __attribute__((unused)), char **argv)
 {
     Firm *firm = (Firm *)0x24000000;
-    char absPath[92];
+    char absPath[24 + 255];
 
     u32 i;
-    for(i = 0; i < 91 && argv[1] != 0; i++)
-        absPath[i] = argv[1][i];
-    for(; i < 92; i++)
+    for(i = 0; i < 23 + 255 && argv[0][i] != 0; i++)
+        absPath[i] = argv[0][i];
+    for(; i < 24 + 255; i++)
         absPath[i] = 0;
 
     char *argvPassed[1] = {absPath};

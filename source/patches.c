@@ -119,6 +119,12 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     //Look for firmlaunch code
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
+    u32 pathLen;
+    for(pathLen = 0; launchedPath[pathLen] != 0; pathLen++);
+
+    if(pathLen > 82)
+        return 1;
+
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
     if(off == NULL) return 1;
@@ -136,7 +142,7 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     *pos_fopen = fOpenOffset;
 
     u16 *fname = (u16 *)memsearch(off, u"sdmc", reboot_bin_size, 8);
-    memcpy(fname, launchedPath, sizeof(launchedPath));
+    memcpy(fname, launchedPath, 82);
 
     return 0;
 }
