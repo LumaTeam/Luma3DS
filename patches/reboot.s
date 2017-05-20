@@ -53,12 +53,13 @@ arm11_entrypoint_addr equ 0x1FFFFFFC
     ldr r6, [r6, #0x28]
     blx r6
 
-    ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
+    ; Copy the low TID (in UTF-16) of the wanted firm
     ldr r0, =low_tid_addr
     add r1, r8, #0x1A
     mov r2, #0x10
     bl memcpy16
 
+    ; Copy argv[0]
     ldr r0, =fname_addr
     adr r1, fname
     mov r2, #42
@@ -110,9 +111,6 @@ fopen: .ascii "OPEN"
 fname: .ascii "FILE"
 .endarea
 
-.pool
-nand_mount: .dcw "nand"
-
 .align 4
     kernelcode_start:
 
@@ -147,10 +145,11 @@ nand_mount: .dcw "nand"
         add r3, r5,lsl #5
         add r3, r5,lsl #4
         ldmia r3, {r6-r8}
-        mov r0, r7
-        add r1, r4, r6
-        mov r2, r8
-        bl memcpy32
+        cmp r8, #0
+        movne r0, r7
+        addne r1, r4, r6
+        movne r2, r8
+        blne memcpy32
         add r5, #1
         cmp r5, #3
         blo load_section_loop
@@ -171,8 +170,6 @@ nand_mount: .dcw "nand"
     bx lr
 
     memcpy32:
-    cmp r2, #0
-    bxeq lr
     add r2, r0, r2
     copy_loop32:
         ldr r3, [r1], #4
