@@ -53,14 +53,10 @@ void main(int argc, char **argv)
 
     switch(argc)
     {
-        case 0:
-            error("Unsupported launcher (argc = 0).");
-            break;
-
         case 1: //Normal boot
         {
             u32 i;
-            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
+            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
                 launchedPath[i] = argv[0][i];
             launchedPath[i] = 0;
             break;
