@@ -38,18 +38,17 @@ extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-u16 launchedFirmTidLow[8];
-u16 launchedPath[7 + 255];
+bool isFirmlaunch;
+u16 launchedPath[41];
 
 void main(int argc, char **argv)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
+    char errbuf[46];
     u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
-
-    char errbuf[128];
 
     switch(argc)
     {
@@ -60,12 +59,12 @@ void main(int argc, char **argv)
         case 1: //Normal boot
         {
             u32 i;
-            for(i = 0; i < 6 + 255 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
+            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
                 launchedPath[i] = argv[0][i];
-            for(; i < 7 + 255; i++)
+            for(; i < 41; i++)
                 launchedPath[i] = 0;
 
-            memset(launchedFirmTidLow, 0, 16);
+            isFirmlaunch = false;
             break;
         }
 
@@ -73,34 +72,32 @@ void main(int argc, char **argv)
         {
             u32 i;
             u16 *p = (u16 *)argv[0];
-            for(i = 0; i < 6 + 255 && p[i] != 0; i++)
+            for(i = 0; i < 40 && p[i] != 0; i++)
                 launchedPath[i] = p[i];
-            for(; i < 7 + 255; i++)
+            for(; i < 41; i++)
                 launchedPath[i] = 0;
 
-            memcpy(launchedFirmTidLow, (u16 *)argv[1], 16);
+            isFirmlaunch = true;
             break;
         }
 
         default:
-            sprintf(errbuf, "Unsupported launcher (argc = %d > 2).", argc);
+        {
+            sprintf(errbuf, "Unsupported launcher (argc = %d).", argc);
             error(errbuf);
             break;
+        }
     }
-
-    u16 mountPoint[5] = {0};
-    for(u32 i = 0; i < 4 && launchedPath[i] != u':'; i++)
-        mountPoint[i] = launchedPath[i];
 
     //Mount SD or CTRNAND
     bool isSdMode;
 
-    if(memcmp(mountPoint, u"sdmc", 8) == 0)
+    if(memcmp(launchedPath, u"sdmc", 8) == 0)
     {
         if(!mountFs(true, false)) error("Failed to mount SD.");
         isSdMode = true;
     }
-    else if(memcmp(mountPoint, u"nand", 8) == 0)
+    else if(memcmp(launchedPath, u"nand", 8) == 0)
     {
         firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
@@ -108,11 +105,10 @@ void main(int argc, char **argv)
     }
     else
     {
-        char mount8[5] = {0};
-        for(u32 i = 0 ; i < 4; i++)
-            mount8[i] = (char)mountPoint[i];
-
-        sprintf(errbuf, "Launched from an unsupported location: %s.", mount8);
+        char mountPoint[5] = {0};
+        for(u32 i = 0; i < 4 && launchedPath[i] != u':'; i++)
+            mountPoint[i] = (char)launchedPath[i];
+        sprintf(errbuf, "Launched from an unsupported location: %s.", mountPoint);
         error(errbuf);
     }
 
@@ -120,19 +116,19 @@ void main(int argc, char **argv)
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
-    if(ISFIRMLAUNCH)
+    if(isFirmlaunch)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
-        switch(launchedFirmTidLow[7])
+        switch(argv[1][14])
         {
-            case u'2':
-                firmType = (FirmwareType)(launchedFirmTidLow[5] - u'0');
+            case '2':
+                firmType = (FirmwareType)(argv[1][10] - '0');
                 break;
-            case u'3':
+            case '3':
                 firmType = SAFE_FIRM;
                 break;
-            case u'1':
+            case '1':
                 firmType = SYSUPDATER_FIRM;
                 break;
         }
@@ -285,7 +281,7 @@ boot:
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&emuHeader, &firmSource);
 
-    if(!ISFIRMLAUNCH)
+    if(!isFirmlaunch)
     {
         configData.config = (configData.config & 0xFFFFFF80) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);

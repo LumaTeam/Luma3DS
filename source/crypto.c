@@ -441,47 +441,24 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
     return decryptExeFs(cxi);
 }
 
-static inline void twlConsoleInfoInit(void)
-{
-    u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
-    CFG_TWLUNITINFO = CFG_UNITINFO;
-    OTP_TWLCONSOLEID = twlConsoleId;
-
-    *REG_AESCNT = 0;
-
-    vu32 *k3X = REGs_AESTWLKEYS[3][1], *k1X = REGs_AESTWLKEYS[1][1];
-
-    k3X[0] = (u32)twlConsoleId;
-    k3X[3] = (u32)(twlConsoleId >> 32);
-
-    k1X[2] = (u32)(twlConsoleId >> 32);
-    k1X[3] = (u32)twlConsoleId;
-}
-
 void kernel9Loader(Arm9Bin *arm9Section)
 {
     //Determine the kernel9loader version
     u32 k9lVersion;
-    if(arm9Section == NULL)
-        k9lVersion = 2;
-    else
+    switch(arm9Section->magic[3])
     {
-        switch(arm9Section->magic[3])
-        {
-            case 0xFF:
-                k9lVersion = 0;
-                break;
-            case '1':
-                k9lVersion = 1;
-                break;
-            default:
-                k9lVersion = 2;
-                break;
-        }
+        case 0xFF:
+            k9lVersion = 0;
+            break;
+        case '1':
+            k9lVersion = 1;
+            break;
+        default:
+            k9lVersion = 2;
     }
 
     u32 *startOfArm9Bin = (u32 *)((u8 *)arm9Section + 0x800);
-    bool needToDecrypt = arm9Section != NULL && *startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000;
+    if(*startOfArm9Bin == 0x47704770 || *startOfArm9Bin == 0xB0862000) return; //Already decrypted
 
     //Set 0x11 keyslot
     __attribute__((aligned(4))) const u8 key1s[2][AES_BLOCK_SIZE] = {
@@ -495,68 +472,28 @@ void kernel9Loader(Arm9Bin *arm9Section)
 
     aes_setkey(0x11, k9lVersion == 2 ? key2s[ISDEVUNIT ? 1 : 0] : key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    if(needToDecrypt)
-    {
-        u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
+    u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
 
-        //Set keyX
-        __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
-        aes_use_keyslot(0x11);
-        aes(keyX, k9lVersion == 0 ? arm9Section->keyX : arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        //Set keyY
-        __attribute__((aligned(4))) u8 keyY[AES_BLOCK_SIZE];
-        memcpy(keyY, arm9Section->keyY, sizeof(keyY));
-        aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        //Set CTR
-        __attribute__((aligned(4))) u8 arm9BinCtr[AES_BLOCK_SIZE];
-        memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
-
-        //Decrypt ARM9 binary
-        aes_use_keyslot(arm9BinSlot);
-        aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
-    }
-
-    __attribute__((aligned(4))) u8 keyBlocks[2][AES_BLOCK_SIZE] = {
-        {0xA4, 0x8D, 0xE4, 0xF1, 0x0B, 0x36, 0x44, 0xAA, 0x90, 0x31, 0x28, 0xFF, 0x4D, 0xCA, 0x76, 0xDF},
-        {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98}
-    },                             decKey[AES_BLOCK_SIZE];
-
-    u8 firstKey;
-    u32 keyBlocksIndex;
-
-    if(k9lVersion == 2)
-    {
-        firstKey = 0x19;
-        keyBlocksIndex = 1;
-    }
-    else
-    {
-        firstKey = 0x18;
-        keyBlocksIndex = 0;
-    }
-
+    //Set keyX
+    __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
     aes_use_keyslot(0x11);
-    for(u8 slot = firstKey; slot < 0x20; slot++, keyBlocks[keyBlocksIndex][0xF]++)
-    {
-        aes(decKey, keyBlocks[keyBlocksIndex], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
+    aes(keyX, k9lVersion == 0 ? arm9Section->keyX : arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+    aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    if(k9lVersion == 2)
-    {
-        aes_setkey(0x11, key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_use_keyslot(0x11);
-        aes(decKey, keyBlocks[0], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(0x18, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
+    //Set keyY
+    __attribute__((aligned(4))) u8 keyY[AES_BLOCK_SIZE];
+    memcpy(keyY, arm9Section->keyY, sizeof(keyY));
+    aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    if(ISSIGHAX)
-        twlConsoleInfoInit();
+    //Set CTR
+    __attribute__((aligned(4))) u8 arm9BinCtr[AES_BLOCK_SIZE];
+    memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
+
+    //Decrypt ARM9 binary
+    aes_use_keyslot(arm9BinSlot);
+    aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
 }
 
 void computePinHash(u8 *outbuf, const u8 *inbuf)

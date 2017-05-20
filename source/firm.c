@@ -376,7 +376,7 @@ void launchFirm(FirmwareType firmType, bool loadFromStorage)
     for(; sectionNum < 4 && firm->section[sectionNum].size != 0; sectionNum++)
         memcpy(firm->section[sectionNum].address, (u8 *)firm + firm->section[sectionNum].offset, firm->section[sectionNum].size);
 
-    if(!ISFIRMLAUNCH) deinitScreens();
+    if(!isFirmlaunch) deinitScreens();
     
     //Set ARM11 kernel entrypoint
     ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;

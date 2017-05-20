@@ -189,9 +189,6 @@ void loadPayload(u32 pressed, const char *payloadPath)
     char absPath[24 + _MAX_LFN] = {0};
     char path[10 + _MAX_LFN] = {0};
 
-    u16 mountPoint[5] = {0};
-    for(u32 i = 0; i < 4 && launchedPath[i] != u':'; i++)
-
     if(payloadPath == NULL)
     {
         const char *pattern;
@@ -212,7 +209,6 @@ void loadPayload(u32 pressed, const char *payloadPath)
         FILINFO info;
         FRESULT result;
 
-
         result = f_findfirst(&dir, &info, "payloads", pattern);
 
         if(result != FR_OK) return;
@@ -226,13 +222,13 @@ void loadPayload(u32 pressed, const char *payloadPath)
     }
     else sprintf(path, "%s", payloadPath);
 
-        payloadSize = fileRead(firm, path, maxPayloadSize);
+    payloadSize = fileRead(firm, path, maxPayloadSize);
 
     if(!payloadSize || !checkFirmPayload()) return;
 
     writeConfig(true);
 
-    if(memcmp(mountPoint, u"nand", 8))
+    if(memcmp(launchedPath, u"nand", 8))
         sprintf(absPath, "nand:/rw/luma/%s", path);
     else
         sprintf(absPath, "sdmc:/luma/%s", path);

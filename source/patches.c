@@ -120,10 +120,9 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
     u32 pathLen;
-    for(pathLen = 0; launchedPath[pathLen] != 0; pathLen++);
+    for(pathLen = 0; pathLen < 41 && launchedPath[pathLen] != 0; pathLen++);
 
-    if(pathLen > 82)
-        return 1;
+    if(launchedPath[pathLen] != 0) return 1;
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -142,7 +141,7 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     *pos_fopen = fOpenOffset;
 
     u16 *fname = (u16 *)memsearch(off, u"sdmc", reboot_bin_size, 8);
-    memcpy(fname, launchedPath, 82);
+    memcpy(fname, launchedPath, 2 * (1 + pathLen));
 
     return 0;
 }

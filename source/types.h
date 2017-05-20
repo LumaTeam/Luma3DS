@@ -60,8 +60,6 @@ typedef volatile s64 vs64;
 
 #define ISN3DS       (PDN_MPCORE_CFG == 7)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
-#define ISSIGHAX     (!(CFG_SYSPROT9 & 2))
-#define ISFIRMLAUNCH (launchedFirmTidLow[5] != 0)
 
 typedef struct __attribute__((packed))
 {
@@ -115,4 +113,5 @@ typedef enum FirmwareType
 } FirmwareType;
 
 extern u16 launchedFirmTidLow[8];
-extern u16 launchedPath[7 + 255];
+extern u16 launchedPath[41];
+extern bool isFirmlaunch;
