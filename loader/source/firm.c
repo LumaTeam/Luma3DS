@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -20,18 +20,25 @@
 *   Notices displayed by works containing it.
 */
 
-#pragma once
+#include "firm.h"
+#include "memory.h"
+#include "cache.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
+void launchFirm(Firm *firm, int argc, char **argv)
+{
 
-//Common data types
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef volatile u8 vu8;
-typedef volatile u16 vu16;
-typedef volatile u32 vu32;
-typedef volatile u64 vu64;
+    //Copy FIRM sections to respective memory locations
+    for(u32 sectionNum = 0; sectionNum < 4 && firm->section[sectionNum].size != 0; sectionNum++)
+        memcpy(firm->section[sectionNum].address, (u8 *)firm + firm->section[sectionNum].offset, firm->section[sectionNum].size);
+
+    //Set ARM11 entrypoint
+    *(vu32 *)0x1FFFFFFC = (u32)firm->arm11Entry;
+
+    //Ensure that all memory transfers have completed and that the caches have been flushed
+    flushCaches();
+
+    //Jump to ARM9 entrypoint. Also give it additional arguments it can dismiss
+    ((void (*)(int, char**, u32))firm->arm9Entry)(argc, argv, 0x0000BEEF);
+
+    __builtin_unreachable();
+}

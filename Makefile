@@ -17,7 +17,6 @@ dir_injector := injector
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
-dir_haxloader := haxloader
 dir_build := build
 dir_out := out
 
@@ -54,21 +53,16 @@ define bin2o
 endef
 
 .PHONY: all
-all: a9lh haxloader
+all: firm
 
 .PHONY: release
 release: $(dir_out)/$(name)$(revision).7z
 
-.PHONY: a9lh
-a9lh: $(dir_out)/arm9loaderhax.bin
-
-.PHONY: haxloader
-haxloader: a9lh
-	@$(MAKE) name=$(name) -C $(dir_haxloader)
+.PHONY: firm
+firm: $(dir_out)/boot.firm
 
 .PHONY: clean
 clean:
-	@$(MAKE) -C $(dir_haxloader) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean
@@ -82,17 +76,13 @@ clean:
 .PHONY: $(dir_arm11_exceptions)
 .PHONY: $(dir_injector)
 
-$(dir_out) $(dir_build):
-	@mkdir -p "$@"
-
 $(dir_out)/$(name)$(revision).7z: all
+	@mkdir -p "$(@D)"
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
-	@cp -a $(dir_build)/main.bin $@
-
-$(dir_build)/main.bin: $(dir_build)/main.elf
-	$(OBJCOPY) -S -O binary $< $@
+$(dir_out)/boot.firm: $(dir_build)/main.elf
+	@mkdir -p "$(@D)"
+	@firmtool build $@ -e 0 -D $^ -C NDMA
 
 $(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
@@ -100,19 +90,24 @@ $(dir_build)/main.elf: $(bundled) $(objects)
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
-$(dir_build)/injector.bin: $(dir_injector) $(dir_build)
+$(dir_build)/injector.bin: $(dir_injector)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/loader.bin: $(dir_loader) $(dir_build)
+$(dir_build)/loader.bin: $(dir_loader)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions) $(dir_build)
+$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions) $(dir_build)
+$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions)
+	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
+$(dir_build)/%.bin: $(dir_patches)/%.s
+	@mkdir -p "$(@D)"
 	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3

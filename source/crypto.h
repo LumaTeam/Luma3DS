@@ -107,12 +107,13 @@
 extern u32 emuOffset;
 extern FirmwareSource firmSource;
 
+void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode);
+void sha(void *res, const void *src, u32 size, u32 mode);
+
 void ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);
-void set6x7xKeys(void);
 bool decryptExeFs(Cxi *cxi);
 bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
 void kernel9Loader(Arm9Bin *arm9Section);
 void computePinHash(u8 *outbuf, const u8 *inbuf);
-void backupAndRestoreShaHash(bool isRestore);

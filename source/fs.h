@@ -24,7 +24,7 @@
 
 #include "types.h"
 
-#define PATTERN(a) a "_*.bin"
+#define PATTERN(a) a "_*.firm"
 
 bool mountFs(bool isSd, bool switchToCtrNand);
 u32 fileRead(void *dest, const char *path, u32 maxSize);

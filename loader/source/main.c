@@ -22,17 +22,19 @@
 
 #include "memory.h"
 #include "cache.h"
+#include "firm.h"
 
-extern u32 payloadSize; //Defined in start.s
-
-void main(void)
+void main(int argc __attribute__((unused)), char **argv)
 {
-    void *payloadAddress = (void *)0x23F00000;
+    Firm *firm = (Firm *)0x24000000;
+    char absPath[24 + 255];
 
-    memcpy(payloadAddress, (void *)0x24F00000, payloadSize);
+    u32 i;
+    for(i = 0; i < 23 + 255 && argv[0][i] != 0; i++)
+        absPath[i] = argv[0][i];
+    absPath[i] = 0;
 
-    //Ensure that all memory transfers have completed and that the caches have been flushed
-    flushCaches();
+    char *argvPassed[1] = {absPath};
 
-    ((void (*)())payloadAddress)();
+    launchFirm(firm, 1, argvPassed);
 }

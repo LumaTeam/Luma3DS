@@ -47,22 +47,17 @@ typedef volatile s64 vs64;
 
 #include "3dsheaders.h"
 
-#define BRAHMA_ARM11_ENTRY 0x1FFFFFF8
+#define ARM11_CORE0_MAILBOX_ENTRYPOINT  *(vu32 *)0x1FFFFFFC
 
-#define CFG_SYSPROT9        (*(vu8  *)0x10000000)
 #define CFG_BOOTENV         (*(vu32 *)0x10010000)
 #define CFG_UNITINFO        (*(vu8  *)0x10010010)
 #define CFG_TWLUNITINFO     (*(vu8  *)0x10010014)
 #define OTP_DEVCONSOLEID    (*(vu64 *)0x10012000)
 #define OTP_TWLCONSOLEID    (*(vu64 *)0x10012100)
 #define PDN_MPCORE_CFG      (*(vu32 *)0x10140FFC)
-#define PDN_SPI_CNT         (*(vu32 *)0x101401C0)
 
 #define ISN3DS       (PDN_MPCORE_CFG == 7)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
-#define ISA9LH       (!PDN_SPI_CNT)
-#define ISSIGHAX     (!(CFG_SYSPROT9 & 2))
-#define ISFIRMLAUNCH (launchedFirmTidLow[5] != 0)
 
 typedef struct __attribute__((packed))
 {
@@ -115,4 +110,8 @@ typedef enum FirmwareType
     NATIVE_FIRM1X2X
 } FirmwareType;
 
-extern u16 launchedFirmTidLow[8]; //Defined in start.s
+extern bool isFirmlaunch,
+            isSdMode;
+extern u16 launchedFirmTidLow[8];
+extern u16 launchedPath[41];
+

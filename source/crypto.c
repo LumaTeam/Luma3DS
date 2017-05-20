@@ -230,7 +230,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
     }
 }
 
-static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
+void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
 {
     *REG_AESCNT =   mode |
                     AES_CNT_INPUT_ORDER | AES_CNT_OUTPUT_ORDER |
@@ -278,10 +278,8 @@ static void sha_wait_idle()
     while(*REG_SHA_CNT & 1);
 }
 
-static void sha(void *res, const void *src, u32 size, u32 mode)
+void sha(void *res, const void *src, u32 size, u32 mode)
 {
-    backupAndRestoreShaHash(false);
-
     sha_wait_idle();
     *REG_SHA_CNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
 
@@ -400,26 +398,6 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
     return result;
 }
 
-void set6x7xKeys(void)
-{
-    __attribute__((aligned(4))) const u8 keyX0x25s[2][AES_BLOCK_SIZE] = {
-        {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3},
-        {0x81, 0x90, 0x7A, 0x4B, 0x6F, 0x1B, 0x47, 0x32, 0x3A, 0x67, 0x79, 0x74, 0xCE, 0x4A, 0xD7, 0x1B}
-    },
-                                         keyY0x2Fs[2][AES_BLOCK_SIZE] = {
-        {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16},
-        {0x73, 0x25, 0xC4, 0xEB, 0x14, 0x3A, 0x0D, 0x5F, 0x5D, 0xB6, 0xE5, 0xC5, 0x7A, 0x21, 0x95, 0xAC}
-    };
-
-    aes_setkey(0x25, keyX0x25s[ISDEVUNIT ? 1 : 0], AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setkey(0x2F, keyY0x2Fs[ISDEVUNIT ? 1 : 0], AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-    /* [3dbrew] The first 0x10-bytes are checked by the v6.0/v7.0 NATIVE_FIRM keyinit function,
-                when non-zero it clears this block and continues to do the key generation.
-                Otherwise when this block was already all-zero, it immediately returns. */
-    memset32((void *)0x01FFCD00, 0, 0x10);
-}
-
 bool decryptExeFs(Cxi *cxi)
 {
     if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return false;
@@ -463,23 +441,6 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
     return decryptExeFs(cxi);
 }
 
-static inline void twlConsoleInfoInit(void)
-{
-    u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
-    CFG_TWLUNITINFO = CFG_UNITINFO;
-    OTP_TWLCONSOLEID = twlConsoleId;
-
-    *REG_AESCNT = 0;
-
-    vu32 *k3X = REGs_AESTWLKEYS[3][1], *k1X = REGs_AESTWLKEYS[1][1];
-
-    k3X[0] = (u32)twlConsoleId;
-    k3X[3] = (u32)(twlConsoleId >> 32);
-
-    k1X[2] = (u32)(twlConsoleId >> 32);
-    k1X[3] = (u32)twlConsoleId;
-}
-
 void kernel9Loader(Arm9Bin *arm9Section)
 {
     //Determine the kernel9loader version
@@ -494,11 +455,10 @@ void kernel9Loader(Arm9Bin *arm9Section)
             break;
         default:
             k9lVersion = 2;
-            break;
     }
 
     u32 *startOfArm9Bin = (u32 *)((u8 *)arm9Section + 0x800);
-    bool needToDecrypt = *startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000;
+    if(*startOfArm9Bin == 0x47704770 || *startOfArm9Bin == 0xB0862000) return; //Already decrypted
 
     //Set 0x11 keyslot
     __attribute__((aligned(4))) const u8 key1s[2][AES_BLOCK_SIZE] = {
@@ -512,69 +472,28 @@ void kernel9Loader(Arm9Bin *arm9Section)
 
     aes_setkey(0x11, k9lVersion == 2 ? key2s[ISDEVUNIT ? 1 : 0] : key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    if(needToDecrypt)
-    {
-        u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
+    u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
 
-        //Set keyX
-        __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
-        aes_use_keyslot(0x11);
-        aes(keyX, k9lVersion == 0 ? arm9Section->keyX : arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        //Set keyY
-        __attribute__((aligned(4))) u8 keyY[AES_BLOCK_SIZE];
-        memcpy(keyY, arm9Section->keyY, sizeof(keyY));
-        aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        //Set CTR
-        __attribute__((aligned(4))) u8 arm9BinCtr[AES_BLOCK_SIZE];
-        memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
-
-        //Decrypt ARM9 binary
-        aes_use_keyslot(arm9BinSlot);
-        aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
-    }
-
-    __attribute__((aligned(4))) u8 keyBlocks[2][AES_BLOCK_SIZE] = {
-        {0xA4, 0x8D, 0xE4, 0xF1, 0x0B, 0x36, 0x44, 0xAA, 0x90, 0x31, 0x28, 0xFF, 0x4D, 0xCA, 0x76, 0xDF},
-        {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98}
-    },                             decKey[AES_BLOCK_SIZE];
-
-    u8 firstKey;
-    u32 keyBlocksIndex;
-
-    if(k9lVersion == 2)
-    {
-        firstKey = 0x19;
-        keyBlocksIndex = 1;
-    }
-    else
-    {
-        firstKey = 0x18;
-        keyBlocksIndex = 0;
-    }
-
+    //Set keyX
+    __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
     aes_use_keyslot(0x11);
-    for(u8 slot = firstKey; slot < 0x20; slot++, keyBlocks[keyBlocksIndex][0xF]++)
-    {
-        aes(decKey, keyBlocks[keyBlocksIndex], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
+    aes(keyX, k9lVersion == 0 ? arm9Section->keyX : arm9Section->slot0x16keyX, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+    aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    if(!ISSIGHAX) return;
+    //Set keyY
+    __attribute__((aligned(4))) u8 keyY[AES_BLOCK_SIZE];
+    memcpy(keyY, arm9Section->keyY, sizeof(keyY));
+    aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    twlConsoleInfoInit();
+    //Set CTR
+    __attribute__((aligned(4))) u8 arm9BinCtr[AES_BLOCK_SIZE];
+    memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
 
-    if(k9lVersion == 2)
-    {
-        aes_setkey(0x11, key1s[ISDEVUNIT ? 1 : 0], AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-        aes_use_keyslot(0x11);
-        aes(decKey, keyBlocks[0], 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(0x18, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-    }
+    //Decrypt ARM9 binary
+    aes_use_keyslot(arm9BinSlot);
+    aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+
+    if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
 }
 
 void computePinHash(u8 *outbuf, const u8 *inbuf)
@@ -586,22 +505,4 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
     aes_use_keyslot(0x04); //Console-unique keyslot whose keys are set by the ARM9 bootROM
     aes(cipherText, inbuf, 1, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     sha(outbuf, cipherText, sizeof(cipherText), SHA_256_MODE);
-}
-
-void backupAndRestoreShaHash(bool isRestore)
-{
-    if(!ISA9LH) return;
-
-    static bool didShaHashBackup = false;
-    __attribute__((aligned(4))) static u8 shaHashBackup[SHA_256_HASH_SIZE];
-
-    if(isRestore)
-    {
-        if(didShaHashBackup) memcpy((void *)REG_SHA_HASH, shaHashBackup, sizeof(shaHashBackup));
-    }
-    else if(!didShaHashBackup)
-    {
-        memcpy(shaHashBackup, (void *)REG_SHA_HASH, sizeof(shaHashBackup));
-        didShaHashBackup = true;
-    }
 }

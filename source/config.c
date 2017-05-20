@@ -55,11 +55,11 @@ bool readConfig(void)
 
 void writeConfig(bool isPayloadLaunch)
 {
-    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF00) | (oldConfig & 0xFF);
+    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF80) | (oldConfig & 0x7F);
 
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFF7F) == oldConfig) return;
+    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFFBF) == oldConfig) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -72,7 +72,7 @@ void writeConfig(bool isPayloadLaunch)
         error("Error writing the configuration file");
 }
 
-void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
+void configMenu(bool oldPinStatus, u32 oldPinMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -81,10 +81,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                       };
 
-    const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
-                                        "( ) Use SysNAND FIRM if booting with R",
+    const char *singleOptionsText[] = { "( ) Autoboot EmuNAND",
+                                        "( ) Use EmuNAND FIRM if booting with R",
                                         "( ) Enable loading external FIRMs and modules",
-                                        "( ) Use custom path",
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
@@ -122,9 +121,9 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "'Clock+L2' can cause issues with some\n"
                                           "games.",
 
-                                          "If enabled, SysNAND will be launched\n"
-                                          "on boot.\n\n"
-                                          "Otherwise, an EmuNAND will.\n\n"
+                                          "If enabled, an EmuNAND\n"
+                                          "will be launched on boot.\n\n"
+                                          "Otherwise, SysNAND will.\n\n"
                                           "Hold L on boot to switch NAND.\n\n"
                                           "To use a different EmuNAND from the\n"
                                           "default, hold a directional pad button\n"
@@ -132,10 +131,10 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "1/2/3/4).",
 
                                           "If enabled, when holding R on boot\n"
-                                          "EmuNAND will be booted with the\n"
-                                          "SysNAND FIRM.\n\n"
-                                          "Otherwise, SysNAND will be booted\n"
-                                          "with an EmuNAND FIRM.\n\n"
+                                          "SysNAND will be booted with an\n"
+                                          "EmuNAND FIRM.\n\n"
+                                          "Otherwise, an EmuNAND will be booted\n"
+                                          "with the SysNAND FIRM.\n\n"
                                           "To use a different EmuNAND from the\n"
                                           "default, hold a directional pad button\n"
                                           "(Up/Right/Down/Left equal EmuNANDs\n"
@@ -145,10 +144,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "Enable loading external FIRMs and\n"
                                           "system modules.\n\n"
                                           "This isn't needed in most cases.\n\n"
-                                          "Refer to the wiki for instructions.",
-
-                                          "Use a custom path for the\n"
-                                          "Luma3DS payload.\n\n"
                                           "Refer to the wiki for instructions.",
 
                                           "Enable overriding the region and\n"
@@ -194,9 +189,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "are doing!",
 
                                           "Enable Luma3DS's ARM9/ARM11 exception\n"
-                                          "handlers.\n"
-                                          "A9LH is required, and Luma3DS should\n"
-                                          "be ran as arm9loaderhax.bin.\n"
+                                          "handlers. Luma3DS should be ran as\n"
+                                          "boot.firm.\n\n"
                                           "Useful for debugging."
                                        };
 
@@ -226,8 +220,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true },
-        { .visible = true}
+        { .visible = true }
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
@@ -388,13 +381,13 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
     }
 
     //Preserve the last-used boot options (first 9 bits)
-    configData.config &= 0xFF;
+    configData.config &= 0x7F;
 
     //Parse and write the new configuration
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        configData.config |= multiOptions[i].enabled << (i * 2 + 8);
+        configData.config |= multiOptions[i].enabled << (i * 2 + 7);
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 20);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 17);
 
     u32 newPinMode = MULTICONFIG(PIN);
 

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -20,25 +20,27 @@
 *   Notices displayed by works containing it.
 */
 
-/*
-*   Thanks to the everyone who contributed in the development of this file
-*/
-
 #pragma once
 
 #include "types.h"
 
-#define I2C1_REG_OFF 0x10161000
-#define I2C2_REG_OFF 0x10144000
-#define I2C3_REG_OFF 0x10148000
+typedef struct __attribute__((packed))
+{
+    u32 offset;
+    u8 *address;
+    u32 size;
+    u32 procType;
+    u8 hash[0x20];
+} FirmSection;
 
-#define I2C_REG_DATA  0
-#define I2C_REG_CNT   1
-#define I2C_REG_CNTEX 2
-#define I2C_REG_SCL   4
+typedef struct __attribute__((packed))
+{
+    char magic[4];
+    u32 reserved1;
+    u8 *arm11Entry;
+    u8 *arm9Entry;
+    u8 reserved2[0x30];
+    FirmSection section[4];
+} Firm;
 
-#define I2C_DEV_MCU  3
-#define I2C_DEV_GYRO 10
-#define I2C_DEV_IR   13
-
-bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data);
+void launchFirm(Firm *firm, int argc, char **argv);

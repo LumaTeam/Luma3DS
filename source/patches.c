@@ -37,30 +37,6 @@
 #include "utils.h"
 #include "../build/bundled.h"
 
-static inline void pathChanger(u8 *pos)
-{
-    const char *pathFile = "path.txt";
-    u8 path[57];
-
-    u32 pathSize = fileRead(path, pathFile, sizeof(path));
-
-    if(pathSize < 6) return;
-
-    if(path[pathSize - 1] == 0xA) pathSize--;
-    if(path[pathSize - 1] == 0xD) pathSize--;
-
-    if(pathSize < 6 || pathSize > 55 || path[0] != '/' || memcmp(path + pathSize - 4, ".bin", 4) != 0) return;
-
-    u16 finalPath[56];
-    for(u32 i = 0; i < pathSize; i++)
-        finalPath[i] = (u16)path[i];
-
-    finalPath[pathSize] = 0;
-
-    u8 *posPath = memsearch(pos, u"sd", reboot_bin_size, 4) + 0xA;
-    memcpy(posPath, finalPath, (pathSize + 1) * 2);
-}
-
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *temp = memsearch(pos, "NCCH", size, 4);
@@ -145,6 +121,11 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     //Look for firmlaunch code
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
+    u32 pathLen;
+    for(pathLen = 0; pathLen < 41 && launchedPath[pathLen] != 0; pathLen++);
+
+    if(launchedPath[pathLen] != 0) return 1;
+
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
     if(off == NULL) return 1;
@@ -161,7 +142,8 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_bin_size, 4);
     *pos_fopen = fOpenOffset;
 
-    if(CONFIG(USECUSTOMPATH)) pathChanger(off);
+    u16 *fname = (u16 *)memsearch(off, "FILE", reboot_bin_size, 8);
+    memcpy(fname, launchedPath, 2 * (1 + pathLen));
 
     return 0;
 }
@@ -405,6 +387,7 @@ u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
     if(isRelease) info->flags = 1;
     if(ISN3DS) info->flags |= 1 << 4;
     if(isSafeMode) info->flags |= 1 << 5;
+    if(isSdMode) info->flags |= 1 << 6;
 
     arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
     *freeK11Space += svcGetCFWInfo_bin_size;

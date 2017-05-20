@@ -53,7 +53,8 @@ $(dir_build)/$(name).elf: $(bundled) $(objects)
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
-$(dir_build)/%.bin: $(dir_patches)/%.s $(dir_build)
+$(dir_build)/%.bin: $(dir_patches)/%.s
+	@mkdir -p "$(@D)"	
 	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3

@@ -32,72 +32,121 @@
 #include "pin.h"
 #include "crypto.h"
 #include "fmt.h"
+#include "memory.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-void main(void)
+bool isFirmlaunch,
+     isSdMode;
+u16 launchedPath[41];
+
+void main(int argc, char **argv)
 {
-    bool isA9lhInstalled,
-         isSafeMode = false,
+    bool isSafeMode = false,
          isNoForceFlagSet = false;
+    char errbuf[46];
     u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
 
-    //Mount SD or CTRNAND
-    bool isSdMode;
-    if(mountFs(true, false)) isSdMode = true;
-    else
+    switch(argc)
+    {
+        case 0:
+            error("Unsupported launcher (argc = 0).");
+            break;
+
+        case 1: //Normal boot
+        {
+            u32 i;
+            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
+                launchedPath[i] = argv[0][i];
+            launchedPath[i] = 0;
+
+            isFirmlaunch = false;
+            break;
+        }
+
+        case 2: //Firmlaunch
+        {
+            u32 i;
+            u16 *p = (u16 *)argv[0];
+            for(i = 0; i < 40 && p[i] != 0; i++)
+                launchedPath[i] = p[i];
+            launchedPath[i] = 0;
+
+            isFirmlaunch = true;
+            break;
+        }
+
+        default:
+            sprintf(errbuf, "Unsupported launcher (argc = %d).", argc);
+            error(errbuf);
+            break;
+    }
+
+    if(memcmp(launchedPath, u"sdmc", 8) == 0)
+    {
+        if(!mountFs(true, false)) error("Failed to mount SD.");
+        isSdMode = true;
+    }
+    else if(memcmp(launchedPath, u"nand", 8) == 0)
     {
         firmSource = FIRMWARE_SYSNAND;
-        if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
+        if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
+    }
+    else
+    {
+        char mountPoint[5];
+
+        u32 i;
+        for(i = 0; i < 4 && launchedPath[i] != u':'; i++)
+            mountPoint[i] = (char)launchedPath[i];
+        mountPoint[i] = 0;
+
+        sprintf(errbuf, "Launched from an unsupported location: %s.", mountPoint);
+        error(errbuf);
     }
 
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
-    if(ISFIRMLAUNCH)
+    if(isFirmlaunch)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
-        switch(launchedFirmTidLow[7])
+        switch(argv[1][14])
         {
-            case u'2':
-                firmType = (FirmwareType)(launchedFirmTidLow[5] - u'0');
+            case '2':
+                firmType = (FirmwareType)(argv[1][10] - '0');
                 break;
-            case u'3':
+            case '3':
                 firmType = SAFE_FIRM;
                 break;
-            case u'1':
+            case '1':
                 firmType = SYSUPDATER_FIRM;
                 break;
         }
 
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
-        isA9lhInstalled = BOOTCFG_A9LH != 0;
 
         goto boot;
     }
 
-    if(ISA9LH)
-    {
-        detectAndProcessExceptionDumps();
-        installArm9Handlers();
-    }
+    detectAndProcessExceptionDumps();
+    installArm9Handlers();
 
     firmType = NATIVE_FIRM;
-    isA9lhInstalled = ISA9LH;
 
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
     //If it's a MCU reboot, try to force boot options
-    if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
+    if(CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
 
         //Always force a SysNAND boot when quitting AGB_FIRM
@@ -131,13 +180,13 @@ void main(void)
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(isSdMode, pinExists, pinMode);
+        configMenu(pinExists, pinMode);
 
         //Update pressed buttons
         pressed = HID_PAD;
     }
 
-    if(ISA9LH && !CFG_BOOTENV && pressed == SAFE_MODE)
+    if(!CFG_BOOTENV && pressed == SAFE_MODE)
     {
         nandType = FIRMWARE_SYSNAND;
         firmSource = FIRMWARE_SYSNAND;
@@ -174,21 +223,21 @@ void main(void)
     //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
     else if(pressed & BUTTON_R1)
     {
-        if(CONFIG(USESYSFIRM))
-        {
-            nandType = FIRMWARE_EMUNAND;
-            firmSource = FIRMWARE_SYSNAND;
-        }
-        else
+        if(CONFIG(USEEMUFIRM))
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = FIRMWARE_EMUNAND;
+        }
+        else
+        {
+            nandType = FIRMWARE_EMUNAND;
+            firmSource = FIRMWARE_SYSNAND;
         }
     }
 
     /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
        with their own FIRM */
-    else firmSource = nandType = (CONFIG(AUTOBOOTSYS) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+    else firmSource = nandType = (CONFIG(AUTOBOOTEMU) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
 
     //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
     if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
@@ -230,9 +279,9 @@ boot:
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&emuHeader, &firmSource);
 
-    if(!ISFIRMLAUNCH)
+    if(!isFirmlaunch)
     {
-        configData.config = (configData.config & 0xFFFFFF00) | ((u32)isNoForceFlagSet << 7) | ((u32)ISA9LH << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.config = (configData.config & 0xFFFFFF80) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 
@@ -247,7 +296,7 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, doUnitinfoPatch);
@@ -258,15 +307,14 @@ boot:
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(enableExceptionHandlers) : 0;
+            res = patch1x2xNativeAndSafeFirm(enableExceptionHandlers);
             break;
     }
 
     if(res != 0)
     {
-        char patchesError[43];
-        sprintf(patchesError, "Failed to apply %u FIRM patch(es).", res);
-        error(patchesError);
+        sprintf(errbuf, "Failed to apply %u FIRM patch(es).", res);
+        error(errbuf);
     }
 
     launchFirm(firmType, loadFromStorage);

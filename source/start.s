@@ -24,27 +24,27 @@
 .align 4
 .global _start
 _start:
-    b start
-
-.global launchedFirmTidLow
-launchedFirmTidLow:
-    .hword 0, 0, 0, 0, 0, 0, 0, 0
-
-start:
     @ Disable interrupts
-    mrs r0, cpsr
-    orr r0, #0x1C0
-    msr cpsr_cx, r0
+    mrs r4, cpsr
+    orr r4, #0x1C0
+    msr cpsr_cx, r4
+
+    ldr r4, =0xBEEF
+    cmp r2, r4
+    movne r0, #0    @ check magic word
+
+    mov r9, r0
+    mov r10, r1
 
     @ Change the stack pointer
     mov sp, #0x27000000
 
     @ Disable caches / MPU
-    mrc p15, 0, r0, c1, c0, 0  @ read control register
-    bic r0, #(1<<12)           @ - instruction cache disable
-    bic r0, #(1<<2)            @ - data cache disable
-    bic r0, #(1<<0)            @ - mpu disable
-    mcr p15, 0, r0, c1, c0, 0  @ write control register
+    mrc p15, 0, r4, c1, c0, 0  @ read control register
+    bic r4, #(1<<12)           @ - instruction cache disable
+    bic r4, #(1<<2)            @ - data cache disable
+    bic r4, #(1<<0)            @ - mpu disable
+    mcr p15, 0, r4, c1, c0, 0  @ write control register
 
     @ Flush caches
     bl flushEntireDCache
@@ -98,4 +98,6 @@ start:
     sub r2, r0
     bl memset32
 
+    mov r0, r9
+    mov r1, r10
     b main

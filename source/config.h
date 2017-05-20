@@ -24,18 +24,17 @@
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 20)) & 1) != 0)
-#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 8)) & 3)
+#define CONFIG(a)        (((configData.config >> (a + 17)) & 1) != 0)
+#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 7)) & 3)
 #define BOOTCONFIG(a, b) ((configData.config >> a) & b)
 
 #define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 9
+#define CONFIG_VERSIONMINOR 11
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
-#define BOOTCFG_A9LH         BOOTCONFIG(6, 1)
-#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(7, 1)
+#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(6, 1)
 
 enum multiOptions
 {
@@ -48,10 +47,9 @@ enum multiOptions
 
 enum singleOptions
 {
-    AUTOBOOTSYS = 0,
-    USESYSFIRM,
+    AUTOBOOTEMU = 0,
+    USEEMUFIRM,
     LOADEXTFIRMSANDMODULES,
-    USECUSTOMPATH,
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
@@ -69,4 +67,4 @@ typedef enum ConfigurationStatus
 
 bool readConfig(void);
 void writeConfig(bool isPayloadLaunch);
-void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode);
+void configMenu(bool oldPinStatus, u32 oldPinMode);

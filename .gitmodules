@@ -1,9 +1,0 @@
-[submodule "haxloader/CakeBrah"]
-	path = haxloader/CakeBrah
-	url = https://github.com/mid-kid/CakeBrah.git
-[submodule "haxloader/CakeHax"]
-	path = haxloader/CakeHax
-	url = https://github.com/mid-kid/CakeHax.git
-[submodule "haxloader/CakesROP"]
-	path = haxloader/CakesROP
-	url = https://github.com/mid-kid/CakesROP.git
