@@ -61,8 +61,7 @@ void main(int argc, char **argv)
             u32 i;
             for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
                 launchedPath[i] = argv[0][i];
-            for(; i < 41; i++)
-                launchedPath[i] = 0;
+            launchedPath[i] = 0;
 
             isFirmlaunch = false;
             break;
@@ -74,19 +73,16 @@ void main(int argc, char **argv)
             u16 *p = (u16 *)argv[0];
             for(i = 0; i < 40 && p[i] != 0; i++)
                 launchedPath[i] = p[i];
-            for(; i < 41; i++)
-                launchedPath[i] = 0;
+            launchedPath[i] = 0;
 
             isFirmlaunch = true;
             break;
         }
 
         default:
-        {
             sprintf(errbuf, "Unsupported launcher (argc = %d).", argc);
             error(errbuf);
             break;
-        }
     }
 
     //Mount SD or CTRNAND
@@ -100,14 +96,18 @@ void main(int argc, char **argv)
     else if(memcmp(launchedPath, u"nand", 8) == 0)
     {
         firmSource = FIRMWARE_SYSNAND;
-        if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
+        if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
     else
     {
-        char mountPoint[5] = {0};
-        for(u32 i = 0; i < 4 && launchedPath[i] != u':'; i++)
+        char mountPoint[5];
+
+        u32 i;
+        for(i = 0; i < 4 && launchedPath[i] != u':'; i++)
             mountPoint[i] = (char)launchedPath[i];
+        mountPoint[i] = 0;
+
         sprintf(errbuf, "Launched from an unsupported location: %s.", mountPoint);
         error(errbuf);
     }

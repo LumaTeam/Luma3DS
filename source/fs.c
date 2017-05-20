@@ -129,44 +129,35 @@ static __attribute__((noinline)) bool overlaps(u32 as, u32 ae, u32 bs, u32 be)
 
 static bool checkFirmPayload(void)
 {
-    if(memcmp(firm->magic, "FIRM", 4) != 0)
-        return false;
-
-    if(firm->arm9Entry == NULL)  //allow for the arm11 entrypoint to be zero in which case nothing is done on the arm11 side
+    if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
         return false;
 
     u32 size = 0x200;
     for(u32 i = 0; i < 4; i++)
         size += firm->section[i].size;
 
-    bool arm9EpFound = false, arm11EpFound = false;
+    bool arm9EpFound = false,
+         arm11EpFound = false;
+
     for(u32 i = 0; i < 4; i++)
     {
         __attribute__((aligned(4))) u8 hash[0x20];
 
         FirmSection *section = &firm->section[i];
 
-        // allow empty sections
-        if (section->size == 0)
+        //Allow empty sections
+        if(section->size == 0)
             continue;
 
-        if(section->offset < 0x200)
-            return false;
-
-        if(section->address + section->size < section->address) //overflow check
-            return false;
-
-        if(((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF)) //alignment check
-            return false;
-
-        if(overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000, 0x28000000))
-            return false;
-        else if(overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000 - 0x1000, 0x27FFE000))
-            return false;
-        else if(overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm, (u32)firm + size))
+        if((section->offset < 0x200) ||
+           (section->address + section->size < section->address) || //Overflow check
+           ((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF) || //Alignment check
+           (overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000 - 0x1000, 0x28000000)) ||
+           (overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm, (u32)firm + size)))
             return false;
 
         sha(hash, (u8 *)firm + section->offset, section->size, SHA_256_MODE);
+
         if(memcmp(hash, section->hash, 0x20) != 0)
             return false;
 
@@ -186,8 +177,8 @@ void loadPayload(u32 pressed, const char *payloadPath)
     u32 payloadSize = 0,
         maxPayloadSize = (u32)((u8 *)loaderAddress - (u8 *)firm);
 
-    char absPath[24 + _MAX_LFN] = {0};
-    char path[10 + _MAX_LFN] = {0};
+    char absPath[24 + _MAX_LFN];
+    char path[10 + _MAX_LFN];
 
     if(payloadPath == NULL)
     {
