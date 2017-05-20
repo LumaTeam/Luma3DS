@@ -38,7 +38,8 @@ extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-bool isFirmlaunch;
+bool isFirmlaunch,
+     isSdMode;
 u16 launchedPath[41];
 
 void main(int argc, char **argv)
@@ -84,9 +85,6 @@ void main(int argc, char **argv)
             error(errbuf);
             break;
     }
-
-    //Mount SD or CTRNAND
-    bool isSdMode;
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
     {
@@ -182,7 +180,7 @@ void main(int argc, char **argv)
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(isSdMode, pinExists, pinMode);
+        configMenu(pinExists, pinMode);
 
         //Update pressed buttons
         pressed = HID_PAD;

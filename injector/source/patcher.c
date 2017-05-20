@@ -40,19 +40,19 @@ static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, in
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
 }
 
-static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
+static bool dirCheck(FS_ArchiveID archiveId, const char *path)
 {
-    u32 ret;
+    bool ret;
     Handle handle;
     FS_Archive archive;
     FS_Path dirPath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
-    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = 1;
+    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = false;
     else
     {
-        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath)) ? 0 : 2;
-        if(!ret) FSDIR_Close(handle);
+        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath));
+        if(ret) FSDIR_Close(handle);
         FSLDR_CloseArchive(archive);
     }
 
@@ -61,21 +61,16 @@ static u32 dirCheck(FS_ArchiveID archiveId, const char *path)
 
 static bool openLumaFile(IFile *file, const char *path)
 {
-    Result res = fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ);
+    FS_ArchiveID archiveId = ISSDMODE ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
-    if(R_SUCCEEDED(res)) return true;
-
-    //Returned if SD is not mounted
-    return (u32)res == 0xC88044AB && R_SUCCEEDED(fileOpen(file, ARCHIVE_NAND_RW, path, FS_OPEN_READ));
+    return R_SUCCEEDED(fileOpen(file, archiveId, path, FS_OPEN_READ));
 }
 
 static u32 checkLumaDir(const char *path)
 {
-    u32 res = dirCheck(ARCHIVE_SDMC, path);
+    FS_ArchiveID archiveId = ISSDMODE ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
-    if(!res) return ARCHIVE_SDMC;
-
-    return res == 1 && !dirCheck(ARCHIVE_NAND_RW, path) ? ARCHIVE_NAND_RW : 0;
+    return dirCheck(archiveId, path) ? archiveId : 0;
 }
 
 static inline void loadCFWInfo(void)

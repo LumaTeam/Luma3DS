@@ -39,7 +39,8 @@ enum singleOptions
 enum flags
 {
     ISN3DS = 0,
-    ISSAFEMODE
+    ISSAFEMODE,
+    ISSDMODE
 };
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress);

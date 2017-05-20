@@ -219,7 +219,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
     writeConfig(true);
 
-    if(memcmp(launchedPath, u"nand", 8) == 0)
+    if(!isSdMode)
         sprintf(absPath, "nand:/rw/luma/%s", path);
     else
         sprintf(absPath, "sdmc:/luma/%s", path);

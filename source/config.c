@@ -72,7 +72,7 @@ void writeConfig(bool isPayloadLaunch)
         error("Error writing the configuration file");
 }
 
-void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
+void configMenu(bool oldPinStatus, u32 oldPinMode)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
