@@ -107,7 +107,7 @@ fopen: .ascii "OPEN"
 .pool
 
 .area 82, 0
-fname: .dcw "sdmc:/boot.firm"
+fname: .ascii "FILE"
 .endarea
 
 .pool
