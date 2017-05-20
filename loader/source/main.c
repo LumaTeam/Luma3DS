@@ -32,8 +32,7 @@ void main(int argc __attribute__((unused)), char **argv)
     u32 i;
     for(i = 0; i < 23 + 255 && argv[0][i] != 0; i++)
         absPath[i] = argv[0][i];
-    for(; i < 24 + 255; i++)
-        absPath[i] = 0;
+    absPath[i] = 0;
 
     char *argvPassed[1] = {absPath};
 

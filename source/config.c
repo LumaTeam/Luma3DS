@@ -190,7 +190,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable Luma3DS's ARM9/ARM11 exception\n"
                                           "handlers. Luma3DS should be ran as\n"
-                                          "boot.firm\n\n"
+                                          "boot.firm.\n\n"
                                           "Useful for debugging."
                                        };
 
