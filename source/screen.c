@@ -42,7 +42,7 @@
 #include "i2c.h"
 #include "utils.h"
 
-static vu32 *arm11Entry = (vu32 *)0x1FFFFFFC;
+static vu32 *arm11Entry = ARM11_CORE0_MAILBOX_ENTRYPOINT;
 
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 

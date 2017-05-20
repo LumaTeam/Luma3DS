@@ -38,7 +38,7 @@ extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-bool isFirmlaunch,
+bool isFirmlaunch = false,
      isSdMode;
 u16 launchedPath[41];
 
@@ -63,8 +63,6 @@ void main(int argc, char **argv)
             for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
                 launchedPath[i] = argv[0][i];
             launchedPath[i] = 0;
-
-            isFirmlaunch = false;
             break;
         }
 

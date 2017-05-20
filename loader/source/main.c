@@ -30,7 +30,7 @@ void main(int argc __attribute__((unused)), char **argv)
     char absPath[24 + 255];
 
     u32 i;
-    for(i = 0; i < 23 + 255 && argv[0][i] != 0; i++)
+    for(i = 0; i < sizeof(absPath) - 1 && argv[0][i] != 0; i++)
         absPath[i] = argv[0][i];
     absPath[i] = 0;
 

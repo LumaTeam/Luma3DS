@@ -379,7 +379,7 @@ void launchFirm(FirmwareType firmType, bool loadFromStorage)
     if(!isFirmlaunch) deinitScreens();
     
     //Set ARM11 kernel entrypoint
-    ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;
+    *ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;
 
     //Ensure that all memory transfers have completed and that the caches have been flushed
     flushEntireDCache();
