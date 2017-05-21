@@ -30,7 +30,7 @@
 #include "types.h"
 
 void memcpy(void *dest, const void *src, u32 size);
-void *memset(void *dest, u32 value, u32 size) __attribute__((used));
+void memset(void *dest, u32 value, u32 size) __attribute__((used));
 void memset32(void *dest, u32 filler, u32 size);
 int memcmp(const void *buf1, const void *buf2, u32 size);
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
