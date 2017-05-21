@@ -165,7 +165,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
                                           "\t* EmuS = EmuNAND 1 with SysNAND FIRM\n"
                                           "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
-                                          "or an user-defined custom string in\n"
+                                          "or a user-defined custom string in\n"
                                           "System Settings.\n\n"
                                           "Refer to the wiki for instructions.",
 
