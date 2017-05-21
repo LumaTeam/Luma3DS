@@ -24,7 +24,3 @@
 _start:
     ldr sp, =0x27ffe000
     b main
-
-.global payloadSize
-payloadSize:
-    .word 0
