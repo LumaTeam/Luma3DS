@@ -37,10 +37,13 @@ void main(int argc, char **argv)
         fbs[1] = fbsrc[1];
     }
 
-    u32 i;
-    for(i = 0; i < sizeof(absPath) - 1 && argv[0][i] != 0; i++)
-        absPath[i] = argv[0][i];
-    absPath[i] = 0;
+    if(argc >= 1)
+    {
+        u32 i;
+        for(i = 0; i < sizeof(absPath) - 1 && argv[0][i] != 0; i++)
+            absPath[i] = argv[0][i];
+        absPath[i] = 0;
+    }
 
     char *argvPassed[2] = {absPath, (char *)&fbs};
 
