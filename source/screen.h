@@ -33,7 +33,7 @@
 
 #define ARESCREENSINITIALIZED (PDN_GPU_CNT != 1)
 
-#define ARM11_PARAMETERS_ADDRESS 0x1FFFC000
+#define ARM11_PARAMETERS_ADDRESS 0x1FFFF000
 
 #define SCREEN_TOP_WIDTH     400
 #define SCREEN_BOTTOM_WIDTH  320
@@ -45,22 +45,21 @@ struct fb {
      u8 *top_left;
      u8 *top_right;
      u8 *bottom;
-}  __attribute__((packed)); //*const fbs = (volatile struct fb *)0x23FFFE00;
-
-extern struct fb fbs[2];
+}  __attribute__((packed));
 
 typedef enum
 {
-    NO_ARM11_OPERATION = 0,
-    INIT_SCREENS_SEQUENCE,
+    INIT_SCREENS_SEQUENCE = 0,
     SETUP_FRAMEBUFFERS,
     CLEAR_SCREENS,
     SWAP_FRAMEBUFFERS,
     UPDATE_BRIGHTNESS,
     DEINIT_SCREENS,
     PREPARE_ARM11_FOR_FIRMLAUNCH,
+    ARM11_READY,
 } Arm11Operation;
 
+extern struct fb fbs[2];
 extern CfgData configData;
 
 void prepareArm11ForFirmlaunch(void);

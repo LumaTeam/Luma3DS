@@ -7,7 +7,7 @@ fname_addr equ 0x27FFDF80
 low_tid_addr equ 0x27FFDFE0
 copy_launch_stub_addr equ 0x27FFE000
 
-firm_addr equ 0x24000000
+firm_addr equ 0x20001000
 firm_maxsize equ (copy_launch_stub_addr - 0x1000 - firm_addr)
 
 arm11_entrypoint_addr equ 0x1FFFFFFC

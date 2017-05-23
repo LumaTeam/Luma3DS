@@ -170,12 +170,10 @@ void loadPayload(u32 pressed, const char *payloadPath)
     else
         sprintf(absPath, "sdmc:/luma/%s", path);
 
-    char *argv[1] = {absPath};
+    char *argv[2] = {absPath, (char *)fbs};
     initScreens();
 
-    if((u8 *)firm + payloadSize < (u8 *)0x23FFFE00)
-        memcpy((void *)0x23FFFE00, fbs, sizeof(fbs));
-    launchFirm(1, argv);
+    launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
 }
 
 void payloadMenu(void)

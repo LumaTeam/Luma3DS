@@ -50,9 +50,9 @@ struct fb fbs[2];
 
 static void invokeArm11Function(Arm11Operation op)
 {
-    while(*operation != NO_ARM11_OPERATION);
+    while(*operation != ARM11_READY);
     *operation = op;
-    while(*operation != NO_ARM11_OPERATION);
+    while(*operation != ARM11_READY); 
 }
 
 void prepareArm11ForFirmlaunch(void)
@@ -125,5 +125,6 @@ void initScreens(void)
     }
 
     clearScreens(false);
+    clearScreens(true);
     swapFramebuffers(false);
 }

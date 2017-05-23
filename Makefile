@@ -23,7 +23,7 @@ dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
-LDFLAGS := -nostartfiles
+LDFLAGS := -nostartfiles -Wl,--nmagic
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \

@@ -443,6 +443,7 @@ bool checkFirmPayload(void)
            (section->address + section->size < section->address) || //Overflow check
            ((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF) || //Alignment check
            (overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000 - 0x1000, 0x28000000)) ||
+           (overlaps((u32)section->address, (u32)section->address + section->size, 0x1FFFFC00, 0x20000000)) ||
            (overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm + section->offset, (u32)firm + size)))
             return false;
 

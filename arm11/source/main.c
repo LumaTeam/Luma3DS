@@ -27,7 +27,10 @@
 #include "types.h"
 #include "memory.h"
 
-static volatile Arm11Operation *operation = (volatile Arm11Operation *)0x1FFFFFF0;
+void prepareForFirmlaunch(void);
+extern u32 prepareForFirmlaunchSize;
+
+extern volatile Arm11Operation operation;
 
 static void initScreensSequence(u32 brightnessLevel)
 {
@@ -160,23 +163,16 @@ static void deinitScreens(void)
     *(vu32 *)0x10202014 = 0;
 }
 
-static void prepareForFirmlaunch(void)
-{
-    *ARM11_CORE0_MAILBOX_ENTRYPOINT = 0;
-    while(*ARM11_CORE0_MAILBOX_ENTRYPOINT == 0);
-    ((void (*)(void))*ARM11_CORE0_MAILBOX_ENTRYPOINT)(); 
-}
-
 void main(void)
 {
-    *operation = NO_ARM11_OPERATION;
+    operation = ARM11_READY;
 
     while(true)
     {
-        switch(*operation)
+        switch(operation)
         {
-            case NO_ARM11_OPERATION:
-                break;
+            case ARM11_READY:
+                continue;
             case INIT_SCREENS_SEQUENCE:
                 initScreensSequence(*(vu32 *)ARM11_PARAMETERS_ADDRESS);
                 break;
@@ -196,12 +192,13 @@ void main(void)
                 deinitScreens();
                 break;
             case PREPARE_ARM11_FOR_FIRMLAUNCH:
-                memcpy((void *)0x1FFFFC00, (void *)prepareForFirmlaunch, 0x2C);
-                *operation = NO_ARM11_OPERATION;
+                memcpy((void *)0x1FFFFC00, (void *)prepareForFirmlaunch, prepareForFirmlaunchSize);
+                *(vu32 *)0x1FFFFFFC = 0;
+                operation = ARM11_READY;
                 ((void (*)(void))0x1FFFFC00)();
                 break;
         }
 
-        *operation = NO_ARM11_OPERATION;
+        operation = ARM11_READY;
     }
 }

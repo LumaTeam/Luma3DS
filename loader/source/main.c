@@ -24,17 +24,25 @@
 #include "cache.h"
 #include "firm.h"
 
-void main(int argc __attribute__((unused)), char **argv)
+void main(int argc, char **argv)
 {
-    Firm *firm = (Firm *)0x24000000;
+    Firm *firm = (Firm *)0x20001000;
+    struct fb fbs[2];
     char absPath[24 + 255];
+
+    if(argc == 2)
+    {
+        struct fb *fbsrc = (struct fb *)argv[1];
+        fbs[0] = fbsrc[0];
+        fbs[1] = fbsrc[1];
+    }
 
     u32 i;
     for(i = 0; i < sizeof(absPath) - 1 && argv[0][i] != 0; i++)
         absPath[i] = argv[0][i];
     absPath[i] = 0;
 
-    char *argvPassed[1] = {absPath};
+    char *argvPassed[2] = {absPath, (char *)&fbs};
 
-    launchFirm(firm, 1, argvPassed);
+    launchFirm(firm, argc, argvPassed);
 }
