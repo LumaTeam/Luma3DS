@@ -33,6 +33,7 @@
 #include "crypto.h"
 #include "fmt.h"
 #include "memory.h"
+#include "screen.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
@@ -290,13 +291,13 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
+            res = patchNativeFirm(firmVersion, nandType, emuHeader, loadFromStorage, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
-            res = patchTwlFirm(firmVersion, doUnitinfoPatch);
+            res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(doUnitinfoPatch);
+            res = patchAgbFirm(loadFromStorage, doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
@@ -311,5 +312,6 @@ boot:
         error(errbuf);
     }
 
-    launchFirm(firmType, loadFromStorage);
+    if(!isFirmlaunch) deinitScreens();
+    launchFirm(0, NULL);
 }

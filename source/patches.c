@@ -237,6 +237,37 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
     return 0;
 }
 
+u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u32 nbCustomModules, u8 *startPos, u32 size)
+{
+    const u8 moduleLoadingPattern[]  = {
+        0x01, 0x70, 0x87, 0xE2, // add r7, #1
+        0x05, 0x00, 0x57, 0xE3, // cmp r7, #5
+    };
+
+    //GetSystemInfo
+    const u8 modulePidPattern[] = {
+        0x00, 0xF0, 0x20, 0xE3, // nop
+        0x05, 0x00, 0xA0, 0xE3, // mov r0, #5
+    };
+
+    u8 *off = memsearch(startPos, moduleLoadingPattern, size, 8);
+    if(off == NULL) return 1;
+    off[4] += nbCustomModules;
+
+    u32 *off32;
+    for(off32 = (u32 *)off; *off32 != 0xE59F0000; off32++);
+    off32 += 2;
+    off32[1] = off32[0] + modulesSize;
+    for(; *off32 != section0size; off32++);
+    *off32 += ((modulesSize + 0x1FF) >> 9) << 9;
+
+    off = memsearch(startPos, modulePidPattern, size, 8);
+    if(off == NULL) return 1;
+    off[4] = 6;
+
+    return 0;
+}
+
 u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
 {
     if(arm11SvcTable[0x7B] != 0) return 0;

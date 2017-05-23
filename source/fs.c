@@ -118,64 +118,10 @@ void fileDelete(const char *path)
     f_unlink(path);
 }
 
-static __attribute__((noinline)) bool overlaps(u32 as, u32 ae, u32 bs, u32 be)
-{
-    if (as <= bs && bs <= ae)
-        return true;
-    else if (bs <= as && as <= be)
-        return true;
-    return false;
-}
-
-static bool checkFirmPayload(void)
-{
-    if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
-        return false;
-
-    u32 size = 0x200;
-    for(u32 i = 0; i < 4; i++)
-        size += firm->section[i].size;
-
-    bool arm9EpFound = false,
-         arm11EpFound = false;
-
-    for(u32 i = 0; i < 4; i++)
-    {
-        __attribute__((aligned(4))) u8 hash[0x20];
-
-        FirmSection *section = &firm->section[i];
-
-        //Allow empty sections
-        if(section->size == 0)
-            continue;
-
-        if((section->offset < 0x200) ||
-           (section->address + section->size < section->address) || //Overflow check
-           ((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF) || //Alignment check
-           (overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000 - 0x1000, 0x28000000)) ||
-           (overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm, (u32)firm + size)))
-            return false;
-
-        sha(hash, (u8 *)firm + section->offset, section->size, SHA_256_MODE);
-
-        if(memcmp(hash, section->hash, 0x20) != 0)
-            return false;
-
-        if(firm->arm9Entry >= section->address && firm->arm9Entry < (section->address + section->size))
-            arm9EpFound = true;
-
-        if(firm->arm11Entry >= section->address && firm->arm11Entry < (section->address + section->size))
-            arm11EpFound = true;
-    }
-
-    return arm9EpFound && (firm->arm11Entry == NULL || arm11EpFound);
-}
-
 void loadPayload(u32 pressed, const char *payloadPath)
 {
-    u32 *loaderAddress = (u32 *)0x27FFE000;
     u32 payloadSize = 0,
-        maxPayloadSize = (u32)((u8 *)loaderAddress - (u8 *)firm);
+        maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm);
 
     char absPath[24 + _MAX_LFN];
     char path[10 + _MAX_LFN];
@@ -225,14 +171,11 @@ void loadPayload(u32 pressed, const char *payloadPath)
         sprintf(absPath, "sdmc:/luma/%s", path);
 
     char *argv[1] = {absPath};
-    memcpy(loaderAddress, loader_bin, loader_bin_size);
-
     initScreens();
 
-    flushDCacheRange(loaderAddress, loader_bin_size);
-    flushICacheRange(loaderAddress, loader_bin_size);
-
-    ((void (*)(int, char **, u32))loaderAddress)(1, argv, 0x0000BEEF);
+    if((u8 *)firm + payloadSize < (u8 *)0x23FFFE00)
+        memcpy((void *)0x23FFFE00, fbs, sizeof(fbs));
+    launchFirm(1, argv);
 }
 
 void payloadMenu(void)

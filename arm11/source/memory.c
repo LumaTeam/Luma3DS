@@ -20,19 +20,17 @@
 *   Notices displayed by works containing it.
 */
 
-#pragma once
+/*
+*   memcpy adapted from https://github.com/mid-kid/CakesForeveryWan/blob/557a8e8605ab3ee173af6497486e8f22c261d0e2/source/memfuncs.c
+*/
 
-#include "types.h"
-#include "3dsheaders.h"
+#include "memory.h"
 
-static Firm *const firm = (Firm *const)0x20001000;
+void memcpy(void *dest, const void *src, u32 size)
+{
+    u8 *destc = (u8 *)dest;
+    const u8 *srcc = (const u8 *)src;
 
-u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode);
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers);
-u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
-u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
-u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers);
-
-bool checkFirmPayload(void);
-void launchFirm(int argc, char **argv);
-
+    for(u32 i = 0; i < size; i++)
+        destc[i] = srcc[i];
+}

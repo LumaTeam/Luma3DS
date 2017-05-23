@@ -33,7 +33,7 @@ define bin2o
 endef
 
 .PHONY: all
-all: $(dir_out)/$(name).bin
+all: $(dir_out)/$(name).cxi
 
 .PHONY: clean
 clean:
@@ -41,10 +41,7 @@ clean:
 
 .PRECIOUS: $(dir_build)/%.bin
 
-$(dir_build):
-	@mkdir -p "$@"
-
-$(dir_out)/$(name).bin: $(dir_build)/$(name).elf
+$(dir_out)/$(name).cxi: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
 
 $(dir_build)/$(name).elf: $(bundled) $(objects)

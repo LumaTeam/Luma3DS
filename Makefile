@@ -12,6 +12,7 @@ commit := $(shell git rev-parse --short=8 HEAD)
 
 dir_source := source
 dir_patches := patches
+dir_arm11 := arm11
 dir_loader := loader
 dir_injector := injector
 dir_exceptions := exceptions
@@ -29,7 +30,9 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/svcGetCFWInfo.bin.o $(dir_build)/k11modules.bin.o \
-          $(dir_build)/injector.bin.o $(dir_build)/loader.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
+          $(dir_build)/loader.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
+
+modules = $(dir_build)/injector.cxi
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
@@ -46,6 +49,7 @@ firm: $(dir_out)/boot.firm
 
 .PHONY: clean
 clean:
+	@$(MAKE) -C $(dir_arm11) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean
@@ -54,6 +58,7 @@ clean:
 
 .PRECIOUS: $(dir_build)/%.bin
 
+.PHONY: $(dir_arm11)
 .PHONY: $(dir_loader)
 .PHONY: $(dir_arm9_exceptions)
 .PHONY: $(dir_arm11_exceptions)
@@ -63,19 +68,27 @@ $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
-$(dir_out)/boot.firm: $(dir_build)/main.elf
+$(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf
 	@mkdir -p "$(@D)"
-	@firmtool build $@ -e 0 -D $^ -C NDMA
+	@firmtool build $@ -D $^ -A 0x1FF60000 -C XDMA XDMA NDMA
+
+$(dir_build)/modules.bin: $(modules)
+	@mkdir -p "$(@D)"
+	cat $^ > $@
+	
+$(dir_build)/arm11.elf: $(dir_arm11)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
 
 $(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/%.bin.o: $(dir_build)/%.bin
-	@$(bin2o)
-
-$(dir_build)/injector.bin: $(dir_injector)
+$(dir_build)/injector.cxi: $(dir_injector)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
+
+$(dir_build)/%.bin.o: $(dir_build)/%.bin
+	@$(bin2o)
 
 $(dir_build)/loader.bin: $(dir_loader)
 	@mkdir -p "$(@D)"
@@ -96,6 +109,8 @@ $(dir_build)/%.bin: $(dir_patches)/%.s
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
+$(dir_build)/firm.o: $(dir_build)/modules.bin 
+$(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell du -b $(dir_build)/modules.bin | cut -f1)"
 
 $(dir_build)/bundled.h: $(bundled)
 	@$(foreach f, $(bundled),\

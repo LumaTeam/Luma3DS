@@ -37,7 +37,7 @@ _start:
     mov r10, r1
 
     @ Change the stack pointer
-    mov sp, #0x27000000
+    mov sp, #0x08100000
 
     @ Disable caches / MPU
     mrc p15, 0, r4, c1, c0, 0  @ read control register
