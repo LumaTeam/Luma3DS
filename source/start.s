@@ -29,12 +29,9 @@ _start:
     orr r4, #0x1C0
     msr cpsr_cx, r4
 
-    ldr r4, =0xBEEF
-    cmp r2, r4
-    movne r0, #0    @ check magic word
-
     mov r9, r0
     mov r10, r1
+    mov r11, r2
 
     @ Change the stack pointer
     mov sp, #0x08100000
@@ -95,4 +92,5 @@ _start:
 
     mov r0, r9
     mov r1, r10
+    mov r2, r11
     b main

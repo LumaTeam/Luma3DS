@@ -17,7 +17,7 @@ arm11_entrypoint_addr equ 0x1FFFFFFC
     ; - r1: FIRM path in exefs.
     ; - r7 (or r8): pointer to file object
     ;   - *r7: vtable
-    ;       - *(vtable + 0x28): fread function 
+    ;       - *(vtable + 0x28): fread function
     ;   - *(r7 + 8): file handle
 
     sub r7, r0, #8
@@ -160,7 +160,7 @@ fname: .ascii "FILE"
 
     mov r0, #2 ; argc
     ldr r1, =argv_addr ; argv
-    ldr r2, =0xBEEF    ; magic word
+    ldr r2, =0xBABE    ; magic word
 
     ldr r5, =arm11_entrypoint_addr
     ldr r6, [r4, #0x08]

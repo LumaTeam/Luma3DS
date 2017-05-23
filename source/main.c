@@ -43,7 +43,7 @@ bool isFirmlaunch = false,
      isSdMode;
 u16 launchedPath[41];
 
-void main(int argc, char **argv)
+void main(int argc, char **argv, u32 magicWord)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
@@ -52,33 +52,30 @@ void main(int argc, char **argv)
     FirmwareType firmType;
     FirmwareSource nandType;
 
-    switch(argc)
+    if(magicWord == 0xBEEF && argc >= 1) //Normal boot
     {
-        case 1: //Normal boot
-        {
-            u32 i;
-            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
-                launchedPath[i] = argv[0][i];
-            launchedPath[i] = 0;
-            break;
-        }
+        u32 i;
+        for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
+            launchedPath[i] = argv[0][i];
+        launchedPath[i] = 0;
+        break;
+    }
+    else if(magicWord == 0xBABE && argc == 2) //Firmlaunch
+    {
+        u32 i;
+        u16 *p = (u16 *)argv[0];
+        for(i = 0; i < 40 && p[i] != 0; i++)
+            launchedPath[i] = p[i];
+        launchedPath[i] = 0;
 
-        case 2: //Firmlaunch
-        {
-            u32 i;
-            u16 *p = (u16 *)argv[0];
-            for(i = 0; i < 40 && p[i] != 0; i++)
-                launchedPath[i] = p[i];
-            launchedPath[i] = 0;
-
-            isFirmlaunch = true;
-            break;
-        }
-
-        default:
-            sprintf(errbuf, "Unsupported launcher (argc = %d).", argc);
-            error(errbuf);
-            break;
+        isFirmlaunch = true;
+        break;
+    }
+    else
+    {
+        sprintf(errbuf, "Unsupported launcher or entrypoint (magic = 0x%08x, argc = %d).", magicWord, argc);
+        error(errbuf);
+        break;
     }
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
