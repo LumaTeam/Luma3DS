@@ -30,6 +30,9 @@
 #include "screen.h"
 #include "draw.h"
 #include "cache.h"
+#include "fmt.h"
+
+#include <stdarg.h>
 
 static void startChrono(void)
 {
@@ -104,14 +107,21 @@ void wait(u64 amount)
     while(chrono() < amount);
 }
 
-void error(const char *message)
+void error(const char *fmt, ...)
 {
     if(!isFirmlaunch)
     {
+        char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
+
+        va_list args;
+        va_start(args, fmt);
+        vsprintf(buf, fmt, args);
+        va_end(args);
+
         initScreens();
 
         drawString(true, 10, 10, COLOR_RED, "An error has occurred:");
-        u32 posY = drawString(true, 10, 30, COLOR_WHITE, message);
+        u32 posY = drawString(true, 10, 30, COLOR_WHITE, buf);
         drawString(true, 10, posY + 2 * SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
 
         waitInput(false);

@@ -31,7 +31,6 @@
 #include "buttons.h"
 #include "pin.h"
 #include "crypto.h"
-#include "fmt.h"
 #include "memory.h"
 #include "screen.h"
 
@@ -47,7 +46,6 @@ void main(int argc, char **argv, u32 magicWord)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
-    char errbuf[46];
     u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
@@ -58,7 +56,6 @@ void main(int argc, char **argv, u32 magicWord)
         for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
             launchedPath[i] = argv[0][i];
         launchedPath[i] = 0;
-        break;
     }
     else if(magicWord == 0xBABE && argc == 2) //Firmlaunch
     {
@@ -69,14 +66,9 @@ void main(int argc, char **argv, u32 magicWord)
         launchedPath[i] = 0;
 
         isFirmlaunch = true;
-        break;
     }
     else
-    {
-        sprintf(errbuf, "Unsupported launcher or entrypoint (magic = 0x%08x, argc = %d).", magicWord, argc);
-        error(errbuf);
-        break;
-    }
+        error("Unsupported launcher or entrypoint (magic = 0x%08x, argc = %d).", magicWord, argc);
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
     {
@@ -98,8 +90,7 @@ void main(int argc, char **argv, u32 magicWord)
             mountPoint[i] = (char)launchedPath[i];
         mountPoint[i] = 0;
 
-        sprintf(errbuf, "Launched from an unsupported location: %s.", mountPoint);
-        error(errbuf);
+        error("Launched from an unsupported location: %s.", mountPoint);
     }
 
     //Attempt to read the configuration file
@@ -303,11 +294,7 @@ boot:
             break;
     }
 
-    if(res != 0)
-    {
-        sprintf(errbuf, "Failed to apply %u FIRM patch(es).", res);
-        error(errbuf);
-    }
+    if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
     if(!isFirmlaunch) deinitScreens();
     launchFirm(0, NULL);
