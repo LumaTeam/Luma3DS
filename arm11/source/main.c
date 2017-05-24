@@ -194,9 +194,7 @@ void main(void)
             case PREPARE_ARM11_FOR_FIRMLAUNCH:
                 memcpy((void *)0x1FFFFC00, (void *)prepareForFirmlaunch, prepareForFirmlaunchSize);
                 *(vu32 *)0x1FFFFFFC = 0;
-                operation = ARM11_READY;
-                ((void (*)(void))0x1FFFFC00)();
-                break;
+                ((void (*)(u32, volatile Arm11Operation *))0x1FFFFC00)(ARM11_READY, &operation);
         }
 
         operation = ARM11_READY;
