@@ -379,8 +379,8 @@ int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)
 
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
 {
-    u8 *buffer = (u8 *)0x23000000;
-    u32 bufferSize = 0xF00000;
+    u8 *buffer = (u8 *)0xFFF00000;
+    u32 bufferSize = 0x4000;
 
     __attribute__((aligned(4))) u8 tmpCtr[sizeof(nandCtr)];
     memcpy(tmpCtr, nandCtr, sizeof(nandCtr));

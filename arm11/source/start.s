@@ -30,7 +30,8 @@ operation:
     .word 0
 
 start:
-    cpsid aif
+    @ Disable interrupts and switch to supervisor mode
+    cpsid aif, #0x13
 
     @ Set the control register to reset default: everything disabled
     ldr r0, =0x54078
@@ -42,11 +43,10 @@ start:
     mov r0, #0xF
     mcr p15, 0, r0, c1, c0, 1
 
-    @ Invalidate all caches, flush the prefetch buffer and DSB
+    @ Invalidate both caches, flush the prefetch buffer then DSB
     mov r0, #0
     mcr p15, 0, r0, c7, c5, 4
-    mcr p15, 0, r0, c7, c5, 0
-    mcr p15, 0, r0, c7, c6, 0
+    mcr p15, 0, r0, c7, c7, 0
     mcr p15, 0, r0, c7, c10, 4
 
     @ Clear BSS

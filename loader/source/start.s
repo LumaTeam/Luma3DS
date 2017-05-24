@@ -43,7 +43,7 @@ disableMpuAndJumpToEntrypoints:
     mrc p15, 0, r0, c1, c0, 0  @ read control register
     bic r0, #(1<<12)           @ - instruction cache disable
     bic r0, #(1<<2)            @ - data cache disable
-    bic r0, #(1<<0)            @ - mpu disable
+    bic r0, #(1<<0)            @ - MPU disable
     mcr p15, 0, r0, c1, c0, 0  @ write control register
 
     @ Set the ARM11 entrypoint
