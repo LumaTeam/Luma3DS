@@ -70,7 +70,7 @@ $(dir_out)/$(name)$(revision).7z: all
 
 $(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf
 	@mkdir -p "$(@D)"
-	@firmtool build $@ -D $^ -A 0x1FF60000 -C XDMA XDMA NDMA
+	@firmtool build $@ -S nand-retail -D $^ -A 0x1FF60000 -C XDMA XDMA NDMA
 
 $(dir_build)/modules.bin: $(modules)
 	@mkdir -p "$(@D)"
