@@ -27,25 +27,29 @@
 void main(int argc, char **argv)
 {
     Firm *firm = (Firm *)0x20001000;
+    char *argvPassed[2],
+         absPath[24 + 255];
     struct fb fbs[2];
-    char absPath[24 + 255];
 
-    if(argc == 2)
-    {
-        struct fb *fbsrc = (struct fb *)argv[1];
-        fbs[0] = fbsrc[0];
-        fbs[1] = fbsrc[1];
-    }
-
-    if(argc >= 1)
+    if(argc > 0)
     {
         u32 i;
         for(i = 0; i < sizeof(absPath) - 1 && argv[0][i] != 0; i++)
             absPath[i] = argv[0][i];
         absPath[i] = 0;
+
+        argvPassed[0] = (char *)absPath;
     }
 
-    char *argvPassed[2] = {absPath, (char *)&fbs};
+    if(argc == 2)
+    {
+        struct fb *fbsrc = (struct fb *)argv[1];
+
+        fbs[0] = fbsrc[0];
+        fbs[1] = fbsrc[1];
+
+        argvPassed[1] = (char *)&fbs;
+    }
 
     launchFirm(firm, argc, argvPassed);
 }

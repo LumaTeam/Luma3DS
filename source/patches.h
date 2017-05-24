@@ -46,7 +46,7 @@ u32 patchOldFirmWrites(u8 *pos, u32 size);
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
 u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size);
-u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u32 nbCustomModules, u8 *startPos, u32 size);
+u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *startPos, u32 size);
 u32 patchCheckForDevCommonKey(u8 *pos, u32 size);
 u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space);
 u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA);

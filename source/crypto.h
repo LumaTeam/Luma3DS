@@ -115,5 +115,6 @@ int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);
 bool decryptExeFs(Cxi *cxi);
 bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
+void setupKeyslots(void);
 void kernel9Loader(Arm9Bin *arm9Section);
 void computePinHash(u8 *outbuf, const u8 *inbuf);

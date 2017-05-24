@@ -68,7 +68,11 @@ void main(int argc, char **argv, u32 magicWord)
         isFirmlaunch = true;
     }
     else
-        error("Unsupported launcher or entrypoint (magic = 0x%08x, argc = %d).", magicWord, argc);
+    {
+        const char argv[] = "firm0:";
+        for(u32 i = 0; i < sizeof(argv); i++) //Copy and convert the path to UTF-16
+            launchedPath[i] = argv[i];
+    }
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
     {
@@ -80,6 +84,14 @@ void main(int argc, char **argv, u32 magicWord)
         firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
+    }
+    else if(memcmp(launchedPath, u"firm", 8) == 0)
+    {
+        setupKeyslots();
+
+        if(mountFs(true, false)) isSdMode = true;
+        else if(mountFs(false, true)) isSdMode = false;
+        else error("Failed to mount SD and CTRNAND.");
     }
     else
     {

@@ -76,48 +76,51 @@ static inline bool loadFirmFromStorage(FirmwareType firmType)
 
 static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 {
-    u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x60000 : 0x600000,
-        srcModuleSize;
+    u32 srcModuleSize;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
 
-    u32 nbModules = 0;
-    u32 nbCustomModules = 0;
+    u32 nbModules = 0,
+        isCustomModule = false;
     struct
     {
         char name[8];
         u8 *src;
         u32 size;
-    } moduleList[8];
+    } moduleList[6];
 
     //1) Parse info concerning Nintendo's modules
-    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size; src < srcEnd; src += srcModuleSize)
+    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size; src < srcEnd; src += srcModuleSize, nbModules++)
     {
         memcpy(moduleList[nbModules].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
         moduleList[nbModules].src = src;
-        srcModuleSize = moduleList[nbModules++].size = ((Cxi *)src)->ncch.contentSize * 0x200; 
+        srcModuleSize = moduleList[nbModules].size = ((Cxi *)src)->ncch.contentSize * 0x200; 
     }
-    
-    //2) Merge that info with our own modules' 
-    for(u8 *src = (u8 *)0x1FF60000; src < (u8 *)(0x1FF60000 + LUMA_SECTION0_SIZE); src += srcModuleSize)
+
+    if(firmType == NATIVE_FIRM)
     {
-        const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
+        //2) Merge that info with our own modules' 
+        for(u8 *src = (u8 *)0x1FF60000; src < (u8 *)(0x1FF60000 + LUMA_SECTION0_SIZE); src += srcModuleSize)
+        {
+            const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
 
-        u32 i;
-        for(i = 0; i < nbModules && memcmp(name, moduleList[i].name, 8) != 0; i++);
-        u32 index = i < nbModules || firmType != NATIVE_FIRM ? i : nbModules + nbCustomModules++;
+            u32 i;
+            for(i = 0; i < nbModules && memcmp(name, moduleList[i].name, 8) != 0; i++);
 
-        memcpy(moduleList[index].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
-        moduleList[index].src = src;
-        srcModuleSize = moduleList[index].size = ((Cxi *)src)->ncch.contentSize * 0x200; 
+            if(i == nbModules) isCustomModule = true;
+
+            memcpy(moduleList[i].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
+            moduleList[i].src = src;
+            srcModuleSize = moduleList[i].size = ((Cxi *)src)->ncch.contentSize * 0x200;
+        }
+
+        if(isCustomModule) nbModules++;
     }
 
-    nbModules += nbCustomModules;
-
-    //4) Read or copy the modules
+    //3) Read or copy the modules
     u8 *dst = firm->section[0].address;
-    for(u32 i = 0; i < nbModules; i++) 
+    for(u32 i = 0, dstModuleSize; i < nbModules; i++) 
     {
-        const char *moduleName = moduleList[i].name;
+        dstModuleSize = 0;
 
         if(loadFromStorage)
         {
@@ -126,37 +129,33 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
             //Read modules from files if they exist
             sprintf(fileName, "sysmodules/%.8s.cxi", moduleList[i].name);
 
-            u32 dstModuleSize = getFileSize(fileName);
+            dstModuleSize = getFileSize(fileName);
 
             if(dstModuleSize != 0)
             {
-                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+                if(dstModuleSize > 0x60000) error(extModuleSizeError);
 
                 if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
                    fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
                    memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
-                   memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
+                   memcmp(moduleList[i].name, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
                     error("An external FIRM module is invalid or corrupted.");
-                
+
                 dst += dstModuleSize;
             }
-            else
-            {
-                memcpy(dst, moduleList[i].src, moduleList[i].size);
-                dst += moduleList[i].size;
-            }
         }
-        else
+
+        if(!dstModuleSize)
         {
             memcpy(dst, moduleList[i].src, moduleList[i].size);
             dst += moduleList[i].size;
         }
     }
 
-    //5) Patch NATIVE_FIRM if necessary
-    if(nbCustomModules != 0)
+    //4) Patch NATIVE_FIRM if necessary
+    if(isCustomModule)
     {
-        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, nbCustomModules, firm->section[1].address, firm->section[1].size) != 0)
+        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, firm->section[1].address, firm->section[1].size) != 0)
             error("Failed to inject custom sysmodule");
     }
 }
@@ -442,7 +441,7 @@ bool checkFirmPayload(void)
         if((section->offset < 0x200) ||
            (section->address + section->size < section->address) || //Overflow check
            ((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF) || //Alignment check
-           (overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000 - 0x1000, 0x28000000)) ||
+           (overlaps((u32)section->address, (u32)section->address + section->size, 0x01FF8000, 0x01FF8000 + 0x8000)) ||
            (overlaps((u32)section->address, (u32)section->address + section->size, 0x1FFFFC00, 0x20000000)) ||
            (overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm + section->offset, (u32)firm + size)))
             return false;
@@ -464,7 +463,7 @@ bool checkFirmPayload(void)
 
 void launchFirm(int argc, char **argv)
 {
-    u32 *loaderAddress = (u32 *)0x27FFE000;
+    u32 *loaderAddress = (u32 *)0x01FF9000;
 
     prepareArm11ForFirmlaunch();
 

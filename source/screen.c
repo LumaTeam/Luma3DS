@@ -38,15 +38,14 @@
 #include "screen.h"
 #include "config.h"
 #include "memory.h"
-#include "cache.h"
 #include "i2c.h"
 #include "utils.h"
+
+struct fb fbs[2];
 
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
 static volatile Arm11Operation *operation = (volatile Arm11Operation *)0x1FF80004;
-
-struct fb fbs[2];
 
 static void invokeArm11Function(Arm11Operation op)
 {

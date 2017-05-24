@@ -24,7 +24,7 @@
 .align 4
 .global _start
 _start:
-    ldr sp, =0x27ffe000
+    ldr sp, =__stack_top__
     b main
 
 .text
