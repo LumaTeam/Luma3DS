@@ -161,14 +161,12 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
     payloadSize = fileRead(firm, path, maxPayloadSize);
 
-    if(!payloadSize || !checkFirmPayload()) return;
+    if(payloadSize <= 0x200 || !checkFirmPayload()) return;
 
     writeConfig(true);
 
-    if(!isSdMode)
-        sprintf(absPath, "nand:/rw/luma/%s", path);
-    else
-        sprintf(absPath, "sdmc:/luma/%s", path);
+    if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);
+    else sprintf(absPath, "nand:/rw/luma/%s", path);
 
     char *argv[2] = {absPath, (char *)fbs};
     initScreens();
