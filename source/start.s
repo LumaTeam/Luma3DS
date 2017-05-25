@@ -58,7 +58,7 @@ _start:
 
     @ Set MPU permissions and cache settings
     ldr r0, =0xFFFF001D @ ffff0000 32k  | bootrom (unprotected part)
-    ldr r1, =0xFFF0801B @ fff00000 16k  | dtcm
+    ldr r1, =0xFFF0001B @ fff00000 16k  | dtcm
     ldr r2, =0x01FF801D @ 01ff8000 32k  | itcm
     ldr r3, =0x08000029 @ 08000000 2M   | arm9 mem (O3DS / N3DS)
     ldr r4, =0x10000029 @ 10000000 2M   | io mem (ARM9 / first 2MB)
@@ -79,7 +79,7 @@ _start:
     mcr p15, 0, r8, c2, c0, 1   @ Inst cacheable 0, 3, 5
 
     @ Set DTCM address and size to the default values
-    ldr r1, =0xFFF0800A        @ set DTCM address and size
+    ldr r1, =0xFFF0000A        @ set DTCM address and size
     mcr p15, 0, r1, c9, c1, 0  @ set the dtcm Region Register
 
     @ Enable caches / MPU / ITCM
