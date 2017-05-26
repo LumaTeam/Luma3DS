@@ -155,7 +155,7 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
     //4) Patch NATIVE_FIRM if necessary
     if(isCustomModule)
     {
-        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, firm->section[1].address, firm->section[1].size) != 0)
+        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, (u8 *)firm + firm->section[1].offset, firm->section[1].size) != 0)
             error("Failed to inject custom sysmodule");
     }
 }
