@@ -58,11 +58,11 @@ _start:
 
     @ Set MPU permissions and cache settings
     ldr r0, =0xFFFF001D @ ffff0000 32k  | bootrom (unprotected part)
-    ldr r1, =0xFFF0001B @ fff00000 16k  | dtcm
+    ldr r1, =0xFFF0801B @ fff00000 16k  | dtcm
     ldr r2, =0x01FF801D @ 01ff8000 32k  | itcm
-    ldr r3, =0x08000029 @ 08000000 2M   | arm9 mem (O3DS / N3DS)
+    ldr r3, =0x08000027 @ 08000000 1M   | arm9 mem
     ldr r4, =0x10000029 @ 10000000 2M   | io mem (ARM9 / first 2MB)
-    ldr r5, =0x20000037 @ 20000000 256M | fcram (O3DS / N3DS)
+    ldr r5, =0x20000035 @ 20000000 128M | fcram
     ldr r6, =0x1FF00027 @ 1FF00000 1M   | dsp / axi wram
     ldr r7, =0x1800002D @ 18000000 8M   | vram (+ 2MB)
     mov r8, #0x29
