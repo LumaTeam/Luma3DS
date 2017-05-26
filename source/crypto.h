@@ -108,7 +108,6 @@ extern u32 emuOffset,
            emuHeader;
 extern FirmwareSource firmSource;
 
-void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode);
 void sha(void *res, const void *src, u32 size, u32 mode);
 
 int ctrNandInit(void);

@@ -230,7 +230,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
     }
 }
 
-void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
+static void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
 {
     *REG_AESCNT =   mode |
                     AES_CNT_INPUT_ORDER | AES_CNT_OUTPUT_ORDER |
@@ -344,9 +344,8 @@ int ctrNandInit(void)
 
     nandSlot = ISN3DS ? 0x05 : 0x04;
 
-    u8 __attribute__((aligned(4))) temp[0x200];
-
     int result;
+    u8 __attribute__((aligned(4))) temp[0x200];
 
     //Read NCSD header
     result = firmSource == FIRMWARE_SYSNAND ? sdmmc_nand_readsectors(0, 1, temp) : sdmmc_sdcard_readsectors(emuHeader, 1, temp);
@@ -354,7 +353,6 @@ int ctrNandInit(void)
     if(!result)
     {
         u32 partitionNum = 1; //TWL partitions need to be first
-
         for(u8 *partitionId = temp + 0x111; *partitionId != 1; partitionId++, partitionNum++);
 
         u32 ctrMbrOffset = *((u32 *)(temp + 0x120) + (2 * partitionNum));
