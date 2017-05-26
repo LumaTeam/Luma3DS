@@ -29,9 +29,10 @@
 #include "fatfs/sdmmc/sdmmc.h"
 #include "../build/bundled.h"
 
-u32 emuOffset;
+u32 emuOffset,
+    emuHeader;
 
-void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
+void locateEmuNand(FirmwareSource *nandType)
 {
     static u8 __attribute__((aligned(4))) temp[0x200];
     static u32 nandSize = 0,
@@ -70,7 +71,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
             if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && memcmp(temp + 0x100, "NCSD", 4) == 0)
             {
                 emuOffset = nandOffset + 1;
-                *emuHeader = nandOffset + 1;
+                emuHeader = nandOffset + 1;
                 return;
             }
 
@@ -78,7 +79,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
             else if(i != 2 && !sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && memcmp(temp + 0x100, "NCSD", 4) == 0)
             {
                 emuOffset = nandOffset;
-                *emuHeader = nandOffset + nandSize;
+                emuHeader = nandOffset + nandSize;
                 return;
             }
         }
@@ -90,7 +91,7 @@ void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType)
     if(*nandType != FIRMWARE_EMUNAND)
     {
         *nandType = FIRMWARE_EMUNAND;
-        locateEmuNand(emuHeader, nandType);
+        locateEmuNand(nandType);
     }
     else *nandType = FIRMWARE_SYSNAND;
 }
@@ -161,7 +162,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address)
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address)
 {
     u8 *freeK9Space;
 

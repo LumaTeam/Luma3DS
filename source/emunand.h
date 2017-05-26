@@ -30,5 +30,5 @@
 
 #define ROUND_TO_4MB(a) (((a) + 0x2000 - 1) & (~(0x2000 - 1)))
 
-void locateEmuNand(u32 *emuHeader, FirmwareSource *nandType);
-u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u32 emuHeader, u8 *kernel9Address);
+void locateEmuNand(FirmwareSource *nandType);
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address);

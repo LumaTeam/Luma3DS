@@ -320,7 +320,7 @@ void sha(void *res, const void *src, u32 size, u32 mode)
 
 __attribute__((aligned(4))) static u8 nandCtr[AES_BLOCK_SIZE];
 static u8 nandSlot;
-static u32 fatStart;
+static u32 fatStart = 0;
 
 FirmwareSource firmSource;
 
@@ -333,7 +333,7 @@ __attribute__((aligned(4))) static const u8 key1s[2][AES_BLOCK_SIZE] = {
     {0xFF, 0x77, 0xA0, 0x9A, 0x99, 0x81, 0xE9, 0x48, 0xEC, 0x51, 0xC9, 0x32, 0x5D, 0x14, 0xEC, 0x25}
 };
 
-void ctrNandInit(void)
+int ctrNandInit(void)
 {
     __attribute__((aligned(4))) u8 cid[AES_BLOCK_SIZE],
                                    shaSum[SHA_256_HASH_SIZE];
@@ -342,16 +342,31 @@ void ctrNandInit(void)
     sha(shaSum, cid, sizeof(cid), SHA_256_MODE);
     memcpy(nandCtr, shaSum, sizeof(nandCtr));
 
-    if(ISN3DS)
+    nandSlot = ISN3DS ? 0x05 : 0x04;
+
+    u8 __attribute__((aligned(4))) temp[0x200];
+
+    int result;
+
+    //Read NCSD header
+    result = firmSource == FIRMWARE_SYSNAND ? sdmmc_nand_readsectors(0, 1, temp) : sdmmc_sdcard_readsectors(emuHeader, 1, temp);
+
+    if(!result)
     {
-        nandSlot = 0x05;
-        fatStart = 0x5CAD7;
+        u32 partitionNum = 1; //TWL partitions need to be first
+
+        for(u8 *partitionId = temp + 0x111; *partitionId != 1; partitionId++, partitionNum++);
+
+        u32 ctrMbrOffset = *((u32 *)(temp + 0x120) + (2 * partitionNum));
+
+        //Read CTR MBR
+        result = ctrNandRead(ctrMbrOffset, 1, temp);
+
+        //Calculate final CTRNAND FAT offset
+        if(!result) fatStart = ctrMbrOffset + *(u32 *)(temp + 0x1C6);
     }
-    else
-    {
-        nandSlot = 0x04;
-        fatStart = 0x5CAE5;
-    }
+
+    return result;
 }
 
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf)

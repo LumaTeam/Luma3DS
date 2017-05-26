@@ -46,7 +46,6 @@ void main(int argc, char **argv, u32 magicWord)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
-    u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
 
@@ -266,13 +265,13 @@ boot:
     //If we need to boot EmuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNand(&emuHeader, &nandType);
+        locateEmuNand(&nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
     //Same if we're using EmuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNand(&emuHeader, &firmSource);
+        locateEmuNand(&firmSource);
 
     if(!isFirmlaunch)
     {
@@ -291,7 +290,7 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, loadFromStorage, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
+            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
