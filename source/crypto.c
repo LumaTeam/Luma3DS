@@ -90,7 +90,7 @@ static void aes_setkey(u8 keyslot, const void *key, u32 keyType, u32 mode)
 
     if(keyslot <= 3)
     {
-        if((mode & AES_CNT_INPUT_ORDER) == AES_INPUT_REVERSED)
+        if((mode & AES_CNT_INPUT_ORDER) == AES_INPUT_TWLREVERSED)
         {
             REGs_AESTWLKEYS[keyslot][keyType][0] = key32[3];
             REGs_AESTWLKEYS[keyslot][keyType][1] = key32[2];
@@ -462,7 +462,7 @@ bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
 
 static inline void twlConsoleInfoInit(void)
 {
-    u64 twlConsoleId = CFG_UNITINFO != 0 ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
+    u64 twlConsoleId = ISDEVUNIT ? OTP_DEVCONSOLEID : (0x80000000ULL | (*(vu64 *)0x01FFB808 ^ 0x8C267B7B358A6AFULL));
     CFG_TWLUNITINFO = CFG_UNITINFO;
     OTP_TWLCONSOLEID = twlConsoleId;
 
@@ -475,6 +475,31 @@ static inline void twlConsoleInfoInit(void)
 
     k1X[2] = (u32)(twlConsoleId >> 32);
     k1X[3] = (u32)twlConsoleId;
+
+    aes_setkey(2, (u8 *)0x01FFD398, AES_KEYX, AES_INPUT_TWLNORMAL);
+    if(CFG_TWLUNITINFO != 0)
+    {
+        __attribute__((aligned(4))) u8 key2YDev[AES_BLOCK_SIZE] = {0x3B, 0x06, 0x86, 0x57, 0x33, 0x04, 0x88, 0x11, 0x49, 0x04, 0x6B, 0x33, 0x12, 0x02, 0xAC, 0xF3};
+        __attribute__((aligned(4))) u8 key3YDev[AES_BLOCK_SIZE] = {0xAA, 0xBF, 0x76, 0xF1, 0x7A, 0xB8, 0xE8, 0x66, 0x97, 0x64, 0x6A, 0x26, 0x05, 0x00, 0xA0, 0xE1};
+
+        k3X[1] = 0xEE7A4B1E;
+        k3X[2] = 0xAF42C08B;
+        aes_setkey(2, key2YDev, AES_KEYY, AES_INPUT_TWLNORMAL);
+        aes_setkey(3, key3YDev, AES_KEYY, AES_INPUT_TWLNORMAL);
+    }
+    else
+    {
+        u32 last3YWord = 0xE1A00005;
+        __attribute__((aligned(4))) u8 key3YRetail[AES_BLOCK_SIZE];
+
+        memcpy(key3YRetail, (u8 *)0x01FFD3C8, 12);
+        memcpy(key3YRetail + 12, &last3YWord, 4);
+
+        k3X[1] = *(vu32 *)0x01FFD3A8; // "NINT"
+        k3X[2] = *(vu32 *)0x01FFD3AC; // "ENDO"
+        aes_setkey(2, (u8 *)0x01FFD220, AES_KEYY, AES_INPUT_TWLNORMAL);
+        aes_setkey(3, key3YRetail, AES_KEYY, AES_INPUT_TWLNORMAL);
+    }
 }
 
 void setupKeyslots(void)
@@ -501,10 +526,10 @@ void setupKeyslots(void)
         //Setup 0x05 KeyY
         __attribute__((aligned(4))) u8 keyY0x5[AES_BLOCK_SIZE] =  {0x4D, 0x80, 0x4F, 0x4E, 0x99, 0x90, 0x19, 0x46, 0x13, 0xA2, 0x04, 0xAC, 0x58, 0x44, 0x60, 0xBE};
         aes_setkey(0x05, keyY0x5,  AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-
-        //Setup TWL keys
-        twlConsoleInfoInit();
     }
+
+    //Setup TWL keys
+    twlConsoleInfoInit();
 
     __attribute__((aligned(4))) u8 keyBlocks[2][AES_BLOCK_SIZE] = {
         {0xA4, 0x8D, 0xE4, 0xF1, 0x0B, 0x36, 0x44, 0xAA, 0x90, 0x31, 0x28, 0xFF, 0x4D, 0xCA, 0x76, 0xDF},
