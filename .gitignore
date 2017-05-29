@@ -1,13 +1,12 @@
 out
 build
-loader/build
-injector/build
+arm11/build
+sysmodules/loader/build
+chainloader/build
 exceptions/arm9/build
 exceptions/arm11/build
-haxloader/build
 *.bin
-*.3dsx
-*.smdh
+*.firm
 *.o
 *.d
 *.elf

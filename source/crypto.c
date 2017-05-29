@@ -468,7 +468,8 @@ static inline void twlConsoleInfoInit(void)
 
     *REG_AESCNT = 0;
 
-    vu32 *k3X = REGs_AESTWLKEYS[3][1], *k1X = REGs_AESTWLKEYS[1][1];
+    vu32 *k3X = REGs_AESTWLKEYS[3][1],
+         *k1X = REGs_AESTWLKEYS[1][1];
 
     k3X[0] = (u32)twlConsoleId;
     k3X[3] = (u32)(twlConsoleId >> 32);
@@ -479,8 +480,8 @@ static inline void twlConsoleInfoInit(void)
     aes_setkey(2, (u8 *)0x01FFD398, AES_KEYX, AES_INPUT_TWLNORMAL);
     if(CFG_TWLUNITINFO != 0)
     {
-        __attribute__((aligned(4))) u8 key2YDev[AES_BLOCK_SIZE] = {0x3B, 0x06, 0x86, 0x57, 0x33, 0x04, 0x88, 0x11, 0x49, 0x04, 0x6B, 0x33, 0x12, 0x02, 0xAC, 0xF3};
-        __attribute__((aligned(4))) u8 key3YDev[AES_BLOCK_SIZE] = {0xAA, 0xBF, 0x76, 0xF1, 0x7A, 0xB8, 0xE8, 0x66, 0x97, 0x64, 0x6A, 0x26, 0x05, 0x00, 0xA0, 0xE1};
+        __attribute__((aligned(4))) u8 key2YDev[AES_BLOCK_SIZE] = {0x3B, 0x06, 0x86, 0x57, 0x33, 0x04, 0x88, 0x11, 0x49, 0x04, 0x6B, 0x33, 0x12, 0x02, 0xAC, 0xF3},
+                                       key3YDev[AES_BLOCK_SIZE] = {0xAA, 0xBF, 0x76, 0xF1, 0x7A, 0xB8, 0xE8, 0x66, 0x97, 0x64, 0x6A, 0x26, 0x05, 0x00, 0xA0, 0xE1};
 
         k3X[1] = 0xEE7A4B1E;
         k3X[2] = 0xAF42C08B;
@@ -495,8 +496,8 @@ static inline void twlConsoleInfoInit(void)
         memcpy(key3YRetail, (u8 *)0x01FFD3C8, 12);
         memcpy(key3YRetail + 12, &last3YWord, 4);
 
-        k3X[1] = *(vu32 *)0x01FFD3A8; // "NINT"
-        k3X[2] = *(vu32 *)0x01FFD3AC; // "ENDO"
+        k3X[1] = *(vu32 *)0x01FFD3A8; //"NINT"
+        k3X[2] = *(vu32 *)0x01FFD3AC; //"ENDO"
         aes_setkey(2, (u8 *)0x01FFD220, AES_KEYY, AES_INPUT_TWLNORMAL);
         aes_setkey(3, key3YRetail, AES_KEYY, AES_INPUT_TWLNORMAL);
     }
