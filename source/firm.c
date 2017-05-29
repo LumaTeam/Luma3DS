@@ -472,14 +472,12 @@ bool checkFirmPayload(void)
 
 void launchFirm(int argc, char **argv)
 {
-    u32 *loaderAddress = (u32 *)0x01FF9000;
+    u32 *chainloaderAddress = (u32 *)0x01FF9000;
 
     prepareArm11ForFirmlaunch();
 
-    memcpy(loaderAddress, loader_bin, loader_bin_size);
+    memcpy(chainloaderAddress, chainloader_bin, chainloader_bin_size);
 
-    flushDCacheRange(loaderAddress, loader_bin_size);
-    flushICacheRange(loaderAddress, loader_bin_size);
-
-    ((void (*)(int, char **, u32))loaderAddress)(argc, argv, 0x0000BEEF);
+    // No need to flush caches here, the chainloader is in ITCM
+    ((void (*)(int, char **, u32))chainloaderAddress)(argc, argv, 0x0000BEEF);
 }

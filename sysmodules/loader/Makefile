@@ -11,7 +11,7 @@ name := $(shell basename $(CURDIR))
 dir_source := source
 dir_patches := patches
 dir_build := build
-dir_out := ../$(dir_build)
+dir_out := ../../$(dir_build)
 
 LIBS := -lctru
 LIBDIRS	:= $(CTRULIB)

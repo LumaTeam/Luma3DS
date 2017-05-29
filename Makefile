@@ -13,11 +13,12 @@ commit := $(shell git rev-parse --short=8 HEAD)
 dir_source := source
 dir_patches := patches
 dir_arm11 := arm11
-dir_loader := loader
-dir_injector := injector
+dir_chainloader := chainloader
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_arm11_exceptions := $(dir_exceptions)/arm11
+dir_sysmodules := sysmodules
+dir_loader := $(dir_sysmodules)/loader
 dir_build := build
 dir_out := out
 
@@ -30,9 +31,9 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/svcGetCFWInfo.bin.o $(dir_build)/k11modules.bin.o \
-          $(dir_build)/loader.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
+          $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
 
-modules = $(dir_build)/injector.cxi
+modules = $(dir_build)/loader.cxi
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
@@ -50,19 +51,19 @@ firm: $(dir_out)/boot.firm
 .PHONY: clean
 clean:
 	@$(MAKE) -C $(dir_arm11) clean
-	@$(MAKE) -C $(dir_loader) clean
+	@$(MAKE) -C $(dir_chainloader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_arm11_exceptions) clean
-	@$(MAKE) -C $(dir_injector) clean
+	@$(MAKE) -C $(dir_loader) clean
 	@rm -rf $(dir_out) $(dir_build)
 
 .PRECIOUS: $(dir_build)/%.bin
 
 .PHONY: $(dir_arm11)
-.PHONY: $(dir_loader)
+.PHONY: $(dir_chainloader)
 .PHONY: $(dir_arm9_exceptions)
 .PHONY: $(dir_arm11_exceptions)
-.PHONY: $(dir_injector)
+.PHONY: $(dir_loader)
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
@@ -83,14 +84,14 @@ $(dir_build)/arm11.elf: $(dir_arm11)
 $(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/injector.cxi: $(dir_injector)
+$(dir_build)/loader.cxi: $(dir_loader)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
-$(dir_build)/loader.bin: $(dir_loader)
+$(dir_build)/chainloader.bin: $(dir_chainloader)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
