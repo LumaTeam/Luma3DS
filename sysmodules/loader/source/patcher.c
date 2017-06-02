@@ -636,8 +636,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
        progId == 0x000400300000A102LL || //CHN Home Menu
        progId == 0x000400300000B102LL) //TWN Home Menu
     {
-        bool applyRegionFreePatch = true,
-             applyNewDsWhitelistPatch = false;
+        bool applyRegionFreePatch = true;
 
         switch(progId)
         {
@@ -645,11 +644,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             case 0x0004003000008202LL: //JPN Home Menu
             case 0x0004003000009802LL: //EUR Home Menu
                 if(progVer <= 4) applyRegionFreePatch = false;
-                if(progVer >= 0xB) applyNewDsWhitelistPatch = true;
                 break;
             case 0x000400300000A902LL: //KOR Home Menu
                 if(!progVer) applyRegionFreePatch = false;
-                if(progVer >= 6) applyNewDsWhitelistPatch = true;
                 break;
         }
 
@@ -671,40 +668,22 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 )) goto error;
         }
 
-        if(applyNewDsWhitelistPatch)
-        {
-            static const u8 pattern[] = {
-                0xE9, 0x12, 0x20, 0xA0
-            },
-                            patch[] = {
-                0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
-            };
+        static const u8 pattern[] = {
+            0x10, 0xD1, 0xE5, 0x08, 0x00, 0x8D
+        };
 
-            //Patch DS title whitelist check
-            if(!patchMemory(code, textSize,
-                    pattern,
-                    sizeof(pattern), -3,
-                    patch,
-                    sizeof(patch), 1
-                )) goto error;
-        }
-        else
-        {
-            static const u8 pattern[] = {
-                0x4D, 0xE2, 0x12, 0x20
-            },
-                            patch[] = {
-                0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
-            };
+        u8 *temp = memsearch(code, pattern, textSize, sizeof(pattern));
 
-            //Patch DS title whitelist check
-            if(!patchMemory(code, textSize,
-                    pattern,
-                    sizeof(pattern), -6,
-                    patch,
-                    sizeof(patch), 1
-                )) goto error;
-        }
+        if(temp == NULL) goto error;
+
+        u32 additive = findFunctionStart(code, (u32)(temp - code - 1));
+
+        if(additive == 0xFFFFFFFF) goto error;
+
+        u32 *off = (u32 *)(code + additive);
+
+        off[0] = 0xE3A00000; //mov r0, #0
+        off[1] = 0xE12FFF1E; //bx lr
     }
 
     else if(progId == 0x0004013000003202LL) //FRIENDS
