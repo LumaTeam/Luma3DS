@@ -159,6 +159,17 @@ exit:
     IFile_Close(&file);
 }
 
+static u32 findFunctionStart(u8 *code, u32 pos)
+{
+    while(pos >= 4)
+    {
+        pos -= 4;
+        if(*(u16 *)(code + pos + 2) == 0xE92D) return pos;
+    }
+
+    return 0xFFFFFFFF;
+}
+
 static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 {
     /* HANS:
@@ -202,11 +213,11 @@ static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
 
 static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
 {
-    u8 *CFGU_GetConfigInfoBlk2_startPos; //Let's find STMFD SP (there might be a NOP before, but nevermind)
+    u32 additive = findFunctionStart(code, (u32)(CFGU_GetConfigInfoBlk2_endPos - code));
 
-    for(CFGU_GetConfigInfoBlk2_startPos = CFGU_GetConfigInfoBlk2_endPos - 4;
-        *((u16 *)CFGU_GetConfigInfoBlk2_startPos + 1) != 0xE92D; CFGU_GetConfigInfoBlk2_startPos -= 4)
-        if(CFGU_GetConfigInfoBlk2_startPos < code + 4) return false;
+    if(additive == 0xFFFFFFFF) return false;
+
+    u8 *CFGU_GetConfigInfoBlk2_startPos = code + additive;
 
     for(u8 *languageBlkIdPos = code; languageBlkIdPos <= code + size - 4; languageBlkIdPos += 4)
     {
@@ -267,17 +278,6 @@ static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHa
             return;
         }
     }
-}
-
-static u32 findFunctionStart(u8 *code, u32 pos)
-{
-    while(pos >= 4)
-    {
-        pos -= 4;
-        if(*(u16 *)(code + pos + 2) == 0xE92D) return pos;
-    }
-
-    return 0xFFFFFFFF;
 }
 
 static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
