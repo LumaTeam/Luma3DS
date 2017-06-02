@@ -49,7 +49,7 @@ void main(int argc, char **argv, u32 magicWord)
     FirmwareType firmType;
     FirmwareSource nandType;
 
-    if(magicWord == 0xBEEF && argc >= 1) //Normal boot
+    if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal boot
     {
         u32 i;
         for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
