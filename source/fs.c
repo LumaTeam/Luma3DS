@@ -161,7 +161,7 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
     payloadSize = fileRead(firm, path, maxPayloadSize);
 
-    if(payloadSize <= 0x200 || !checkFirmPayload()) return;
+    if(payloadSize <= 0x200 || !checkFirmPayload(payloadSize)) return;
 
     writeConfig(true);
 

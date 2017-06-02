@@ -33,6 +33,5 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
 u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
 u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers);
 
-bool checkFirmPayload(void);
+bool checkFirmPayload(u32 payloadSize);
 void launchFirm(int argc, char **argv);
-

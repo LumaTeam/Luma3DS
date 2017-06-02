@@ -423,17 +423,19 @@ static __attribute__((noinline)) bool inRange(u32 as, u32 ae, u32 bs, u32 be)
    return false;
 }
 
-bool checkFirmPayload(void)
+bool checkFirmPayload(u32 payloadSize)
 {
     if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
         return false;
+
+    bool arm9EpFound = false,
+         arm11EpFound = false;
 
     u32 size = 0x200;
     for(u32 i = 0; i < 4; i++)
         size += firm->section[i].size;
 
-    bool arm9EpFound = false,
-         arm11EpFound = false;
+    if(size != payloadSize) return false;
 
     for(u32 i = 0; i < 4; i++)
     {
