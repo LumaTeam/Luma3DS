@@ -61,14 +61,14 @@ static bool dirCheck(FS_ArchiveID archiveId, const char *path)
 
 static bool openLumaFile(IFile *file, const char *path)
 {
-    FS_ArchiveID archiveId = ISSDMODE ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    FS_ArchiveID archiveId = LOADERFLAG(ISSDMODE) ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
     return R_SUCCEEDED(fileOpen(file, archiveId, path, FS_OPEN_READ));
 }
 
 static u32 checkLumaDir(const char *path)
 {
-    FS_ArchiveID archiveId = ISSDMODE ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    FS_ArchiveID archiveId = LOADERFLAG(ISSDMODE) ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
     return dirCheck(archiveId, path) ? archiveId : 0;
 }
