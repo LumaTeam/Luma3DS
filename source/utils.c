@@ -36,6 +36,10 @@
 
 static void startChrono(void)
 {
+    bool isChronoStarted = false;
+
+    if(isChronoStarted) return;
+
     REG_TIMER_CNT(0) = 0; //67MHz
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
 
@@ -43,6 +47,8 @@ static void startChrono(void)
 
     REG_TIMER_CNT(0) = 0x80; //67MHz; enabled
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
+
+    isChronoStarted = true;
 }
 
 static u64 chrono(void)
@@ -58,6 +64,7 @@ static u64 chrono(void)
 u32 waitInput(bool isMenu)
 {
     static u64 dPadDelay = 0ULL;
+    u64 initialValue = 0ULL;
     u32 key,
         oldKey = HID_PAD;
 
@@ -65,6 +72,7 @@ u32 waitInput(bool isMenu)
     {
         dPadDelay = dPadDelay > 0ULL ? 87ULL : 143ULL;
         startChrono();
+        initialValue = chrono();
     }
 
     while(true)
@@ -79,7 +87,7 @@ u32 waitInput(bool isMenu)
             continue;
         }
 
-        if(key == oldKey && (!isMenu || (!(key & DPAD_BUTTONS) || chrono() < dPadDelay))) continue;
+        if(key == oldKey && (!isMenu || (!(key & DPAD_BUTTONS) || chrono() - initialValue < dPadDelay))) continue;
 
         //Make sure the key is pressed
         u32 i;
@@ -104,7 +112,10 @@ void mcuPowerOff(void)
 void wait(u64 amount)
 {
     startChrono();
-    while(chrono() < amount);
+
+    u64 initialValue = chrono();
+
+    while(chrono() - initialValue < amount);
 }
 
 void error(const char *fmt, ...)
