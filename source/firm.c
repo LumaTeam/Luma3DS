@@ -439,8 +439,6 @@ bool checkFirmPayload(u32 payloadSize)
 
     for(u32 i = 0; i < 4; i++)
     {
-        __attribute__((aligned(4))) u8 hash[0x20];
-
         FirmSection *section = &firm->section[i];
 
         //Allow empty sections
@@ -456,6 +454,8 @@ bool checkFirmPayload(u32 payloadSize)
             (!inRange((u32)section->address, (u32)section->address + section->size, 0x1FF00000, 0x1FFFFC00)) &&
             (!inRange((u32)section->address, (u32)section->address + section->size, 0x20000000, 0x20000000 + 0x8000000))))
             return false;
+
+        __attribute__((aligned(4))) u8 hash[0x20];
 
         sha(hash, (u8 *)firm + section->offset, section->size, SHA_256_MODE);
 

@@ -115,7 +115,6 @@ void initScreens(void)
 
             //Turn on backlight
             i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
-            wait(3ULL);
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
