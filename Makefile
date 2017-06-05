@@ -36,25 +36,6 @@ dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
-<<<<<<< HEAD
-ifeq ($(FONT),ORIG)
-CFLAGS	+=	-DFONT_ORIGINAL
-else ifeq ($(FONT),6X10)
-CFLAGS	+=	-DFONT_6X10
-else ifeq ($(FONT),ACORN)
-CFLAGS	+=	-DFONT_ACORN
-else ifeq ($(FONT),GB)
-CFLAGS	+=	-DFONT_GB
-else ifeq ($(FONT),LARGEL)
-CFLAGS	+=	-DFONT_LL
-else ifeq ($(FONT),LARGES)
-CFLAGS	+=	-DFONT_LS
-else ifeq ($(FONT),PEARL)
-CFLAGS	+=	-DFONT_PEARL
-else
-CFLAGS	+=	-DFONT_6X10
-endif
-
 LDFLAGS := -nostartfiles -Wl,--nmagic
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
