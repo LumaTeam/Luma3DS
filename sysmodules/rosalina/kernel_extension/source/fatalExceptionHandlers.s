@@ -138,7 +138,7 @@ _commonHandler:
     mcr p15, 0, r0, c7, c10, 4   @ Drain Synchronization Barrier
 
     ldr r0, =isN3DS
-    ldr r0, [r0]
+    ldrb r0, [r0]
     cmp r0, #0
     beq _no_L2C
     ldr r0, =(0x17e10100 | 1 << 31)
