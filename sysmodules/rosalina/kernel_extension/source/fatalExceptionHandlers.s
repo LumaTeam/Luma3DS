@@ -47,6 +47,8 @@
 
         push {r0-r12, lr}
         mrs r0, spsr
+        mov r1, sp
+        mov r2, #\index
         bl isExceptionFatal
         cmp r0, #0
         pop {r0-r12, lr}
