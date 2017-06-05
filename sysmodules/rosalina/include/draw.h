@@ -57,8 +57,8 @@
 #define SCREEN_BOT_WIDTH  320
 #define SCREEN_BOT_HEIGHT 240
 
-#define SPACING_Y 11
-#define SPACING_X 6
+#define SPACING_Y 8
+#define SPACING_X 8
 
 #define COLOR_TITLE RGB565(0x00, 0x26, 0x1F)
 #define COLOR_WHITE RGB565(0x1F, 0x3F, 0x1F)

@@ -1,4 +1,3 @@
-
 /*
 *   This file is part of Luma3DS
 *   Copyright (C) 2016-2017 Aurora Wright, TuxSH
@@ -30,9 +29,7 @@
 #include <3ds/types.h>
 #include "menu.h"
 
-extern Menu rosalinaMenu;
+extern Menu PowerMenu;
 
-void RosalinaMenu_TakeScreenshot(void);
-void RosalinaMenu_ShowCredits(void);
-void RosaPowerOff(void);
-void RosalinaMenu_ProcessList(void);
+void RebootMenu(void);
+void PoweroffMenu(void);

@@ -1,4 +1,3 @@
-
 /*
 *   This file is part of Luma3DS
 *   Copyright (C) 2016-2017 Aurora Wright, TuxSH
@@ -25,14 +24,39 @@
 *         reasonable ways as different from the original version.
 */
 
-#pragma once
-
-#include <3ds/types.h>
+#include <3ds.h>
+#include "fmt.h"
+#include "menus/power.h"
+#include "memory.h"
 #include "menu.h"
 
-extern Menu rosalinaMenu;
 
-void RosalinaMenu_TakeScreenshot(void);
-void RosalinaMenu_ShowCredits(void);
-void RosaPowerOff(void);
-void RosalinaMenu_ProcessList(void);
+Menu PowerMenu = {
+    "Power menu",
+    .nbItems = 2,
+    {
+        { "Power off 3DS", METHOD, .method = &PoweroffMenu },
+        { "Reboot 3DS", METHOD, .method = &RebootMenu }
+    }
+};
+
+void RebootMenu(void)
+{
+svcKernelSetState(7);
+}
+
+void PoweroffMenu(void)
+{
+    Handle nssHandle = 0;
+    Result result = srvGetServiceHandle(&nssHandle, "ns:s");
+    if (result != 0)
+        return;
+
+    u32 *commandBuffer = getThreadCommandBuffer();
+    commandBuffer[0] = 0x000E0000;
+
+    svcSendSyncRequest(nssHandle);
+    svcCloseHandle(nssHandle);
+ 
+
+}

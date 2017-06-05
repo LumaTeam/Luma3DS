@@ -33,13 +33,14 @@
 #include "menus/n3ds.h"
 #include "menus/debugger.h"
 #include "menus/miscellaneous.h"
+#include "menus/power.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 7,
+    .nbItems = 8,
     {
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Process patches menu...", MENU, .menu = &processPatchesMenu },
@@ -47,7 +48,9 @@ Menu rosalinaMenu = {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+        { "Power Menu", MENU, .method = &PowerMenu }
+
     }
 };
 
