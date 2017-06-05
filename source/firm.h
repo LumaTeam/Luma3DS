@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #pragma once
@@ -25,11 +29,13 @@
 #include "types.h"
 #include "3dsheaders.h"
 
-static Firm *const firm = (Firm *const)0x24000000;
+static Firm *const firm = (Firm *const)0x20001000;
 
 u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode);
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers);
-u32 patchTwlFirm(u32 firmVersion, bool doUnitinfoPatch);
-u32 patchAgbFirm(bool doUnitinfoPatch);
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers);
+u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
+u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
 u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers);
-void launchFirm(FirmwareType firmType, bool loadFromStorage);
+
+bool checkFirmPayload(u32 payloadSize);
+void launchFirm(int argc, char **argv);

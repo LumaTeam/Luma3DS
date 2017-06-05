@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "fs.h"
@@ -118,64 +122,10 @@ void fileDelete(const char *path)
     f_unlink(path);
 }
 
-static __attribute__((noinline)) bool overlaps(u32 as, u32 ae, u32 bs, u32 be)
-{
-    if (as <= bs && bs <= ae)
-        return true;
-    else if (bs <= as && as <= be)
-        return true;
-    return false;
-}
-
-static bool checkFirmPayload(void)
-{
-    if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
-        return false;
-
-    u32 size = 0x200;
-    for(u32 i = 0; i < 4; i++)
-        size += firm->section[i].size;
-
-    bool arm9EpFound = false,
-         arm11EpFound = false;
-
-    for(u32 i = 0; i < 4; i++)
-    {
-        __attribute__((aligned(4))) u8 hash[0x20];
-
-        FirmSection *section = &firm->section[i];
-
-        //Allow empty sections
-        if(section->size == 0)
-            continue;
-
-        if((section->offset < 0x200) ||
-           (section->address + section->size < section->address) || //Overflow check
-           ((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF) || //Alignment check
-           (overlaps((u32)section->address, (u32)section->address + section->size, 0x27FFE000 - 0x1000, 0x28000000)) ||
-           (overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm, (u32)firm + size)))
-            return false;
-
-        sha(hash, (u8 *)firm + section->offset, section->size, SHA_256_MODE);
-
-        if(memcmp(hash, section->hash, 0x20) != 0)
-            return false;
-
-        if(firm->arm9Entry >= section->address && firm->arm9Entry < (section->address + section->size))
-            arm9EpFound = true;
-
-        if(firm->arm11Entry >= section->address && firm->arm11Entry < (section->address + section->size))
-            arm11EpFound = true;
-    }
-
-    return arm9EpFound && (firm->arm11Entry == NULL || arm11EpFound);
-}
-
 void loadPayload(u32 pressed, const char *payloadPath)
 {
-    u32 *loaderAddress = (u32 *)0x27FFE000;
     u32 payloadSize = 0,
-        maxPayloadSize = (u32)((u8 *)loaderAddress - (u8 *)firm);
+        maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm);
 
     char absPath[24 + _MAX_LFN];
     char path[10 + _MAX_LFN];
@@ -215,24 +165,17 @@ void loadPayload(u32 pressed, const char *payloadPath)
 
     payloadSize = fileRead(firm, path, maxPayloadSize);
 
-    if(!payloadSize || !checkFirmPayload()) return;
+    if(payloadSize <= 0x200 || !checkFirmPayload(payloadSize)) return;
 
     writeConfig(true);
 
-    if(!isSdMode)
-        sprintf(absPath, "nand:/rw/luma/%s", path);
-    else
-        sprintf(absPath, "sdmc:/luma/%s", path);
+    if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);
+    else sprintf(absPath, "nand:/rw/luma/%s", path);
 
-    char *argv[1] = {absPath};
-    memcpy(loaderAddress, loader_bin, loader_bin_size);
-
+    char *argv[2] = {absPath, (char *)fbs};
     initScreens();
 
-    flushDCacheRange(loaderAddress, loader_bin_size);
-    flushICacheRange(loaderAddress, loader_bin_size);
-
-    ((void (*)(int, char **, u32))loaderAddress)(1, argv, 0x0000BEEF);
+    launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
 }
 
 void payloadMenu(void)

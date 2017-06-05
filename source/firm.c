@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "firm.h"
@@ -38,11 +42,11 @@
 static inline bool loadFirmFromStorage(FirmwareType firmType)
 {
     const char *firmwareFiles[] = {
-        "firmware.bin",
-        "firmware_twl.bin",
-        "firmware_agb.bin",
-        "firmware_safe.bin",
-        "firmware_sysupdater.bin"
+        "native.firm",
+        "twl.firm",
+        "agb.firm",
+        "safe.firm",
+        "sysupdater.firm"
     },
                *cetkFiles[] = {
         "cetk",
@@ -72,6 +76,92 @@ static inline bool loadFirmFromStorage(FirmwareType firmType)
         error("The FIRM in /luma is not for this console.");
 
     return true;
+}
+
+static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
+{
+    u32 srcModuleSize;
+    const char *extModuleSizeError = "The external FIRM modules are too large.";
+
+    u32 nbModules = 0,
+        isCustomModule = false;
+    struct
+    {
+        char name[8];
+        u8 *src;
+        u32 size;
+    } moduleList[6];
+
+    //1) Parse info concerning Nintendo's modules
+    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size; src < srcEnd; src += srcModuleSize, nbModules++)
+    {
+        memcpy(moduleList[nbModules].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
+        moduleList[nbModules].src = src;
+        srcModuleSize = moduleList[nbModules].size = ((Cxi *)src)->ncch.contentSize * 0x200; 
+    }
+
+    if(firmType == NATIVE_FIRM)
+    {
+        //2) Merge that info with our own modules' 
+        for(u8 *src = (u8 *)0x1FF60000; src < (u8 *)(0x1FF60000 + LUMA_SECTION0_SIZE); src += srcModuleSize)
+        {
+            const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
+
+            u32 i;
+            for(i = 0; i < nbModules && memcmp(name, moduleList[i].name, 8) != 0; i++);
+
+            if(i == nbModules) isCustomModule = true;
+
+            memcpy(moduleList[i].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
+            moduleList[i].src = src;
+            srcModuleSize = moduleList[i].size = ((Cxi *)src)->ncch.contentSize * 0x200;
+        }
+
+        if(isCustomModule) nbModules++;
+    }
+
+    //3) Read or copy the modules
+    u8 *dst = firm->section[0].address;
+    for(u32 i = 0, dstModuleSize; i < nbModules; i++) 
+    {
+        dstModuleSize = 0;
+
+        if(loadFromStorage)
+        {
+            char fileName[24];
+
+            //Read modules from files if they exist
+            sprintf(fileName, "sysmodules/%.8s.cxi", moduleList[i].name);
+
+            dstModuleSize = getFileSize(fileName);
+
+            if(dstModuleSize != 0)
+            {
+                if(dstModuleSize > 0x60000) error(extModuleSizeError);
+
+                if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
+                   fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
+                   memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
+                   memcmp(moduleList[i].name, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
+                    error("An external FIRM module is invalid or corrupted.");
+
+                dst += dstModuleSize;
+            }
+        }
+
+        if(!dstModuleSize)
+        {
+            memcpy(dst, moduleList[i].src, moduleList[i].size);
+            dst += moduleList[i].size;
+        }
+    }
+
+    //4) Patch NATIVE_FIRM if necessary
+    if(isCustomModule)
+    {
+        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, (u8 *)firm + firm->section[1].offset, firm->section[1].size) != 0)
+            error("Failed to inject custom sysmodule");
+    }
 }
 
 u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
@@ -111,7 +201,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -132,12 +222,16 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     u32 baseK11VA;
     u8 *freeK11Space;
     u32 *arm11SvcHandler,
-        *arm11DAbtHandler,
         *arm11ExceptionsPage,
-        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11DAbtHandler, &arm11ExceptionsPage);
+        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
     u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
         ret = 0;
+
+    installMMUHook(arm11Section1, firm->section[1].size, &freeK11Space);
+    installK11MainHook(arm11Section1, firm->section[1].size, isSafeMode, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
+    installSvcConnectToPortInitHook(arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
+    installSvcCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
 
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
@@ -146,7 +240,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     ret += patchPsKeyslotSelection(process9Offset, process9Size);
 
     //Apply EmuNAND patches
-    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, emuHeader, firm->section[2].address);
+    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, firm->section[2].address);
 
     //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
     else ret += patchFirmWrites(process9Offset, process9Size);
@@ -166,15 +260,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     {
         //Apply anti-anti-DG patches
         ret += patchTitleInstallMinVersionChecks(process9Offset, process9Size, firmVersion);
-
-        //Restore svcBackdoor
-        ret += reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
-
-    //Stub svc 0x59 on 11.3+ FIRMs
-    if(firmVersion >= (ISN3DS ? 0x2D : 0x5C)) ret += stubSvcRestrictGpuDma(arm11Section1, arm11SvcTable, baseK11VA);
-
-    ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
 
     //Apply UNITINFO patches
     if(doUnitinfoPatch)
@@ -185,37 +271,22 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
 
     if(enableExceptionHandlers)
     {
-        //ARM11 exception handlers
-        u32 codeSetOffset,
-            stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset);
-        ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
-        patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
-        ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
-
         //ARM9 exception handlers
         ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
         ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
         ret += patchKernel9Panic(arm9Section, kernel9Size);
     }
 
-    bool patchAccess = CONFIG(PATCHACCESS),
-         patchGames = CONFIG(PATCHGAMES);
+    if(CONFIG(PATCHACCESS))
+        ret += patchP9AccessChecks(process9Offset, process9Size);
 
-    if(patchAccess || patchGames)
-    {
-        ret += patchK11ModuleChecks(arm11Section1, firm->section[1].size, &freeK11Space, patchGames);
-
-        if(patchAccess)
-        {
-            ret += patchArm11SvcAccessChecks(arm11SvcHandler, (u32 *)(arm11Section1 + firm->section[1].size));
-            ret += patchP9AccessChecks(process9Offset, process9Size);
-        }
-    }
+    mergeSection0(NATIVE_FIRM, loadFromStorage);
+    firm->section[0].size = 0;
 
     return ret;
 }
 
-u32 patchTwlFirm(u32 firmVersion, bool doUnitinfoPatch)
+u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
@@ -245,10 +316,16 @@ u32 patchTwlFirm(u32 firmVersion, bool doUnitinfoPatch)
     //Apply UNITINFO patch
     if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
+    if(loadFromStorage)
+    {
+        mergeSection0(TWL_FIRM, true);
+        firm->section[0].size = 0;
+    }
+
     return ret;
 }
 
-u32 patchAgbFirm(bool doUnitinfoPatch)
+u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
@@ -272,6 +349,12 @@ u32 patchAgbFirm(bool doUnitinfoPatch)
 
     //Apply UNITINFO patch
     if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
+
+    if(loadFromStorage)
+    {
+        mergeSection0(AGB_FIRM, true);
+        firm->section[0].size = 0;
+    }
 
     return ret;
 }
@@ -309,85 +392,79 @@ u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers)
     return ret;
 }
 
-static inline void copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromStorage)
+static __attribute__((noinline)) bool overlaps(u32 as, u32 ae, u32 bs, u32 be)
 {
-    u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000,
-        srcModuleSize,
-        dstModuleSize;
-    const char *extModuleSizeError = "The external FIRM modules are too large.";
-
-    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
-        src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
-    {
-        srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
-        const char *moduleName = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
-
-        if(loadFromStorage)
-        {
-            char fileName[24];
-
-            //Read modules from files if they exist
-            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
-
-            dstModuleSize = getFileSize(fileName);
-
-            if(dstModuleSize != 0)
-            {
-                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
-
-                if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
-                   fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
-                   memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
-                   memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
-                    error("An external FIRM module is invalid or corrupted.");
-
-                continue;
-            }
-        }
-
-        const u8 *module;
-
-        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
-        {
-            module = injector_bin;
-            dstModuleSize = injector_bin_size;
-        }
-        else
-        {
-            module = src;
-            dstModuleSize = srcModuleSize;
-        }
-
-        if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
-
-        memcpy(dst, module, dstModuleSize);
-    }
+    if(as <= bs && bs <= ae)
+        return true;
+    if(bs <= as && as <= be)
+        return true;
+    return false;
 }
 
-void launchFirm(FirmwareType firmType, bool loadFromStorage)
+static __attribute__((noinline)) bool inRange(u32 as, u32 ae, u32 bs, u32 be)
 {
-    //Allow module injection and/or inject 3ds_injector on new NATIVE_FIRMs and LGY FIRMs
-    u32 sectionNum;
-    if(firmType == NATIVE_FIRM || (loadFromStorage && (firmType == TWL_FIRM || firmType == AGB_FIRM)))
+   if(as >= bs && ae <= be)
+        return true;
+   return false;
+}
+
+bool checkFirmPayload(u32 payloadSize)
+{
+    if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
+        return false;
+
+    bool arm9EpFound = false,
+         arm11EpFound = false;
+
+    u32 size = 0x200;
+    for(u32 i = 0; i < 4; i++)
+        size += firm->section[i].size;
+
+    if(size != payloadSize) return false;
+
+    for(u32 i = 0; i < 4; i++)
     {
-        copySection0AndInjectSystemModules(firmType, loadFromStorage);
-        sectionNum = 1;
+        FirmSection *section = &firm->section[i];
+
+        //Allow empty sections
+        if(section->size == 0)
+            continue;
+
+        if((section->offset < 0x200) ||
+           (section->address + section->size < section->address) || //Overflow check
+           ((u32)section->address & 3) || (section->offset & 0x1FF) || (section->size & 0x1FF) || //Alignment check
+           (overlaps((u32)section->address, (u32)section->address + section->size, (u32)firm, (u32)firm + size)) ||
+           ((!inRange((u32)section->address, (u32)section->address + section->size, 0x08000000, 0x08000000 + 0x00100000)) &&
+            (!inRange((u32)section->address, (u32)section->address + section->size, 0x18000000, 0x18000000 + 0x00600000)) &&
+            (!inRange((u32)section->address, (u32)section->address + section->size, 0x1FF00000, 0x1FFFFC00)) &&
+            (!inRange((u32)section->address, (u32)section->address + section->size, 0x20000000, 0x20000000 + 0x8000000))))
+            return false;
+
+        __attribute__((aligned(4))) u8 hash[0x20];
+
+        sha(hash, (u8 *)firm + section->offset, section->size, SHA_256_MODE);
+
+        if(memcmp(hash, section->hash, 0x20) != 0)
+            return false;
+
+        if(firm->arm9Entry >= section->address && firm->arm9Entry < (section->address + section->size))
+            arm9EpFound = true;
+
+        if(firm->arm11Entry >= section->address && firm->arm11Entry < (section->address + section->size))
+            arm11EpFound = true;
     }
-    else sectionNum = 0;
 
-    //Copy FIRM sections to respective memory locations
-    for(; sectionNum < 4 && firm->section[sectionNum].size != 0; sectionNum++)
-        memcpy(firm->section[sectionNum].address, (u8 *)firm + firm->section[sectionNum].offset, firm->section[sectionNum].size);
+    return arm9EpFound && (firm->arm11Entry == NULL || arm11EpFound);
+}
 
-    if(!isFirmlaunch) deinitScreens();
-    
-    //Set ARM11 kernel entrypoint
-    ARM11_CORE0_MAILBOX_ENTRYPOINT = (u32)firm->arm11Entry;
+void launchFirm(int argc, char **argv)
+{
+    u32 *chainloaderAddress = (u32 *)0x01FF9000;
 
-    //Ensure that all memory transfers have completed and that the caches have been flushed
-    flushEntireDCache();
-    flushEntireICache();
+    prepareArm11ForFirmlaunch();
 
-    //Final jump to ARM9 kernel
-    ((void (*)())firm->arm9Entry)();
+    memcpy(chainloaderAddress, chainloader_bin, chainloader_bin_size);
+
+    // No need to flush caches here, the chainloader is in ITCM
+    ((void (*)(int, char **, u32))chainloaderAddress)(argc, argv, 0x0000BEEF);
 }

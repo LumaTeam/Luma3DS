@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #pragma once
@@ -47,16 +51,14 @@ typedef volatile s64 vs64;
 
 #include "3dsheaders.h"
 
-#define ARM11_CORE0_MAILBOX_ENTRYPOINT  *(vu32 *)0x1FFFFFFC
-
 #define CFG_BOOTENV         (*(vu32 *)0x10010000)
 #define CFG_UNITINFO        (*(vu8  *)0x10010010)
 #define CFG_TWLUNITINFO     (*(vu8  *)0x10010014)
 #define OTP_DEVCONSOLEID    (*(vu64 *)0x10012000)
 #define OTP_TWLCONSOLEID    (*(vu64 *)0x10012100)
-#define PDN_MPCORE_CFG      (*(vu32 *)0x10140FFC)
+#define CFG11_SOCINFO       (*(vu32 *)0x10140FFC)
 
-#define ISN3DS       (PDN_MPCORE_CFG == 7)
+#define ISN3DS       (CFG11_SOCINFO & 2)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 
 typedef struct __attribute__((packed))

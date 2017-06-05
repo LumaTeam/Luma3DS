@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE target SYSTEM "osdata.dtd">
+<osdata type="memory">
+  <item>
+    <column name="Region">APPLICATION</column>
+    <column name="Bytes used">%u</column>
+    <column name="Bytes free">%u</column>
+    <column name="Total size">%u</column>
+    <column name="Percentage used">%u%%</column>
+  </item>
+  <item>
+    <column name="Region">SYSTEM</column>
+    <column name="Bytes used">%u</column>
+    <column name="Bytes free">%u</column>
+    <column name="Total size">%u</column>
+    <column name="Percentage used">%u%%</column>
+  </item>
+  <item>
+    <column name="Region">BASE</column>
+    <column name="Bytes used">%u</column>
+    <column name="Bytes free">%u</column>
+    <column name="Total size">%u</column>
+    <column name="Percentage used">%u%%</column>
+  </item>
+</osdata>

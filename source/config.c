@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "config.h"
@@ -87,9 +91,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Patch SVC/service/archive/ARM9 access",
+                                        "( ) Patch ARM9 access",
                                         "( ) Set developer UNITINFO",
-                                        "( ) Enable exception handlers"
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -165,18 +168,14 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
                                           "\t* EmuS = EmuNAND 1 with SysNAND FIRM\n"
                                           "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
-                                          "or an user-defined custom string in\n"
+                                          "or a user-defined custom string in\n"
                                           "System Settings.\n\n"
                                           "Refer to the wiki for instructions.",
 
                                           "Enable showing the GBA boot screen\n"
                                           "when booting GBA games.",
 
-                                          "Disable SVC, service, archive and ARM9\n"
-                                          "exheader access checks.\n\n"
-                                          "The service and archive patches\n"
-                                          "don't work on New 3DS FIRMs between\n"
-                                          "9.3 and 10.4.\n\n"
+                                          "Disable ARM9 exheader access checks.\n\n"
                                           "Only select this if you know what you\n"
                                           "are doing!",
 
@@ -187,11 +186,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "and booting some developer software).\n\n"
                                           "Only select this if you know what you\n"
                                           "are doing!",
-
-                                          "Enable Luma3DS's ARM9/ARM11 exception\n"
-                                          "handlers. Luma3DS should be ran as\n"
-                                          "boot.firm.\n\n"
-                                          "Useful for debugging."
                                        };
 
     struct multiOption {
@@ -214,7 +208,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     } singleOptions[] = {
         { .visible = isSdMode },
         { .visible = isSdMode },
-        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },

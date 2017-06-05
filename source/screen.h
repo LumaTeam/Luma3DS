@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -33,8 +37,7 @@
 
 #define ARESCREENSINITIALIZED (PDN_GPU_CNT != 1)
 
-#define ARM11_STUB_ADDRESS 0x1FFFFF00
-#define WAIT_FOR_ARM9()    *arm11Entry = 0; while(!*arm11Entry); ((void (*)())*arm11Entry)();
+#define ARM11_PARAMETERS_ADDRESS 0x1FFFF000
 
 #define SCREEN_TOP_WIDTH     400
 #define SCREEN_BOTTOM_WIDTH  320
@@ -42,14 +45,28 @@
 #define SCREEN_TOP_FBSIZE    (3 * SCREEN_TOP_WIDTH * SCREEN_HEIGHT)
 #define SCREEN_BOTTOM_FBSIZE (3 * SCREEN_BOTTOM_WIDTH * SCREEN_HEIGHT)
 
-static volatile struct fb {
+struct fb {
      u8 *top_left;
      u8 *top_right;
      u8 *bottom;
-}  __attribute__((packed)) *const fbs = (volatile struct fb *)0x23FFFE00;
+}  __attribute__((packed));
 
+typedef enum
+{
+    INIT_SCREENS_SEQUENCE = 0,
+    SETUP_FRAMEBUFFERS,
+    CLEAR_SCREENS,
+    SWAP_FRAMEBUFFERS,
+    UPDATE_BRIGHTNESS,
+    DEINIT_SCREENS,
+    PREPARE_ARM11_FOR_FIRMLAUNCH,
+    ARM11_READY,
+} Arm11Operation;
+
+extern struct fb fbs[2];
 extern CfgData configData;
 
+void prepareArm11ForFirmlaunch(void);
 void deinitScreens(void);
 void swapFramebuffers(bool isAlternate);
 void updateBrightness(u32 brightnessIndex);

@@ -2,22 +2,24 @@
 
 .arm.little
 
-argv_addr equ 0x27FFDF00
-fname_addr equ 0x27FFDF80
-low_tid_addr equ 0x27FFDFE0
-copy_launch_stub_addr equ 0x27FFE000
+copy_launch_stub_stack_top      equ 0x01FFB800
+copy_launch_stub_stack_bottom   equ 0x01FFA800
+copy_launch_stub_addr           equ 0x01FF9000
 
-firm_addr equ 0x24000000
-firm_maxsize equ (copy_launch_stub_addr - 0x1000 - firm_addr)
+argv_addr                       equ (copy_launch_stub_stack_bottom - 0x100)
+fname_addr                      equ (copy_launch_stub_stack_bottom - 0x200)
+low_tid_addr                    equ (copy_launch_stub_stack_bottom - 0x300)
 
-arm11_entrypoint_addr equ 0x1FFFFFFC
+firm_addr                       equ 0x20001000
+firm_maxsize                    equ 0x07FFF000
+
 .create "build/reboot.bin", 0
 .arm
     ; Interesting registers and locations to keep in mind, set just before this code is ran:
     ; - r1: FIRM path in exefs.
     ; - r7 (or r8): pointer to file object
     ;   - *r7: vtable
-    ;       - *(vtable + 0x28): fread function 
+    ;       - *(vtable + 0x28): fread function
     ;   - *(r7 + 8): file handle
 
     sub r7, r0, #8
@@ -118,7 +120,7 @@ fname: .ascii "FILE"
     orr r0, #0xC0
     msr cpsr, r0
 
-    ldr sp, =0x27FFDF00
+    ldr sp, =copy_launch_stub_stack_top
 
     ldr r0, =copy_launch_stub_addr
     adr r1, copy_launch_stub
@@ -154,17 +156,13 @@ fname: .ascii "FILE"
         cmp r5, #3
         blo load_section_loop
 
-    ldr r0, =arm11_entrypoint_addr
-    ldr r1, [r4, #0x08]
-    str r1, [r0]
-
     mov r0, #2 ; argc
     ldr r1, =argv_addr ; argv
-    ldr r2, =0xBEEF    ; magic word
+    ldr r2, =0xBABE    ; magic word
 
-    ldr r5, =arm11_entrypoint_addr
+    mov r5, #0x20000000
     ldr r6, [r4, #0x08]
-    str r6, [r5]
+    str r6, [r5, #-4]   ; store arm11 entrypoint
 
     ldr lr, [r4, #0x0c]
     bx lr

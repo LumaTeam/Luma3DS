@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "config.h"
@@ -31,59 +35,46 @@
 #include "buttons.h"
 #include "pin.h"
 #include "crypto.h"
-#include "fmt.h"
 #include "memory.h"
+#include "screen.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-bool isFirmlaunch,
+bool isFirmlaunch = false,
      isSdMode;
 u16 launchedPath[41];
 
-void main(int argc, char **argv)
+void main(int argc, char **argv, u32 magicWord)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
-    char errbuf[46];
-    u32 emuHeader;
     FirmwareType firmType;
     FirmwareSource nandType;
 
-    switch(argc)
+    if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal boot
     {
-        case 0:
-            error("Unsupported launcher (argc = 0).");
-            break;
+        u32 i;
+        for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
+            launchedPath[i] = argv[0][i];
+        launchedPath[i] = 0;
+    }
+    else if(magicWord == 0xBABE && argc == 2) //Firmlaunch
+    {
+        u32 i;
+        u16 *p = (u16 *)argv[0];
+        for(i = 0; i < 40 && p[i] != 0; i++)
+            launchedPath[i] = p[i];
+        launchedPath[i] = 0;
 
-        case 1: //Normal boot
-        {
-            u32 i;
-            for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to utf16
-                launchedPath[i] = argv[0][i];
-            launchedPath[i] = 0;
-
-            isFirmlaunch = false;
-            break;
-        }
-
-        case 2: //Firmlaunch
-        {
-            u32 i;
-            u16 *p = (u16 *)argv[0];
-            for(i = 0; i < 40 && p[i] != 0; i++)
-                launchedPath[i] = p[i];
-            launchedPath[i] = 0;
-
-            isFirmlaunch = true;
-            break;
-        }
-
-        default:
-            sprintf(errbuf, "Unsupported launcher (argc = %d).", argc);
-            error(errbuf);
-            break;
+        isFirmlaunch = true;
+    }
+    else
+    {
+        const char argv[] = "firm0:";
+        for(u32 i = 0; i < sizeof(argv); i++) //Copy and convert the path to UTF-16
+            launchedPath[i] = argv[i];
     }
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
@@ -97,6 +88,14 @@ void main(int argc, char **argv)
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
+    else if(memcmp(launchedPath, u"firm", 8) == 0)
+    {
+        setupKeyslots();
+
+        if(mountFs(true, false)) isSdMode = true;
+        else if(mountFs(false, true)) isSdMode = false;
+        else error("Failed to mount SD and CTRNAND.");
+    }
     else
     {
         char mountPoint[5];
@@ -106,8 +105,7 @@ void main(int argc, char **argv)
             mountPoint[i] = (char)launchedPath[i];
         mountPoint[i] = 0;
 
-        sprintf(errbuf, "Launched from an unsupported location: %s.", mountPoint);
-        error(errbuf);
+        error("Launched from an unsupported location: %s.", mountPoint);
     }
 
     //Attempt to read the configuration file
@@ -271,13 +269,13 @@ boot:
     //If we need to boot EmuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNand(&emuHeader, &nandType);
+        locateEmuNand(&nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
     }
 
     //Same if we're using EmuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNand(&emuHeader, &firmSource);
+        locateEmuNand(&firmSource);
 
     if(!isFirmlaunch)
     {
@@ -290,19 +288,18 @@ boot:
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
     u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
-    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO),
-         enableExceptionHandlers = CONFIG(ENABLEEXCEPTIONHANDLERS);
+    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO), enableExceptionHandlers = CONFIG(PATCHUNITINFO);
     u32 res;
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
+            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
             break;
         case TWL_FIRM:
-            res = patchTwlFirm(firmVersion, doUnitinfoPatch);
+            res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(doUnitinfoPatch);
+            res = patchAgbFirm(loadFromStorage, doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
@@ -311,11 +308,8 @@ boot:
             break;
     }
 
-    if(res != 0)
-    {
-        sprintf(errbuf, "Failed to apply %u FIRM patch(es).", res);
-        error(errbuf);
-    }
+    if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
-    launchFirm(firmType, loadFromStorage);
+    if(!isFirmlaunch) deinitScreens();
+    launchFirm(0, NULL);
 }
