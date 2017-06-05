@@ -11,7 +11,7 @@ endif
 include $(DEVKITARM)/base_tools
 
 name := Luma3DS
-revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
+revision := $v8.0S
 commit := $(shell git rev-parse --short=8 HEAD)
 
 ifeq ($(strip $(revision)),)
@@ -36,7 +36,7 @@ dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
-<<<<<<< HEAD
+
 ifeq ($(FONT),ORIG)
 CFLAGS	+=	-DFONT_ORIGINAL
 else ifeq ($(FONT),6X10)
