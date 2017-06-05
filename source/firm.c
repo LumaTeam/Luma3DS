@@ -236,9 +236,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
     
-    //Apply PS Keyslot Patch
-    ret += patchPsKeyslotSelection(process9Offset, process9Size);
-
     //Apply EmuNAND patches
     if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, firm->section[2].address);
 

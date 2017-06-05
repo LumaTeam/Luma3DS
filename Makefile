@@ -11,7 +11,7 @@ endif
 include $(DEVKITARM)/base_tools
 
 name := Luma3DS
-revision := $v8.0S
+revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
 commit := $(shell git rev-parse --short=8 HEAD)
 
 ifeq ($(strip $(revision)),)
