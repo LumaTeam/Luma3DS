@@ -291,8 +291,6 @@ static u32 calcSDSize(u8 *csd, int type)
 
 static void InitSD()
 {
-    *(vu32 *)0x10000020 = 0; //InitFS stuff
-    *(vu32 *)0x10000020 = 0x200; //InitFS stuff
     *(vu16 *)0x10006100 &= 0xF7FFu; //SDDATACTL32
     *(vu16 *)0x10006100 &= 0xEFFFu; //SDDATACTL32
     *(vu16 *)0x10006100 |= 0x402u; //SDDATACTL32

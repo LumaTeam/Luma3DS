@@ -120,7 +120,7 @@ fname: .ascii "FILE"
     orr r0, #0xC0
     msr cpsr, r0
 
-    ldr sp, =0x27FFDF00
+    ldr sp, =copy_launch_stub_stack_top
 
     ldr r0, =copy_launch_stub_addr
     adr r1, copy_launch_stub

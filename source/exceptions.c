@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "exceptions.h"
@@ -44,65 +48,6 @@ void installArm9Handlers(void)
         *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
         *(vu32 *)(0x08000000 + offsets[i] + 4) = *((u32 *)arm9_exceptions_bin + 1 + i);
     }
-}
-
-u32 installArm11Handlers(u32 *exceptionsPage, u32 stackAddress, u32 codeSetOffset, u32 *dAbtHandler, u32 dAbtHandlerMemAddress)
-{
-    u32 *endPos = exceptionsPage + 0x400;
-
-    u32 *initFPU;
-    for(initFPU = exceptionsPage; initFPU < endPos && *initFPU != 0xE1A0D002; initFPU++);
-
-    u32 *freeSpace;
-    for(freeSpace = initFPU; freeSpace < endPos && *freeSpace != 0xFFFFFFFF; freeSpace++);
-
-    u32 *mcuReboot;
-    for(mcuReboot = exceptionsPage; mcuReboot < endPos && *mcuReboot != 0xE3A0A0C2; mcuReboot++);
-
-    if(initFPU == endPos || freeSpace == endPos || mcuReboot == endPos || *(u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 36) != 0xFFFFFFFF) return 1;
-
-    initFPU += 3;
-    mcuReboot -= 2;
-
-    memcpy(freeSpace, arm11_exceptions_bin + 32, arm11_exceptions_bin_size - 32);
-
-    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 8)  - 32); //Undefined Instruction
-    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 12) - 32); //Prefetch Abort
-    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)  - 32); //FIQ
-
-    for(u32 *pos = dAbtHandler; *pos != stackAddress; pos++)
-    {
-        u32 va_dst = 0xFFFF0000 + (((u8 *)freeSpace + *(u32 *)(arm11_exceptions_bin + 4)) - (u8 *)exceptionsPage);
-        u32 va_src;
-        switch(*pos)
-        {
-            case 0xF96D0513: //srsdb sp!, 0x13
-                va_src = dAbtHandlerMemAddress +  ((u8 *)pos - (u8 *)dAbtHandler);
-                *pos = MAKE_BRANCH((u8 *)va_src, (u8 *)va_dst);
-                break;
-           case 0xE29EF004: //subs pc, lr, 4
-                pos++;
-                *pos++ = 0xE8BD000F;// pop {r0-r3}
-                va_src = dAbtHandlerMemAddress +  ((u8 *)pos - (u8 *)dAbtHandler);
-                *pos = MAKE_BRANCH((u8 *)va_src, (u8 *)va_dst);
-                break;
-        }
-    }
-
-
-    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_bin_size - 32); pos++)
-    {
-        switch(*pos) //Perform relocations
-        {
-            case 0xFFFF3000: *pos = stackAddress - 0x10; break;
-            case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
-            case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
-            case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)
-            case 0xBEEFBEEF: *pos = codeSetOffset; break;
-        }
-    }
-
-    return 0;
 }
 
 void detectAndProcessExceptionDumps(void)

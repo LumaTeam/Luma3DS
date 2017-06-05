@@ -4,10 +4,10 @@
 #include "strings.h"
 #include "fsldr.h"
 #include "ifile.h"
-#include "CFWInfo.h"
 #include "../build/bundled.h"
 
-static CFWInfo info;
+static u32 config;
+static bool isN3DS, isSafeMode, isSdMode;
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
 {
@@ -61,14 +61,14 @@ static bool dirCheck(FS_ArchiveID archiveId, const char *path)
 
 static bool openLumaFile(IFile *file, const char *path)
 {
-    FS_ArchiveID archiveId = LOADERFLAG(ISSDMODE) ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
     return R_SUCCEEDED(fileOpen(file, archiveId, path, FS_OPEN_READ));
 }
 
 static u32 checkLumaDir(const char *path)
 {
-    FS_ArchiveID archiveId = LOADERFLAG(ISSDMODE) ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
     return dirCheck(archiveId, path) ? archiveId : 0;
 }
@@ -76,14 +76,21 @@ static u32 checkLumaDir(const char *path)
 static inline void loadCFWInfo(void)
 {
     static bool infoLoaded = false;
+    s64 out;
 
     if(infoLoaded) return;
 
-    svcGetCFWInfo(&info);
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 2))) svcBreak(USERBREAK_ASSERT);
+    config = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
+    isN3DS = (bool)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
+    isSafeMode = (bool)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 6))) svcBreak(USERBREAK_ASSERT);
+    isSdMode = (bool)out;
 
     IFile file;
-    if(LOADERFLAG(ISSAFEMODE)) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
-
+    if(isSafeMode) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
     infoLoaded = true;
 }
 
@@ -168,116 +175,6 @@ static u32 findFunctionStart(u8 *code, u32 pos)
     }
 
     return 0xFFFFFFFF;
-}
-
-static inline u8 *getCfgOffsets(u8 *code, u32 size, u32 *CFGUHandleOffset)
-{
-    /* HANS:
-       Look for error code which is known to be stored near cfg:u handle
-       this way we can find the right candidate
-       (handle should also be stored right after end of candidate function) */
-
-    u32 n = 0,
-        possible[24];
-
-    for(u8 *pos = code + 16; n < 24 && pos <= code + size - 16; pos += 4)
-    {
-        if(*(u32 *)pos != 0xD8A103F9) continue;
-
-        for(u32 *l = (u32 *)pos - 4; n < 24 && l < (u32 *)pos + 4; l++)
-            if(*l <= 0x10000000) possible[n++] = *l;
-    }
-
-    if(!n) return NULL;
-
-    for(u8 *CFGU_GetConfigInfoBlk2_endPos = code; CFGU_GetConfigInfoBlk2_endPos <= code + size - 12; CFGU_GetConfigInfoBlk2_endPos += 4)
-    {
-        //There might be multiple implementations of GetConfigInfoBlk2 but let's search for the one we want
-        u32 *cmp = (u32 *)CFGU_GetConfigInfoBlk2_endPos;
-
-        if(cmp[0] != 0xE8BD8010 || cmp[1] != 0x00010082) continue;
-
-        for(u32 i = 0; i < n; i++)
-            if(possible[i] == cmp[2])
-        {
-            *CFGUHandleOffset = cmp[2];
-
-            return CFGU_GetConfigInfoBlk2_endPos;
-        }
-
-        CFGU_GetConfigInfoBlk2_endPos += 4;
-    }
-
-    return NULL;
-}
-
-static inline bool patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetConfigInfoBlk2_endPos)
-{
-    u32 additive = findFunctionStart(code, (u32)(CFGU_GetConfigInfoBlk2_endPos - code));
-
-    if(additive == 0xFFFFFFFF) return false;
-
-    u8 *CFGU_GetConfigInfoBlk2_startPos = code + additive;
-
-    for(u8 *languageBlkIdPos = code; languageBlkIdPos <= code + size - 4; languageBlkIdPos += 4)
-    {
-        if(*(u32 *)languageBlkIdPos != 0xA0002) continue;
-
-        for(u8 *instr = languageBlkIdPos - 8; instr >= languageBlkIdPos - 0x1008 && instr >= code + 4; instr -= 4) //Should be enough
-        {
-            if(instr[3] != 0xEB) continue; //We're looking for BL
-
-            u8 *calledFunction = instr;
-            u32 i = 0;
-
-            do
-            {
-                u32 low24 = (*(u32 *)calledFunction & 0x00FFFFFF) << 2;
-                u32 signMask = (u32)(-(low24 >> 25)) & 0xFC000000; //Sign extension
-                s32 offset = (s32)(low24 | signMask) + 8;          //Branch offset + 8 for prefetch
-
-                calledFunction += offset;
-
-                if(calledFunction >= CFGU_GetConfigInfoBlk2_startPos - 4 && calledFunction <= CFGU_GetConfigInfoBlk2_endPos)
-                {
-                    *((u32 *)instr - 1)  = 0xE3A00000 | languageId; //mov    r0, sp                 => mov r0, =languageId
-                    *(u32 *)instr        = 0xE5CD0000;              //bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
-                    *((u32 *)instr + 1)  = 0xE3B00000;              //(1 or 2 instructions)         => movs r0, 0             (result code)
-
-                    //We're done
-                    return true;
-                }
-
-                i++;
-            }
-            while(i < 2 && calledFunction[3] == 0xEA);
-        }
-    }
-
-    return false;
-}
-
-static inline void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOffset)
-{
-    for(u8 *cmdPos = code; cmdPos <= code + size - 28; cmdPos += 4)
-    {
-        u32 *cmp = (u32 *)cmdPos;
-
-        if(*cmp != 0xE3A00802) continue;
-
-        for(u32 i = 1; i < 3; i++)
-            if((*(cmp - i) & 0xFFFF0FFF) == 0xEE1D0F70 && *((u16 *)cmdPos + 5) == 0xE59F &&
-               *(u32 *)(cmdPos + 16 + *((u16 *)cmdPos + 4)) == CFGUHandleOffset)
-        {
-            cmp[3] = 0xE3A00000 | regionId; //mov    r0, =regionId
-            cmp[4] = 0xE5C40008;            //strb   r0, [r4, #8]
-            cmp[5] = 0xE3A00000;            //mov    r0, #0 (result code)
-            cmp[6] = 0xE5840004;            //str    r0, [r4, #4]
-
-            //The remaining, not patched, function code will do the rest for us
-            return;
-        }
-    }
 }
 
 static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
@@ -480,53 +377,95 @@ static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
     return ret;
 }
 
-static inline bool loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
+static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 *languageId, u8 *countryId, u8 *stateId)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/locale.txt"
        If it exists it should contain, for example, "EUR IT" */
 
     char path[] = "/luma/titles/0000000000000000/locale.txt";
     progIdToStr(path + 28, progId);
+    *mask = *regionId = *languageId = *countryId = *stateId = 0;
 
     IFile file;
 
-    if(!openLumaFile(&file, path)) return true;
+    if(!openLumaFile(&file, path)) return false;
 
     bool ret = false;
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 6 || fileSize > 8) goto exit;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 3) goto exit;
+    if(fileSize >= 12) fileSize = 12;
 
-    char buf[8];
+    char buf[12] = "------------";
     u64 total;
 
     if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) goto exit;
 
-    static const char *regions[] = {"JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"},
-                      *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
+    ret = true;
+
+    static const char *regions[]   = {"--", "JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"},
+                      *languages[] = {"--", "JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"},
+                      *countries[] = {"--", "JP", "--", "--", "--", "--", "--", "--", "AI", "AG", "AR", "AW",
+                                      "BS", "BB", "BZ", "BO", "BR", "VG", "CA", "KY", "CL", "CO", "CR", "DM",
+                                      "DO", "EC", "SV", "GF", "GD", "GP", "GT", "GY", "HT", "HN", "JM", "MQ",
+                                      "MX", "MS", "AN", "NI", "PA", "PY", "PE", "KN", "LC", "VC", "SR", "TT",
+                                      "TC", "US", "UY", "VI", "VE", "--", "--", "--", "--", "--", "--", "--",
+                                      "--", "--", "--", "--", "AL", "AU", "AT", "BE", "BA", "BW", "BG", "HR",
+                                      "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IS", "IE", "IT",
+                                      "LV", "LS", "LI", "LT", "LU", "MK", "MT", "ME", "MZ", "NA", "NL", "NZ",
+                                      "NO", "PL", "PT", "RO", "RU", "RS", "SK", "SI", "ZA", "ES", "SZ", "SE",
+                                      "CH", "TR", "GB", "ZM", "ZW", "AZ", "MR", "ML", "NE", "TD", "SD", "ER",
+                                      "DJ", "SO", "AD", "GI", "GG", "IM", "JE", "MC", "TW", "--", "--", "--",
+                                      "--", "--", "--", "--", "KR", "--", "--", "--", "--", "--", "--", "--",
+                                      "HK", "MO", "--", "--", "--", "--", "--", "--", "ID", "SG", "TH", "PH",
+                                      "MY", "--", "--", "--", "CN", "--", "--", "--", "--", "--", "--", "--",
+                                      "AE", "IN", "EG", "OM", "QA", "KW", "SA", "SY", "BH", "JO", "--", "--",
+                                      "--", "--", "--", "--", "SM", "VA"};
 
     u32 i;
-
     for(i = 0; i < sizeof(regions) / sizeof(char *); i++)
     {
-        if(memcmp(buf, regions[i], 3) == 0)
+        if(memcmp(buf, regions[i], 3) == 0 && i != 0)
         {
-            *regionId = (u8)i;
+            *regionId = (u8)(i - 1);
+            *mask |= 1;
             break;
         }
     }
 
-    if(i != sizeof(regions) / sizeof(char *))
+    for(i = 0; fileSize >= 6 && i < sizeof(languages) / sizeof(char *); i++)
     {
-        for(i = 0; i < sizeof(languages) / sizeof(char *); i++)
+        if(memcmp(buf + 4, languages[i], 2) == 0 && i != 0)
         {
-            if(memcmp(buf + 4, languages[i], 2) == 0)
-            {
-                *languageId = (u8)i;
-                ret = true;
-                break;
-            }
+            *languageId = (u8)(i - 1);
+            *mask |= 2;
+            break;
         }
+    }
+
+    for(i = 0; fileSize >= 9 && i < sizeof(countries) / sizeof(char *); i++)
+    {
+        if(memcmp(buf + 7, countries[i], 2) == 0 && i != 0)
+        {
+            *countryId = (u8)i;
+            *mask |= 4;
+            break;
+        }
+    }
+
+    if(fileSize >= 12 &&
+        ((buf[10] >= '0' && buf[10] <= '9') || (buf[10] >= 'a' && buf[10] <= 'f') || (buf[10] >= 'A' && buf[10] <= 'F')) &&
+        ((buf[11] >= '0' && buf[11] <= '9') || (buf[11] >= 'a' && buf[11] <= 'f') || (buf[11] >= 'A' && buf[11] <= 'F')))
+    {
+        if     (buf[10] >= '0' && buf[10] <= '9') *stateId = 16 * (buf[10] - '0');
+        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a');
+        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A');
+
+        if     (buf[11] >= '0' && buf[11] <= '9') *stateId += buf[11] - '0';
+        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a';
+        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A';
+
+        *mask |= 8;
     }
 
 exit:
@@ -775,7 +714,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             if(ret == 0 || (ret == 1 && progVer > 0xB)) goto error;
         }
 
-        if(LOADERFLAG(ISN3DS))
+        if(isN3DS)
         {
             u32 cpuSetting = MULTICONFIG(NEWCPU);
 
@@ -796,6 +735,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 *(off + 3) = 0xE3800000 | cpuSetting;
             }
         }
+
+        // Makes ErrDisp to not start up
+        static const u64 errDispTid = 0x0004003000008A02ULL;
+        u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
+        *(errDispTidLoc - 6) = 0xE3A00000; // mov r0, #0
     }
 
     else if(progId == 0x0004013000001702LL) //CFG
@@ -866,33 +810,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    else if(progId == 0x0004003000008A02LL && CONFIG(ENABLEEXCEPTIONHANDLERS) && !CONFIG(PATCHUNITINFO)) //ErrDisp
-    {
-        static const u8 pattern[] = {
-            0x00, 0xD0, 0xE5, 0xDB
-        },
-                        pattern2[] = {
-            0x14, 0x00, 0xD0, 0xE5, 0x01
-        },
-                        patch[] = {
-            0x00, 0x00, 0xA0, 0xE3
-        };
-
-        //Patch UNITINFO checks to make ErrDisp more verbose
-        if(!patchMemory(code, textSize,
-                pattern,
-                sizeof(pattern), -1,
-                patch,
-                sizeof(patch), 1
-            ) ||
-           patchMemory(code, textSize,
-               pattern2,
-               sizeof(pattern2), 0,
-               patch,
-               sizeof(patch), 3
-           ) != 3) goto error;
-    }
-
     else if(progId == 0x0004013000002802LL) //DLP
     {
         static const u8 pattern[] = {
@@ -918,22 +835,15 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
         if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
         {
-            u8 regionId = 0xFF,
-               languageId;
+            u8 mask,
+               regionId,
+               languageId,
+               countryId,
+               stateId;
 
-            if(!loadTitleLocaleConfig(progId, &regionId, &languageId) ||
-               !patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
-
-            if(regionId != 0xFF)
-            {
-                u32 CFGUHandleOffset;
-                u8 *CFGU_GetConfigInfoBlk2_endPos = getCfgOffsets(code, textSize, &CFGUHandleOffset);
-
-                if(CFGU_GetConfigInfoBlk2_endPos == NULL ||
-                   !patchCfgGetLanguage(code, textSize, languageId, CFGU_GetConfigInfoBlk2_endPos)) goto error;
-
-                patchCfgGetRegion(code, textSize, regionId, CFGUHandleOffset);
-            }
+            if(loadTitleLocaleConfig(progId, &mask, &regionId, &languageId, &countryId, &stateId))
+                svcKernelSetState(0x10001, ((u32)stateId << 24) | ((u32)countryId << 16) | ((u32)languageId << 8) | ((u32)regionId << 4) | (u32)mask , progId);
+            if(!patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
         }
     }
 

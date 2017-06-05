@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -36,12 +40,13 @@ void memcpy(void *dest, const void *src, u32 size)
         destc[i] = srcc[i];
 }
 
-void memset(void *dest, u32 filler, u32 size)
+void *memset(void *dest, u32 value, u32 size)
 {
     u8 *destc = (u8 *)dest;
 
-    for(u32 i = 0; i < size; i++)
-        destc[i] = (u8)filler;
+    for(u32 i = 0; i < size; i++) destc[i] = (u8)value;
+
+    return dest;
 }
 
 void memset32(void *dest, u32 filler, u32 size)

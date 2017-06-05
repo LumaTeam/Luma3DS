@@ -23,7 +23,7 @@
 
 **Entrypoint (How/what you're using to boot Luma3DS):**
 
-[e.g. Boot9Strap, Sighax, etc.]
+[e.g. Boot9Strap/Sighax, etc.]
 
 **Luma3DS version:**
 
@@ -62,12 +62,9 @@ Show NAND or user string in System Settings: ( )
 
 Show GBA boot screen in patched AGB_FIRM: ( )
 
-Patch SVC/service/archive/ARM9 access: ( )
+Patch ARM9 access: ( )
 
 Set developer UNITINFO: ( )
-
-Enable exception handlers: ( )
-
 
 --
 

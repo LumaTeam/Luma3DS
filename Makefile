@@ -4,11 +4,23 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
+ifneq ($(strip $(shell firmtool -v 2>&1 | grep usage)),)
+$(error "Please install firmtool v1.1 or greater")
+endif
+
 include $(DEVKITARM)/base_tools
 
 name := Luma3DS
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
 commit := $(shell git rev-parse --short=8 HEAD)
+
+ifeq ($(strip $(revision)),)
+	revision := v0.0.0-0
+endif
+
+ifeq ($(strip $(commit)),)
+	commit := 0
+endif
 
 dir_source := source
 dir_patches := patches
@@ -16,9 +28,9 @@ dir_arm11 := arm11
 dir_chainloader := chainloader
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
-dir_arm11_exceptions := $(dir_exceptions)/arm11
 dir_sysmodules := sysmodules
 dir_loader := $(dir_sysmodules)/loader
+dir_rosalina := $(dir_sysmodules)/rosalina
 dir_build := build
 dir_out := out
 
@@ -30,10 +42,10 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/svcGetCFWInfo.bin.o $(dir_build)/k11modules.bin.o \
-          $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o $(dir_build)/arm11_exceptions.bin.o
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/mmuHook.bin.o $(dir_build)/k11MainHook.bin.o $(dir_build)/svcConnectToPortInitHook.bin.o $(dir_build)/svcCustomBackdoor.bin.o\
+          $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o
 
-modules = $(dir_build)/loader.cxi
+modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
@@ -53,8 +65,8 @@ clean:
 	@$(MAKE) -C $(dir_arm11) clean
 	@$(MAKE) -C $(dir_chainloader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
-	@$(MAKE) -C $(dir_arm11_exceptions) clean
 	@$(MAKE) -C $(dir_loader) clean
+	@$(MAKE) -C $(dir_rosalina) clean
 	@rm -rf $(dir_out) $(dir_build)
 
 .PRECIOUS: $(dir_build)/%.bin
@@ -62,8 +74,8 @@ clean:
 .PHONY: $(dir_arm11)
 .PHONY: $(dir_chainloader)
 .PHONY: $(dir_arm9_exceptions)
-.PHONY: $(dir_arm11_exceptions)
 .PHONY: $(dir_loader)
+.PHONY: $(dir_rosalina)
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
@@ -71,7 +83,7 @@ $(dir_out)/$(name)$(revision).7z: all
 
 $(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf
 	@mkdir -p "$(@D)"
-	@firmtool build $@ -S nand-retail -D $^ -A 0x1FF60000 -C XDMA XDMA NDMA
+	@firmtool build $@ -D $^ -A 0x1FF60000 -C XDMA XDMA NDMA
 
 $(dir_build)/modules.bin: $(modules)
 	@mkdir -p "$(@D)"
@@ -88,6 +100,10 @@ $(dir_build)/loader.cxi: $(dir_loader)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
+$(dir_build)/rosalina.cxi: $(dir_rosalina)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
@@ -96,10 +112,6 @@ $(dir_build)/chainloader.bin: $(dir_chainloader)
 	@$(MAKE) -C $<
 
 $(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $<
-
-$(dir_build)/arm11_exceptions.bin: $(dir_arm11_exceptions)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,24 +15,18 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
 *   Screen init code by dark_samus, bil1s, Normmatt, delebile and others
 *   Screen deinit code by tiniVi
-*/
-
-/*
-*   About cache coherency:
-*
-*   Flushing the data cache for all memory regions read from/written to by both processors is mandatory on the ARM9 processor.
-*   Thus, we make sure there'll be a cache miss on the ARM9 next time it's read.
-*   Otherwise the ARM9 won't see the changes made and things will break.
-*
-*   On the ARM11, in the environment we're in, the MMU isn't enabled and nothing is cached.
 */
 
 #include "screen.h"

@@ -7,6 +7,8 @@
 It also allows you to run unauthorized ("homebrew") content by removing signature checks.  
 To use it, you will need a console capable of running homebrew software on the ARM9 processor. We recommend [Plailect's guide](https://3ds.guide/) for details on how to get your system ready.
 
+Since Luma3DS v8.0, Luma3DS has its own in-game menu, triggerable by `L+Start+Select` (see the release notes).
+
 ---
 
 ## Compiling

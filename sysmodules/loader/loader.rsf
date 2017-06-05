@@ -102,6 +102,7 @@ AccessControlInfo:
     UnmapMemoryBlock: 32
     WaitSynchronization1: 36
     WaitSynchronizationN: 37
+    KernelSetState: 124
   InterruptNumbers:
   ServiceAccessControl:
     - fs:LDR

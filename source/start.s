@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -14,11 +14,13 @@
 @   You should have received a copy of the GNU General Public License
 @   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @
-@   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-@   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-@   Notices displayed by works containing it.
-
-@   Thanks to the numerous people who took part in writing this file
+@   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+@       * Requiring preservation of specified reasonable legal notices or
+@         author attributions in that material or in the Appropriate Legal
+@         Notices displayed by works containing it.
+@       * Prohibiting misrepresentation of the origin of that material,
+@         or requiring that modified versions of such material be marked in
+@         reasonable ways as different from the original version.
 
 .section .text.start
 .align 4
@@ -58,7 +60,7 @@ _start:
 
     @ Set MPU permissions and cache settings
     ldr r0, =0xFFFF001D @ ffff0000 32k  | bootrom (unprotected part)
-    ldr r1, =0xFFF0801B @ fff00000 16k  | dtcm
+    ldr r1, =0xFFF0001B @ fff00000 16k  | dtcm
     ldr r2, =0x01FF801D @ 01ff8000 32k  | itcm
     ldr r3, =0x08000027 @ 08000000 1M   | arm9 mem
     ldr r4, =0x10000029 @ 10000000 2M   | io mem (ARM9 / first 2MB)
@@ -91,6 +93,11 @@ _start:
     orr r0, r0, #(1<<2)        @ - data cache enable
     orr r0, r0, #(1<<0)        @ - MPU enable
     mcr p15, 0, r0, c1, c0, 0  @ write control register
+
+    @ Fix mounting of SDMC
+    ldr r0, =0x10000020
+    mov r1, #0x340
+    str r1, [r0]
 
     @ Clear BSS
     ldr r0, =__bss_start

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "firm.h"
@@ -218,12 +222,16 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     u32 baseK11VA;
     u8 *freeK11Space;
     u32 *arm11SvcHandler,
-        *arm11DAbtHandler,
         *arm11ExceptionsPage,
-        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11DAbtHandler, &arm11ExceptionsPage);
+        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
     u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
         ret = 0;
+
+    installMMUHook(arm11Section1, firm->section[1].size, &freeK11Space);
+    installK11MainHook(arm11Section1, firm->section[1].size, isSafeMode, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
+    installSvcConnectToPortInitHook(arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
+    installSvcCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
 
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
@@ -249,15 +257,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     {
         //Apply anti-anti-DG patches
         ret += patchTitleInstallMinVersionChecks(process9Offset, process9Size, firmVersion);
-
-        //Restore svcBackdoor
-        ret += reimplementSvcBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
-
-    //Stub svc 0x59 on 11.3+ FIRMs
-    if(firmVersion >= (ISN3DS ? 0x2D : 0x5C)) ret += stubSvcRestrictGpuDma(arm11Section1, arm11SvcTable, baseK11VA);
-
-    ret += implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space, isSafeMode);
 
     //Apply UNITINFO patches
     if(doUnitinfoPatch)
@@ -268,32 +268,14 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 
     if(enableExceptionHandlers)
     {
-        //ARM11 exception handlers
-        u32 codeSetOffset,
-            stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset);
-        ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
-        patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
-        ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
-
         //ARM9 exception handlers
         ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
         ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
         ret += patchKernel9Panic(arm9Section, kernel9Size);
     }
 
-    bool patchAccess = CONFIG(PATCHACCESS),
-         patchGames = CONFIG(PATCHGAMES);
-
-    if(patchAccess || patchGames)
-    {
-        ret += patchK11ModuleChecks(arm11Section1, firm->section[1].size, &freeK11Space, patchGames);
-
-        if(patchAccess)
-        {
-            ret += patchArm11SvcAccessChecks(arm11SvcHandler, (u32 *)(arm11Section1 + firm->section[1].size));
-            ret += patchP9AccessChecks(process9Offset, process9Size);
-        }
-    }
+    if(CONFIG(PATCHACCESS))
+        ret += patchP9AccessChecks(process9Offset, process9Size);
 
     mergeSection0(NATIVE_FIRM, loadFromStorage);
     firm->section[0].size = 0;
