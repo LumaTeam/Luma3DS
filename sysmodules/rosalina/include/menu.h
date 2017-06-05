@@ -78,6 +78,9 @@ extern u32 menuCombo;
 u32 waitInputWithTimeout(u32 msec);
 u32 waitInput(void);
 
+u32 waitComboWithTimeout(u32 msec);
+u32 waitCombo(void);
+
 MyThread *menuCreateThread(void);
 void menuEnter(void);
 void menuLeave(void);
