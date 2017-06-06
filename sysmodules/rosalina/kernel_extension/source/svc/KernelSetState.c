@@ -122,7 +122,7 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
                 processLangemuAttributes[i].state = (u8)(varg1 >> 24);
                 processLangemuAttributes[i].country = (u8)(varg1 >> 16);
                 processLangemuAttributes[i].language = (u8)(varg1 >> 8);
-                processLangemuAttributes[i].region = (u8)(varg1 >> 4);
+                processLangemuAttributes[i].region = (u8)((varg1 >> 4) & 0xf);
                 processLangemuAttributes[i].mask = (u8)(varg1 & 0xf);
             }
             else
