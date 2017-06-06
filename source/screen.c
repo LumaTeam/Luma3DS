@@ -35,7 +35,19 @@
 #include "i2c.h"
 #include "utils.h"
 
-struct fb fbs[2];
+struct fb fbs[2] =
+{
+    {
+        .top_left  = (u8 *)0x18300000,
+        .top_right = (u8 *)0x18300000,
+        .bottom    = (u8 *)0x18346500,
+    },
+    {
+        .top_left  = (u8 *)0x18400000,
+        .top_right = (u8 *)0x18400000,
+        .bottom    = (u8 *)0x18446500,
+    },
+};
 
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
@@ -78,25 +90,6 @@ void clearScreens(bool isAlternate)
     invokeArm11Function(CLEAR_SCREENS);
 }
 
-static void initScreensSequence(void)
-{
-    *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
-    invokeArm11Function(INIT_SCREENS_SEQUENCE);
-}
-
-static void setupFramebuffers(void)
-{
-    fbs[0].top_left = (u8 *)0x18300000;
-    fbs[1].top_left = (u8 *)0x18400000;
-    fbs[0].top_right = (u8 *)0x18300000;
-    fbs[1].top_right = (u8 *)0x18400000;
-    fbs[0].bottom = (u8 *)0x18346500;
-    fbs[1].bottom = (u8 *)0x18446500;
-
-    memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
-    invokeArm11Function(SETUP_FRAMEBUFFERS);
-}
-
 void initScreens(void)
 {
     static bool needToSetup = true;
@@ -105,14 +98,15 @@ void initScreens(void)
     {
         if(!ARESCREENSINITIALIZED)
         {
-            initScreensSequence();
+            *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
+            memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
+            invokeArm11Function(INIT_SCREENS);
 
             //Turn on backlight
             i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
-        setupFramebuffers();
         needToSetup = false;
     }
 

@@ -33,7 +33,7 @@
 #define REG_DUMP_SIZE   4 * 23
 #define CODE_DUMP_SIZE  48
 
-bool isExceptionFatal(u32 spsr)
+bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 {
     if((spsr & 0x1f) != 0x10) return true;
 
@@ -51,6 +51,10 @@ bool isExceptionFatal(u32 spsr)
         thread = KPROCESS_GET_RVALUE(currentProcess, mainThread);
         if(thread != NULL && thread->threadLocalStorage != NULL && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
            return false;
+
+        if(index == 3 && strcmp(codeSetOfProcess(currentProcess)->processName, "menu") == 0 && // workaround a Home Menu bug leading to a dabort
+           regs[0] == 0x3FFF && regs[2] == 0 && regs[5] == 2 && regs[7] == 1)
+            return false;
     }
 
     return true;
