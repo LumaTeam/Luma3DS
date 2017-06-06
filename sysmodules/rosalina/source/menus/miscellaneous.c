@@ -146,7 +146,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    menuCombo = waitInput();
+    menuCombo = waitCombo();
     MiscellaneousMenu_ConvertComboToString(comboStr, menuCombo);
 
     do

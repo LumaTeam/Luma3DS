@@ -81,6 +81,47 @@ u32 waitInput(void)
     return waitInputWithTimeout(0);
 }
 
+u32 waitComboWithTimeout(u32 msec)
+{
+    u32 key = 0;
+    u32 n = 0;
+
+    //Wait for no keys to be pressed
+    while(HID_PAD && !terminationRequest && (msec == 0 || n < msec))
+    {
+        svcSleepThread(1 * 1000 * 1000LL);
+        n++;
+    }
+
+    if(terminationRequest || (msec != 0 && n >= msec))
+        return 0;
+
+    do
+    {
+        svcSleepThread(1 * 1000 * 1000LL);
+        n++;
+
+        u32 tempKey = HID_PAD;
+
+        for(u32 i = 0x26000; i > 0; i--)
+        {
+            if(tempKey != HID_PAD) break;
+            if(i == 1) key = tempKey;
+        }
+    }
+    while((!key || HID_PAD) && !terminationRequest && (msec == 0 || n < msec));
+
+    if(terminationRequest || (msec != 0 && n >= msec))
+        return 0;
+
+    return key;
+}
+
+u32 waitCombo(void)
+{
+    return waitComboWithTimeout(0);
+}
+
 static Result _MCUHWC_GetBatteryLevel(u8 *out)
 {
     #define TRY(expr) if(R_FAILED(res = (expr))) { svcCloseHandle(mcuhwcHandle); return res; }

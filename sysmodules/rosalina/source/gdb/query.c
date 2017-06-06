@@ -111,7 +111,10 @@ GDB_DECLARE_QUERY_HANDLER(Supported)
         "PacketSize=%x;"
         "qXfer:features:read+;qXfer:osdata:read+;"
         "QStartNoAckMode+;QThreadEvents+;QCatchSyscalls+;"
-        "vContSupported+;swbreak+", sizeof(ctx->buffer));
+        "vContSupported+;swbreak+",
+
+        GDB_BUF_LEN // should have been sizeof(ctx->buffer) but GDB memory functions are bugged
+    );
 }
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
