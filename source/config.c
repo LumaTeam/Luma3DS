@@ -57,19 +57,20 @@ bool readConfig(void)
     return ret;
 }
 
-void writeConfig(bool isPayloadLaunch)
+void writeConfig(bool isConfigOptions)
 {
-    if(isPayloadLaunch) configData.config = (configData.config & 0xFFFFFF80) | (oldConfig & 0x7F);
-
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && (configData.config & 0xFFFFFFBF) == oldConfig) return;
+    if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && (configData.config & 0xFFFFFF00) == (oldConfig & 0xFFFFFF00)) ||
+                                              (!isConfigOptions && (configData.config & 0xBF) == (oldConfig & 0xFF)))) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
         memcpy(configData.magic, "CONF", 4);
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
+
+        needConfig = MODIFY_CONFIGURATION;
     }
 
     if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
@@ -386,6 +387,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
     if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
     else if(oldPinStatus) fileDelete(PIN_FILE);
+
+    writeConfig(true);
 
     while(HID_PAD & PIN_BUTTONS);
     wait(2000ULL);

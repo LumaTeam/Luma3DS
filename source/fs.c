@@ -33,7 +33,6 @@
 #include "screen.h"
 #include "draw.h"
 #include "utils.h"
-#include "config.h"
 #include "fatfs/ff.h"
 #include "buttons.h"
 #include "firm.h"
@@ -166,8 +165,6 @@ void loadPayload(u32 pressed, const char *payloadPath)
     payloadSize = fileRead(firm, path, maxPayloadSize);
 
     if(payloadSize <= 0x200 || !checkFirmPayload(payloadSize)) return;
-
-    writeConfig(true);
 
     if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);
     else sprintf(absPath, "nand:/rw/luma/%s", path);
