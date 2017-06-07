@@ -92,10 +92,42 @@ void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
 
 void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
 {
+    //The parameters to be passed on to the kernel ext
+    //Please keep that in sync with the definition in kernel_extension_setup.c and kernel_extension/main.c
+    struct KExtParameters
+    {
+        void (*SGI0HandlerCallback)(struct KExtParameters *, u32 *);
+        void *interruptManager;
+        u32 *L2MMUTable; //bit31 mapping
+
+        void (*initFPU)(void);
+        void (*mcuReboot)(void);
+        void (*coreBarrier)(void);
+
+        u32 TTBCR;
+        u32 L1MMUTableAddrs[4];
+
+        u32 kernelVersion;
+
+        struct CfwInfo
+        {
+            char magic[4];
+
+            u8 versionMajor;
+            u8 versionMinor;
+            u8 versionBuild;
+            u8 flags;
+
+            u32 commitHash;
+
+            u32 config;
+        } __attribute__((packed)) info;
+    };
+
     const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
 
     u32 *off = (u32 *)memsearch(pos, pattern, size, 12);
-    // look for cpsie i and place our function call in the nop 2 instructions before
+    //look for cpsie i and place our function call in the nop 2 instructions before
     while(*off != 0xF1080080) off--;
     off -= 2;
 
@@ -109,58 +141,41 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     off--;
 
     signed int offset = (*off & 0xFFFFFF) << 2;
-    offset = offset << 6 >> 6; // sign extend
+    offset = offset << 6 >> 6; //sign extend
     offset += 8;
 
-    u32 InterruptManager_mapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
+    u32 InterruptManager_MapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
     u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
 
     off = (u32 *)memsearch(*freeK11Space, "bind", k11MainHook_bin_size, 4);
 
-    *off++ = InterruptManager_mapInterrupt;
+    off[0] = InterruptManager_MapInterrupt;
 
-    // Relocate stuff
-    *off++ += relocBase;
-    *off++ += relocBase;
-    off++;
-    *off++ = interruptManager;
+    //Relocate stuff
+    off[1] += relocBase;
+    off[2] += relocBase;
 
-    off += 10;
+    struct KExtParameters *p = (struct KExtParameters *)(off + 3);
+    memset(p, 0, sizeof(struct KExtParameters));
+    memcpy((void *)&p->SGI0HandlerCallback, "hdlr", 4);
 
-    struct CfwInfo
-    {
-        char magic[4];
+    p->interruptManager = (void *)interruptManager;
 
-        u8 versionMajor;
-        u8 versionMinor;
-        u8 versionBuild;
-        u8 flags;
-
-        u32 commitHash;
-
-        u32 config;
-    } __attribute__((packed)) *info = (struct CfwInfo *)off;
-
-    const char *rev = REVISION;
+    struct CfwInfo *info = &p->info;
     memcpy(&info->magic, "LUMA", 4);
     info->commitHash = COMMIT_HASH;
     info->config = configData.config;
-    info->versionMajor = (u8)(rev[1] - '0');
-    info->versionMinor = (u8)(rev[3] - '0');
+    info->versionMajor = VERSION_MAJOR;
+    info->versionMinor = VERSION_MINOR;
+    info->versionBuild = VERSION_BUILD;
 
-    if(rev[4] == '.')
-        info->versionBuild = (u8)(rev[5] - '0');
-
-    const char *revpos;
-    for(revpos = rev + 4; *revpos != 0 && *revpos != '-'; revpos++);
-    bool isRelease = *revpos != '-';
-
-    if(isRelease) info->flags = 1;
+    if(ISRELEASE) info->flags = 1;
     if(ISN3DS) info->flags |= 1 << 4;
     if(isSafeMode) info->flags |= 1 << 5;
     if(isSdMode) info->flags |= 1 << 6;
 
-    (*freeK11Space) += k11MainHook_bin_size;
+    (*freeK11Space) += (k11MainHook_bin_size + sizeof(struct KExtParameters));
+    (*freeK11Space) += 4 - ((u32)(*freeK11Space) % 4);
 }
 
 void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)

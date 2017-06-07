@@ -12,14 +12,29 @@ include $(DEVKITARM)/base_tools
 
 name := Luma3DS
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
+version_major := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f1 -d.)
+version_minor := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f2 -d.)
+version_build := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f3 -d.)
 commit := $(shell git rev-parse --short=8 HEAD)
+is_release := 0
 
 ifeq ($(strip $(revision)),)
 	revision := v0.0.0-0
+	version_major := 0
+	version_minor := 0
+	version_build := 0
 endif
 
 ifeq ($(strip $(commit)),)
 	commit := 0
+endif
+
+ifeq ($(strip $(version_build)),)
+	version_build := 0
+endif
+
+ifeq ($(strip $(shell git describe --tags --match v[0-9]* | grep -)),)
+	is_release := 1
 endif
 
 dir_source := source
@@ -121,7 +136,8 @@ $(dir_build)/%.bin: $(dir_patches)/%.s
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
-$(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
+$(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_MINOR="$(version_minor)"\
+						-DVERSION_BUILD="$(version_build)" -DISRELEASE="$(is_release)" -DCOMMIT_HASH="0x$(commit)"
 $(dir_build)/firm.o: $(dir_build)/modules.bin 
 $(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell du -b $(dir_build)/modules.bin | cut -f1)"
 
