@@ -78,18 +78,21 @@ _commonHandler:
     cpsid aif
 
     push {r0}
-    ldr r0, =_fatalExceptionOccured
+    ldr r0, =fatalExceptionOccured
     ldr r0, [r0]
     cmp r0, #0
     bne _die_loop
     pop {r0}
 
-    ldr r9, =_regs
+    ldr r9, =exceptionStackTop
+    ldr r9, [r9]
+    sub r9, #0x400
+    add r9, #4
     stmia r9, {r0-r7}
     mov r1, r8
     pop {r8,r9}
 
-    ldr r0, =_fatalExceptionOccured
+    ldr r0, =fatalExceptionOccured
     mov r4, #1
 
     _try_lock:
@@ -108,8 +111,10 @@ _commonHandler:
 
     mrs r2, spsr
     mrs r3, cpsr
-    ldr r6, =_regs
-    add r6, #0x20
+    ldr r6, =exceptionStackTop
+    ldr r6, [r6]
+    sub r6, #(0x400 - 0x20)
+    add r6, #4
 
     ands r4, r2, #0xf       @ get the mode that triggered the exception
     moveq r4, #0xf          @ usr => sys
@@ -166,7 +171,8 @@ _commonHandler:
 
     mov r0, #0
     mcr p15, 0, r0, c7, c10, 5   @ Drain Memory Barrier
-    ldr r0, =_regs
+    sub r0, sp, #(0x400 - 0x100)
+    add r0, #4
     mrc p15, 0, r2, c0, c0, 5    @ CPU ID register
     bl fatalExceptionHandlersMain
 
@@ -244,8 +250,3 @@ dataAbortHandler:
     subs pc, lr, #4
 
     GEN_USUAL_HANDLER _dataAbortNormal, 3, 16
-
-.bss
-.balign 4
-_regs: .skip (4 * 23)
-_fatalExceptionOccured: .word 0
