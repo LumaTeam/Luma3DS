@@ -94,11 +94,6 @@ _start:
     orr r0, r0, #(1<<0)        @ - MPU enable
     mcr p15, 0, r0, c1, c0, 0  @ write control register
 
-    @ Fix mounting of SDMC
-    ldr r0, =0x10000020
-    mov r1, #0x340
-    str r1, [r0]
-
     @ Clear BSS
     ldr r0, =__bss_start
     mov r1, #0
