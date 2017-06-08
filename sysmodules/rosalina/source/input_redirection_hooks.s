@@ -102,20 +102,21 @@ pop {r4-r6, pc}
 .global irCodePatchFunc
 .type   irCodePatchFunc, %function
 irCodePatchFunc:
+add lr, lr, #4 @ Skip the address in the hook when we return to the original function
 b skip_vars
 
 i2c_readdeviceraw_addr:
     .word 0
+redirected_input_addr:
+	.word 0
 
 skip_vars:
-
-@ Address to read from is passed by the hook, save it.
-mov r6, r0
-
+stmfd sp!, {r4-r5, lr}
 ir_check_i2c:
 @ Original code. Does an i2c read at device 17 func 5.
-ldr r0, [r4]
-mov r1, r5
+@ r0 and r1 were set up by the hook
+
+mov r4, r1                  @ save r1
 mov r2, #17
 mov r3, #5
 
@@ -123,18 +124,21 @@ adr r12, i2c_readdeviceraw_addr
 ldr r12, [r12]
 blx r12
 
+adr r5, redirected_input_addr
+ldr r5, [r5]
+
 ldr r1, =0x80800081         @ no c-stick activity / zlzr not pressed
 cmp r0, #0                  @ check if the i2c read succeeded completely
 
-ldreq r2, [r5]
+ldreq r2, [r4]
 tsteq r2, #0x100            @ apparently this is set only if the c-stick hasn't been moved yet
 movne r2, r1
 
 cmp r1, r2
-ldreq r0, [r6]              @ Pull the remote input in.
-streq r0, [r5]              @ store it instead of the value read from i2c
+ldreq r0, [r5]              @ Pull the remote input in.
+streq r0, [r4]              @ store it instead of the value read from i2c
 
 @ Return!
-ldmfd sp!, {r4-r6,pc}
-
+mov r0, #0                  @ For ir:user.
+ldmfd sp!, {r4-r5, pc}
 .pool
