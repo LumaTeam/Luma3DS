@@ -34,7 +34,7 @@
 
 #define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 12
+#define CONFIG_VERSIONMINOR 13
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -58,7 +58,8 @@ enum singleOptions
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHACCESS,
-    PATCHUNITINFO
+    PATCHUNITINFO,
+    DISABLEVECTORS
 };
 
 typedef enum ConfigurationStatus
