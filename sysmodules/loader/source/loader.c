@@ -459,14 +459,12 @@ static void handle_commands(void)
     }
     case 3: // UnregisterProgram
     {
-      prog_handle = *(u64 *)&cmdbuf[1];
-
       if (g_cached_prog_handle == prog_handle)
       {
         g_cached_prog_handle = 0;
       }
       cmdbuf[0] = 0x30040;
-      cmdbuf[1] = loader_UnregisterProgram(prog_handle);
+      cmdbuf[1] = loader_UnregisterProgram(*(u64 *)&cmdbuf[1]);
       break;
     }
     case 4: // GetProgramInfo

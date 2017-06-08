@@ -220,12 +220,15 @@ bool doLangEmu(Result *res, Handle handle, u32 *cmdbuf)
     else if(cmdbuf[1] == 4 && cmdbuf[2] == 0xB0000 && cmdbuf[3] == 0x4C && (attribs->mask & 0xC))
     {
         u8 *ptr = (u8 *)cmdbuf[4];
-        if(attribs->mask & 4)
-            ptr[3] = attribs->country;
-        if(attribs->mask & 8)
-            ptr[2] = attribs->state;
-
-        ptr[0] = ptr[1] = 0;
+        *res = SendSyncRequest(handle);
+        flushEntireDataCache(); // looks like it's needed. WTF?!
+        if(*res == 0)
+        {
+            if(attribs->mask & 4)
+                ptr[3] = attribs->country;
+            if(attribs->mask & 8)
+                ptr[2] = attribs->state;
+        }
     }
     else
         skip = false;
