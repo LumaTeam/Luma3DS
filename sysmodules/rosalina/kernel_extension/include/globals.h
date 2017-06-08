@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "config.h"
 #include "kernel.h"
 
 extern KRecursiveLock *criticalSectionLock;
