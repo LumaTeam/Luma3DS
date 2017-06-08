@@ -33,8 +33,6 @@
 #define REG_DUMP_SIZE   4 * 23
 #define CODE_DUMP_SIZE  48
 
-bool fatalExceptionOccured = false;
-
 bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 {
     if((spsr & 0x1f) != 0x10) return true;
