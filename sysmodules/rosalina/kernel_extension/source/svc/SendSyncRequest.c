@@ -73,7 +73,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:u") == 0 || strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0)) // GetConfigInfoBlk2
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -91,7 +91,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:u") == 0 || strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0)) // SecureInfoGetRegion
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -176,7 +176,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0)) // GetConfigInfoBlk4
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -185,7 +185,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0)) // GetConfigInfoBlk8
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -194,7 +194,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0)) // GetConfigInfoBlk4
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -203,7 +203,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && strcmp(info->name, "cfg:i") == 0) // GetConfigInfoBlk8
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -212,7 +212,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession); // SecureInfoGetRegion
                 if(info != NULL && (strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0))
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }
@@ -221,7 +221,7 @@ Result SendSyncRequestHook(Handle handle)
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession); // SecureInfoGetRegion
                 if(info != NULL && strcmp(info->name, "cfg:i") == 0)
-                    skip = doLangEmu(&res, handle, cmdbuf);
+                    skip = doLangEmu(&res, cmdbuf);
 
                 break;
             }

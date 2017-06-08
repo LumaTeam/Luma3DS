@@ -186,9 +186,9 @@ void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPag
     arm11SvcTable[0x2D] = addr;
     memcpy(*freeK11Space, svcConnectToPortInitHook_bin, svcConnectToPortInitHook_bin_size);
 
-    u32 *off = (u32 *)memsearch(*freeK11Space, "orig", svcConnectToPortInitHook_bin_size, 4);
-    off[0] = svcConnectToPortAddr;
-    off[1] = svcSleepThreadAddr;
+    u32 *off = (u32 *)(*freeK11Space);
+    off[1] = svcConnectToPortAddr;
+    off[2] = svcSleepThreadAddr;
 
     (*freeK11Space) += svcConnectToPortInitHook_bin_size;
 }

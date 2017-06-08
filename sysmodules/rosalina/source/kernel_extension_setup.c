@@ -143,4 +143,6 @@ void installKernelExtension(void)
     flushAllCaches();
     svc0x2F(K_SendSGI0ToAllCores);
     flushAllCaches();
+
+    *(volatile bool *)0x1FF81108 = true;
 }
