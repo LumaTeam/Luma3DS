@@ -50,6 +50,7 @@ u32 patchOldSignatureChecks(u8 *pos, u32 size);
 u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 u32 patchFirmWrites(u8 *pos, u32 size);
 u32 patchOldFirmWrites(u8 *pos, u32 size);
+u32 patchFactoryFirmWrites(u8 *pos, u32 size);
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
 u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size);
