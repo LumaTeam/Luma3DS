@@ -108,7 +108,7 @@ b skip_vars
 i2c_readdeviceraw_addr:
     .word 0
 redirected_input_addr:
-	.word 0
+    .word 0
 
 skip_vars:
 stmfd sp!, {r4-r5, lr}

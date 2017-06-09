@@ -104,7 +104,7 @@ void inputRedirectionThreadMain(void)
                 break;
             else if(n < 12)
                 continue;
-            
+
             memcpy(hidDataPhys, buf, 12);
             if(n >= 20)
             {
@@ -117,7 +117,7 @@ void inputRedirectionThreadMain(void)
                     srvPublishToSubscriber(0x204, 0);
                 else if((oldSpecialButtons & 1) && !(specialButtons & 1)) // HOME button released
                     srvPublishToSubscriber(0x205, 0);
-                
+
                 if(!(oldSpecialButtons & 2) && (specialButtons & 2)) // POWER button pressed
                     srvPublishToSubscriber(0x202, 0);
 
@@ -255,8 +255,6 @@ Result InputRedirection_DoOrUndoPatches(void)
             static const u32 irOrigCppFlagCode[] = {
                 0xE3550000, // cmp r5, #0
                 0xE3A0B080, // mov r11, #0x80
-                0xE28D0060, // add r0, sp, #0xb0+var_50
-                0x0A00002C // beq loc_105688
             };
 
             static u32 *irHookLoc, *irWaitSyncLoc, *irCppFlagLoc;
@@ -316,7 +314,7 @@ Result InputRedirection_DoOrUndoPatches(void)
                 *irWaitSyncLoc = 0xE3A00000; // mov r0, #0
 
                 // This NOPs out a flag check in ir:user's CPP emulation
-                *(irCppFlagLoc+3) = 0xea00002c;
+                *irCppFlagLoc = 0xE3150000; // tst r5, #0
             }
         }
 
