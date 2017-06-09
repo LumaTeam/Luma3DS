@@ -57,7 +57,7 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
-    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
+    static const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
     *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     if(*arm11ExceptionsPage == NULL) error("Failed to get Kernel11 data.");
@@ -80,7 +80,7 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 
 void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
 {
-    const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
+    static const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
 
     u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
 
@@ -124,7 +124,7 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
         } __attribute__((packed)) info;
     };
 
-    const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
+    static const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
 
     u32 *off = (u32 *)memsearch(pos, pattern, size, 12);
     //look for cpsie i and place our function call in the nop 2 instructions before
@@ -205,8 +205,8 @@ void installSvcCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11E
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
     //Look for signature checks
-    const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
-             pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
+    static const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
+                   pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
@@ -223,8 +223,8 @@ u32 patchSignatureChecks(u8 *pos, u32 size)
 u32 patchOldSignatureChecks(u8 *pos, u32 size)
 {
     // Look for signature checks
-    const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
-             pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
+    static const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
+                   pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
@@ -241,7 +241,7 @@ u32 patchOldSignatureChecks(u8 *pos, u32 size)
 u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 {
     //Look for firmlaunch code
-    const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
+    static const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
     u32 pathLen;
     for(pathLen = 0; pathLen < 41 && launchedPath[pathLen] != 0; pathLen++);
@@ -277,7 +277,7 @@ u32 patchFirmWrites(u8 *pos, u32 size)
 
     if(off == NULL) return 1;
 
-    const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
+    static const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     u16 *off2 = (u16 *)memsearch(off - 0x100, pattern, 0x100, sizeof(pattern));
 
@@ -292,7 +292,7 @@ u32 patchFirmWrites(u8 *pos, u32 size)
 u32 patchOldFirmWrites(u8 *pos, u32 size)
 {
     //Look for FIRM writing code
-    const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
+    static const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -306,7 +306,7 @@ u32 patchOldFirmWrites(u8 *pos, u32 size)
 
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
 {
-    const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
+    static const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -322,7 +322,7 @@ u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
 
 u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x28, 0x2A, 0xD0, 0x08};
+    static const u8 pattern[] = {0x28, 0x2A, 0xD0, 0x08};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -336,7 +336,7 @@ u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size)
 
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x07, 0xD1, 0x28, 0x7A};
+    static const u8 pattern[] = {0x07, 0xD1, 0x28, 0x7A};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -350,7 +350,7 @@ u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size)
 
 u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x03, 0x7C, 0x28, 0x00};
+    static const u8 pattern[] = {0x03, 0x7C, 0x28, 0x00};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -363,8 +363,8 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
 
 u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
 {
-    const u8 moduleLoadingPattern[]  = {0xE2, 0x05, 0x00, 0x57},
-             modulePidPattern[] = {0x06, 0xA0, 0xE1, 0xF2}; //GetSystemInfo
+    static const u8 moduleLoadingPattern[]  = {0xE2, 0x05, 0x00, 0x57},
+                         modulePidPattern[] = {0x06, 0xA0, 0xE1, 0xF2}; //GetSystemInfo
 
     u8 *off = memsearch(pos, moduleLoadingPattern, size, 4);
 
@@ -390,7 +390,7 @@ u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
 
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x80, 0xE5, 0x40, 0x1C};
+    static const u8 pattern[] = {0x80, 0xE5, 0x40, 0x1C};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -424,7 +424,7 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     //Stub svcBreak with "bkpt 65535" so we can debug the panic
 
     //Look for the svc handler
-    const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
+    static const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
 
     u32 *arm9SvcTable = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -440,7 +440,7 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 
 u32 patchKernel9Panic(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
+    static const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -454,7 +454,7 @@ u32 patchKernel9Panic(u8 *pos, u32 size)
 
 u32 patchP9AccessChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x00, 0x08, 0x49, 0x68};
+    static const u8 pattern[] = {0x00, 0x08, 0x49, 0x68};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -470,7 +470,7 @@ u32 patchP9AccessChecks(u8 *pos, u32 size)
 u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 {
     //Look for UNITINFO value being set during kernel sync
-    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
+    static const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -484,7 +484,7 @@ u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 
 u32 patchLgySignatureChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
+    static const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -500,7 +500,7 @@ u32 patchLgySignatureChecks(u8 *pos, u32 size)
 
 u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x20, 0xF6, 0xE7, 0x7F};
+    static const u8 pattern[] = {0x20, 0xF6, 0xE7, 0x7F};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -514,7 +514,7 @@ u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
 
 u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
+    static const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -528,7 +528,7 @@ u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
 
 u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
+    static const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -542,7 +542,7 @@ u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
 
 u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 {
-    const u8 pattern[] = {0x25, 0x20, 0x00, 0x0E};
+    static const u8 pattern[] = {0x25, 0x20, 0x00, 0x0E};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -562,7 +562,7 @@ u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 
 u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x06, 0xF0, 0xA0, 0xFD};
+    static const u8 pattern[] = {0x06, 0xF0, 0xA0, 0xFD};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -576,7 +576,7 @@ u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
 
 u32 patchTwlShaHashChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x10, 0xB5, 0x14, 0x22};
+    static const u8 pattern[] = {0x10, 0xB5, 0x14, 0x22};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -590,7 +590,7 @@ u32 patchTwlShaHashChecks(u8 *pos, u32 size)
 
 u32 patchAgbBootSplash(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x00, 0x00, 0x01, 0xEF};
+    static const u8 pattern[] = {0x00, 0x00, 0x01, 0xEF};
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
