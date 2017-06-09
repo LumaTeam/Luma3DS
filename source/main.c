@@ -288,12 +288,12 @@ boot:
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
     u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
-    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO), enableExceptionHandlers = CONFIG(PATCHUNITINFO);
+    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO);
     u32 res;
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isSafeMode, doUnitinfoPatch, enableExceptionHandlers);
+            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isSafeMode, doUnitinfoPatch);
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
@@ -304,7 +304,7 @@ boot:
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = patch1x2xNativeAndSafeFirm(enableExceptionHandlers);
+            res = patch1x2xNativeAndSafeFirm();
             break;
     }
 
