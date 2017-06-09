@@ -40,7 +40,7 @@
 
 static char pinKeyToLetter(u32 pressed)
 {
-    const char keys[] = "AB--RLUD--XY";
+    static const char *keys = "AB--RLUD--XY";
 
     u32 i;
     for(i = 31; pressed > 1; i--) pressed /= 2;
@@ -151,7 +151,7 @@ bool verifyPin(u32 pinMode)
 
     drawFormattedString(true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE, "PIN (%u digits): ", lengthBlock[0]);
 
-    const char *messageFile = "pinmessage.txt";
+    static const char *messageFile = "pinmessage.txt";
     char message[801];
 
     u32 messageSize = fileRead(message, messageFile, sizeof(message) - 1);

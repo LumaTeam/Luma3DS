@@ -80,11 +80,9 @@ static inline bool loadFirmFromStorage(FirmwareType firmType)
 
 static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 {
-    u32 srcModuleSize;
-    const char *extModuleSizeError = "The external FIRM modules are too large.";
+    u32 srcModuleSize,
+        nbModules = 0;
 
-    u32 nbModules = 0,
-        isCustomModule = false;
     struct
     {
         char name[8];
@@ -108,24 +106,25 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
             const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
 
             u32 i;
-            for(i = 0; i < nbModules && memcmp(name, moduleList[i].name, 8) != 0; i++);
 
-            if(i == nbModules) isCustomModule = true;
+            for(i = 0; i < 5 && memcmp(name, moduleList[i].name, 8) != 0; i++);
 
-            memcpy(moduleList[i].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
+            if(i == 5)
+            {
+                nbModules++;
+                memcpy(moduleList[i].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
+            }
+
             moduleList[i].src = src;
             srcModuleSize = moduleList[i].size = ((Cxi *)src)->ncch.contentSize * 0x200;
         }
-
-        if(isCustomModule) nbModules++;
     }
 
     //3) Read or copy the modules
     u8 *dst = firm->section[0].address;
-    for(u32 i = 0, dstModuleSize; i < nbModules; i++) 
+    const char *extModuleSizeError = "The external FIRM modules are too large.";
+    for(u32 i = 0, dstModuleSize, maxModuleSize = 0x60000; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize) 
     {
-        dstModuleSize = 0;
-
         if(loadFromStorage)
         {
             char fileName[24];
@@ -137,7 +136,7 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 
             if(dstModuleSize != 0)
             {
-                if(dstModuleSize > 0x60000) error(extModuleSizeError);
+                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
 
                 if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
                    fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
@@ -145,19 +144,19 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
                    memcmp(moduleList[i].name, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
                     error("An external FIRM module is invalid or corrupted.");
 
-                dst += dstModuleSize;
+                continue;
             }
         }
 
-        if(!dstModuleSize)
-        {
-            memcpy(dst, moduleList[i].src, moduleList[i].size);
-            dst += moduleList[i].size;
-        }
+        dstModuleSize = moduleList[i].size;
+
+        if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+
+        memcpy(dst, moduleList[i].src, dstModuleSize);
     }
 
     //4) Patch NATIVE_FIRM if necessary
-    if(isCustomModule)
+    if(nbModules == 6)
     {
         if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, (u8 *)firm + firm->section[1].offset, firm->section[1].size) != 0)
             error("Failed to inject custom sysmodule");

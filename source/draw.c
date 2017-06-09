@@ -39,8 +39,8 @@
 
 bool loadSplash(void)
 {
-    const char *topSplashFile = "splash.bin",
-               *bottomSplashFile = "splashbottom.bin";
+    static const char *topSplashFile = "splash.bin",
+                      *bottomSplashFile = "splashbottom.bin";
 
     bool isTopSplashValid = getFileSize(topSplashFile) == SCREEN_TOP_FBSIZE,
          isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE;
