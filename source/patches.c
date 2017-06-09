@@ -440,12 +440,13 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 
 u32 patchKernel9Panic(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x02, 0x30, 0xA0, 0xE1, 0x02, 0x10, 0xA0, 0xE1, 0x05, 0x00, 0xA0, 0xE3};
+    const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(off == NULL) return 1;
+    if(temp == NULL) return 1;
 
+    u32 *off = (u32 *)(temp - 0x12);
     *off = 0xE12FFF7E;
 
     return 0;
