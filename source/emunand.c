@@ -102,7 +102,7 @@ void locateEmuNand(FirmwareSource *nandType)
 
 static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
 {
-    const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
+    static const u8 pattern[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
     //Looking for the last free space before Process9
     *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern));
@@ -117,7 +117,7 @@ static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
 static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
 {
     //Look for struct code
-    const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
+    static const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
 
     const u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -131,7 +131,7 @@ static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
 static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 {
     //Look for read/write code
-    const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
+    static const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
     u16 *readOffset = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -154,7 +154,7 @@ static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 static inline u32 patchMpu(u8 *pos, u32 size)
 {
     //Look for MPU pattern
-    const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
+    static const u8 pattern[] = {0x03, 0x00, 0x24, 0x00};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 

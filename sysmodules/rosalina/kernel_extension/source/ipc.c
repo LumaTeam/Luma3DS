@@ -182,7 +182,7 @@ void SessionInfo_ChangeVtable(KSession *session)
     session->autoObject.vtable = (Vtable__KAutoObject *)customSessionVtable;
 }
 
-bool doLangEmu(Result *res, Handle handle, u32 *cmdbuf)
+bool doLangEmu(Result *res, u32 *cmdbuf)
 {
     KRecursiveLock__Lock(criticalSectionLock);
     KRecursiveLock__Lock(&processLangemuLock);

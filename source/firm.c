@@ -201,7 +201,7 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     return firmVersion;
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -266,13 +266,10 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         if(!ISDEVUNIT) ret += patchCheckForDevCommonKey(process9Offset, process9Size);
     }
 
-    if(enableExceptionHandlers)
-    {
-        //ARM9 exception handlers
-        ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
-        ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
-        ret += patchKernel9Panic(arm9Section, kernel9Size);
-    }
+    //ARM9 exception handlers
+    ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
+    ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
+    ret += patchKernel9Panic(arm9Section, kernel9Size);
 
     if(CONFIG(PATCHACCESS))
         ret += patchP9AccessChecks(process9Offset, process9Size);
@@ -356,7 +353,7 @@ u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
     return ret;
 }
 
-u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers)
+u32 patch1x2xNativeAndSafeFirm(void)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
 
@@ -379,12 +376,9 @@ u32 patch1x2xNativeAndSafeFirm(bool enableExceptionHandlers)
 
     ret += ISN3DS ? patchSignatureChecks(process9Offset, process9Size) : patchOldSignatureChecks(process9Offset, process9Size);
 
-    if(enableExceptionHandlers)
-    {
-        //ARM9 exception handlers
-        ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
-        ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
-    }
+    //ARM9 exception handlers
+    ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
+    ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
 
     return ret;
 }

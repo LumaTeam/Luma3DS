@@ -58,7 +58,6 @@ static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
         *(void**)PA_FROM_VA_PTR(dst) = handler;
 }
 
-static u32 *trampo_;
 static bool **enableUserExceptionHandlersForCPUExcLoc;
 static bool enableUserExceptionHandlersForCPUExc = true;
 
@@ -70,15 +69,12 @@ static void setupSvcHandler(void)
     while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
 
-    u32 *off;
-    for(off = (u32 *)officialSVCs[0x2D]; *off != 0x65736162; off++);
-    *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2D) = officialSVCs[0x2D] = (void *)off[1];
-    trampo_ = (u32 *)PA_FROM_VA_PTR(off + 3);
+    officialSVCs[0x2D] = *((void **)officialSVCs[0x2D] + 1);
 
     CustomBackdoor = (Result (*)(void *, ...))((u32 *)officialSVCs[0x2F] + 2);
-    *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2F) = officialSVCs[0x2F] = (void *)*((u32 *)officialSVCs[0x2F] + 1);
+    officialSVCs[0x2F] = *((void **)officialSVCs[0x2F] + 1);
 
-    off = (u32 *)originalHandlers[(u32) SVC];
+    u32 *off = (u32 *)originalHandlers[(u32) SVC];
     while(*off++ != 0xE1A00009);
     svcFallbackHandler = (void (*)(u8))decodeARMBranch(off);
     for(; *off != 0xE92D000F; off++);
@@ -201,12 +197,12 @@ static void findUsefulSymbols(void)
     KernelSetState = (Result (*)(u32, u32, u32, u32))((u32 *)officialSVCs[0x7C] + 1);
 
     for(off = (u32 *)svcFallbackHandler; *off != 0xE8BD4010; off++);
-    kernelpanic = (void (*)(void))off;
+    kernelpanic = (void (*)(void))decodeARMBranch(off + 1);
 
     for(off = (u32 *)0xFFFF0000; off[0] != 0xE3A01002 || off[1] != 0xE3A00004; off++);
     SignalDebugEvent = (Result (*)(DebugEventType type, u32 info, ...))decodeARMBranch(off + 2);
 
-    for(; *off != 0x96007F9; off++);
+    for(off = (u32 *)PA_FROM_VA_PTR(off); *off != 0x96007F9; off++);
     isDevUnit = *(bool **)(off - 1);
     enableUserExceptionHandlersForCPUExcLoc = (bool **)(off + 1);
 
@@ -217,7 +213,7 @@ static void findUsefulSymbols(void)
     u32 rodataStart = (u32)(interruptManager->N3DS.privateInterrupts[0][6].interruptEvent->vtable) & ~0xFFF;
 
     u32 textSize = rodataStart - textStart;
-    for(off = (u32 *)textStart; off < (u32 *)(textStart + textSize) - 3; off++)
+    for(off = (u32 *)textStart; off < (u32 *)(textStart + textSize - 12); off++)
     {
         if(off[0] == 0xE5D13034 && off[1] == 0xE1530002)
             KScheduler__AdjustThread = (void (*)(KScheduler *, KThread *, u32))off;
@@ -253,14 +249,14 @@ struct Parameters
 static void enableDebugFeatures(void)
 {
     *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
-    *(bool **)PA_FROM_VA_PTR(enableUserExceptionHandlersForCPUExcLoc) = &enableUserExceptionHandlersForCPUExc;
+    *enableUserExceptionHandlersForCPUExcLoc = &enableUserExceptionHandlersForCPUExc;
 
     u32 *off;
-    for(off = (u32 *)officialSVCs[0x7C]; off[0] != 0xE5D00001 || off[1] != 0xE3500000; off++);
-    *(u32 *)PA_FROM_VA_PTR(off + 2) = 0xE1A00000; // in case 6: beq -> nop
+    for(off = (u32 *)PA_FROM_VA_PTR(KernelSetState); off[0] != 0xE5D00001 || off[1] != 0xE3500000; off++);
+    off[2] = 0xE1A00000; // in case 6: beq -> nop
 
-    for(off = (u32 *)DebugActiveProcess; *off != 0xE3110001; off++);
-    *(u32 *)PA_FROM_VA_PTR(off) = 0xE3B01001; // tst r1, #1 -> movs r1, #1
+    for(off = (u32 *)PA_FROM_VA_PTR(DebugActiveProcess); *off != 0xE3110001; off++);
+    *off = 0xE3B01001; // tst r1, #1 -> movs r1, #1
 }
 
 static void doOtherPatches(void)
@@ -269,7 +265,7 @@ static void doOtherPatches(void)
     *(u32 *)PA_FROM_VA_PTR(kpanic) = 0xE12FFF7E; // bkpt 0xFFFE
 
     u32 *off;
-    for(off = (u32 *)ControlMemory; (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
+    for(off = (u32 *)PA_FROM_VA_PTR(ControlMemory); (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
     off -= 2;
 
     /*
@@ -279,8 +275,7 @@ static void doOtherPatches(void)
         It effectively changes the prototype of the ControlMemory function which
         only caller is the svc 0x01 handler on OFW.
     */
-    *(u32 *)PA_FROM_VA_PTR(off) = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)ControlMemory)); // ldr r0, [sp, #(frameSize + 8)]
-
+    *(u32 *)PA_FROM_VA_PTR(off) = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)PA_FROM_VA_PTR(ControlMemory))); // ldr r0, [sp, #(frameSize + 8)]
 }
 
 void main(volatile struct Parameters *p)
@@ -306,5 +301,4 @@ void main(volatile struct Parameters *p)
 
     rosalinaState = 0;
     hasStartedRosalinaNetworkFuncsOnce = false;
-    *trampo_ = (u32)ConnectToPortHookWrapper;
 }

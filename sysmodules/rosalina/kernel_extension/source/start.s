@@ -26,6 +26,10 @@
 .balign 4
 .global _start
 _start:
+    b start
+    b ConnectToPortHookWrapper
+
+start:
     push {r4, lr}
 
     mrc p15, 0, r4, c0, c0, 5   @ CPUID register

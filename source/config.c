@@ -94,6 +94,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch ARM9 access",
                                         "( ) Set developer UNITINFO",
+                                        "( ) Disable Exception Vectors",
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -187,6 +188,13 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "and booting some developer software).\n\n"
                                           "Only select this if you know what you\n"
                                           "are doing!",
+
+                                          "Disables the fatal error exception\n"
+                                          "vectors for the ARM11 CPU\n"
+                                          "Note: Disabling the exception vectors\n"
+                                          "will disqualify you from submitting\n"
+                                          "issues or bug reports to the Luma3DS\n"
+                                          "GitHub repository!"
                                        };
 
     struct multiOption {
@@ -209,6 +217,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     } singleOptions[] = {
         { .visible = isSdMode },
         { .visible = isSdMode },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },

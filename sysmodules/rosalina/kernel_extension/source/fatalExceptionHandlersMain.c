@@ -35,6 +35,8 @@
 
 bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 {
+    if (CONFIG(DISABLEVECTORS)) return false;
+    
     if((spsr & 0x1f) != 0x10) return true;
 
     KThread *thread = currentCoreContext->objectContext.currentThread;

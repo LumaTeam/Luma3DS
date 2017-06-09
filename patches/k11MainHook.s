@@ -7,7 +7,8 @@ bindSGI0:
     ; hook __kernel_main to bind SGI0 for own purposes
     push {r0-r4, lr}
     sub sp, #16                  ; 3 args passed through the stack + alignment
-    ldr r0, [interruptManager]
+    adr r0, parameters
+    ldr r0, [r0, #4]
     adr r1, interruptEvent
     mov r2, #0
     mrc p15, 0, r3, c0, c0, 5
@@ -17,7 +18,7 @@ bindSGI0:
     str r4, [sp, #4]
     str r4, [sp, #8]
 
-    ldr r12, [InterruptManager_mapInterrupt]
+    ldr r12, [InterruptManager_MapInterrupt]
     blx r12
     cmp r0, #0
     blt .
@@ -28,7 +29,7 @@ bindSGI0:
 executeCustomHandler:
     push {r4, lr}
     mrs r4, cpsr
-    adr r0, customHandler
+    adr r0, parameters
     bl convertVAToPA
     orr r0, #(1 << 31)
     ldr r12, [r0]
@@ -54,20 +55,12 @@ convertVAToPA:
 
 .pool
 
-; Result InterruptManager::mapInterrupt(InterruptManager *this, InterruptEvent *iEvent, u32 interruptID, u32 coreID, s32 priority, bool willBeMasked, bool isLevelHighActive);
-InterruptManager_mapInterrupt: .ascii "bind"
+; Result InterruptManager::MapInterrupt(InterruptManager *this, InterruptEvent *iEvent, u32 interruptID, u32 coreID, s32 priority, bool willBeMasked, bool isLevelHighActive);
+InterruptManager_MapInterrupt: .ascii "bind"
 
 _vtable: .word executeCustomHandler
 interruptEvent: .word _vtable
 
 parameters:
-customHandler: .ascii "hdlr"
-interruptManager: .word 0
-L2MMUTable: .word 0
-funcs: .word 0,0,0
-TTBCR: .word 0
-L1MMUTableAddrs: .word 0,0,0,0
-kernelVersion: .word 0
-CFWInfo: .word 0,0,0,0
 
 .close
