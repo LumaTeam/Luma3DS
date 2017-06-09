@@ -32,6 +32,7 @@ Result ConnectToPortHook(Handle *out, const char *name)
 {
     char portName[12] = {0};
     Result res = 0;
+
     if(name != NULL)
     {
         s32 nb = usrToKernelStrncpy(portName, name, 12);
