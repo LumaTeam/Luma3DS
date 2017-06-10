@@ -33,6 +33,7 @@
 
 #include "crypto.h"
 #include "memory.h"
+#include "emunand.h"
 #include "strings.h"
 #include "utils.h"
 #include "fatfs/sdmmc/sdmmc.h"
@@ -421,12 +422,18 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
     return result;
 }
 
-bool decryptExeFs(Cxi *cxi)
+u32 decryptExeFs(Cxi *cxi)
 {
-    if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return false;
+    if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return 0;
 
-    u8 *exeFsOffset = (u8 *)cxi + (cxi->ncch.exeFsOffset + 1) * 0x200;
+    if(cxi->ncch.exeFsOffset != 5) return 0;
+
+    u8 *exeFsOffset = (u8 *)cxi + 6 * 0x200;
+
     u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
+
+    if(exeFsSize > 0x400000) return 0;
+
     __attribute__((aligned(4))) u8 ncchCtr[AES_BLOCK_SIZE] = {0};
 
     for(u32 i = 0; i < 8; i++)
@@ -438,12 +445,12 @@ bool decryptExeFs(Cxi *cxi)
     aes_use_keyslot(0x2C);
     aes(cxi, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    return memcmp(cxi, "FIRM", 4) == 0;
+    return memcmp(cxi, "FIRM", 4) == 0 ? exeFsSize : 0;
 }
 
-bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
+u32 decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
 {
-    if(memcmp(ticket->sigIssuer, "Root", 4) != 0) return false;
+    if(memcmp(ticket->sigIssuer, "Root", 4) != 0) return 0;
 
     __attribute__((aligned(4))) static const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
     __attribute__((aligned(4))) u8 titleKey[AES_BLOCK_SIZE],

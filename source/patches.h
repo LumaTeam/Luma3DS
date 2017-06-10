@@ -37,8 +37,6 @@
 
 #include "types.h"
 
-extern CfgData configData;
-
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
 void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space);

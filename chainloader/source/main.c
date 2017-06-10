@@ -28,9 +28,8 @@
 #include "cache.h"
 #include "firm.h"
 
-void main(int argc, char **argv)
+void main(int argc, char **argv, Firm *firm)
 {
-    Firm *firm = (Firm *)0x20001000;
     char *argvPassed[2],
          absPath[24 + 255];
     struct fb fbs[2];

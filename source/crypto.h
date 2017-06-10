@@ -110,8 +110,6 @@
 #define SHA_224_HASH_SIZE   (224 / 8)
 #define SHA_1_HASH_SIZE     (160 / 8)
 
-extern u32 emuOffset,
-           emuHeader;
 extern FirmwareSource firmSource;
 
 void sha(void *res, const void *src, u32 size, u32 mode);
@@ -119,8 +117,8 @@ void sha(void *res, const void *src, u32 size, u32 mode);
 int ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);
-bool decryptExeFs(Cxi *cxi);
-bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
+u32 decryptExeFs(Cxi *cxi);
+u32 decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
 void setupKeyslots(void);
 void kernel9Loader(Arm9Bin *arm9Section);
 void computePinHash(u8 *outbuf, const u8 *inbuf);
