@@ -57,7 +57,7 @@ static __attribute__((noinline)) bool inRange(u32 as, u32 ae, u32 bs, u32 be)
    return false;
 }
 
-static bool checkFirm(u32 payloadSize)
+static bool checkFirm(u32 firmSize)
 {
     if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
         return false;
@@ -69,7 +69,7 @@ static bool checkFirm(u32 payloadSize)
     for(u32 i = 0; i < 4; i++)
         size += firm->section[i].size;
 
-    if(payloadSize < size) return false;
+    if(firmSize < size) return false;
 
     for(u32 i = 0; i < 4; i++)
     {
@@ -207,14 +207,12 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 void loadHomebrewFirm(u32 pressed)
 {
     char path[10 + 255];
-
     bool found = !pressed ? payloadMenu(path) : findPayload(path, pressed);
 
     if(!found) return;
 
-    u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm);
-
-    u32 payloadSize = fileRead(firm, path, maxPayloadSize);
+    u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm),
+        payloadSize = fileRead(firm, path, maxPayloadSize);
 
     if(payloadSize <= 0x200 || !checkFirm(payloadSize)) error("The payload is invalid or corrupted.");
 
@@ -224,6 +222,7 @@ void loadHomebrewFirm(u32 pressed)
     else sprintf(absPath, "nand:/rw/luma/%s", path);
 
     char *argv[2] = {absPath, (char *)fbs};
+
     initScreens();
 
     launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
