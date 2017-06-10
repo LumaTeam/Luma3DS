@@ -429,7 +429,6 @@ u32 decryptExeFs(Cxi *cxi)
     if(cxi->ncch.exeFsOffset != 5) return 0;
 
     u8 *exeFsOffset = (u8 *)cxi + 6 * 0x200;
-
     u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
 
     if(exeFsSize > 0x400000) return 0;
