@@ -173,7 +173,7 @@ void MiscellaneousMenu_InputRedirection(void)
     Result res;
     char buf[65];
     bool wasEnabled = inputRedirectionEnabled;
-    bool cantStart;
+    bool cantStart = false;
 
     if(wasEnabled)
     {

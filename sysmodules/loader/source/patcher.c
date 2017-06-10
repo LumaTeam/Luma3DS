@@ -403,7 +403,7 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 
 
     ret = true;
 
-    static const char *regions[]   = {"--", "JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"},
+    static const char *regions[]   = {"---", "JPN", "USA", "EUR", "AUS", "CHN", "KOR", "TWN"},
                       *languages[] = {"--", "JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"},
                       *countries[] = {"--", "JP", "--", "--", "--", "--", "--", "--", "AI", "AG", "AR", "AW",
                                       "BS", "BB", "BZ", "BO", "BR", "VG", "CA", "KY", "CL", "CO", "CR", "DM",
