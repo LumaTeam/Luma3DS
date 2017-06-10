@@ -206,7 +206,7 @@ u32 patchSignatureChecks(u8 *pos, u32 size)
 {
     //Look for signature checks
     static const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
-                   pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
+                    pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
@@ -224,7 +224,7 @@ u32 patchOldSignatureChecks(u8 *pos, u32 size)
 {
     // Look for signature checks
     static const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
-                   pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
+                    pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
@@ -379,7 +379,7 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
 u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
 {
     static const u8 moduleLoadingPattern[]  = {0xE2, 0x05, 0x00, 0x57},
-                         modulePidPattern[] = {0x06, 0xA0, 0xE1, 0xF2}; //GetSystemInfo
+                    modulePidPattern[] = {0x06, 0xA0, 0xE1, 0xF2}; //GetSystemInfo
 
     u8 *off = memsearch(pos, moduleLoadingPattern, size, 4);
 

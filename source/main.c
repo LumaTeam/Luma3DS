@@ -72,7 +72,7 @@ void main(int argc, char **argv, u32 magicWord)
     }
     else
     {
-        const char argv[] = "firm0:";
+        static const char argv[] = "firm0:";
         for(u32 i = 0; i < sizeof(argv); i++) //Copy and convert the path to UTF-16
             launchedPath[i] = argv[i];
     }
@@ -207,11 +207,11 @@ void main(int argc, char **argv, u32 magicWord)
 
     if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
-        payloadMenu();
+        loadHomebrewFirm(0);
         pressed = HID_PAD;
     }
     else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
+            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
     if(splashMode == 2) loadSplash();
 
@@ -286,7 +286,7 @@ boot:
     if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
 
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
+    u32 firmVersion = loadNintendoFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
     bool doUnitinfoPatch = CONFIG(PATCHUNITINFO);
     u32 res;

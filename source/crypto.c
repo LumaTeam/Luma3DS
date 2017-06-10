@@ -33,6 +33,7 @@
 
 #include "crypto.h"
 #include "memory.h"
+#include "emunand.h"
 #include "strings.h"
 #include "utils.h"
 #include "fatfs/sdmmc/sdmmc.h"
@@ -421,12 +422,17 @@ int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf)
     return result;
 }
 
-bool decryptExeFs(Cxi *cxi)
+u32 decryptExeFs(Cxi *cxi)
 {
-    if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return false;
+    if(memcmp(cxi->ncch.magic, "NCCH", 4) != 0) return 0;
 
-    u8 *exeFsOffset = (u8 *)cxi + (cxi->ncch.exeFsOffset + 1) * 0x200;
+    if(cxi->ncch.exeFsOffset != 5) return 0;
+
+    u8 *exeFsOffset = (u8 *)cxi + 6 * 0x200;
     u32 exeFsSize = (cxi->ncch.exeFsSize - 1) * 0x200;
+
+    if(exeFsSize > 0x400000) return 0;
+
     __attribute__((aligned(4))) u8 ncchCtr[AES_BLOCK_SIZE] = {0};
 
     for(u32 i = 0; i < 8; i++)
@@ -438,12 +444,12 @@ bool decryptExeFs(Cxi *cxi)
     aes_use_keyslot(0x2C);
     aes(cxi, exeFsOffset, exeFsSize / AES_BLOCK_SIZE, ncchCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    return memcmp(cxi, "FIRM", 4) == 0;
+    return memcmp(cxi, "FIRM", 4) == 0 ? exeFsSize : 0;
 }
 
-bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
+u32 decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize)
 {
-    if(memcmp(ticket->sigIssuer, "Root", 4) != 0) return false;
+    if(memcmp(ticket->sigIssuer, "Root", 4) != 0) return 0;
 
     __attribute__((aligned(4))) static const u8 keyY0x3D[AES_BLOCK_SIZE] = {0x0C, 0x76, 0x72, 0x30, 0xF0, 0x99, 0x8F, 0x1C, 0x46, 0x82, 0x82, 0x02, 0xFA, 0xAC, 0xBE, 0x4C};
     __attribute__((aligned(4))) u8 titleKey[AES_BLOCK_SIZE],
@@ -484,8 +490,8 @@ static inline void twlConsoleInfoInit(void)
     aes_setkey(2, (u8 *)0x01FFD398, AES_KEYX, AES_INPUT_TWLNORMAL);
     if(CFG_TWLUNITINFO != 0)
     {
-        __attribute__((aligned(4))) u8 key2YDev[AES_BLOCK_SIZE] = {0x3B, 0x06, 0x86, 0x57, 0x33, 0x04, 0x88, 0x11, 0x49, 0x04, 0x6B, 0x33, 0x12, 0x02, 0xAC, 0xF3},
-                                       key3YDev[AES_BLOCK_SIZE] = {0xAA, 0xBF, 0x76, 0xF1, 0x7A, 0xB8, 0xE8, 0x66, 0x97, 0x64, 0x6A, 0x26, 0x05, 0x00, 0xA0, 0xE1};
+        __attribute__((aligned(4))) static const u8 key2YDev[AES_BLOCK_SIZE] = {0x3B, 0x06, 0x86, 0x57, 0x33, 0x04, 0x88, 0x11, 0x49, 0x04, 0x6B, 0x33, 0x12, 0x02, 0xAC, 0xF3},
+                                                    key3YDev[AES_BLOCK_SIZE] = {0xAA, 0xBF, 0x76, 0xF1, 0x7A, 0xB8, 0xE8, 0x66, 0x97, 0x64, 0x6A, 0x26, 0x05, 0x00, 0xA0, 0xE1};
 
         k3X[1] = 0xEE7A4B1E;
         k3X[2] = 0xAF42C08B;
@@ -518,7 +524,7 @@ void setupKeyslots(void)
         {0xCE, 0xE7, 0xD8, 0xAB, 0x30, 0xC0, 0x0D, 0xAE, 0x85, 0x0E, 0xF5, 0xE3, 0x82, 0xAC, 0x5A, 0xF3},
         {0x81, 0x90, 0x7A, 0x4B, 0x6F, 0x1B, 0x47, 0x32, 0x3A, 0x67, 0x79, 0x74, 0xCE, 0x4A, 0xD7, 0x1B}
     },
-                                         keyY0x2Fs[2][AES_BLOCK_SIZE] = {
+                                                keyY0x2Fs[2][AES_BLOCK_SIZE] = {
         {0xC3, 0x69, 0xBA, 0xA2, 0x1E, 0x18, 0x8A, 0x88, 0xA9, 0xAA, 0x94, 0xE5, 0x50, 0x6A, 0x9F, 0x16},
         {0x73, 0x25, 0xC4, 0xEB, 0x14, 0x3A, 0x0D, 0x5F, 0x5D, 0xB6, 0xE5, 0xC5, 0x7A, 0x21, 0x95, 0xAC}
     };

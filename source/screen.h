@@ -63,7 +63,6 @@ typedef enum
 } Arm11Operation;
 
 extern struct fb fbs[2];
-extern CfgData configData;
 
 void prepareArm11ForFirmlaunch(void);
 void deinitScreens(void);

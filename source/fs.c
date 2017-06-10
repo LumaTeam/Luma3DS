@@ -121,66 +121,44 @@ void fileDelete(const char *path)
     f_unlink(path);
 }
 
-void loadPayload(u32 pressed, const char *payloadPath)
+bool findPayload(char *path, u32 pressed)
 {
-    u32 payloadSize = 0,
-        maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm);
+    const char *pattern;
 
-    char absPath[24 + _MAX_LFN];
-    char path[10 + _MAX_LFN];
+    if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
+    else if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
+    else if(pressed & BUTTON_UP) pattern = PATTERN("up");
+    else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
+    else if(pressed & BUTTON_START) pattern = PATTERN("start");
+    else if(pressed & BUTTON_B) pattern = PATTERN("b");
+    else if(pressed & BUTTON_X) pattern = PATTERN("x");
+    else if(pressed & BUTTON_Y) pattern = PATTERN("y");
+    else if(pressed & BUTTON_R1) pattern = PATTERN("r");
+    else if(pressed & BUTTON_A) pattern = PATTERN("a");
+    else pattern = PATTERN("select");
 
-    if(payloadPath == NULL)
-    {
-        const char *pattern;
+    DIR dir;
+    FILINFO info;
+    FRESULT result;
 
-        if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
-        else if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
-        else if(pressed & BUTTON_UP) pattern = PATTERN("up");
-        else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
-        else if(pressed & BUTTON_START) pattern = PATTERN("start");
-        else if(pressed & BUTTON_B) pattern = PATTERN("b");
-        else if(pressed & BUTTON_X) pattern = PATTERN("x");
-        else if(pressed & BUTTON_Y) pattern = PATTERN("y");
-        else if(pressed & BUTTON_R1) pattern = PATTERN("r");
-        else if(pressed & BUTTON_A) pattern = PATTERN("a");
-        else pattern = PATTERN("select");
+    result = f_findfirst(&dir, &info, "payloads", pattern);
 
-        DIR dir;
-        FILINFO info;
-        FRESULT result;
+    if(result != FR_OK) return false;
 
-        result = f_findfirst(&dir, &info, "payloads", pattern);
+    f_closedir(&dir);
 
-        if(result != FR_OK) return;
+    if(!info.fname[0]) return false;
 
-        f_closedir(&dir);
+    sprintf(path, "payloads/%s", info.fname);
 
-        if(!info.fname[0]) return;
-
-        sprintf(path, "payloads/%s", info.fname);
-
-    }
-    else sprintf(path, "%s", payloadPath);
-
-    payloadSize = fileRead(firm, path, maxPayloadSize);
-
-    if(payloadSize <= 0x200 || !checkFirmPayload(payloadSize)) return;
-
-    if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);
-    else sprintf(absPath, "nand:/rw/luma/%s", path);
-
-    char *argv[2] = {absPath, (char *)fbs};
-    initScreens();
-
-    launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
+    return true;
 }
 
-void payloadMenu(void)
+bool payloadMenu(char *path)
 {
     DIR dir;
-    char path[62] = "payloads";
 
-    if(f_opendir(&dir, path) != FR_OK) return;
+    if(f_opendir(&dir, "payloads") != FR_OK) return false;
 
     FILINFO info;
     u32 payloadNum = 0;
@@ -205,7 +183,7 @@ void payloadMenu(void)
 
     f_closedir(&dir);
 
-    if(!payloadNum) return;
+    if(!payloadNum) return false;
 
     u32 pressed = 0,
         selectedPayload = 0;
@@ -261,12 +239,14 @@ void payloadMenu(void)
     if(pressed != BUTTON_START)
     {
         sprintf(path, "payloads/%s.firm", payloadList[selectedPayload]);
-        loadPayload(0, path);
-        error("The payload is too large or corrupted.");
+
+        return true;
     }
 
     while(HID_PAD & MENU_BUTTONS);
     wait(2000ULL);
+
+    return false;
 }
 
 u32 firmRead(void *dest, u32 firmType)
@@ -308,7 +288,7 @@ u32 firmRead(void *dest, u32 firmType)
     //Complete the string with the .app name
     sprintf(path, "%s/%08x.app", folderPath, firmVersion);
 
-    if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x200) firmVersion = 0xFFFFFFFF;
+    if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x400) firmVersion = 0xFFFFFFFF;
 
 exit:
     return firmVersion;
