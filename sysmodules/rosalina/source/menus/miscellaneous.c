@@ -36,11 +36,13 @@
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 3,
+    .nbItems = 5,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
+        { "Power off", METHOD, .method = &MiscellaneousMenu_PowerOff },
+        { "Reboot", METHOD, .method = &MiscellaneousMenu_Reboot },
     }
 };
 
@@ -258,4 +260,53 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_Unlock();
     }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void MiscellaneousMenu_Reboot()
+{
+    Draw_Lock();
+    Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+    Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            svcKernelSetState(7);
+        }
+        else if(pressed & BUTTON_B)
+        {
+            return;
+        }
+    }
+    while(!terminationRequest);
+}
+
+void MiscellaneousMenu_PowerOff() // Soft shutdown.
+{
+    Draw_Lock();
+    Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+    Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            menuLeave();
+            srvPublishToSubscriber(0x203, 0);
+        }
+        else if(pressed & BUTTON_B)
+        {
+            return;
+        }
+    }
+    while(!terminationRequest);
 }

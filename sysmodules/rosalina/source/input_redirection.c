@@ -104,7 +104,7 @@ void inputRedirectionThreadMain(void)
                 break;
             else if(n < 12)
                 continue;
-            
+
             memcpy(hidDataPhys, buf, 12);
             if(n >= 20)
             {
@@ -117,7 +117,7 @@ void inputRedirectionThreadMain(void)
                     srvPublishToSubscriber(0x204, 0);
                 else if((oldSpecialButtons & 1) && !(specialButtons & 1)) // HOME button released
                     srvPublishToSubscriber(0x205, 0);
-                
+
                 if(!(oldSpecialButtons & 2) && (specialButtons & 2)) // POWER button pressed
                     srvPublishToSubscriber(0x202, 0);
 
@@ -239,24 +239,31 @@ Result InputRedirection_DoOrUndoPatches(void)
         if(R_SUCCEEDED(res))
         {
             static u32 irOrigReadingCode[5] = {
-                 0xE5940000, // ldr r0, [r4]
-                 0xE1A01005, // mov r1, r5
-                 0xE3A03005, // mov r3, #5
-                 0xE3A02011, // mov r2, #17
+                0xE5940000, // ldr r0, [r4]
+                0xE1A01005, // mov r1, r5
+                0xE3A03005, // mov r3, #5
+                0xE3A02011, // mov r2, #17
+                0x00000000  // (bl i2c_read_raw goes here)
             };
 
             static const u32 irOrigWaitSyncCode[] = {
                 0xEF000024, // svc 0x24 (WaitSynchronization)
-                0xE1B01FA0, // movs r1, r0,lsr#31
+                0xE1B01FA0, // movs r1, r0, lsr#31
                 0xE1A0A000, // mov r10, r0
             };
 
-            static u32 *irHookLoc, *irWaitSyncLoc;
+            static const u32 irOrigCppFlagCode[] = {
+                0xE3550000, // cmp r5, #0
+                0xE3A0B080, // mov r11, #0x80
+            };
+
+            static u32 *irHookLoc, *irWaitSyncLoc, *irCppFlagLoc;
 
             if(inputRedirectionEnabled)
             {
                 memcpy(irHookLoc, &irOrigReadingCode, sizeof(irOrigReadingCode));
                 memcpy(irWaitSyncLoc, &irOrigWaitSyncCode, sizeof(irOrigWaitSyncCode));
+                memcpy(irCppFlagLoc, &irOrigCppFlagCode, sizeof(irOrigCppFlagCode));
             }
             else
             {
@@ -264,10 +271,10 @@ Result InputRedirection_DoOrUndoPatches(void)
                 u32 irCodePhys = (u32)PA_FROM_VA_PTR(&irCodePatchFunc);
 
                 u32 irHook[] = {
-                    0xE59F0004, // ldr r0,  [pc, #4]
-                    0xE59FC004, // ldr r12, [pc, #4]
-                    0xE12FFF1C, // bx  r12
-                    irDataPhys,
+                    0xE5940000, // ldr r0, [r4]
+                    0xE1A01005, // mov r1, r5
+                    0xE59FC000, // ldr r12, [pc] (actually +8)
+                    0xE12FFF3C, // blx r12
                     irCodePhys,
                 };
 
@@ -285,17 +292,29 @@ Result InputRedirection_DoOrUndoPatches(void)
                     return -5;
                 }
 
-                *(void **)(irCodePhys + 4) = decodeARMBranch(off + 4);
+                u32 *off3 = (u32 *)memsearch((u8 *)0x00100000, &irOrigCppFlagCode, totalSize, sizeof(irOrigCppFlagCode));
+                if(off3 == NULL)
+                {
+                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                    return -6;
+                }
+
+                *(void **)(irCodePhys + 8) = decodeARMBranch(off + 4);
+                *(void **)(irCodePhys + 12) = (void*)irDataPhys;
 
                 irHookLoc = off;
                 irWaitSyncLoc = off2;
+                irCppFlagLoc = off3;
 
-                irOrigReadingCode[4] = off[4];
+                irOrigReadingCode[4] = off[4]; // Copy the branch.
+
                 memcpy(irHookLoc, &irHook, sizeof(irHook));
 
                 // This "NOP"s out a WaitSynchronisation1 (on the event bound to the 'IR' interrupt)
                 *irWaitSyncLoc = 0xE3A00000; // mov r0, #0
-                memcpy((u32*)irHookLoc, irHook, sizeof(irHook));
+
+                // This NOPs out a flag check in ir:user's CPP emulation
+                *irCppFlagLoc = 0xE3150000; // tst r5, #0
             }
         }
 
