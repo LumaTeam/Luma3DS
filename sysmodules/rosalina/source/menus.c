@@ -47,7 +47,7 @@ Menu rosalinaMenu = {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
     }
 };
 
