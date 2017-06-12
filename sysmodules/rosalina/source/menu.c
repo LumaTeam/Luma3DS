@@ -173,6 +173,7 @@ void menuThreadMain(void)
         if((HID_PAD & menuCombo) == menuCombo)
         {
             menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
             menuShow(&rosalinaMenu);
             menuLeave();
         }
