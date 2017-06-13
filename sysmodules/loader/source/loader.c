@@ -249,7 +249,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   u64 progid;
 
   // make sure the cached info corrosponds to the current prog_handle
-  if (g_cached_prog_handle != prog_handle)
+  if (g_cached_prog_handle != prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
   {
     res = loader_GetProgramInfo(&g_exheader, prog_handle);
     g_cached_prog_handle = prog_handle;
@@ -475,7 +475,7 @@ static void handle_commands(void)
     case 4: // GetProgramInfo
     {
       prog_handle = *(u64 *)&cmdbuf[1];
-      if (prog_handle != g_cached_prog_handle)
+      if (prog_handle != g_cached_prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
       {
         res = loader_GetProgramInfo(&g_exheader, prog_handle);
         if (res >= 0)
