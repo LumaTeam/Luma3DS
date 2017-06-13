@@ -257,7 +257,7 @@ Result doPublishToProcessHook(Handle handle, u32 *cmdbuf)
         ((KAutoObject *)process)->vtable->DecrementReferenceCount((KAutoObject *)process);
     }
     
-    if(terminateRosalina)
+    if(terminateRosalina && nbSection0Modules == 6)
     {
         Handle rosalinaProcessHandle;
         res = OpenProcess(&rosalinaProcessHandle, 5);

@@ -6,7 +6,7 @@ endif
 
 include $(DEVKITARM)/base_tools
 
-name := kernel_extension
+name := k11_extension
 
 dir_source := source
 dir_include := include
@@ -16,7 +16,7 @@ ARCH    := -mcpu=mpcore -mfpu=vfp
 ASFLAGS := $(ARCH)
 CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math \
 -mword-relocations -ffunction-sections -fdata-sections
-LDFLAGS := -nostdlib -Wl,--gc-sections $(ARCH)
+LDFLAGS := -nostdlib -Wl,--gc-sections,--nmagic $(ARCH)
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 		$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \

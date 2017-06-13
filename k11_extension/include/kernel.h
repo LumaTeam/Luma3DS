@@ -28,6 +28,8 @@
 
 #include "types.h"
 
+extern u32 kernelVersion;
+
 struct KMutex;
 struct KProcessO3DS;
 struct KProcessN3DS;
@@ -1124,7 +1126,6 @@ typedef union KCacheMaintenanceInterruptEvent
 extern bool isN3DS;
 extern void *officialSVCs[0x7E];
 
-extern u32 kernelVersion;
 #define KPROCESS_OFFSETOF(field) (isN3DS ? offsetof(KProcessN3DS, field) :\
 ((kernelVersion >= SYSTEM_VERSION(2, 44, 6)) ? offsetof(KProcessO3DS8x, field) :\
 offsetof(KProcessO3DSPre8x, field)))

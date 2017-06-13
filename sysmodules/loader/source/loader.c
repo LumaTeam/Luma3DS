@@ -204,12 +204,15 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 
   if (R_SUCCEEDED(res))
   {
+    s64 nbSection0Modules;
+    svcGetSystemInfo(&nbSection0Modules, 26, 0);
+
     // Force always having sdmc:/ and nand:/rw permission
     exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
     exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
 
     // Tweak 3dsx placeholder title exheader
-    if (exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+    if (nbSection0Modules == 6 && exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
     {
       Handle hbldr = 0;
       res = HBLDR_Init(&hbldr);

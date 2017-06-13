@@ -24,22 +24,10 @@
 *         reasonable ways as different from the original version.
 */
 
-/*
-*   waitInput function based on code by d0k3 https://github.com/d0k3/Decrypt9WIP/blob/master/source/hid.c
-*/
-
 #pragma once
 
-#include "types.h"
+#include "utils.h"
+#include "kernel.h"
+#include "svc.h"
 
-#define TICKS_PER_SEC       67027964ULL
-#define REG_TIMER_CNT(i)    *(vu16 *)(0x10003002 + 4 * i)
-#define REG_TIMER_VAL(i)    *(vu16 *)(0x10003000 + 4 * i)
-
-#define MAKE_BRANCH(src,dst)      (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
-#define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
-
-u32 waitInput(bool isMenu);
-void mcuPowerOff(void);
-void wait(u64 amount);
-void error(const char *fmt, ...);
+void CustomBackdoor(void *function, ...);

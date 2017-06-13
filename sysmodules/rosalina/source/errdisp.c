@@ -146,7 +146,7 @@ void ERRF_DisplayError(ERRF_FatalErrInfo *info)
     switch(info->type)
     {
         case ERRF_ERRTYPE_CARD_REMOVED:
-            desc = "The Game Card was removed.";
+            desc = "The card was removed.";
             break;
         case ERRF_ERRTYPE_MEM_CORRUPT:
             desc = "The System Memory has been damaged.";
