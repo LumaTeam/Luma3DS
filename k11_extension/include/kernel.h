@@ -1123,6 +1123,16 @@ typedef union KCacheMaintenanceInterruptEvent
     KCacheMaintenanceInterruptEventO3DS O3DS;
 } KCacheMaintenanceInterruptEvent;
 
+typedef struct FcramLayout
+{
+  void *applicationAddr;
+  u32 applicationSize;
+  void *systemAddr;
+  u32 systemSize;
+  void *baseAddr;
+  u32 baseSize;
+} FcramLayout;
+
 extern bool isN3DS;
 extern void *officialSVCs[0x7E];
 

@@ -49,15 +49,7 @@ start:
 
     push {r0-r12, lr}
 
-    @ Adjust the size of the SYSTEM memregion
-    sub r4, #8
-    ldr r0, [r4, #0xC]
-    ldr r1, =__end__
-    ldr r2, =__start__
-    sub r1, r2
-    sub r0, r1
-    str r0, [r4, #0xC]
-
+    sub r0, r4, #8
     bl main
 
     pop {r0-r12, pc}

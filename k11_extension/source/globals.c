@@ -90,6 +90,10 @@ bool *isDevUnit;
 
 vu8 *configPage;
 u32 kernelVersion;
+FcramLayout fcramLayout;
+
+void *originalHandlers[8] = {NULL};
+
 u32 nbSection0Modules;
 
 Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,

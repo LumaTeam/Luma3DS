@@ -33,10 +33,6 @@
 #include "svcHandler.h"
 #include "memory.h"
 
-void *originalHandlers[8] = {NULL};
-
-extern u8 __start__[], __end__[], __bss_start__[], __bss_end__[];
-
 struct KExtParameters
 {
     u32 ALIGN(0x400) L2MMUTableFor0x40000000[256];
@@ -94,6 +90,9 @@ void configHook(vu8 *cfgPage)
     configPage = cfgPage;
 
     kernelVersion = *(vu32 *)configPage;
+    *(vu32 *)(configPage + 0x40) = fcramLayout.applicationSize;
+    *(vu32 *)(configPage + 0x44) = fcramLayout.systemSize;
+    *(vu32 *)(configPage + 0x48) = fcramLayout.baseSize;
     *isDevUnit = true; // enable debug features
 }
 
@@ -248,11 +247,14 @@ static void findUsefulSymbols(void)
     }
 }
 
-void main(void)
+void main(FcramLayout *layout)
 {
     struct KExtParameters *p = &kExtParameters;
     u32 TTBCR_;
     s64 nb;
+
+    layout->systemSize -= __end__ - __start__;
+    fcramLayout = *layout;
 
     __asm__ volatile("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR_));
     TTBCR = TTBCR_;

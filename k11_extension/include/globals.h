@@ -94,7 +94,12 @@ extern bool *isDevUnit;
 
 extern vu8 *configPage;
 extern u32 kernelVersion;
+extern FcramLayout fcramLayout;
+
+extern void *originalHandlers[8];
 extern u32 nbSection0Modules;
+
+extern u8 __start__[], __end__[], __bss_start__[], __bss_end__[];
 
 extern Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,
                                                 u32 coreID, u32 priority, bool disableUponReceipt, bool levelHighActive);

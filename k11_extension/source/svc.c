@@ -24,6 +24,7 @@
 *         reasonable ways as different from the original version.
 */
 
+#include "memory.h"
 #include "svc.h"
 #include "svc/ControlMemory.h"
 #include "svc/GetProcessInfo.h"
@@ -87,6 +88,8 @@ void signalSvcReturn(u8 *pageEnd)
         SignalDebugEvent(DBGEVENT_OUTPUT_STRING, 0xFFFFFFFF, svcId);
 }
 
+static bool doingVeryShittyPmResLimitWorkaround = false; // I feel dirty
+
 void *svcHook(u8 *pageEnd)
 {
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
@@ -98,6 +101,13 @@ void *svcHook(u8 *pageEnd)
     {
         case 0x01:
             return ControlMemoryHookWrapper;
+        case 0x17:
+            if(strcmp(codeSetOfProcess(currentProcess)->processName, "pm") == 0) // only called twice in pm, by the same function
+            {
+                *(vu32 *)(configPage + 0x44) += __end__ - __start__;
+                doingVeryShittyPmResLimitWorkaround = true;
+            }
+            return officialSVCs[0x17];
         case 0x2A:
             return GetSystemInfoHookWrapper;
         case 0x2B:
@@ -116,6 +126,13 @@ void *svcHook(u8 *pageEnd)
             return SetGpuProt;
         case 0x5A:
             return SetWifiEnabled;
+        case 0x79:
+            if(doingVeryShittyPmResLimitWorkaround)
+            {
+                *(vu32 *)(configPage + 0x44) -= __end__ - __start__;
+                doingVeryShittyPmResLimitWorkaround = false;
+            }
+            return officialSVCs[0x79];
         case 0x7B:
             return Backdoor;
         case 0x7C:
