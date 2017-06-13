@@ -153,7 +153,7 @@ fname: .ascii "FILE"
         movne r2, r8
         blne memcpy32
         add r5, #1
-        cmp r5, #3
+        cmp r5, #4
         blo load_section_loop
 
     mov r0, #2 ; argc
