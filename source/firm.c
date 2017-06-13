@@ -387,7 +387,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     mergeSection0(NATIVE_FIRM, loadFromStorage);
     firm->section[0].size = 0;
 
-    fileWrite(arm11Section1, "/luma/testsection1.bin", firm->section[1].size);
     return ret;
 }
 
