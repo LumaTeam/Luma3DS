@@ -33,7 +33,6 @@
 #include "hbloader.h"
 #include "utils.h"
 #include "MyThread.h"
-#include "kernel_extension_setup.h"
 #include "menus/process_patches.h"
 
 // this is called before main
@@ -67,18 +66,15 @@ void __ctru_exit()
     __appExit();
     __sync_fini();
     __libc_fini_array();
-    svcSleepThread(-1LL); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
+    for(;;) svcSleepThread(0); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
     svcExitProcess();
 }
 
 
 void initSystem()
 {
-    __libc_init_array();
-    
     HBLDR_3DSX_TID = HBLDR_DEFAULT_3DSX_TID;
-    installKernelExtension();
-
+    __libc_init_array();
     __sync_init();
     __appInit();
 }

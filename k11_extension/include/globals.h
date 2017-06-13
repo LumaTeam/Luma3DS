@@ -76,8 +76,6 @@ extern bool (*kernelToUsrMemcpy8)(void *dst, const void *src, u32 len);
 extern bool (*kernelToUsrMemcpy32)(u32 *dst, const u32 *src, u32 len);
 extern s32 (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
-extern Result (*CustomBackdoor)(void *function, ...);
-
 extern void (*svcFallbackHandler)(u8 svcId);
 extern void (*kernelpanic)(void);
 extern void (*PostprocessSvc)(void);
@@ -90,11 +88,16 @@ extern u32 *exceptionStackTop;
 extern u32 TTBCR;
 extern u32 L1MMUTableAddrs[4];
 
-extern u32 kernelVersion;
 extern void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
 
 extern bool *isDevUnit;
 
+extern vu8 *configPage;
+extern u32 kernelVersion;
+extern u32 nbSection0Modules;
+
+extern Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,
+                                                u32 coreID, u32 priority, bool disableUponReceipt, bool levelHighActive);
 extern InterruptManager *interruptManager;
 extern KBaseInterruptEvent *customInterruptEvent;
 

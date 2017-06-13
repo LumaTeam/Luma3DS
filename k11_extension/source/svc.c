@@ -37,6 +37,7 @@
 #include "svc/SetWifiEnabled.h"
 #include "svc/Backdoor.h"
 #include "svc/KernelSetState.h"
+#include "svc/CustomBackdoor.h"
 #include "svc/MapProcessMemoryEx.h"
 #include "svc/UnmapProcessMemoryEx.h"
 #include "svc/ControlService.h"
@@ -51,7 +52,7 @@ static inline void yieldDuringRosalinaMenu(void)
 
     u64 titleId = codeSetOfProcess(currentProcess)->titleId;
     u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
-    while((rosalinaState & 1) && idOfProcess(currentProcess) >= 6 &&
+    while((rosalinaState & 1) && idOfProcess(currentProcess) >= nbSection0Modules &&
       (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))))
         SleepThread(25 * 1000 * 1000LL); 
 }
