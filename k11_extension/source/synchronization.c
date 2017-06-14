@@ -97,7 +97,6 @@ void rosalinaRescheduleThread(KThread *thread, bool lock)
 void rosalinaLockThread(KThread *thread)
 {
     KThread *syncThread = synchronizationMutex->owner;
-    s8 *eotc = (s8 *)thread->endOfThreadContext;
 
     if(syncThread == NULL || syncThread != thread)
         rosalinaRescheduleThread(thread, true);
@@ -151,7 +150,6 @@ void rosalinaUnlockAllThreads(void)
     for(KLinkedListNode *node = threadList->list.nodes.first; node != (KLinkedListNode *)&threadList->list.nodes; node = node->next)
     {
         KThread *thread = (KThread *)node->key;
-        s8 *eotc = (s8 *)thread->endOfThreadContext;
 
         if((thread->schedulingMask & 0xF) == 2) // thread is terminating
             continue;
