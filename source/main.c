@@ -178,7 +178,7 @@ void main(int argc, char **argv, u32 magicWord)
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(pinExists, pinMode);
+        configMenu(pinExists, pinMode, magicWord);
 
         //Update pressed buttons
         pressed = HID_PAD;

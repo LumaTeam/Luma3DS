@@ -77,7 +77,7 @@ void writeConfig(bool isConfigOptions)
         error("Error writing the configuration file");
 }
 
-void configMenu(bool oldPinStatus, u32 oldPinMode)
+void configMenu(bool oldPinStatus, u32 oldPinMode, u32 magicWord)
 {
     const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                         "Screen brightness: 4( ) 3( ) 2( ) 1( )",
@@ -243,12 +243,20 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     initScreens();
 
     drawString(true, 10, 10, COLOR_TITLE, CONFIG_TITLE);
-    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to save");
+    
+    u32 endPos = 10 + SPACING_Y;
+
+    if((magicWord & 0xFFFF) == 0xBEEF)
+    {
+        drawFormattedString(true, 10, endPos, COLOR_TITLE, "  Loaded with Boot9Strap v1.%d", magicWord >> 16);
+        endPos += SPACING_Y;
+    }
+
+    drawString(true, 10, endPos, COLOR_TITLE, "Press A to select, START to save");
+    endPos += SPACING_Y;
 
     //Character to display a selected option
     char selected = 'x';
-
-    u32 endPos = 10 + 2 * SPACING_Y;
 
     //Display all the multiple choice options in white
     for(u32 i = 0; i < multiOptionsAmount; i++)
