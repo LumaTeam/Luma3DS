@@ -41,6 +41,7 @@ _start:
     .word kExtParameters
     .word 1 @ enableUserExceptionHandlersForCPUExc
 
+    b KThread__DebugReschedule
 start:
     @ Only core0 executes this, the other cores are running coreBarrier
 
@@ -50,6 +51,7 @@ start:
     push {r0-r12, lr}
 
     sub r0, r4, #8
+    sub r1, r8, #0x8000
     bl main
 
     pop {r0-r12, pc}

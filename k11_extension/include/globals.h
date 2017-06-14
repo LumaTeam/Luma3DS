@@ -78,7 +78,7 @@ extern s32 (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
 extern void (*svcFallbackHandler)(u8 svcId);
 extern void (*kernelpanic)(void);
-extern void (*PostprocessSvc)(void);
+extern void (*officialPostProcessSvc)(void);
 
 extern Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
 
@@ -95,6 +95,8 @@ extern bool *isDevUnit;
 extern vu8 *configPage;
 extern u32 kernelVersion;
 extern FcramLayout fcramLayout;
+
+extern KCoreContext *coreCtxs;
 
 extern void *originalHandlers[8];
 extern u32 nbSection0Modules;
@@ -126,5 +128,5 @@ typedef struct PACKED CfwInfo
 
 extern CfwInfo cfwInfo;
 
-extern u32 rosalinaState;
+extern vu32 rosalinaState;
 extern bool hasStartedRosalinaNetworkFuncsOnce; 

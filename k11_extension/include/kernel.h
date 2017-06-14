@@ -206,7 +206,7 @@ typedef struct PACKED ALIGN(4) KThread
   KMutexLinkedList *mutexList;
   KLinkedList mutexesUsed;
   s32 dynamicPriority;
-  u32 processor;
+  u32 coreId;
   KPreemptionTimer *preemptionTimer;
   u32 unknown_1;
   bool isAlive;
@@ -950,6 +950,7 @@ typedef struct KCoreContext
 } KCoreContext;
 
 static KCoreContext * const currentCoreContext = (KCoreContext *)0xFFFF1000;
+extern KCoreContext *coreCtxs;
 
 #define DEFINE_CONSOLE_SPECIFIC_STRUCTS(console, nbCores)
 /* 60 */

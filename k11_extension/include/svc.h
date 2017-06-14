@@ -33,5 +33,6 @@
 
 extern void *officialSVCs[0x7E];
 
+void postprocessSvc(void);
 void svcDefaultHandler(u8 svcId);
 void *svcHook(u8 *pageEnd);

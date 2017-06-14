@@ -25,6 +25,7 @@
 */
 
 #include "memory.h"
+#include "synchronization.h"
 #include "svc.h"
 #include "svc/ControlMemory.h"
 #include "svc/GetProcessInfo.h"
@@ -47,24 +48,11 @@
 
 void *officialSVCs[0x7E] = {NULL};
 
-static inline void yieldDuringRosalinaMenu(void)
-{
-    KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
-
-    u64 titleId = codeSetOfProcess(currentProcess)->titleId;
-    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
-    while((rosalinaState & 1) && idOfProcess(currentProcess) >= nbSection0Modules &&
-      (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))))
-        SleepThread(25 * 1000 * 1000LL); 
-}
-
 void signalSvcEntry(u8 *pageEnd)
 {
     u32 svcId = (u32) *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    yieldDuringRosalinaMenu();
-    
     if(svcId == 0xFE)
         svcId = *(u32 *)(pageEnd - 0x110 + 8 * 4); // r12 ; note: max theortical SVC atm: 0x3FFFFFFF. We don't support catching svcIds >= 0x100 atm either
 
@@ -78,14 +66,21 @@ void signalSvcReturn(u8 *pageEnd)
     u32 svcId = (u32) *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    yieldDuringRosalinaMenu();
-
     if(svcId == 0xFE)
         svcId = *(u32 *)(pageEnd - 0x110 + 8 * 4); // r12 ; note: max theortical SVC atm: 0x1FFFFFFF. We don't support catching svcIds >= 0x100 atm either
 
     // Since DBGEVENT_SYSCALL_RETURN is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL (debug->svcId is fortunately an u16!)
     if(debugOfProcess(currentProcess) != NULL && shouldSignalSyscallDebugEvent(currentProcess, svcId))
         SignalDebugEvent(DBGEVENT_OUTPUT_STRING, 0xFFFFFFFF, svcId);
+}
+
+void postprocessSvc(void)
+{
+    KThread *currentThread = currentCoreContext->objectContext.currentThread;
+    if(!currentThread->shallTerminate && rosalinaThreadLockPredicate(currentThread))
+        rosalinaRescheduleThread(currentThread, true);
+
+    officialPostProcessSvc();
 }
 
 static bool doingVeryShittyPmResLimitWorkaround = false; // I feel dirty

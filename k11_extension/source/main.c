@@ -96,6 +96,7 @@ void configHook(vu8 *cfgPage)
     *isDevUnit = true; // enable debug features
 }
 
+void wat(u32 a, ...);
 static void findUsefulSymbols(void)
 {
     u32 *off;
@@ -111,7 +112,7 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)originalHandlers[2]; *off != 0xE1A00009; off++);
     svcFallbackHandler = (void (*)(u8))decodeARMBranch(off + 1);
     for(; *off != 0xE92D000F; off++);
-    PostprocessSvc = (void (*)(void))decodeARMBranch(off + 1);
+    officialPostProcessSvc = (void (*)(void))decodeARMBranch(off + 1);
 
     KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
 
@@ -135,7 +136,7 @@ static void findUsefulSymbols(void)
 
     for(off = (u32 *)officialSVCs[0x19]; *off != 0xE1A04005; off++);
     KEvent__Clear = (Result (*)(KEvent *))decodeARMBranch(off + 1);
-    for(off = (u32 *)KEvent__Clear; *off != 0xE8BD8070; off++)
+    for(off = (u32 *)KEvent__Clear; *off != 0xE8BD8070; off++);
     synchronizationMutex = *(KObjectMutex **)(off + 1);
 
     for(off = (u32 *)officialSVCs[0x24]; *off != 0xE59F004C; off++);
@@ -247,7 +248,7 @@ static void findUsefulSymbols(void)
     }
 }
 
-void main(FcramLayout *layout)
+void main(FcramLayout *layout, KCoreContext *ctxs)
 {
     struct KExtParameters *p = &kExtParameters;
     u32 TTBCR_;
@@ -255,8 +256,9 @@ void main(FcramLayout *layout)
 
     layout->systemSize -= __end__ - __start__;
     fcramLayout = *layout;
+    coreCtxs = ctxs;
 
-    __asm__ volatile("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR_));
+    __asm__ __volatile__("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR_));
     TTBCR = TTBCR_;
     isN3DS = getNumberOfCores() == 4;
     memcpy(L1MMUTableAddrs, (const void *)p->L1MMUTableAddrs, 16);
@@ -275,4 +277,5 @@ void main(FcramLayout *layout)
 
     rosalinaState = 0;
     hasStartedRosalinaNetworkFuncsOnce = false;
+    //wat(0xAA, criticalSectionLock);
 }

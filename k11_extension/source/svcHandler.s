@@ -113,9 +113,7 @@ svcHandler:
         push {r0-r7, r12, lr}
 
         push {r0-r3}
-        ldr r0, =PostprocessSvc
-        ldr r0, [r0]
-        blx r0
+        bl postprocessSvc
         pop {r0-r3}
 
         ldrb lr, [sp, #0x58+0] @ page end - 0xb8 + 0: scheduling flags

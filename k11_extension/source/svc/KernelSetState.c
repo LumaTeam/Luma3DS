@@ -107,6 +107,11 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             if(rosalinaState & 2)
                 hasStartedRosalinaNetworkFuncsOnce = true;
 
+            if(rosalinaState & 1)
+                rosalinaLockAllThreads();
+            else if(varg1 & 1)
+                rosalinaUnlockAllThreads();
+
             break;
         }
         case 0x10001:

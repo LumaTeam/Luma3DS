@@ -27,6 +27,7 @@
 #include "synchronization.h"
 #include "utils.h"
 #include "kernel.h"
+#include "globals.h"
 
 extern SGI0Handler_t SGI0Handler;
 
@@ -36,6 +37,126 @@ void executeFunctionOnCores(SGI0Handler_t handler, u8 targetList, u8 targetListF
     SGI0Handler = handler;
 
     if(targetListFilter == 0 && (targetListFilter & (1 << coreID)) != 0)
-        __asm__ volatile("cpsie i"); // make sure interrupts aren't masked
+        __enable_irq(); // make sure interrupts aren't masked
     MPCORE_GID_SGI = (targetListFilter << 24) | (targetList << 16) | 0;
+}
+
+void KScheduler__TriggerCrossCoreInterrupt(KScheduler *this)
+{
+    this->triggerCrossCoreInterrupt = false;
+    for(s16 i = 0; i < (s16)getNumberOfCores(); i++)
+    {
+        if(this->coreNumber != i)
+            MPCORE_GID_SGI = (1 << (16 + i)) | 8;
+    }
+}
+
+void KThread__DebugReschedule(KThread *this, bool lock)
+{
+    KRecursiveLock__Lock(criticalSectionLock);
+
+    u32 oldSchedulingMask = this->schedulingMask;
+    if(lock) // the original k11 function discards the other flags
+        this->schedulingMask |= 0x80;
+    else
+        this->schedulingMask &= ~0x80;
+
+    KScheduler__AdjustThread(currentCoreContext->objectContext.currentScheduler, this, oldSchedulingMask);
+
+    KRecursiveLock__Unlock(criticalSectionLock);
+}
+
+bool rosalinaThreadLockPredicate(KThread *thread)
+{
+    KProcess *process = thread->ownerProcess;
+    if(process == NULL)
+        return false;
+
+    u64 titleId = codeSetOfProcess(process)->titleId;
+    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
+    return
+        ((rosalinaState & 1) && idOfProcess(process) >= nbSection0Modules &&
+        (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))));
+}
+
+void rosalinaRescheduleThread(KThread *thread, bool lock)
+{
+    KRecursiveLock__Lock(criticalSectionLock);
+
+    u32 oldSchedulingMask = thread->schedulingMask;
+    if(lock)
+        thread->schedulingMask |= 0x40;
+    else
+        thread->schedulingMask &= ~0x40;
+
+    KScheduler__AdjustThread(currentCoreContext->objectContext.currentScheduler, thread, oldSchedulingMask);
+
+    KRecursiveLock__Unlock(criticalSectionLock);
+}
+
+void rosalinaLockThread(KThread *thread)
+{
+    KThread *syncThread = synchronizationMutex->owner;
+    s8 *eotc = (s8 *)thread->endOfThreadContext;
+
+    if(syncThread == NULL || syncThread != thread)
+        rosalinaRescheduleThread(thread, true);
+}
+
+void rosalinaLockAllThreads(void)
+{
+    bool currentThreadsFound = false;
+
+    KRecursiveLock__Lock(criticalSectionLock);
+    for(KLinkedListNode *node = threadList->list.nodes.first; node != (KLinkedListNode *)&threadList->list.nodes; node = node->next)
+    {
+        KThread *thread = (KThread *)node->key;
+        if(!rosalinaThreadLockPredicate(thread))
+            continue;
+        if(thread == coreCtxs[thread->coreId].objectContext.currentThread)
+            currentThreadsFound = true;
+        else
+            rosalinaLockThread(thread);
+    }
+
+    if(currentThreadsFound)
+    {
+        for(KLinkedListNode *node = threadList->list.nodes.first; node != (KLinkedListNode *)&threadList->list.nodes; node = node->next)
+        {
+            KThread *thread = (KThread *)node->key;
+            if(!rosalinaThreadLockPredicate(thread))
+                continue;
+            if(!(thread->schedulingMask & 0x40))
+            {
+                rosalinaLockThread(thread);
+                KRecursiveLock__Lock(criticalSectionLock);
+                if(thread->coreId != getCurrentCoreID())
+                {
+                    u32 cpsr = __get_cpsr();
+                    __disable_irq();
+                    coreCtxs[thread->coreId].objectContext.currentScheduler->triggerCrossCoreInterrupt = true;
+                    currentCoreContext->objectContext.currentScheduler->triggerCrossCoreInterrupt = true;
+                    __set_cpsr_cx(cpsr);
+                }
+                KRecursiveLock__Unlock(criticalSectionLock);
+            }
+        }
+        KScheduler__TriggerCrossCoreInterrupt(currentCoreContext->objectContext.currentScheduler);
+    }
+    KRecursiveLock__Unlock(criticalSectionLock);
+}
+
+void rosalinaUnlockAllThreads(void)
+{
+    for(KLinkedListNode *node = threadList->list.nodes.first; node != (KLinkedListNode *)&threadList->list.nodes; node = node->next)
+    {
+        KThread *thread = (KThread *)node->key;
+        s8 *eotc = (s8 *)thread->endOfThreadContext;
+
+        if((thread->schedulingMask & 0xF) == 2) // thread is terminating
+            continue;
+
+        if(thread->schedulingMask & 0x40)
+            rosalinaRescheduleThread(thread, false);
+    }
 }

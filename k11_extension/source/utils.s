@@ -118,6 +118,11 @@ safecpy:
 
 _safecpy_end:
 
+.global wat
+.type   wat, %function
+wat:
+    bkpt 1
+    bx lr
 .section .rodata
 
 .global safecpy_sz

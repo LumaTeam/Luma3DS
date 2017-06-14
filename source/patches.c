@@ -201,6 +201,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage)
 {
     static const u8 patternKPanic[] = {0x02, 0x0B, 0x44, 0xE2};
+    static const u8 patternKThreadDebugReschedule[] = {0x34, 0x20, 0xD4, 0xE5, 0x00, 0x00, 0x55, 0xE3, 0x80, 0x00, 0xA0, 0x13};
 
     //Assumption: ControlMemory, DebugActiveProcess and KernelSetState are in the first 0x20000 bytes
     //Patch ControlMemory
@@ -239,6 +240,13 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
     //Redirect enableUserExceptionHandlersForCPUExc (= true)
     for(off = arm11ExceptionsPage; *off != 0x96007F9; off++);
     off[1] = 0x40000028;
+
+    off = (u32 *)memsearch(pos, patternKThreadDebugReschedule, size, sizeof(patternKThreadDebugReschedule));
+    if(off == NULL)
+        return 1;
+
+    off[-5] = 0xE51FF004;
+    off[-4] = 0x4000002C;
 
     return 0;
 }

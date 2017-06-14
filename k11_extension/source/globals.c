@@ -74,7 +74,7 @@ s32 (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
 void (*svcFallbackHandler)(u8 svcId);
 void (*kernelpanic)(void);
-void (*PostprocessSvc)(void);
+void (*officialPostProcessSvc)(void);
 
 Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
 
@@ -91,6 +91,7 @@ bool *isDevUnit;
 vu8 *configPage;
 u32 kernelVersion;
 FcramLayout fcramLayout;
+KCoreContext *coreCtxs;
 
 void *originalHandlers[8] = {NULL};
 
@@ -107,5 +108,5 @@ void (*coreBarrier)(void);
 
 CfwInfo cfwInfo;
 
-u32 rosalinaState;
+vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;
