@@ -33,6 +33,7 @@
 #include "menus.h"
 #include "utils.h"
 #include "menus/n3ds.h"
+#include "minisoc.h"
 
 u32 waitInputWithTimeout(u32 msec)
 {
@@ -239,6 +240,15 @@ static void menuDraw(Menu *menu, u32 selected)
             break;
         Draw_DrawString(30, 30 + i * SPACING_Y, COLOR_WHITE, menu->items[i].title);
         Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE, i == selected ? '>' : ' ');
+    }
+
+    if(miniSocEnabled)
+    {
+        char ipBuffer[17];
+        u32 ip = gethostid();
+        u8 *addr = (u8 *)&ip;
+        int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
+        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
 
     if(batteryLevel != 255)

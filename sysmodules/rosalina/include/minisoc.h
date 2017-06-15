@@ -38,8 +38,10 @@
 
 #define SYNC_ERROR ENODEV
 
-extern Handle	SOCU_handle;
-extern Handle	socMemhandle;
+extern Handle SOCU_handle;
+extern Handle socMemhandle;
+
+extern bool miniSocEnabled;
 
 Result miniSocInit();
 Result miniSocExit(void);
