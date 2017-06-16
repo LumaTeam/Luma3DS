@@ -145,7 +145,7 @@ static u32 ProcessPatchesMenu_PatchUnpatchProcessByName(const char *name, Result
 
     res = func(textTotalRoundedSize);
 
-    svcUnmapProcessMemory(processHandle, 0x00100000, textTotalRoundedSize);
+    svcUnmapProcessMemoryEx(processHandle, 0x00100000, textTotalRoundedSize);
     return res;
 }
 

@@ -24,10 +24,14 @@
 *         reasonable ways as different from the original version.
 */
 
+#include "globals.h"
 #include "svc/MapProcessMemoryEx.h"
 
-Result UnmapProcessMemoryEx(Handle processHandle UNUSED, void *dst, u32 size)
+Result UnmapProcessMemoryEx(Handle processHandle, void *dst, u32 size)
 {
+    if(kernelVersion < SYSTEM_VERSION(2, 37, 0)) // < 6.x
+        return UnmapProcessMemory(processHandle, dst, size); // equivalent when size <= 64MB
+
     KProcessHwInfo *currentHwInfo = hwInfoOfProcess(currentCoreContext->objectContext.currentProcess);
 
     Result res = KProcessHwInfo__UnmapProcessMemory(currentHwInfo, dst, size >> 12);

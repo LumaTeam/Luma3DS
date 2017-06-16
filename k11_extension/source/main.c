@@ -96,7 +96,6 @@ void configHook(vu8 *cfgPage)
     *isDevUnit = true; // enable debug features
 }
 
-void wat(u32 a, ...);
 static void findUsefulSymbols(void)
 {
     u32 *off;
@@ -116,11 +115,11 @@ static void findUsefulSymbols(void)
 
     KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
 
-    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE28DD014; off++);
-    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeARMBranch(off - 1);
+    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE1A00004; off++);
+    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeARMBranch(off + 1);
 
-    for(; *off != 0xE8BD80F0; off++);
-    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 2);
+    for(; *off != 0xE320F000; off++);
+    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 1);
 
     for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5D42034; off++);
     off -= 2;
@@ -142,8 +141,8 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)officialSVCs[0x24]; *off != 0xE59F004C; off++);
     WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))decodeARMBranch(off + 6);
 
-    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x33]) /* OpenProcess */ ; *off != 0xE20030FF; off++);
-    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off + 2);
+    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x33]) /* OpenProcess */ ; *off != 0xE1A05000; off++);
+    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off - 1);
 
     for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x34]) /* OpenThread */; *off != 0xD9001BF7; off++);
     threadList = *(KObjectList **)(off + 1);
@@ -159,6 +158,7 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)officialSVCs[0x71]; *off != 0xE2101102; off++);
     KProcessHwInfo__MapProcessMemory = (Result (*)(KProcessHwInfo *, KProcessHwInfo *, void *, void *, u32))decodeARMBranch(off - 1);
 
+    // On < 6.x the pattern will match but the result will be wrong
     for(off = (u32 *)officialSVCs[0x72]; *off != 0xE2041102; off++);
     KProcessHwInfo__UnmapProcessMemory = (Result (*)(KProcessHwInfo *, void *, u32))decodeARMBranch(off - 1);
 
@@ -216,6 +216,7 @@ static void findUsefulSymbols(void)
     OpenProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x33] + 3);
     GetProcessId = (Result (*)(u32 *, Handle))decodeARMBranch((u32 *)officialSVCs[0x35] + 3);
     DebugActiveProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x60] + 3);
+    UnmapProcessMemory = (Result (*)(Handle, void *, u32))officialSVCs[0x72];
     KernelSetState = (Result (*)(u32, u32, u32, u32))((u32 *)officialSVCs[0x7C] + 1);
 
     for(off = (u32 *)svcFallbackHandler; *off != 0xE8BD4010; off++);

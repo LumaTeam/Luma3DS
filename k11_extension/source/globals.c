@@ -60,6 +60,7 @@ Result (*SendSyncRequest)(Handle handle);
 Result (*OpenProcess)(Handle *out, u32 processId);
 Result (*GetProcessId)(u32 *out, Handle process);
 Result (*DebugActiveProcess)(Handle *out, u32 processId);
+Result (*UnmapProcessMemory)(Handle processHandle, void *dst, u32 size);
 Result (*KernelSetState)(u32 type, u32 varg1, u32 varg2, u32 varg3);
 
 void (*flushDataCacheRange)(void *addr, u32 len);

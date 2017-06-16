@@ -41,6 +41,7 @@ void __appInit()
 {
     srvSysInit();
     fsregInit();
+
     fsSysInit();
 
     s64 dummy;

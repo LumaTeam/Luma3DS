@@ -283,6 +283,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     res = HBLDR_Init(&hbldr);
     if (R_FAILED(res))
     {
+      svcBreak(USERBREAK_ASSERT);
       return res;
     }
     u32* cmdbuf = getThreadCommandBuffer();
@@ -300,6 +301,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     }
     if (R_FAILED(res))
     {
+      svcBreak(USERBREAK_ASSERT);
       return res;
     }
     codeset = (Handle)cmdbuf[3];

@@ -64,6 +64,7 @@ extern Result (*SendSyncRequest)(Handle handle);
 extern Result (*OpenProcess)(Handle *out, u32 processId);
 extern Result (*GetProcessId)(u32 *out, Handle process);
 extern Result (*DebugActiveProcess)(Handle *out, u32 processId);
+extern Result (*UnmapProcessMemory)(Handle processHandle, void *dst, u32 size);
 extern Result (*KernelSetState)(u32 type, u32 varg1, u32 varg2, u32 varg3);
 
 extern void (*flushDataCacheRange)(void *addr, u32 len);
