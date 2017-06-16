@@ -170,8 +170,9 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
             *firmType = NATIVE_FIRM1X2X;
         }
 
-        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD/CTRNAND
-        else if(firmVersion < 0x25) mustLoadFromStorage = true;
+        //We can't boot a 3.x/4.x NATIVE_FIRM EmuNAND, load one from SD/CTRNAND
+        //We can't boot a 3.x NATIVE_FIRM, load one from SD/CTRNAND too
+        else if(firmVersion < (nandType == FIRMWARE_SYSNAND ? 0x1D : 0x25)) mustLoadFromStorage = true;
     }
 
     bool loadedFromStorage = false;
@@ -245,12 +246,12 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
     {
         memcpy(moduleList[nbModules].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
         moduleList[nbModules].src = src;
-        srcModuleSize = moduleList[nbModules].size = ((Cxi *)src)->ncch.contentSize * 0x200; 
+        srcModuleSize = moduleList[nbModules].size = ((Cxi *)src)->ncch.contentSize * 0x200;
     }
 
     if(firmType == NATIVE_FIRM)
     {
-        //2) Merge that info with our own modules' 
+        //2) Merge that info with our own modules'
         for(u8 *src = (u8 *)0x1FF60000; src < (u8 *)(0x1FF60000 + LUMA_SECTION0_SIZE); src += srcModuleSize)
         {
             const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
@@ -273,7 +274,7 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
     //3) Read or copy the modules
     u8 *dst = firm->section[0].address;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
-    for(u32 i = 0, dstModuleSize, maxModuleSize = 0x60000; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize) 
+    for(u32 i = 0, dstModuleSize, maxModuleSize = 0x60000; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
         if(loadFromStorage)
         {
@@ -324,7 +325,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
-    
+
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;

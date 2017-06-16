@@ -158,7 +158,7 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)officialSVCs[0x71]; *off != 0xE2101102; off++);
     KProcessHwInfo__MapProcessMemory = (Result (*)(KProcessHwInfo *, KProcessHwInfo *, void *, void *, u32))decodeARMBranch(off - 1);
 
-    // On < 6.x the pattern will match but the result will be wrong
+    // From 4.x to 6.x the pattern will match but the result will be wrong
     for(off = (u32 *)officialSVCs[0x72]; *off != 0xE2041102; off++);
     KProcessHwInfo__UnmapProcessMemory = (Result (*)(KProcessHwInfo *, void *, u32))decodeARMBranch(off - 1);
 
