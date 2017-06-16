@@ -35,7 +35,7 @@
 
 u8 framebuffer_cache[FB_BOTTOM_SIZE];
 
-static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferSelect, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
+static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
 
 static RecursiveLock lock;
 
@@ -126,15 +126,15 @@ void Draw_SetupFramebuffer(void)
 {
     while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1);
 
+    svcFlushEntireDataCache();
     memcpy(framebuffer_cache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
     gpuSavedFramebufferAddr1 = GPU_FB_BOTTOM_ADDR_1;
-    gpuSavedFramebufferSelect = GPU_FB_BOTTOM_SEL;
+    gpuSavedFramebufferAddr2 = GPU_FB_BOTTOM_ADDR_2;
     gpuSavedFramebufferFormat = GPU_FB_BOTTOM_FMT;
     gpuSavedFramebufferStride = GPU_FB_BOTTOM_STRIDE;
 
-    GPU_FB_BOTTOM_SEL &= ~1;
-    GPU_FB_BOTTOM_ADDR_1 = FB_BOTTOM_VRAM_PA;
-    GPU_FB_BOTTOM_FMT = 0x80302;
+    GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
+    GPU_FB_BOTTOM_FMT = (GPU_FB_BOTTOM_FMT & ~7) | 2;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
 
     Draw_FlushFramebuffer();
@@ -145,9 +145,9 @@ void Draw_RestoreFramebuffer(void)
     memcpy(FB_BOTTOM_VRAM_ADDR, framebuffer_cache, FB_BOTTOM_SIZE);
 
     GPU_FB_BOTTOM_ADDR_1 = gpuSavedFramebufferAddr1;
+    GPU_FB_BOTTOM_ADDR_2 = gpuSavedFramebufferAddr2;
     GPU_FB_BOTTOM_FMT = gpuSavedFramebufferFormat;
     GPU_FB_BOTTOM_STRIDE = gpuSavedFramebufferStride;
-    GPU_FB_BOTTOM_SEL = gpuSavedFramebufferSelect;
 
     Draw_FlushFramebuffer();
 }
