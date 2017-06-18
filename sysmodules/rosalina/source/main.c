@@ -34,6 +34,7 @@
 #include "utils.h"
 #include "MyThread.h"
 #include "menus/process_patches.h"
+#include "menus/miscellaneous.h"
 
 // this is called before main
 bool isN3DS;
@@ -43,9 +44,6 @@ void __appInit()
     fsregInit();
 
     fsSysInit();
-
-    s64 dummy;
-    isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
 }
 
 // this is called after main exits
@@ -74,8 +72,19 @@ void __ctru_exit()
 
 void initSystem()
 {
-    HBLDR_3DSX_TID = HBLDR_DEFAULT_3DSX_TID;
     __libc_init_array();
+
+    s64 out;
+    isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
+
+    svcGetSystemInfo(&out, 0x10000, 0x100);
+    HBLDR_3DSX_TID = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x101);
+    menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
+
+    miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
+                                                                                  "Switch the hb. title to hblauncher_loader";
     __sync_init();
     __appInit();
 }

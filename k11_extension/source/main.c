@@ -278,5 +278,4 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
 
     rosalinaState = 0;
     hasStartedRosalinaNetworkFuncsOnce = false;
-    //wat(0xAA, criticalSectionLock);
 }

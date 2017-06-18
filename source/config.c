@@ -35,7 +35,7 @@
 
 CfgData configData;
 ConfigurationStatus needConfig;
-static u32 oldConfig;
+static CfgData oldConfig;
 
 bool readConfig(void)
 {
@@ -46,13 +46,13 @@ bool readConfig(void)
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
-        configData.config = 0;
+        memset(&configData, 0, sizeof(CfgData));
 
         ret = false;
     }
     else ret = true;
 
-    oldConfig = configData.config;
+    oldConfig = configData;
 
     return ret;
 }
@@ -61,8 +61,8 @@ void writeConfig(bool isConfigOptions)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && (configData.config & 0xFFFFFF00) == (oldConfig & 0xFFFFFF00)) ||
-                                              (!isConfigOptions && (configData.config & 0xBF) == (oldConfig & 0xFF)))) return;
+    if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && configData.config == oldConfig.config && configData.multiConfig == oldConfig.multiConfig) ||
+                                              (!isConfigOptions && (configData.bootConfig & ~0x40) == oldConfig.bootConfig))) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -383,14 +383,15 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         else if(singleOptions[singleSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
     }
 
-    //Preserve the last-used boot options (first 9 bits)
-    configData.config &= 0x7F;
-
+    //Preserve the last-used boot options
     //Parse and write the new configuration
+    configData.multiConfig = 0;
     for(u32 i = 0; i < multiOptionsAmount; i++)
-        configData.config |= multiOptions[i].enabled << (i * 2 + 7);
+        configData.multiConfig |= multiOptions[i].enabled << (i * 2);
+
+    configData.config = 0;
     for(u32 i = 0; i < singleOptionsAmount; i++)
-        configData.config |= (singleOptions[i].enabled ? 1 : 0) << (i + 17);
+        configData.config |= (singleOptions[i].enabled ? 1 : 0) << i;
 
     u32 newPinMode = MULTICONFIG(PIN);
 

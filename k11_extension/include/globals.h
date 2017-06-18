@@ -113,7 +113,7 @@ extern void (*initFPU)(void);
 extern void (*mcuReboot)(void);
 extern void (*coreBarrier)(void);
 
-typedef struct PACKED CfwInfo
+typedef struct CfwInfo
 {
     char magic[4];
 
@@ -124,10 +124,13 @@ typedef struct PACKED CfwInfo
 
     u32 commitHash;
 
-    u32 config;
+    u16 configFormatVersionMajor, configFormatVersionMinor;
+    u32 config, multiConfig, bootConfig;
+    u64 hbldr3dsxTitleId;
+    u32 rosalinaMenuCombo;
 } CfwInfo;
 
 extern CfwInfo cfwInfo;
 
 extern vu32 rosalinaState;
-extern bool hasStartedRosalinaNetworkFuncsOnce; 
+extern bool hasStartedRosalinaNetworkFuncsOnce;

@@ -156,7 +156,7 @@ MyThread *menuCreateThread(void)
 }
 
 extern bool isN3DS;
-u32 menuCombo = DEFAULT_MENU_COMBO;
+u32 menuCombo;
 
 void menuThreadMain(void)
 {
@@ -224,7 +224,7 @@ static void menuDraw(Menu *menu, u32 selected)
     svcGetSystemInfo(&out, 0x10000, 1);
     commitHash = (u32)out;
 
-    svcGetSystemInfo(&out, 0x10000, 3);
+    svcGetSystemInfo(&out, 0x10000, 0x200);
     isRelease = (bool)out;
 
     if(GET_VERSION_REVISION(version) == 0)

@@ -279,7 +279,7 @@ boot:
 
     if(!isFirmlaunch)
     {
-        configData.config = (configData.config & 0xFFFFFF80) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.bootConfig = ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 

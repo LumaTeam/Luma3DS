@@ -101,8 +101,8 @@ void RosalinaMenu_TakeScreenshot(void)
     FS_ArchiveID archiveId;
     s64 out;
     bool isSdMode;
-    
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 6))) svcBreak(USERBREAK_ASSERT);
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
     isSdMode = (bool)out;
 
     archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;

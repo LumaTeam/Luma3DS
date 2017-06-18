@@ -105,7 +105,7 @@ $(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_buil
 $(dir_build)/modules.bin: $(modules)
 	@mkdir -p "$(@D)"
 	cat $^ > $@
-	
+
 $(dir_build)/arm11.elf: $(dir_arm11)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
@@ -144,7 +144,7 @@ $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_MINOR="$(version_minor)"\
 						-DVERSION_BUILD="$(version_build)" -DISRELEASE="$(is_release)" -DCOMMIT_HASH="0x$(commit)"
-$(dir_build)/firm.o: $(dir_build)/modules.bin 
+$(dir_build)/firm.o: $(dir_build)/modules.bin
 $(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell du -b $(dir_build)/modules.bin | cut -f1)"
 
 $(dir_build)/bundled.h: $(bundled)

@@ -122,8 +122,11 @@ u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 
             u32 commitHash;
 
-            u32 config;
-        } __attribute__((packed)) info;
+            u16 configFormatVersionMajor, configFormatVersionMinor;
+            u32 config, multiConfig, bootConfig;
+            u64 hbldr3dsxTitleId;
+            u32 rosalinaMenuCombo;
+        } info;
     };
 
     static const u8 patternHook1[] = {0x02, 0xC2, 0xA0, 0xE3, 0xFF}; //MMU setup hook
@@ -136,7 +139,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
-    
+
     hookVeneers[0] = 0xE51FF004; //ldr pc, [pc, #-8+4]
     hookVeneers[1] = 0x18000004;
     hookVeneers[2] = 0xE51FF004;
@@ -185,7 +188,13 @@ u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     struct CfwInfo *info = &p->info;
     memcpy(&info->magic, "LUMA", 4);
     info->commitHash = COMMIT_HASH;
+    info->configFormatVersionMajor = configData.formatVersionMajor;
+    info->configFormatVersionMinor = configData.formatVersionMinor;
     info->config = configData.config;
+    info->multiConfig = configData.multiConfig;
+    info->bootConfig = configData.bootConfig;
+    info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
+    info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->versionMajor = VERSION_MAJOR;
     info->versionMinor = VERSION_MINOR;
     info->versionBuild = VERSION_BUILD;
