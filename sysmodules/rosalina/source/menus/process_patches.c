@@ -92,7 +92,8 @@ static Result ProcessPatchesMenu_DoPatchUnpatchFS(u32 textTotalRoundedSize)
         if(off == NULL)
             return -1;
 
-        off += 4;
+        for(; (*off & 0xFF00) != 0xB500; off++); // Find function start
+
         memcpy(origData, off, 4);
         off[0] = 0x2001; // mov r0, #1
         off[1] = 0x4770; // bx lr
