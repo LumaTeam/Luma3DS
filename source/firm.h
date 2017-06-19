@@ -33,6 +33,6 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 void loadHomebrewFirm(u32 pressed);
 u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch);
 u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
-u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
+u32 patchAgbFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
 u32 patch1x2xNativeAndSafeFirm(void);
 void launchFirm(int argc, char **argv);
