@@ -302,3 +302,27 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
 
     return GDB_SendHexPacket(ctx, buf, (u32)n);
 }
+
+GDB_DECLARE_QUERY_HANDLER(GetTLSAddr)
+{
+    u32 lst[3];
+    if(GDB_ParseHexIntegerList(lst, ctx->commandData, 3, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    // We don't care about the 'lm' parameter...
+    u32 id = lst[0];
+    u32 offset = lst[1];
+
+    u32 tls = 0;
+
+    for(u32 i = 0; i < MAX_DEBUG_THREAD; i++)
+    {
+        if(ctx->threadInfos[i].id == id)
+            tls = ctx->threadInfos[i].tls;
+    }
+
+    if(tls == 0)
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    return GDB_SendFormattedPacket(ctx, "%08x", tls + offset);
+}
