@@ -107,7 +107,8 @@ static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     //Looking for the last free space before Process9
     *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(*freeK9Space == NULL) return false;
+    if(*freeK9Space == NULL || (u32)(pos + size - *freeK9Space) < 0x455 + emunand_bin_size ||
+       *(u32 *)(*freeK9Space + 0x455 + emunand_bin_size - 4) != 0xFFFFFFFF) return false;
 
     *freeK9Space += 0x455;
 
