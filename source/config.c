@@ -94,7 +94,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
                                         "( ) Patch ARM9 access",
                                         "( ) Set developer UNITINFO",
-                                        "( ) Disable Exception Vectors",
+                                        "( ) Disable ARM11 exception handlers",
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -190,8 +190,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "are doing!",
 
                                           "Disables the fatal error exception\n"
-                                          "vectors for the ARM11 CPU\n"
-                                          "Note: Disabling the exception vectors\n"
+                                          "handlers for the ARM11 CPU.\n\n"
+                                          "Note: Disabling the exception handlers\n"
                                           "will disqualify you from submitting\n"
                                           "issues or bug reports to the Luma3DS\n"
                                           "GitHub repository!"

@@ -32,7 +32,7 @@ enum singleOptions
     SHOWGBABOOT,
     PATCHACCESS,
     PATCHUNITINFO,
-    DISABLEVECTORS
+    DISABLEARM11EXCHANDLERS
 };
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress);

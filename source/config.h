@@ -59,7 +59,7 @@ enum singleOptions
     SHOWGBABOOT,
     PATCHACCESS,
     PATCHUNITINFO,
-    DISABLEVECTORS
+    DISABLEARM11EXCHANDLERS
 };
 
 typedef enum ConfigurationStatus
