@@ -154,7 +154,7 @@ void main(int argc, char **argv, u32 magicWord)
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
             //Prevent multiple boot options-forcing
-            isNoForceFlagSet = true;
+            if(nandType != BOOTCFG_NAND || firmSource != BOOTCFG_FIRM) isNoForceFlagSet = true;
 
             goto boot;
         }

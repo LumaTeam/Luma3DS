@@ -59,10 +59,9 @@ bool readConfig(void)
 
 void writeConfig(bool isConfigOptions)
 {
-    /* If the configuration is different from previously, overwrite it.
-       Just the no-forcing flag being set is not enough */
+    //If the configuration is different from previously, overwrite it.
     if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && configData.config == oldConfig.config && configData.multiConfig == oldConfig.multiConfig) ||
-                                              (!isConfigOptions && (configData.bootConfig & ~0x40) == oldConfig.bootConfig))) return;
+                                              (!isConfigOptions && configData.bootConfig == oldConfig.bootConfig))) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -383,7 +382,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         else if(singleOptions[singleSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
     }
 
-    //Preserve the last-used boot options
     //Parse and write the new configuration
     configData.multiConfig = 0;
     for(u32 i = 0; i < multiOptionsAmount; i++)
