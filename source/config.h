@@ -28,13 +28,13 @@
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 17)) & 1) != 0)
-#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 7)) & 3)
-#define BOOTCONFIG(a, b) ((configData.config >> a) & b)
+#define CONFIG(a)        (((configData.config >> (a)) & 1) != 0)
+#define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
+#define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
 #define CONFIG_FILE         "config.bin"
-#define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 13
+#define CONFIG_VERSIONMAJOR 2
+#define CONFIG_VERSIONMINOR 0
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -59,7 +59,7 @@ enum singleOptions
     SHOWGBABOOT,
     PATCHACCESS,
     PATCHUNITINFO,
-    DISABLEVECTORS
+    DISABLEARM11EXCHANDLERS
 };
 
 typedef enum ConfigurationStatus

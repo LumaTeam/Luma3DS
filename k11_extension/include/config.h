@@ -5,9 +5,9 @@
 #define MAKE_BRANCH(src,dst)      (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 
-#define CONFIG(a)        (((cfwInfo.config >> (a + 17)) & 1) != 0)
-#define MULTICONFIG(a)   ((cfwInfo.config >> (a * 2 + 7)) & 3)
-#define BOOTCONFIG(a, b) ((cfwInfo.config >> a) & b)
+#define CONFIG(a)        (((cfwInfo.config >> (a)) & 1) != 0)
+#define MULTICONFIG(a)   ((cfwInfo.multiConfig >> (2 * (a))) & 3)
+#define BOOTCONFIG(a, b) ((cfwInfo.bootConfig >> (a)) & (b))
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -32,5 +32,5 @@ enum singleOptions
     SHOWGBABOOT,
     PATCHACCESS,
     PATCHUNITINFO,
-    DISABLEVECTORS
+    DISABLEARM11EXCHANDLERS
 };

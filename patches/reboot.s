@@ -64,7 +64,7 @@ firm_maxsize                    equ 0x07FFF000
     ; Copy argv[0]
     ldr r0, =fname_addr
     adr r1, fname
-    mov r2, #42
+    mov r2, #82
     bl memcpy16
 
     ldr r0, =argv_addr
@@ -153,7 +153,7 @@ fname: .ascii "FILE"
         movne r2, r8
         blne memcpy32
         add r5, #1
-        cmp r5, #3
+        cmp r5, #4
         blo load_section_loop
 
     mov r0, #2 ; argc

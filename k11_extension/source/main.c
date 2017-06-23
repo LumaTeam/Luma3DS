@@ -33,75 +33,93 @@
 #include "svcHandler.h"
 #include "memory.h"
 
-static const u32 *const exceptionsPage = (const u32 *)0xFFFF0000;
-void *originalHandlers[8] = {NULL};
-
-enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT, RESERVED, IRQ, FIQ };
-
-static void setupSGI0Handler(void)
+struct KExtParameters
 {
-    for(u32 i = 0; i < getNumberOfCores(); i++)
-        interruptManager->N3DS.privateInterrupts[i][0].interruptEvent = customInterruptEvent;
+    u32 ALIGN(0x400) L2MMUTableFor0x40000000[256];
+    u32 basePA;
+    void *originalHandlers[4];
+    u32 L1MMUTableAddrs[4];
+
+    CfwInfo cfwInfo;
+} kExtParameters = { .basePA = 0x12345678 }; // place this in .data
+
+void relocateAndSetupMMU(u32 coreId, u32 *L1Table)
+{
+    struct KExtParameters *p0 = (struct KExtParameters *)((u32)&kExtParameters - 0x40000000 + 0x18000000);
+    struct KExtParameters *p = (struct KExtParameters *)((u32)&kExtParameters - 0x40000000 + p0->basePA);
+
+    if(coreId == 0)
+    {
+        // Relocate ourselves, and clear BSS
+        memcpy((void *)p0->basePA, (const void *)0x18000000, __bss_start__ - __start__);
+        memset32((u32 *)(p0->basePA + (__bss_start__ - __start__)), 0, __bss_end__ - __bss_start__);
+
+        // Map the kernel ext to 0x40000000
+        // 4KB extended small pages: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]
+        for(u32 offset = 0; offset < (u32)(__end__ - __start__); offset += 0x1000)
+            p->L2MMUTableFor0x40000000[offset >> 12] = (p0->basePA + offset) | 0x516;
+
+        __asm__ __volatile__ ("sev");
+    }
+    else
+        __asm__ __volatile__ ("wfe");
+
+    // bit31 idea thanks to SALT
+    // Maps physmem so that, if addr is in physmem(0, 0x30000000), it can be accessed uncached&rwx as addr|(1<<31)
+    u32 attribs = 0x40C02; // supersection (rwx for all) of strongly ordered memory, shared
+    for(u32 PA = 0; PA < 0x30000000; PA += 0x01000000)
+    {
+        u32 VA = (1 << 31) | PA;
+        for(u32 i = 0; i < 16; i++)
+            L1Table[i + (VA >> 20)] = PA | attribs;
+    }
+
+    L1Table[0x40000000 >> 20] = (u32)p->L2MMUTableFor0x40000000 | 1;
+
+    p->L1MMUTableAddrs[coreId] = (u32)L1Table;
 }
 
-static inline void **getHandlerDestination(enum VECTORS vector)
+void bindSGI0Hook(void)
 {
-    u32 *branch_dst = (u32 *)decodeARMBranch((u32 *)exceptionsPage + (u32)vector);
-    return (void **)(branch_dst + 2);
+    if(InterruptManager__MapInterrupt(interruptManager, customInterruptEvent, 0, getCurrentCoreID(), 0, false, false) != 0)
+        __asm__ __volatile__ ("bkpt 0xdead");
 }
 
-static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
+void configHook(vu8 *cfgPage)
 {
-    void **dst = getHandlerDestination(vector);
-    originalHandlers[(u32)vector] = *dst;
-    if(handler != NULL)
-        *(void**)PA_FROM_VA_PTR(dst) = handler;
-}
+    configPage = cfgPage;
 
-static bool **enableUserExceptionHandlersForCPUExcLoc;
-static bool enableUserExceptionHandlersForCPUExc = true;
-
-static void setupSvcHandler(void)
-{
-    swapHandlerInVeneer(SVC, svcHandler);
-
-    void **arm11SvcTable = (void**)originalHandlers[(u32)SVC];
-    while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
-    memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
-
-    officialSVCs[0x2D] = *((void **)officialSVCs[0x2D] + 1);
-
-    CustomBackdoor = (Result (*)(void *, ...))((u32 *)officialSVCs[0x2F] + 2);
-    officialSVCs[0x2F] = *((void **)officialSVCs[0x2F] + 1);
-
-    u32 *off = (u32 *)originalHandlers[(u32) SVC];
-    while(*off++ != 0xE1A00009);
-    svcFallbackHandler = (void (*)(u8))decodeARMBranch(off);
-    for(; *off != 0xE92D000F; off++);
-    PostprocessSvc = (void (*)(void))decodeARMBranch(off + 1);
-}
-
-static void setupExceptionHandlers(void)
-{
-    swapHandlerInVeneer(FIQ, FIQHandler);
-    swapHandlerInVeneer(UNDEFINED_INSTRUCTION, undefinedInstructionHandler);
-    swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
-    swapHandlerInVeneer(DATA_ABORT, dataAbortHandler);
-
-    setupSvcHandler();
+    kernelVersion = *(vu32 *)configPage;
+    *(vu32 *)(configPage + 0x40) = fcramLayout.applicationSize;
+    *(vu32 *)(configPage + 0x44) = fcramLayout.systemSize;
+    *(vu32 *)(configPage + 0x48) = fcramLayout.baseSize;
+    *isDevUnit = true; // enable debug features
 }
 
 static void findUsefulSymbols(void)
 {
     u32 *off;
 
+    for(off = (u32 *)0xFFFF0000; *off != 0xE1A0D002; off++);
+    off += 3;
+    initFPU = (void (*) (void))off;
+
+    for(; *off != 0xE3A0A0C2; off++);
+    mcuReboot = (void (*) (void))--off;
+    coreBarrier = (void (*) (void))decodeARMBranch(off - 4);
+
+    for(off = (u32 *)originalHandlers[2]; *off != 0xE1A00009; off++);
+    svcFallbackHandler = (void (*)(u8))decodeARMBranch(off + 1);
+    for(; *off != 0xE92D000F; off++);
+    officialPostProcessSvc = (void (*)(void))decodeARMBranch(off + 1);
+
     KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
 
-    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE28DD014; off++);
-    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeARMBranch(off - 1);
+    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE1A00004; off++);
+    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeARMBranch(off + 1);
 
-    for(; *off != 0xE8BD80F0; off++);
-    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 2);
+    for(; *off != 0xE320F000; off++);
+    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 1);
 
     for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5D42034; off++);
     off -= 2;
@@ -117,26 +135,30 @@ static void findUsefulSymbols(void)
 
     for(off = (u32 *)officialSVCs[0x19]; *off != 0xE1A04005; off++);
     KEvent__Clear = (Result (*)(KEvent *))decodeARMBranch(off + 1);
-    for(off = (u32 *)KEvent__Clear; *off != 0xE8BD8070; off++)
+    for(off = (u32 *)KEvent__Clear; *off != 0xE8BD8070; off++);
     synchronizationMutex = *(KObjectMutex **)(off + 1);
 
     for(off = (u32 *)officialSVCs[0x24]; *off != 0xE59F004C; off++);
     WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))decodeARMBranch(off + 6);
 
-    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x33]) /* OpenProcess */ ; *off != 0xE20030FF; off++);
-    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off + 2);
+    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x33]) /* OpenProcess */ ; *off != 0xE1A05000; off++);
+    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off - 1);
 
     for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x34]) /* OpenThread */; *off != 0xD9001BF7; off++);
     threadList = *(KObjectList **)(off + 1);
 
     KProcessHandleTable__ToKThread = (KThread * (*)(KProcessHandleTable *, Handle))decodeARMBranch((u32 *)decodeARMBranch((u32 *)officialSVCs[0x37] + 3) /* GetThreadId */ + 5);
 
+    for(off = (u32 *)officialSVCs[0x50]; off[0] != 0xE1A05000 || off[1] != 0xE2100102 || off[2] != 0x5A00000B; off++);
+    InterruptManager__MapInterrupt = (Result (*)(InterruptManager *, KBaseInterruptEvent *, u32, u32, u32, bool, bool))decodeARMBranch(--off);
+    interruptManager = *(InterruptManager **)(off - 4 + (off[-6] & 0xFFF) / 4);
     for(off = (u32 *)officialSVCs[0x54]; *off != 0xE8BD8008; off++);
     flushDataCacheRange = (void (*)(void *, u32))(*(u32 **)(off[1]) + 3);
 
     for(off = (u32 *)officialSVCs[0x71]; *off != 0xE2101102; off++);
     KProcessHwInfo__MapProcessMemory = (Result (*)(KProcessHwInfo *, KProcessHwInfo *, void *, void *, u32))decodeARMBranch(off - 1);
 
+    // From 4.x to 6.x the pattern will match but the result will be wrong
     for(off = (u32 *)officialSVCs[0x72]; *off != 0xE2041102; off++);
     KProcessHwInfo__UnmapProcessMemory = (Result (*)(KProcessHwInfo *, void *, u32))decodeARMBranch(off - 1);
 
@@ -145,7 +167,7 @@ static void findUsefulSymbols(void)
     for(; *off != 0xE320F000; off++);
     KObjectMutex__ErrorOccured = (void (*)(void))decodeARMBranch(off + 1);
 
-    for(off = (u32 *)originalHandlers[(u32) DATA_ABORT]; *off != (u32)exceptionStackTop; off++);
+    for(off = (u32 *)originalHandlers[4]; *off != (u32)exceptionStackTop; off++);
     kernelUsrCopyFuncsStart = (void *)off[1];
     kernelUsrCopyFuncsEnd = (void *)off[2];
 
@@ -194,6 +216,7 @@ static void findUsefulSymbols(void)
     OpenProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x33] + 3);
     GetProcessId = (Result (*)(u32 *, Handle))decodeARMBranch((u32 *)officialSVCs[0x35] + 3);
     DebugActiveProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x60] + 3);
+    UnmapProcessMemory = (Result (*)(Handle, void *, u32))officialSVCs[0x72];
     KernelSetState = (Result (*)(u32, u32, u32, u32))((u32 *)officialSVCs[0x7C] + 1);
 
     for(off = (u32 *)svcFallbackHandler; *off != 0xE8BD4010; off++);
@@ -202,16 +225,14 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)0xFFFF0000; off[0] != 0xE3A01002 || off[1] != 0xE3A00004; off++);
     SignalDebugEvent = (Result (*)(DebugEventType type, u32 info, ...))decodeARMBranch(off + 2);
 
-    for(off = (u32 *)PA_FROM_VA_PTR(off); *off != 0x96007F9; off++);
+    for(; *off != 0x96007F9; off++);
     isDevUnit = *(bool **)(off - 1);
-    enableUserExceptionHandlersForCPUExcLoc = (bool **)(off + 1);
 
     ///////////////////////////////////////////
 
     // Shitty/lazy heuristic but it works on even 4.5, so...
-    u32 textStart = ((u32)originalHandlers[(u32) SVC]) & ~0xFFFF;
-    u32 rodataStart = (u32)(interruptManager->N3DS.privateInterrupts[0][6].interruptEvent->vtable) & ~0xFFF;
-
+    u32 textStart = ((u32)originalHandlers[2]) & ~0xFFFF;
+    u32 rodataStart = (u32)(interruptManager->N3DS.privateInterrupts[1][0x1D].interruptEvent->vtable) & ~0xFFF;
     u32 textSize = rodataStart - textStart;
     for(off = (u32 *)textStart; off < (u32 *)(textStart + textSize - 12); off++)
     {
@@ -228,76 +249,32 @@ static void findUsefulSymbols(void)
     }
 }
 
-struct Parameters
+void main(FcramLayout *layout, KCoreContext *ctxs)
 {
-    void (*SGI0HandlerCallback)(struct Parameters *, u32 *);
-    InterruptManager *interruptManager;
-    u32 *L2MMUTable; // bit31 mapping
+    struct KExtParameters *p = &kExtParameters;
+    u32 TTBCR_;
+    s64 nb;
 
-    void (*initFPU)(void);
-    void (*mcuReboot)(void);
-    void (*coreBarrier)(void);
+    layout->systemSize -= __end__ - __start__;
+    fcramLayout = *layout;
+    coreCtxs = ctxs;
 
-    u32 TTBCR;
-    u32 L1MMUTableAddrs[4];
-
-    u32 kernelVersion;
-
-    CfwInfo cfwInfo;
-};
-
-static void enableDebugFeatures(void)
-{
-    *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
-    *enableUserExceptionHandlersForCPUExcLoc = &enableUserExceptionHandlersForCPUExc;
-
-    u32 *off;
-    for(off = (u32 *)PA_FROM_VA_PTR(KernelSetState); off[0] != 0xE5D00001 || off[1] != 0xE3500000; off++);
-    off[2] = 0xE1A00000; // in case 6: beq -> nop
-
-    for(off = (u32 *)PA_FROM_VA_PTR(DebugActiveProcess); *off != 0xE3110001; off++);
-    *off = 0xE3B01001; // tst r1, #1 -> movs r1, #1
-}
-
-static void doOtherPatches(void)
-{
-    u32 *kpanic = (u32 *)kernelpanic;
-    *(u32 *)PA_FROM_VA_PTR(kpanic) = 0xE12FFF7E; // bkpt 0xFFFE
-
-    u32 *off;
-    for(off = (u32 *)PA_FROM_VA_PTR(ControlMemory); (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
-    off -= 2;
-
-    /*
-        Here we replace currentProcess->processID == 1 by additionnalParameter == 1.
-        This patch should be generic enough to work even on firmware version 5.0.
-
-        It effectively changes the prototype of the ControlMemory function which
-        only caller is the svc 0x01 handler on OFW.
-    */
-    *(u32 *)PA_FROM_VA_PTR(off) = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)PA_FROM_VA_PTR(ControlMemory))); // ldr r0, [sp, #(frameSize + 8)]
-}
-
-void main(volatile struct Parameters *p)
-{
+    __asm__ __volatile__("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR_));
+    TTBCR = TTBCR_;
     isN3DS = getNumberOfCores() == 4;
-    interruptManager = p->interruptManager;
-
-    initFPU = p->initFPU;
-    mcuReboot = p->mcuReboot;
-    coreBarrier = p->coreBarrier;
-
-    TTBCR = p->TTBCR;
     memcpy(L1MMUTableAddrs, (const void *)p->L1MMUTableAddrs, 16);
     exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
-    kernelVersion = p->kernelVersion;
     cfwInfo = p->cfwInfo;
 
-    setupSGI0Handler();
-    setupExceptionHandlers();
+    memcpy(originalHandlers + 1, p->originalHandlers, 16);
+    void **arm11SvcTable = (void**)originalHandlers[2];
+    while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
+    memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
+
     findUsefulSymbols();
-    enableDebugFeatures();
-    doOtherPatches();
+
+    GetSystemInfo(&nb, 26, 0);
+    nbSection0Modules = (u32)nb;
 
     rosalinaState = 0;
     hasStartedRosalinaNetworkFuncsOnce = false;

@@ -26,13 +26,9 @@
 
 #pragma once
 
-#define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(addr))
-
 #include "utils.h"
+#include "kernel.h"
+#include "svc.h"
 
-Result svc0x2F(void *function, ...); // custom backdoor before kernel ext. is installed (and only before!)
-
-void *convertVAToPA(const void *VA);
-
-extern u8 kernel_extension[];
-extern u32 kernel_extension_size;
+bool shouldSignalSyscallDebugEvent(KProcess *process, u8 svcId);
+Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3);

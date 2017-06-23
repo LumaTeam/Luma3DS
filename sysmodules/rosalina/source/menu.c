@@ -33,6 +33,7 @@
 #include "menus.h"
 #include "utils.h"
 #include "menus/n3ds.h"
+#include "minisoc.h"
 
 u32 waitInputWithTimeout(u32 msec)
 {
@@ -149,13 +150,13 @@ static u8 batteryLevel = 255;
 
 MyThread *menuCreateThread(void)
 {
-    if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 0x18, CORE_SYSTEM)))
+    if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 52, CORE_SYSTEM)))
         svcBreak(USERBREAK_PANIC);
     return &menuThread;
 }
 
 extern bool isN3DS;
-u32 menuCombo = DEFAULT_MENU_COMBO;
+u32 menuCombo;
 
 void menuThreadMain(void)
 {
@@ -173,6 +174,7 @@ void menuThreadMain(void)
         if((HID_PAD & menuCombo) == menuCombo)
         {
             menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
             menuShow(&rosalinaMenu);
             menuLeave();
         }
@@ -222,7 +224,7 @@ static void menuDraw(Menu *menu, u32 selected)
     svcGetSystemInfo(&out, 0x10000, 1);
     commitHash = (u32)out;
 
-    svcGetSystemInfo(&out, 0x10000, 3);
+    svcGetSystemInfo(&out, 0x10000, 0x200);
     isRelease = (bool)out;
 
     if(GET_VERSION_REVISION(version) == 0)
@@ -238,6 +240,15 @@ static void menuDraw(Menu *menu, u32 selected)
             break;
         Draw_DrawString(30, 30 + i * SPACING_Y, COLOR_WHITE, menu->items[i].title);
         Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE, i == selected ? '>' : ' ');
+    }
+
+    if(miniSocEnabled)
+    {
+        char ipBuffer[17];
+        u32 ip = gethostid();
+        u8 *addr = (u8 *)&ip;
+        int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
+        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
 
     if(batteryLevel != 255)

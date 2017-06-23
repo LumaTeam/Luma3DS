@@ -53,7 +53,7 @@ typedef struct
 typedef struct
 {
     u64 programid;
-    u32 coreversion;
+    u32 firm;
     u8 flags[3];
     u8 priority;
     u16 resourcelimitdescriptor[0x10];

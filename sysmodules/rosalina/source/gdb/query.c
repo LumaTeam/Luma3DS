@@ -59,6 +59,7 @@ static const struct
     GDB_QUERY_HANDLER_LIST_ITEM(sThreadInfo, READ),
     GDB_QUERY_HANDLER_LIST_ITEM(ThreadEvents, WRITE),
     GDB_QUERY_HANDLER_LIST_ITEM(ThreadExtraInfo, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(GetTLSAddr, READ),
     GDB_QUERY_HANDLER_LIST_ITEM_3("C", CurrentThreadId, READ),
     GDB_QUERY_HANDLER_LIST_ITEM_3("Search", SearchMemory, READ),
     GDB_QUERY_HANDLER_LIST_ITEM(CatchSyscalls, WRITE),

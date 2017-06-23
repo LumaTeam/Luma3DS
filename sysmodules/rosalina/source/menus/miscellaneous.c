@@ -33,13 +33,15 @@
 #include "fmt.h"
 #include "utils.h" // for makeARMBranch
 #include "minisoc.h"
+#include "ifile.h"
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 5,
+    .nbItems = 6,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
+        { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
         { "Power off", METHOD, .method = &MiscellaneousMenu_PowerOff },
         { "Reboot", METHOD, .method = &MiscellaneousMenu_Reboot },
@@ -158,9 +160,75 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
 
         posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "The current menu combo is:  %s", comboStrOrig);
         posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo: %s", comboStr) + SPACING_Y;
-        
+
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Successfully changed the menu combo.");
 
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void MiscellaneousMenu_SaveSettings(void)
+{
+    Result res;
+
+    IFile file;
+    u64 total;
+
+    struct PACKED
+    {
+        char magic[4];
+        u16 formatVersionMajor, formatVersionMinor;
+
+        u32 config, multiConfig, bootConfig;
+        u64 hbldr3dsxTitleId;
+        u32 rosalinaMenuCombo;
+    } configData;
+
+    u32 formatVersion;
+    u32 config, multiConfig, bootConfig;
+    s64 out;
+    bool isSdMode;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 2))) svcBreak(USERBREAK_ASSERT);
+    formatVersion = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
+    config = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
+    multiConfig = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
+    bootConfig = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    isSdMode = (bool)out;
+
+    memcpy(configData.magic, "CONF", 4);
+    configData.formatVersionMajor = (u16)(formatVersion >> 16);
+    configData.formatVersionMinor = (u16)formatVersion;
+    configData.config = config;
+    configData.multiConfig = multiConfig;
+    configData.bootConfig = bootConfig;
+    configData.hbldr3dsxTitleId = HBLDR_3DSX_TID;
+    configData.rosalinaMenuCombo = menuCombo;
+
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/config.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
+
+    if(R_SUCCEEDED(res))
+        res = IFile_Write(&file, &total, &configData, sizeof(configData), 0);
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Process patches menu");
+        if(R_SUCCEEDED(res))
+            Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
+        else
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08x).", res);
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
@@ -206,6 +274,11 @@ void MiscellaneousMenu_InputRedirection(void)
             svcCloseHandle(dummy);
         }
     }
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
 
     do
     {
@@ -262,40 +335,46 @@ void MiscellaneousMenu_InputRedirection(void)
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 }
 
-void MiscellaneousMenu_Reboot()
+void MiscellaneousMenu_Reboot(void)
 {
     Draw_Lock();
-    Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
-    Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
+    Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
     do
     {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & BUTTON_A)
-        {
             svcKernelSetState(7);
-        }
         else if(pressed & BUTTON_B)
-        {
             return;
-        }
     }
     while(!terminationRequest);
 }
 
-void MiscellaneousMenu_PowerOff() // Soft shutdown.
+void MiscellaneousMenu_PowerOff(void) // Soft shutdown.
 {
     Draw_Lock();
-    Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
-    Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
+    Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
     do
     {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & BUTTON_A)
@@ -304,9 +383,7 @@ void MiscellaneousMenu_PowerOff() // Soft shutdown.
             srvPublishToSubscriber(0x203, 0);
         }
         else if(pressed & BUTTON_B)
-        {
             return;
-        }
     }
     while(!terminationRequest);
 }

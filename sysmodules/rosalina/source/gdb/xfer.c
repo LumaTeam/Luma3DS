@@ -78,7 +78,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(CfwVersion)
         svcGetSystemInfo(&out, 0x10000, 1);
         commitHash = (u32)out;
 
-        svcGetSystemInfo(&out, 0x10000, 3);
+        svcGetSystemInfo(&out, 0x10000, 0x200);
         isRelease = (bool)out;
 
         if(GET_VERSION_REVISION(version) == 0)

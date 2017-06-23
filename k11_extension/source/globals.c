@@ -60,6 +60,7 @@ Result (*SendSyncRequest)(Handle handle);
 Result (*OpenProcess)(Handle *out, u32 processId);
 Result (*GetProcessId)(u32 *out, Handle process);
 Result (*DebugActiveProcess)(Handle *out, u32 processId);
+Result (*UnmapProcessMemory)(Handle processHandle, void *dst, u32 size);
 Result (*KernelSetState)(u32 type, u32 varg1, u32 varg2, u32 varg3);
 
 void (*flushDataCacheRange)(void *addr, u32 len);
@@ -72,11 +73,9 @@ bool (*kernelToUsrMemcpy8)(void *dst, const void *src, u32 len);
 bool (*kernelToUsrMemcpy32)(u32 *dst, const u32 *src, u32 len);
 s32 (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
-Result (*CustomBackdoor)(void *function, ...);
-
 void (*svcFallbackHandler)(u8 svcId);
 void (*kernelpanic)(void);
-void (*PostprocessSvc)(void);
+void (*officialPostProcessSvc)(void);
 
 Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
 
@@ -86,11 +85,21 @@ u32 *exceptionStackTop;
 u32 TTBCR;
 u32 L1MMUTableAddrs[4];
 
-u32 kernelVersion;
 void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
 
 bool *isDevUnit;
 
+vu8 *configPage;
+u32 kernelVersion;
+FcramLayout fcramLayout;
+KCoreContext *coreCtxs;
+
+void *originalHandlers[8] = {NULL};
+
+u32 nbSection0Modules;
+
+Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,
+                                         u32 coreID, u32 priority, bool disableUponReceipt, bool levelHighActive);
 InterruptManager *interruptManager;
 KBaseInterruptEvent *customInterruptEvent;
 
@@ -100,5 +109,5 @@ void (*coreBarrier)(void);
 
 CfwInfo cfwInfo;
 
-u32 rosalinaState;
+vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;

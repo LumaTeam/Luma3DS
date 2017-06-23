@@ -204,12 +204,15 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 
   if (R_SUCCEEDED(res))
   {
+    s64 nbSection0Modules;
+    svcGetSystemInfo(&nbSection0Modules, 26, 0);
+
     // Force always having sdmc:/ and nand:/rw permission
     exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
     exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
 
     // Tweak 3dsx placeholder title exheader
-    if (exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+    if (nbSection0Modules == 6 && exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
     {
       Handle hbldr = 0;
       res = HBLDR_Init(&hbldr);
@@ -246,7 +249,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   u64 progid;
 
   // make sure the cached info corrosponds to the current prog_handle
-  if (g_cached_prog_handle != prog_handle)
+  if (g_cached_prog_handle != prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
   {
     res = loader_GetProgramInfo(&g_exheader, prog_handle);
     g_cached_prog_handle = prog_handle;
@@ -280,6 +283,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     res = HBLDR_Init(&hbldr);
     if (R_FAILED(res))
     {
+      svcBreak(USERBREAK_ASSERT);
       return res;
     }
     u32* cmdbuf = getThreadCommandBuffer();
@@ -297,6 +301,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     }
     if (R_FAILED(res))
     {
+      svcBreak(USERBREAK_ASSERT);
       return res;
     }
     codeset = (Handle)cmdbuf[3];
@@ -472,7 +477,7 @@ static void handle_commands(void)
     case 4: // GetProgramInfo
     {
       prog_handle = *(u64 *)&cmdbuf[1];
-      if (prog_handle != g_cached_prog_handle)
+      if (prog_handle != g_cached_prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
       {
         res = loader_GetProgramInfo(&g_exheader, prog_handle);
         if (res >= 0)

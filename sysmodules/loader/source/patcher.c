@@ -6,7 +6,7 @@
 #include "ifile.h"
 #include "../build/bundled.h"
 
-static u32 config;
+static u32 config, multiConfig, bootConfig;
 static bool isN3DS, isSafeMode, isSdMode;
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
@@ -80,13 +80,18 @@ static inline void loadCFWInfo(void)
 
     if(infoLoaded) return;
 
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 2))) svcBreak(USERBREAK_ASSERT);
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
     config = (u32)out;
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
-    isN3DS = (bool)out;
+    multiConfig = (u32)out;
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
+    bootConfig = (u32)out;
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x201))) svcBreak(USERBREAK_ASSERT);
+    isN3DS = (bool)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x202))) svcBreak(USERBREAK_ASSERT);
     isSafeMode = (bool)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 6))) svcBreak(USERBREAK_ASSERT);
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
     isSdMode = (bool)out;
 
     IFile file;
@@ -502,7 +507,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
                                                "patch:",
                                                "ext:",
                                                "rom:" };
-    u32 updateRomFsIndex;    
+    u32 updateRomFsIndex;
 
     //Locate update RomFSes
     for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
@@ -736,10 +741,16 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             }
         }
 
-        // Makes ErrDisp to not start up
-        static const u64 errDispTid = 0x0004003000008A02ULL;
-        u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
-        *(errDispTidLoc - 6) = 0xE3A00000; // mov r0, #0
+        s64 nbSection0Modules;
+        svcGetSystemInfo(&nbSection0Modules, 26, 0);
+
+        if(nbSection0Modules == 6)
+        {
+            // Makes ErrDisp to not start up
+            static const u64 errDispTid = 0x0004003000008A02ULL;
+            u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
+            *(errDispTidLoc - 6) = 0xE3A00000; // mov r0, #0
+        }
     }
 
     else if(progId == 0x0004013000001702LL) //CFG

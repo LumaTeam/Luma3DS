@@ -46,25 +46,24 @@ static Result ProcessPatchesMenu_DoPatchUnpatchSM(u32 textTotalRoundedSize)
 {
     static bool patched = false;
     static u32 *off;
-    static u32 origData[7];
+    static u32 origData;
 
     if(patched)
     {
-        memcpy(off, &origData, sizeof(origData));
+        *off = origData;
         patched = false;
     }
     else
     {
-        for(off = (u32 *)0x00100000; off < (u32 *)(0x00100000 + textTotalRoundedSize) - 6 &&
-            (off[0] != 0xE1A01006 || off[1] != 0xE1A00005 || off[3] != 0xE3500000 || off[6] != 0xE2850004);
+        for(off = (u32 *)0x00100000; off < (u32 *)(0x00100000 + textTotalRoundedSize) - 3 &&
+            (off[0] != 0xE1A01006 || (off[1] & 0xFFFF) != 5);
             off++);
 
-        if(off >= (u32 *)(0x00100000 + textTotalRoundedSize) - 6)
+        if(off >= (u32 *)(0x00100000 + textTotalRoundedSize) - 3)
             return -1;
 
-        memcpy(&origData, off, sizeof(origData));
-
-        off[2] = off[3] = off[4] = off[5] = 0xE320F000; // nop
+        off += 2;
+        *off = 0xE3A00001; // mov r0, #1
         patched = true;
     }
 
@@ -76,9 +75,10 @@ static Result ProcessPatchesMenu_DoPatchUnpatchFS(u32 textTotalRoundedSize)
 {
     static bool patched = false;
     static u16 *off;
-    static const u16 origData[2] = {
-        0x4618, // mov r0, r3
-        0x3481, // adds r4, #0x81
+    static u16 origData[2];
+    static const u16 pattern[2] = {
+        0x7401, // strb r1, [r0, #16]
+        0x2000, // movs r0, #0
     };
 
     if(patched)
@@ -88,10 +88,13 @@ static Result ProcessPatchesMenu_DoPatchUnpatchFS(u32 textTotalRoundedSize)
     }
     else
     {
-        off = (u16 *)memsearch((u8 *)0x00100000, &origData, textTotalRoundedSize, sizeof(origData));
+        off = (u16 *)memsearch((u8 *)0x00100000, &pattern, textTotalRoundedSize, sizeof(pattern));
         if(off == NULL)
             return -1;
 
+        for(; (*off & 0xFF00) != 0xB500; off++); // Find function start
+
+        memcpy(origData, off, 4);
         off[0] = 0x2001; // mov r0, #1
         off[1] = 0x4770; // bx lr
 
@@ -145,7 +148,7 @@ static u32 ProcessPatchesMenu_PatchUnpatchProcessByName(const char *name, Result
 
     res = func(textTotalRoundedSize);
 
-    svcUnmapProcessMemory(processHandle, 0x00100000, textTotalRoundedSize);
+    svcUnmapProcessMemoryEx(processHandle, 0x00100000, textTotalRoundedSize);
     return res;
 }
 

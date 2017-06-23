@@ -46,18 +46,35 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     *out = cfwInfo.commitHash;
                     break;
                 case 2:
+                    *out = (cfwInfo.configFormatVersionMajor << 16) | cfwInfo.configFormatVersionMinor;
+                    break;
+                case 3:
                     *out = cfwInfo.config;
                     break;
-                case 3: // isRelease
+                case 4:
+                    *out = cfwInfo.multiConfig;
+                    break;
+                case 5:
+                    *out = cfwInfo.bootConfig;
+                    break;
+
+                case 0x100:
+                    *out = (s64)cfwInfo.hbldr3dsxTitleId;
+                    break;
+                case 0x101:
+                    *out = cfwInfo.rosalinaMenuCombo;
+                    break;
+
+                case 0x200: // isRelease
                     *out = cfwInfo.flags & 1;
                     break;
-                case 4: // isN3DS
+                case 0x201: // isN3DS
                     *out = (cfwInfo.flags >> 4) & 1;
                     break;
-                case 5: // isSafeMode
+                case 0x202: // isSafeMode
                     *out = (cfwInfo.flags >> 5) & 1;
                     break;
-                case 6: // isSdMode
+                case 0x203: // isSdMode
                     *out = (cfwInfo.flags >> 6) & 1;
                     break;
                 default:

@@ -27,33 +27,46 @@
 .global _start
 _start:
     b start
-    b ConnectToPortHookWrapper
+    b startPhys
 
+    b _bindSGI0Hook
+    b configHook
+
+    b undefinedInstructionHandler
+    b svcHandler
+    b prefetchAbortHandler
+    b dataAbortHandler
+
+    .word __end__
+    .word kExtParameters
+    .word 1 @ enableUserExceptionHandlersForCPUExc
+
+    b KThread__DebugReschedule
 start:
-    push {r4, lr}
+    @ Only core0 executes this, the other cores are running coreBarrier
 
-    mrc p15, 0, r4, c0, c0, 5   @ CPUID register
-    and r4, #3
-    cmp r4, #1
-    beq _core1_only
+    @ Skipped instruction:
+    str r1, [r4, #0x8]
 
-    _waitLoop:
-        wfe
-        ldr r0, =_setupFinished
-        ldr r0, [r0]
-        cmp r0, #0
-        beq _waitLoop
-    b end
+    push {r0-r12, lr}
 
-    _core1_only:
-        bl main
-        ldr r0, =_setupFinished
-        str r4, [r0]
-        sev
+    sub r0, r4, #8
+    sub r1, r8, #0x8000
+    bl main
 
-    end:
-    pop {r4, pc}
+    pop {r0-r12, pc}
 
-.bss
-.balign 4
-_setupFinished: .word 0
+startPhys:
+    push {r0-r12, lr}
+    mrc p15, 0, r0, c0, c0, 5   @ CPUID register
+    and r0, #3
+    mov r1, r2
+    bl relocateAndSetupMMU
+    pop {r0-r12, lr}
+    mov r12, #0x20000000        @ instruction that has been patched
+    bx lr
+
+_bindSGI0Hook:
+    push {r0-r12, lr}
+    bl bindSGI0Hook
+    pop {r0-r12, pc}

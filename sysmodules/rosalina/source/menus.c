@@ -85,13 +85,13 @@ void RosalinaMenu_ShowCredits(void)
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 }
 
+extern u8 framebufferCache[FB_BOTTOM_SIZE];
 void RosalinaMenu_TakeScreenshot(void)
 {
 #define TRY(expr) if(R_FAILED(res = (expr))) goto end;
 
     u64 total;
     IFile file;
-    u8 buf[54];
     Result res;
 
     u32 filenum;
@@ -101,13 +101,15 @@ void RosalinaMenu_TakeScreenshot(void)
     FS_ArchiveID archiveId;
     s64 out;
     bool isSdMode;
-    
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 6))) svcBreak(USERBREAK_ASSERT);
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
     isSdMode = (bool)out;
 
     archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
     Draw_Lock();
     Draw_RestoreFramebuffer();
+
+    svcFlushEntireDataCache();
 
     res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
     if(R_SUCCEEDED(res))
@@ -141,44 +143,55 @@ void RosalinaMenu_TakeScreenshot(void)
 
     sprintf(filename, "/luma/screenshots/top_%04u.bmp", filenum);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-    Draw_CreateBitmapHeader(buf, 400, 240);
-    TRY(IFile_Write(&file, &total, buf, 54, 0));
+    Draw_CreateBitmapHeader(framebufferCache, 400, 240);
 
-    for(u32 y = 0; y < 240; y++)
-    {
-        u8 *line = Draw_ConvertFrameBufferLine(true, true, y);
-        TRY(IFile_Write(&file, &total, line, 3 * 400, 0));
-    }
+    for(u32 y = 0; y < 120; y++)
+        Draw_ConvertFrameBufferLine(framebufferCache + 54 + 3 * 400 * y, true, true, y);
 
+    TRY(IFile_Write(&file, &total, framebufferCache, 54 + 3 * 400 * 120, 0));
+
+    for(u32 y = 120; y < 240; y++)
+        Draw_ConvertFrameBufferLine(framebufferCache + 3 * 400 * (y - 120), true, true, y);
+
+    TRY(IFile_Write(&file, &total, framebufferCache, 3 * 400 * 120, 0));
     TRY(IFile_Close(&file));
 
     sprintf(filename, "/luma/screenshots/bot_%04u.bmp", filenum);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-    Draw_CreateBitmapHeader(buf, 320, 240);
-    TRY(IFile_Write(&file, &total, buf, 54, 0));
+    Draw_CreateBitmapHeader(framebufferCache, 320, 240);
 
-    for(u32 y = 0; y < 240; y++)
-    {
-        u8 *line = Draw_ConvertFrameBufferLine(false, true, y);
-        TRY(IFile_Write(&file, &total, line, 3 * 320, 0));
-    }
+    for(u32 y = 0; y < 120; y++)
+        Draw_ConvertFrameBufferLine(framebufferCache + 54 + 3 * 320 * y, false, true, y);
+
+    TRY(IFile_Write(&file, &total, framebufferCache, 54 + 3 * 320 * 120, 0));
+
+    for(u32 y = 120; y < 240; y++)
+        Draw_ConvertFrameBufferLine(framebufferCache + 3 * 320 * (y - 120), false, true, y);
+
+    TRY(IFile_Write(&file, &total, framebufferCache, 3 * 320 * 120, 0));
+    TRY(IFile_Close(&file));
 
     if((GPU_FB_TOP_FMT & 0x20) && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
     {
         sprintf(filename, "/luma/screenshots/top_right_%04u.bmp", filenum);
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-        Draw_CreateBitmapHeader(buf, 400, 240);
-        TRY(IFile_Write(&file, &total, buf, 54, 0));
+        Draw_CreateBitmapHeader(framebufferCache, 400, 240);
 
-        for(u32 y = 0; y < 240; y++)
-        {
-            u8 *line = Draw_ConvertFrameBufferLine(true, false, y);
-            TRY(IFile_Write(&file, &total, line, 3 * 400, 0));
-        }
+        for(u32 y = 0; y < 120; y++)
+            Draw_ConvertFrameBufferLine(framebufferCache + 54 + 3 * 400 * y, true, false, y);
+
+        TRY(IFile_Write(&file, &total, framebufferCache, 54 + 3 * 400 * 120, 0));
+
+        for(u32 y = 120; y < 240; y++)
+            Draw_ConvertFrameBufferLine(framebufferCache + 3 * 400 * (y - 120), true, false, y);
+
+        TRY(IFile_Write(&file, &total, framebufferCache, 3 * 400 * 120, 0));
+        TRY(IFile_Close(&file));
     }
 
 end:
     IFile_Close(&file);
+    svcFlushEntireDataCache();
     Draw_SetupFramebuffer();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();

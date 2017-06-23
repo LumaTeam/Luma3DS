@@ -66,7 +66,9 @@ typedef struct __attribute__((packed))
     char magic[4];
     u16 formatVersionMajor, formatVersionMinor;
 
-    u32 config;
+    u32 config, multiConfig, bootConfig;
+    u64 hbldr3dsxTitleId;
+    u32 rosalinaMenuCombo;
 } CfgData;
 
 typedef struct __attribute__((packed))

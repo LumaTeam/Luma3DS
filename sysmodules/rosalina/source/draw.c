@@ -33,9 +33,9 @@
 #include "menu.h"
 #include "utils.h"
 
-u8 framebuffer_cache[FB_BOTTOM_SIZE];
+u8 framebufferCache[FB_BOTTOM_SIZE];
 
-static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferSelect, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
+static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
 
 static RecursiveLock lock;
 
@@ -126,15 +126,15 @@ void Draw_SetupFramebuffer(void)
 {
     while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1);
 
-    memcpy(framebuffer_cache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
+    svcFlushEntireDataCache();
+    memcpy(framebufferCache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
     gpuSavedFramebufferAddr1 = GPU_FB_BOTTOM_ADDR_1;
-    gpuSavedFramebufferSelect = GPU_FB_BOTTOM_SEL;
+    gpuSavedFramebufferAddr2 = GPU_FB_BOTTOM_ADDR_2;
     gpuSavedFramebufferFormat = GPU_FB_BOTTOM_FMT;
     gpuSavedFramebufferStride = GPU_FB_BOTTOM_STRIDE;
 
-    GPU_FB_BOTTOM_SEL &= ~1;
-    GPU_FB_BOTTOM_ADDR_1 = FB_BOTTOM_VRAM_PA;
-    GPU_FB_BOTTOM_FMT = 0x80302;
+    GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
+    GPU_FB_BOTTOM_FMT = (GPU_FB_BOTTOM_FMT & ~7) | 2;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
 
     Draw_FlushFramebuffer();
@@ -142,12 +142,12 @@ void Draw_SetupFramebuffer(void)
 
 void Draw_RestoreFramebuffer(void)
 {
-    memcpy(FB_BOTTOM_VRAM_ADDR, framebuffer_cache, FB_BOTTOM_SIZE);
+    memcpy(FB_BOTTOM_VRAM_ADDR, framebufferCache, FB_BOTTOM_SIZE);
 
     GPU_FB_BOTTOM_ADDR_1 = gpuSavedFramebufferAddr1;
+    GPU_FB_BOTTOM_ADDR_2 = gpuSavedFramebufferAddr2;
     GPU_FB_BOTTOM_FMT = gpuSavedFramebufferFormat;
     GPU_FB_BOTTOM_STRIDE = gpuSavedFramebufferStride;
-    GPU_FB_BOTTOM_SEL = gpuSavedFramebufferSelect;
 
     Draw_FlushFramebuffer();
 }
@@ -164,14 +164,14 @@ u32 Draw_GetCurrentFramebufferAddress(bool top, bool left)
         if(left)
             return top ? GPU_FB_TOP_LEFT_ADDR_2 : GPU_FB_BOTTOM_ADDR_2;
         else
-            return top ? GPU_FB_TOP_RIGHT_ADDR_2 : GPU_FB_BOTTOM_ADDR_2; 
+            return top ? GPU_FB_TOP_RIGHT_ADDR_2 : GPU_FB_BOTTOM_ADDR_2;
     }
     else
     {
         if(left)
             return top ? GPU_FB_TOP_LEFT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1;
         else
-            return top ? GPU_FB_TOP_RIGHT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1; 
+            return top ? GPU_FB_TOP_RIGHT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1;
     }
 }
 
@@ -260,18 +260,16 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
     }
 }
 
-static u8 line[3 * 400];
-
-u8 *Draw_ConvertFrameBufferLine(bool top, bool left, u32 y)
+void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool left, u32 y)
 {
     GSPGPU_FramebufferFormats fmt = top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
     u32 width = top ? 400 : 320;
     u8 formatSizes[] = { 4, 3, 2, 2, 2 };
+    u32 stride = top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
 
     u32 pa = Draw_GetCurrentFramebufferAddress(top, left);
     u8 *addr = (u8 *)PA_PTR(pa);
 
     for(u32 x = 0; x < width; x++)
-        Draw_ConvertPixelToBGR8(line + x * 3 , addr + (x * 240 + y) * formatSizes[(u8)fmt], fmt);
-    return line;
+        Draw_ConvertPixelToBGR8(line + x * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
 }

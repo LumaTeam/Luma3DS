@@ -45,7 +45,7 @@ Result SendSyncRequestHook(Handle handle)
         isValidClientSession = tok.flags == 0xA5;
     }
     else if(clientSession != NULL) // not the exact same test but it should work
-        isValidClientSession = strcmp(clientSession->syncObject.autoObject.vtable->GetClassName(&clientSession->syncObject.autoObject), "KClientSession");
+        isValidClientSession = strcmp(clientSession->syncObject.autoObject.vtable->GetClassName(&clientSession->syncObject.autoObject), "KClientSession") == 0;
 
     if(isValidClientSession)
     {

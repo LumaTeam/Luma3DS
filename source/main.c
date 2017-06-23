@@ -154,7 +154,7 @@ void main(int argc, char **argv, u32 magicWord)
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
             //Prevent multiple boot options-forcing
-            isNoForceFlagSet = true;
+            if(nandType != BOOTCFG_NAND || firmSource != BOOTCFG_FIRM) isNoForceFlagSet = true;
 
             goto boot;
         }
@@ -279,7 +279,7 @@ boot:
 
     if(!isFirmlaunch)
     {
-        configData.config = (configData.config & 0xFFFFFF80) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.bootConfig = ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 
@@ -299,7 +299,7 @@ boot:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(loadFromStorage, doUnitinfoPatch);
+            res = patchAgbFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:

@@ -78,36 +78,38 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     return arm11SvcTable;
 }
 
-void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
+// For ARM prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
+static inline u32 computeARMFrameSize(const u32 *prolog)
 {
-    static const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
+    const u32 *off;
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
+    for(off = prolog; (*off >> 16) != 0xE92D; off++); // look for stmfd sp! = push
+    u32 nbPushedRegs = 0;
+    for(u32 val = *off & 0xFFFF; val != 0; val >>= 1) // 1 bit = 1 pushed register
+        nbPushedRegs += val & 1;
+    for(; (*off >> 8) != 0xE24DD0; off++); // look for sub sp, #offset
+    u32 localVariablesSpaceSize = *off & 0xFF;
 
-    memcpy(*freeK11Space, mmuHook_bin, mmuHook_bin_size);
-    *off = MAKE_BRANCH_LINK(off, *freeK11Space);
-
-    (*freeK11Space) += mmuHook_bin_size;
+    return 4 * nbPushedRegs + localVariablesSpaceSize;
 }
 
-void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+static inline u32 *getKernel11HandlerVAPos(u8 *pos, u32 *arm11ExceptionsPage, u32 baseK11VA, u32 id)
+{
+    u32 off = ((-((arm11ExceptionsPage[id] & 0xFFFFFF) << 2)) & (0xFFFFFF << 2)) - 8;
+    u32 pointedInstructionVA = 0xFFFF0000 + 4 * id - off;
+    return (u32 *)(pos + pointedInstructionVA - baseK11VA + 8);
+}
+
+u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space)
 {
     //The parameters to be passed on to the kernel ext
-    //Please keep that in sync with the definition in kernel_extension_setup.c and kernel_extension/main.c
+    //Please keep that in sync with the definition in k11_extension/source/main.c
     struct KExtParameters
     {
-        void (*SGI0HandlerCallback)(struct KExtParameters *, u32 *);
-        void *interruptManager;
-        u32 *L2MMUTable; //bit31 mapping
-
-        void (*initFPU)(void);
-        void (*mcuReboot)(void);
-        void (*coreBarrier)(void);
-
-        u32 TTBCR;
+        u32 __attribute__((aligned(0x400))) L2MMUTableFor0x40000000[256];
+        u32 basePA;
+        void *originalHandlers[4];
         u32 L1MMUTableAddrs[4];
-
-        u32 kernelVersion;
 
         struct CfwInfo
         {
@@ -120,51 +122,79 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 
             u32 commitHash;
 
-            u32 config;
-        } __attribute__((packed)) info;
+            u16 configFormatVersionMajor, configFormatVersionMinor;
+            u32 config, multiConfig, bootConfig;
+            u64 hbldr3dsxTitleId;
+            u32 rosalinaMenuCombo;
+        } info;
     };
 
-    static const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
+    static const u8 patternHook1[] = {0x02, 0xC2, 0xA0, 0xE3, 0xFF}; //MMU setup hook
+    static const u8 patternHook2[] = {0x08, 0x00, 0xA4, 0xE5, 0x02, 0x10, 0x80, 0xE0, 0x08, 0x10, 0x84, 0xE5}; //FCRAM layout setup hook
+    static const u8 patternHook3_4[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA}; //SGI0 setup code, etc.
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 12);
-    //look for cpsie i and place our function call in the nop 2 instructions before
-    while(*off != 0xF1080080) off--;
-    off -= 2;
+    //Our kernel11 extension is initially loaded in VRAM
+    u32 kextTotalSize = *(u32 *)0x18000020 - 0x40000000;
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
 
-    memcpy(*freeK11Space, k11MainHook_bin, k11MainHook_bin_size);
-
+    u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
-    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase);
 
-    off = (u32 *)(pos +  (arm11SvcTable[0x50] - baseK11VA)); //svcBindInterrupt
-    while(off[0] != 0xE1A05000 || off[1] != 0xE2100102 || off[2] != 0x5A00000B) off++;
-    off--;
+    hookVeneers[0] = 0xE51FF004; //ldr pc, [pc, #-8+4]
+    hookVeneers[1] = 0x18000004;
+    hookVeneers[2] = 0xE51FF004;
+    hookVeneers[3] = 0x40000000;
+    hookVeneers[4] = 0xE51FF004;
+    hookVeneers[5] = 0x40000008;
+    hookVeneers[6] = 0xE51FF004;
+    hookVeneers[7] = 0x4000000C;
 
-    signed int offset = (*off & 0xFFFFFF) << 2;
-    offset = offset << 6 >> 6; //sign extend
-    offset += 8;
+    (*freeK11Space) += 32;
 
-    u32 InterruptManager_MapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
-    u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
+    //MMU setup hook
+    u32 *off = (u32 *)memsearch(pos, patternHook1, size, sizeof(patternHook1));
+    if(off == NULL) return 1;
+    *off = MAKE_BRANCH_LINK(off, hookVeneers);
 
-    off = (u32 *)memsearch(*freeK11Space, "bind", k11MainHook_bin_size, 4);
+    //Most important hook: FCRAM layout setup hook
+    off = (u32 *)memsearch(pos, patternHook2, size, sizeof(patternHook2));
+    if(off == NULL) return 1;
+    off += 2;
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 8);
 
-    off[0] = InterruptManager_MapInterrupt;
+    //Bind SGI0 hook
+    //Look for cpsie i and place our hook in the nop 2 instructions before
+    off = (u32 *)memsearch(pos, patternHook3_4, size, 12);
+    if(off == NULL) return 1;
+    for(; *off != 0xF1080080; off--);
+    off -= 2;
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 16);
 
-    //Relocate stuff
-    off[1] += relocBase;
-    off[2] += relocBase;
+    //Config hook (after the configuration memory fields have been filled)
+    for(; *off != 0xE1A00000; off++);
+    off += 4;
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 24);
 
-    struct KExtParameters *p = (struct KExtParameters *)(off + 3);
-    memset(p, 0, sizeof(struct KExtParameters));
-    memcpy((void *)&p->SGI0HandlerCallback, "hdlr", 4);
+    struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - 0x40000000 + 0x18000000);
+    p->basePA = dstKextPA;
 
-    p->interruptManager = (void *)interruptManager;
+    for(u32 i = 0; i < 4; i++)
+    {
+        u32 *handlerPos = getKernel11HandlerVAPos(pos, arm11ExceptionsPage, baseK11VA, 1 + i);
+        p->originalHandlers[i] = (void *)*handlerPos;
+        *handlerPos = 0x40000010 + 4 * i;
+    }
 
     struct CfwInfo *info = &p->info;
     memcpy(&info->magic, "LUMA", 4);
     info->commitHash = COMMIT_HASH;
+    info->configFormatVersionMajor = configData.formatVersionMajor;
+    info->configFormatVersionMinor = configData.formatVersionMinor;
     info->config = configData.config;
+    info->multiConfig = configData.multiConfig;
+    info->bootConfig = configData.bootConfig;
+    info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
+    info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->versionMajor = VERSION_MAJOR;
     info->versionMinor = VERSION_MINOR;
     info->versionBuild = VERSION_BUILD;
@@ -174,32 +204,60 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     if(isSafeMode) info->flags |= 1 << 5;
     if(isSdMode) info->flags |= 1 << 6;
 
-    (*freeK11Space) += (k11MainHook_bin_size + sizeof(struct KExtParameters));
-    (*freeK11Space) += 4 - ((u32)(*freeK11Space) % 4);
+    return 0;
 }
 
-void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage)
 {
-    u32 addr = 0xFFFF0000 + (u32)*freeK11Space - (u32)arm11ExceptionsPage;
-    u32 svcSleepThreadAddr = arm11SvcTable[0x0A], svcConnectToPortAddr = arm11SvcTable[0x2D];
+    static const u8 patternKPanic[] = {0x02, 0x0B, 0x44, 0xE2};
+    static const u8 patternKThreadDebugReschedule[] = {0x34, 0x20, 0xD4, 0xE5, 0x00, 0x00, 0x55, 0xE3, 0x80, 0x00, 0xA0, 0x13};
 
-    arm11SvcTable[0x2D] = addr;
-    memcpy(*freeK11Space, svcConnectToPortInitHook_bin, svcConnectToPortInitHook_bin_size);
+    //Assumption: ControlMemory, DebugActiveProcess and KernelSetState are in the first 0x20000 bytes
+    //Patch ControlMemory
+    u8 *instrPos = pos + (arm11SvcTable[1] + 20 - baseK11VA);
+    s32 displ = (*(u32 *)instrPos & 0xFFFFFF) << 2;
+    displ = (displ << 6) >> 6; // sign extend
 
-    u32 *off = (u32 *)(*freeK11Space);
-    off[1] = svcConnectToPortAddr;
-    off[2] = svcSleepThreadAddr;
+    u8 *ControlMemoryPos = instrPos + 8 + displ;
+    u32 *off;
 
-    (*freeK11Space) += svcConnectToPortInitHook_bin_size;
-}
+    /*
+        Here we replace currentProcess->processID == 1 by additionnalParameter == 1.
+        This patch should be generic enough to work even on firmware version 5.0.
 
+        It effectively changes the prototype of the ControlMemory function which
+        only caller is the svc 0x01 handler on OFW.
+    */
+    for(off = (u32 *)ControlMemoryPos; (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
+    off -= 2;
+    *off = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)ControlMemoryPos)); // ldr r0, [sp, #(frameSize + 8)]
 
-void installSvcCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
-{
-    memcpy(*freeK11Space, svcCustomBackdoor_bin, svcCustomBackdoor_bin_size);
-    *((u32 *)*freeK11Space + 1) = arm11SvcTable[0x2F]; // temporary location
-    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
-    (*freeK11Space) += svcCustomBackdoor_bin_size;
+    //Patch DebugActiveProcess
+    for(off = (u32 *)(pos + (arm11SvcTable[0x60] - baseK11VA)); *off != 0xE3110001; off++);
+    *off = 0xE3B01001; // tst r1, #1 -> movs r1, #1
+
+    for(off = (u32 *)(pos + (arm11SvcTable[0x7C] - baseK11VA)); off[0] != 0xE5D00001 || off[1] != 0xE3500000; off++);
+    off[2] = 0xE1A00000; // in case 6: beq -> nop
+
+    //Patch kernelpanic
+    off = (u32 *)memsearch(pos, patternKPanic, size, sizeof(patternKPanic));
+    if(off == NULL)
+        return 1;
+
+    off[-6] = 0xE12FFF7E;
+
+    //Redirect enableUserExceptionHandlersForCPUExc (= true)
+    for(off = arm11ExceptionsPage; *off != 0x96007F9; off++);
+    off[1] = 0x40000028;
+
+    off = (u32 *)memsearch(pos, patternKThreadDebugReschedule, size, sizeof(patternKThreadDebugReschedule));
+    if(off == NULL)
+        return 1;
+
+    off[-5] = 0xE51FF004;
+    off[-4] = 0x4000002C;
+
+    return 0;
 }
 
 u32 patchSignatureChecks(u8 *pos, u32 size)

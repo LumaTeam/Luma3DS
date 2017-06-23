@@ -111,8 +111,10 @@ void detectAndProcessExceptionDumps(void)
     {
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08X", registerNames[i], regs[i]);
 
-        if(i != 16 || dumpHeader->processor != 9)
+        if(i != 16)
             posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08X", registerNames[i + 1], regs[i + 1]);
+        else if(dumpHeader->processor == 11)
+            posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08X", registerNames[i + 1], regs[20]);
     }
 
     posY += SPACING_Y;

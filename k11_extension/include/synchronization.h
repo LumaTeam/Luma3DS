@@ -34,6 +34,14 @@ typedef KSchedulableInterruptEvent* (*SGI0Handler_t)(KBaseInterruptEvent *this, 
 // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0360f/CCHDIFIJ.html
 void executeFunctionOnCores(SGI0Handler_t func, u8 targetList, u8 targetListFilter);
 
+void KScheduler__TriggerCrossCoreInterrupt(KScheduler *this);
+void KThread__DebugReschedule(KThread *this, bool lock);
+bool rosalinaThreadLockPredicate(KThread *thread);
+void rosalinaRescheduleThread(KThread *thread, bool lock);
+void rosalinaLockThread(KThread *thread);
+void rosalinaLockAllThreads(void);
+void rosalinaUnlockAllThreads(void);
+
 // Taken from ctrulib:
 
 static inline void __dsb(void)
@@ -58,4 +66,54 @@ static inline bool __strex(s32* addr, s32 val)
     bool res;
     __asm__ __volatile__("strex %[res], %[val], %[addr]" : [res] "=&r" (res) : [val] "r" (val), [addr] "Q" (*addr));
     return res;
+}
+
+static inline s8 __ldrex8(s8* addr)
+{
+    s8 val;
+    __asm__ __volatile__("ldrexb %[val], %[addr]" : [val] "=r" (val) : [addr] "Q" (*addr));
+    return val;
+}
+
+static inline bool __strex8(s8* addr, s8 val)
+{
+    bool res;
+    __asm__ __volatile__("strexb %[res], %[val], %[addr]" : [res] "=&r" (res) : [val] "r" (val), [addr] "Q" (*addr));
+    return res;
+}
+
+static inline s16 __ldrex16(s16* addr)
+{
+    s16 val;
+    __asm__ __volatile__("ldrexh %[val], %[addr]" : [val] "=r" (val) : [addr] "Q" (*addr));
+    return val;
+}
+
+static inline bool __strex16(s16* addr, s16 val)
+{
+    bool res;
+    __asm__ __volatile__("strexh %[res], %[val], %[addr]" : [res] "=&r" (res) : [val] "r" (val), [addr] "Q" (*addr));
+    return res;
+}
+
+static inline u32 __get_cpsr(void)
+{
+    u32 cpsr;
+    __asm__ __volatile__("mrs %0, cpsr" : "=r"(cpsr));
+    return cpsr;
+}
+
+static inline void __set_cpsr_cx(u32 cpsr)
+{
+    __asm__ __volatile__("msr cpsr_cx, %0" :: "r"(cpsr));
+}
+
+static inline void __enable_irq(void)
+{
+    __asm__ __volatile__("cpsie i");
+}
+
+static inline void __disable_irq(void)
+{
+    __asm__ __volatile__("cpsid i");
 }

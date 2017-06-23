@@ -107,11 +107,30 @@ static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     //Looking for the last free space before Process9
     *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(*freeK9Space == NULL) return false;
+    if(*freeK9Space == NULL || (u32)(pos + size - *freeK9Space) < 0x455 + emunand_bin_size ||
+       *(u32 *)(*freeK9Space + 0x455 + emunand_bin_size - 4) != 0xFFFFFFFF) return false;
 
     *freeK9Space += 0x455;
 
     return true;
+}
+
+static inline u32 getOldSdmmc(u32 *sdmmc, u32 firmVersion)
+{
+    switch(firmVersion)
+    {
+        case 0x18:
+            *sdmmc = 0x080D91D8;
+            break;
+        case 0x1D:
+        case 0x1F:
+            *sdmmc = 0x080D8CD0;
+            break;
+        default:
+            return 1;
+    }
+
+    return 0;
 }
 
 static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
@@ -166,7 +185,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address)
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address, u32 firmVersion)
 {
     u8 *freeK9Space;
 
@@ -186,7 +205,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 proce
     //Find and add the SDMMC struct
     u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
     u32 sdmmc;
-    ret += getSdmmc(process9Offset, process9Size, &sdmmc);
+    ret += !ISN3DS && firmVersion < 0x25 ? getOldSdmmc(&sdmmc, firmVersion) : getSdmmc(process9Offset, process9Size, &sdmmc);
     if(!ret) *posSdmmc = sdmmc;
 
     //Add EmuNAND hooks

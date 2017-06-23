@@ -64,6 +64,7 @@ extern Result (*SendSyncRequest)(Handle handle);
 extern Result (*OpenProcess)(Handle *out, u32 processId);
 extern Result (*GetProcessId)(u32 *out, Handle process);
 extern Result (*DebugActiveProcess)(Handle *out, u32 processId);
+extern Result (*UnmapProcessMemory)(Handle processHandle, void *dst, u32 size);
 extern Result (*KernelSetState)(u32 type, u32 varg1, u32 varg2, u32 varg3);
 
 extern void (*flushDataCacheRange)(void *addr, u32 len);
@@ -76,11 +77,9 @@ extern bool (*kernelToUsrMemcpy8)(void *dst, const void *src, u32 len);
 extern bool (*kernelToUsrMemcpy32)(u32 *dst, const u32 *src, u32 len);
 extern s32 (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
-extern Result (*CustomBackdoor)(void *function, ...);
-
 extern void (*svcFallbackHandler)(u8 svcId);
 extern void (*kernelpanic)(void);
-extern void (*PostprocessSvc)(void);
+extern void (*officialPostProcessSvc)(void);
 
 extern Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
 
@@ -90,11 +89,23 @@ extern u32 *exceptionStackTop;
 extern u32 TTBCR;
 extern u32 L1MMUTableAddrs[4];
 
-extern u32 kernelVersion;
 extern void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
 
 extern bool *isDevUnit;
 
+extern vu8 *configPage;
+extern u32 kernelVersion;
+extern FcramLayout fcramLayout;
+
+extern KCoreContext *coreCtxs;
+
+extern void *originalHandlers[8];
+extern u32 nbSection0Modules;
+
+extern u8 __start__[], __end__[], __bss_start__[], __bss_end__[];
+
+extern Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,
+                                                u32 coreID, u32 priority, bool disableUponReceipt, bool levelHighActive);
 extern InterruptManager *interruptManager;
 extern KBaseInterruptEvent *customInterruptEvent;
 
@@ -102,7 +113,7 @@ extern void (*initFPU)(void);
 extern void (*mcuReboot)(void);
 extern void (*coreBarrier)(void);
 
-typedef struct PACKED CfwInfo
+typedef struct CfwInfo
 {
     char magic[4];
 
@@ -113,10 +124,13 @@ typedef struct PACKED CfwInfo
 
     u32 commitHash;
 
-    u32 config;
+    u16 configFormatVersionMajor, configFormatVersionMinor;
+    u32 config, multiConfig, bootConfig;
+    u64 hbldr3dsxTitleId;
+    u32 rosalinaMenuCombo;
 } CfwInfo;
 
 extern CfwInfo cfwInfo;
 
-extern u32 rosalinaState;
-extern bool hasStartedRosalinaNetworkFuncsOnce; 
+extern vu32 rosalinaState;
+extern bool hasStartedRosalinaNetworkFuncsOnce;

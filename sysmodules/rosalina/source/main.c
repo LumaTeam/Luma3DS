@@ -33,8 +33,8 @@
 #include "hbloader.h"
 #include "utils.h"
 #include "MyThread.h"
-#include "kernel_extension_setup.h"
 #include "menus/process_patches.h"
+#include "menus/miscellaneous.h"
 
 // this is called before main
 bool isN3DS;
@@ -42,10 +42,8 @@ void __appInit()
 {
     srvSysInit();
     fsregInit();
-    fsSysInit();
 
-    s64 dummy;
-    isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
+    fsSysInit();
 }
 
 // this is called after main exits
@@ -67,7 +65,7 @@ void __ctru_exit()
     __appExit();
     __sync_fini();
     __libc_fini_array();
-    svcSleepThread(-1LL); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
+    for(;;) svcSleepThread(0); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
     svcExitProcess();
 }
 
@@ -75,10 +73,18 @@ void __ctru_exit()
 void initSystem()
 {
     __libc_init_array();
-    
-    HBLDR_3DSX_TID = HBLDR_DEFAULT_3DSX_TID;
-    installKernelExtension();
 
+    s64 out;
+    isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
+
+    svcGetSystemInfo(&out, 0x10000, 0x100);
+    HBLDR_3DSX_TID = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x101);
+    menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
+
+    miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
+                                                                                  "Switch the hb. title to hblauncher_loader";
     __sync_init();
     __appInit();
 }

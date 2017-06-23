@@ -223,9 +223,10 @@ Result InputRedirection_DoOrUndoPatches(void)
 
         res = svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
     }
+    svcCloseHandle(processHandle);
 
     res = OpenProcessByName("ir", &processHandle);
-    if(R_SUCCEEDED(res))
+    if(R_SUCCEEDED(res) && osGetKernelVersion() >= SYSTEM_VERSION(2, 44, 6))
     {
         svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002); // only patch .text + .data
         svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
@@ -238,6 +239,7 @@ Result InputRedirection_DoOrUndoPatches(void)
 
         if(R_SUCCEEDED(res))
         {
+            static bool useOldSyncCode;
             static u32 irOrigReadingCode[5] = {
                 0xE5940000, // ldr r0, [r4]
                 0xE1A01005, // mov r1, r5
@@ -250,7 +252,10 @@ Result InputRedirection_DoOrUndoPatches(void)
                 0xEF000024, // svc 0x24 (WaitSynchronization)
                 0xE1B01FA0, // movs r1, r0, lsr#31
                 0xE1A0A000, // mov r10, r0
-            };
+            }, irOrigWaitSyncCodeOld[] = {
+                0xE0AC6000, // adc r6, r12, r0
+                0xE5D70000, // ldrb r0, [r7]
+            }; // pattern for 8.1
 
             static const u32 irOrigCppFlagCode[] = {
                 0xE3550000, // cmp r5, #0
@@ -262,7 +267,10 @@ Result InputRedirection_DoOrUndoPatches(void)
             if(inputRedirectionEnabled)
             {
                 memcpy(irHookLoc, &irOrigReadingCode, sizeof(irOrigReadingCode));
-                memcpy(irWaitSyncLoc, &irOrigWaitSyncCode, sizeof(irOrigWaitSyncCode));
+                if(useOldSyncCode)
+                    memcpy(irWaitSyncLoc, &irOrigWaitSyncCodeOld, sizeof(irOrigWaitSyncCodeOld));
+                else
+                    memcpy(irWaitSyncLoc, &irOrigWaitSyncCode, sizeof(irOrigWaitSyncCode));
                 memcpy(irCppFlagLoc, &irOrigCppFlagCode, sizeof(irOrigCppFlagCode));
             }
             else
@@ -288,9 +296,17 @@ Result InputRedirection_DoOrUndoPatches(void)
                 u32 *off2 = (u32 *)memsearch((u8 *)0x00100000, &irOrigWaitSyncCode, totalSize, sizeof(irOrigWaitSyncCode));
                 if(off2 == NULL)
                 {
-                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
-                    return -5;
+                    off2 = (u32 *)memsearch((u8 *)0x00100000, &irOrigWaitSyncCodeOld, totalSize, sizeof(irOrigWaitSyncCodeOld));
+                    if(off2 == NULL)
+                    {
+                        svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                        return -5;
+                    }
+
+                    useOldSyncCode = true;
                 }
+                else
+                    useOldSyncCode = false;
 
                 u32 *off3 = (u32 *)memsearch((u8 *)0x00100000, &irOrigCppFlagCode, totalSize, sizeof(irOrigCppFlagCode));
                 if(off3 == NULL)
@@ -310,7 +326,7 @@ Result InputRedirection_DoOrUndoPatches(void)
 
                 memcpy(irHookLoc, &irHook, sizeof(irHook));
 
-                // This "NOP"s out a WaitSynchronisation1 (on the event bound to the 'IR' interrupt)
+                // This "NOP"s out a WaitSynchronisation1 (on the event bound to the 'IR' interrupt) or the check of a previous one
                 *irWaitSyncLoc = 0xE3A00000; // mov r0, #0
 
                 // This NOPs out a flag check in ir:user's CPP emulation
@@ -320,6 +336,7 @@ Result InputRedirection_DoOrUndoPatches(void)
 
         res = svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
     }
+    svcCloseHandle(processHandle);
 
     return res;
 }

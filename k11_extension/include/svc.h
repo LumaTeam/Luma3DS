@@ -24,16 +24,15 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "svc/MapProcessMemoryEx.h"
+#pragma once
 
-Result UnmapProcessMemoryEx(Handle processHandle UNUSED, void *dst, u32 size)
-{
-    KProcessHwInfo *currentHwInfo = hwInfoOfProcess(currentCoreContext->objectContext.currentProcess);
+#include "types.h"
+#include "globals.h"
+#include "kernel.h"
+#include "utils.h"
 
-    Result res = KProcessHwInfo__UnmapProcessMemory(currentHwInfo, dst, size >> 12);
+extern void *officialSVCs[0x7E];
 
-    invalidateEntireInstructionCache();
-    flushEntireDataCache();
-
-    return res;
-}
+void postprocessSvc(void);
+void svcDefaultHandler(u8 svcId);
+void *svcHook(u8 *pageEnd);

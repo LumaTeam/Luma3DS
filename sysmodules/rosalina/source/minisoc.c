@@ -71,6 +71,8 @@ static u32 socContextSize = 0x60000;
 // SOCU_handle from ctrulib
 // socMemhandle from ctrulib
 
+bool miniSocEnabled = false;
+
 Result miniSocInit()
 {
     if(AtomicPostIncrement(&miniSocRefCount))
@@ -94,6 +96,7 @@ Result miniSocInit()
     if(ret != 0) goto cleanup;
 
     svcKernelSetState(0x10000, 2);
+    miniSocEnabled = true;
     return 0;
 
 cleanup:
@@ -136,7 +139,10 @@ Result miniSocExit(void)
 
     svcControlMemory(&tmp, socContextAddr, socContextAddr, socContextSize, MEMOP_FREE, MEMPERM_DONTCARE);
     if(ret == 0)
+    {
         svcKernelSetState(0x10000, 2);
+        miniSocEnabled = false;
+    }
     return ret;
 }
 

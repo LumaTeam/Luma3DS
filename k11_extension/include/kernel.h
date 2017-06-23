@@ -28,6 +28,8 @@
 
 #include "types.h"
 
+extern u32 kernelVersion;
+
 struct KMutex;
 struct KProcessO3DS;
 struct KProcessN3DS;
@@ -204,7 +206,7 @@ typedef struct PACKED ALIGN(4) KThread
   KMutexLinkedList *mutexList;
   KLinkedList mutexesUsed;
   s32 dynamicPriority;
-  u32 processor;
+  u32 coreId;
   KPreemptionTimer *preemptionTimer;
   u32 unknown_1;
   bool isAlive;
@@ -948,6 +950,7 @@ typedef struct KCoreContext
 } KCoreContext;
 
 static KCoreContext * const currentCoreContext = (KCoreContext *)0xFFFF1000;
+extern KCoreContext *coreCtxs;
 
 #define DEFINE_CONSOLE_SPECIFIC_STRUCTS(console, nbCores)
 /* 60 */
@@ -1121,10 +1124,19 @@ typedef union KCacheMaintenanceInterruptEvent
     KCacheMaintenanceInterruptEventO3DS O3DS;
 } KCacheMaintenanceInterruptEvent;
 
+typedef struct FcramLayout
+{
+  void *applicationAddr;
+  u32 applicationSize;
+  void *systemAddr;
+  u32 systemSize;
+  void *baseAddr;
+  u32 baseSize;
+} FcramLayout;
+
 extern bool isN3DS;
 extern void *officialSVCs[0x7E];
 
-extern u32 kernelVersion;
 #define KPROCESS_OFFSETOF(field) (isN3DS ? offsetof(KProcessN3DS, field) :\
 ((kernelVersion >= SYSTEM_VERSION(2, 44, 6)) ? offsetof(KProcessO3DS8x, field) :\
 offsetof(KProcessO3DSPre8x, field)))

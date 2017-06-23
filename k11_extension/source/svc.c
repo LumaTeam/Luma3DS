@@ -24,6 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
+#include "memory.h"
+#include "synchronization.h"
 #include "svc.h"
 #include "svc/ControlMemory.h"
 #include "svc/GetProcessInfo.h"
@@ -37,6 +39,7 @@
 #include "svc/SetWifiEnabled.h"
 #include "svc/Backdoor.h"
 #include "svc/KernelSetState.h"
+#include "svc/CustomBackdoor.h"
 #include "svc/MapProcessMemoryEx.h"
 #include "svc/UnmapProcessMemoryEx.h"
 #include "svc/ControlService.h"
@@ -45,24 +48,11 @@
 
 void *officialSVCs[0x7E] = {NULL};
 
-static inline void yieldDuringRosalinaMenu(void)
-{
-    KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
-
-    u64 titleId = codeSetOfProcess(currentProcess)->titleId;
-    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
-    while((rosalinaState & 1) && idOfProcess(currentProcess) >= 6 &&
-      (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))))
-        SleepThread(25 * 1000 * 1000LL); 
-}
-
 void signalSvcEntry(u8 *pageEnd)
 {
     u32 svcId = (u32) *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    yieldDuringRosalinaMenu();
-    
     if(svcId == 0xFE)
         svcId = *(u32 *)(pageEnd - 0x110 + 8 * 4); // r12 ; note: max theortical SVC atm: 0x3FFFFFFF. We don't support catching svcIds >= 0x100 atm either
 
@@ -76,8 +66,6 @@ void signalSvcReturn(u8 *pageEnd)
     u32 svcId = (u32) *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    yieldDuringRosalinaMenu();
-
     if(svcId == 0xFE)
         svcId = *(u32 *)(pageEnd - 0x110 + 8 * 4); // r12 ; note: max theortical SVC atm: 0x1FFFFFFF. We don't support catching svcIds >= 0x100 atm either
 
@@ -85,6 +73,17 @@ void signalSvcReturn(u8 *pageEnd)
     if(debugOfProcess(currentProcess) != NULL && shouldSignalSyscallDebugEvent(currentProcess, svcId))
         SignalDebugEvent(DBGEVENT_OUTPUT_STRING, 0xFFFFFFFF, svcId);
 }
+
+void postprocessSvc(void)
+{
+    KThread *currentThread = currentCoreContext->objectContext.currentThread;
+    if(!currentThread->shallTerminate && rosalinaThreadLockPredicate(currentThread))
+        rosalinaRescheduleThread(currentThread, true);
+
+    officialPostProcessSvc();
+}
+
+static bool doingVeryShittyPmResLimitWorkaround = false; // I feel dirty
 
 void *svcHook(u8 *pageEnd)
 {
@@ -97,6 +96,13 @@ void *svcHook(u8 *pageEnd)
     {
         case 0x01:
             return ControlMemoryHookWrapper;
+        case 0x17:
+            if(strcmp(codeSetOfProcess(currentProcess)->processName, "pm") == 0) // only called twice in pm, by the same function
+            {
+                *(vu32 *)(configPage + 0x44) += __end__ - __start__;
+                doingVeryShittyPmResLimitWorkaround = true;
+            }
+            return officialSVCs[0x17];
         case 0x2A:
             return GetSystemInfoHookWrapper;
         case 0x2B:
@@ -115,6 +121,13 @@ void *svcHook(u8 *pageEnd)
             return SetGpuProt;
         case 0x5A:
             return SetWifiEnabled;
+        case 0x79:
+            if(doingVeryShittyPmResLimitWorkaround)
+            {
+                *(vu32 *)(configPage + 0x44) -= __end__ - __start__;
+                doingVeryShittyPmResLimitWorkaround = false;
+            }
+            return officialSVCs[0x79];
         case 0x7B:
             return Backdoor;
         case 0x7C:

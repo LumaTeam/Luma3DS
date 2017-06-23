@@ -17,7 +17,6 @@ dir_source := source
 dir_include := include
 dir_build := build
 dir_out := ../../$(dir_build)
-dir_kernel_extension := kernel_extension
 
 LIBS := -lctru
 LIBDIRS	:= $(CTRULIB)
@@ -42,20 +41,13 @@ all: $(dir_out)/$(name).cxi
 
 .PHONY: clean
 clean:
-	@$(MAKE) -C $(dir_kernel_extension) clean
 	@rm -rf $(dir_build)
-
-.PHONY: $(dir_kernel_extension)
 
 $(dir_out)/$(name).cxi: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf rosalina.rsf -nocodepadding -o $@ -elf $<
 
 $(dir_build)/$(name).elf: $(objects)
 	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
-
-$(dir_build)/kernel_extension.bin: $(dir_kernel_extension)
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $<
 
 $(dir_build)/xml_data.h: $(xml_files)
 	@ echo "" > $(@)
@@ -66,7 +58,6 @@ $(dir_build)/xml_data.h: $(xml_files)
 	)
 $(dir_build)/gdb/xfer.o: $(dir_build)/xml_data.h
 $(dir_build)/memory.o : CFLAGS += -O3
-$(dir_build)/kernel_extension.o: $(dir_build)/kernel_extension.bin
 
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"
