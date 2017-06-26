@@ -13,3 +13,4 @@ exceptions/arm11/build
 *.d
 *.elf
 *.cxi
+.DS_Store
