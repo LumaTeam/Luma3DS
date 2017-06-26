@@ -47,8 +47,8 @@ Menu rosalinaMenu = {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
-		{ "Ignore This", METHOD, .method = &RosalineMenu_DoThing }
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+		{ "Ignore This", METHOD, .method = &RosalinaMenu_DoThing }
     }
 };
 
@@ -215,7 +215,7 @@ end:
 #undef TRY
 }
 void RosalinaMenu_DoThing(void) {
-	printf("\x1b[1;1HUhhh this does a thing, ignore me");
+	Draw_DrawString(10,10, COLOR_TITLE, "ignore this please");
 	while(!(waitInput() & BUTTON_B) && !terminationRequest);
 
 }
