@@ -839,6 +839,24 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
+    else if(progId == 0x0004013000001A02LL) //DSP
+    {
+        static const u8 pattern[] = {
+            0x20, 0x20, 0xA0, 0xE3, 0x10, 0x10, 0x80, 0xE2
+        },
+                        patch[] = {
+            0x00, 0x20, 0xA0, 0xE3
+        };
+
+        //Patch DSP signature check
+        if(!patchMemory(code, textSize,
+                pattern,
+                sizeof(pattern), 0,
+                patch,
+                sizeof(patch), 1
+            )) goto error;
+    }
+
     if(CONFIG(PATCHGAMES))
     {
         if(!loadTitleCodeSection(progId, code, size) ||
