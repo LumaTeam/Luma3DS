@@ -109,7 +109,7 @@ $(dir_out)/$(name)$(revision).7z: all
 
 $(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf $(dir_build)/k11_extension.bin
 	@mkdir -p "$(@D)"
-	@firmtool build $@ -D $^ -A 0x1FF60000 0x18000000 -C XDMA XDMA NDMA XDMA
+	@firmtool build $@ -D $^ -A 0x18180000 0x18000000 -C XDMA XDMA NDMA XDMA
 
 $(dir_build)/modules.bin: $(modules)
 	@mkdir -p "$(@D)"
