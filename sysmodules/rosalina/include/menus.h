@@ -35,3 +35,4 @@ extern Menu rosalinaMenu;
 void RosalinaMenu_TakeScreenshot(void);
 void RosalinaMenu_ShowCredits(void);
 void RosalinaMenu_ProcessList(void);
+void RosalinaMenu_DoThing(void);
