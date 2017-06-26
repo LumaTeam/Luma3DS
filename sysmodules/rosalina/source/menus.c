@@ -39,7 +39,7 @@
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 7,
+    .nbItems = 8,
     {
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Process patches menu...", MENU, .menu = &processPatchesMenu },
@@ -48,6 +48,7 @@ Menu rosalinaMenu = {
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+		{ "Ignore This", METHOD, .method = &RosalineMenu_DoThing }
     }
 };
 
@@ -212,4 +213,9 @@ end:
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 
 #undef TRY
+}
+void RosalinaMenu_DoThing(void) {
+	printf("\x1b[1;1HUhhh this does a thing, ignore me");
+	while(!(waitInput() & BUTTON_B) && !terminationRequest);
+
 }
