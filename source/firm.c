@@ -263,7 +263,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
     //3) Read or copy the modules
     u8 *dst = firm->section[0].address;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
-    for(u32 i = 0, dstModuleSize, maxModuleSize = firmType == NATIVE_FIRM ? 0x60000 : 0x600000; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
+    for(u32 i = 0, dstModuleSize, maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
         if(loadFromStorage)
         {
