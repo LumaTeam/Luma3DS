@@ -363,13 +363,13 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
                         case STOPPOINT_WATCHPOINT:
                         {
-                            const char *kinds = "arwa";
+                            const char *kinds[] = { "", "r", "", "a" };
                             WatchpointKind kind = GDB_GetWatchpointKind(ctx, exc.stop_point.fault_information);
                             if(kind == WATCHPOINT_DISABLED)
                                 GDB_SendDebugString(ctx, "Warning: unknown watchpoint encountered!\n");
 
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%s%cwatch:%08x;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
+                            return GDB_SendFormattedPacket(ctx, "%s%swatch:%08x;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
                             break;
                         }
 
