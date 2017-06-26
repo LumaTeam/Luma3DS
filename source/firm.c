@@ -331,7 +331,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         ret = 0;
 
     //Skip on FIRMs < 4.0
-    if(!ISN3DS || firmVersion >= 0x1D)
+    if(ISN3DS || firmVersion >= 0x1D)
     {
         ret += installK11Extension(arm11Section1, firm->section[1].size, isSafeMode, baseK11VA, arm11ExceptionsPage, &freeK11Space);
         ret += patchKernel11(arm11Section1, firm->section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage);
