@@ -60,10 +60,10 @@
 #define SPACING_Y 11
 #define SPACING_X 6
 
-#define COLOR_TITLE RGB565(0x00, 0x26, 0x1F)
-#define COLOR_WHITE RGB565(0x1F, 0x3F, 0x1F)
+#define COLOR_TITLE RGB565(0x75, 0x44, 0x64) //Pink, just haven't changed variable label yet 754464
+#define COLOR_WHITE RGB565(0x59, 0x5a, 0x5b) //Grey, just haven't changed variable label yet 595a5b
 #define COLOR_RED   RGB565(0x1F, 0x00, 0x00)
-#define COLOR_BLACK RGB565(0x00, 0x00, 0x00)
+#define COLOR_BLACK RGB565(0x00, 0x54, 0xdb) //Blue, just haven't changed variable label yet 0054db
 
 #define DRAW_MAX_FORMATTED_STRING_SIZE  512
 
