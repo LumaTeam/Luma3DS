@@ -603,7 +603,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 0x01, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1
             };
 
-            //Patch SMDH region checks
+            //Patch SMDH region check
             if(!patchMemory(code, textSize,
                     pattern,
                     sizeof(pattern), -31,
@@ -612,6 +612,21 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 )) goto error;
         }
 
+        //Patch SMDH region check for manuals
+        u32 i;
+        for(i = 4; i < size; i += 4)
+        {
+            u32 *code32 = (u32 *)(code + i);
+            if(code32[1] == 0xE1A0000D && (*code32 & 0xFFFFFF00) == 0x0A000000 && (code32[-1] & 0xFFFFFF00) == 0xE1110000)
+                {
+                    *code32 = 0xE320F000;
+                    break;
+                }
+        }
+
+        if(i == size) goto error;
+
+        //Patch DS flashcart whitelist check
         static const u8 pattern[] = {
             0x10, 0xD1, 0xE5, 0x08, 0x00, 0x8D
         };
@@ -830,7 +845,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x00, 0x00, 0x00
         };
 
-        //Patch DLP region checks
+        //Patch DLP region check
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
