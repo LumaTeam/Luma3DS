@@ -145,6 +145,8 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
         if(!firmSize) error("Unable to decrypt the external FIRM.");
     }
 
+    if(!checkFirm(firmSize)) error("The external FIRM is invalid or corrupted.");
+
     return firmSize;
 }
 
@@ -155,7 +157,13 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
     if(firmVersion == 0xFFFFFFFF) error("Failed to get the CTRNAND FIRM.");
 
-    if(!ISN3DS && *firmType == NATIVE_FIRM && !ISDEVUNIT && firmVersion < 0x18)
+    u32 firmSize = decryptExeFs((Cxi *)firm);
+
+    if(!firmSize) error("Failed to decrypt the CTRNAND FIRM.");
+
+    if(!checkFirm(firmSize)) error("The CTRNAND FIRM is invalid or corrupted.");
+
+    if(!ISN3DS && *firmType == NATIVE_FIRM && firm->section[0].address == (u8 *)0x1FF80000)
     {
         //We can't boot < 3.x EmuNANDs
         if(nandType != FIRMWARE_SYSNAND) error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
@@ -166,7 +174,6 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
     }
 
     bool loadedFromStorage = false;
-    u32 firmSize;
 
     if(loadFromStorage)
     {
@@ -179,19 +186,44 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
         }
     }
 
-    if(!loadedFromStorage)
-    {
-        firmSize = decryptExeFs((Cxi *)firm);
-        if(!firmSize) error("Unable to decrypt the CTRNAND FIRM.");
-    }
-
-    if(!checkFirm(firmSize)) error("The %s FIRM is invalid or corrupted.", loadedFromStorage ? "external" : "CTRNAND");
-
     //Check that the FIRM is right for the console from the ARM9 section address
     if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
         error("The %s FIRM is not for this console.", loadedFromStorage ? "external" : "CTRNAND");
 
-    return loadedFromStorage || ISDEVUNIT ? 0xFFFFFFFF : firmVersion;
+    if(loadedFromStorage || ISDEVUNIT)
+    {
+        firmVersion = 0xFFFFFFFF;
+
+        if(!ISN3DS && *firmType == NATIVE_FIRM)
+        {
+            __attribute__((aligned(4))) static const u8 hashes[3][0x20] = {
+                {0x39, 0x75, 0xB5, 0x28, 0x24, 0x5E, 0x8B, 0x56, 0xBC, 0x83, 0x79, 0x41, 0x09, 0x2C, 0x42, 0xE6,
+                 0x26, 0xB6, 0x80, 0x59, 0xA5, 0x56, 0xF9, 0xF9, 0x6E, 0xF3, 0x63, 0x05, 0x58, 0xDF, 0x35, 0xEF},
+                {0x81, 0x9E, 0x71, 0x58, 0xE5, 0x44, 0x73, 0xF7, 0x48, 0x78, 0x7C, 0xEF, 0x5E, 0x30, 0xE2, 0x28,
+                 0x78, 0x0B, 0x21, 0x23, 0x94, 0x63, 0xE8, 0x4E, 0x06, 0xBB, 0xD6, 0x8D, 0xA0, 0x99, 0xAE, 0x98},
+                {0x1D, 0xD5, 0xB0, 0xC2, 0xD9, 0x4A, 0x4A, 0xF3, 0x23, 0xDD, 0x2F, 0x65, 0x21, 0x95, 0x9B, 0x7E,
+                 0xF2, 0x71, 0x7E, 0xB6, 0x7A, 0x3A, 0x74, 0x78, 0x0D, 0xE3, 0xB5, 0x0C, 0x2B, 0x7F, 0x85, 0x37}
+            };
+
+            u32 i;
+            for(i = 0; i < 3; i++) if(memcmp(firm->section[1].hash, hashes[i], 0x20) == 0) break;
+
+            switch(i)
+            {
+                case 0:
+                    firmVersion = 0x18;
+                    break;
+                case 1:
+                    firmVersion = 0x1D;
+                    break;
+                case 2:
+                    firmVersion = 0x1F;
+                    break;
+            }
+        }
+    }
+
+    return firmVersion;
 }
 
 void loadHomebrewFirm(u32 pressed)
@@ -411,14 +443,14 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 
     if(loadFromStorage)
     {
-        mergeSection0(TWL_FIRM, firmVersion, true);
+        mergeSection0(TWL_FIRM, 0, true);
         firm->section[0].size = 0;
     }
 
     return ret;
 }
 
-u32 patchAgbFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
+u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
@@ -445,7 +477,7 @@ u32 patchAgbFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 
     if(loadFromStorage)
     {
-        mergeSection0(AGB_FIRM, firmVersion, true);
+        mergeSection0(AGB_FIRM, 0, true);
         firm->section[0].size = 0;
     }
 

@@ -299,7 +299,7 @@ boot:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
+            res = patchAgbFirm(loadFromStorage, doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
