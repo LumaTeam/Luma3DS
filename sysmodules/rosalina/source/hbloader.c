@@ -36,7 +36,7 @@
 
 #define MAP_BASE 0x10000000
 
-static const char serviceList[32][8] =
+static const char serviceList[33][8] =
 {
     "APT:U",
     "ac:u",
@@ -57,6 +57,7 @@ static const char serviceList[32][8] =
     "ir:u",
     "ldr:ro",
     "mic:u",
+    "nfc:u",
     "ndm:u",
     "news:s",
     "nim:s",
@@ -91,6 +92,7 @@ static const u64 dependencyList[] =
     0x0004013000003302LL, //ir
     0x0004013000001F02LL, //mcu
     0x0004013000002002LL, //mic
+    0x0004013000004002LL, //nfc
     0x0004013000002B02LL, //ndm
     0x0004013000003502LL, //news
     0x0004013000002C02LL, //nim
