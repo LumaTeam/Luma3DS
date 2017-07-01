@@ -145,7 +145,7 @@ $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configura
 $(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_MINOR="$(version_minor)"\
 						-DVERSION_BUILD="$(version_build)" -DISRELEASE="$(is_release)" -DCOMMIT_HASH="0x$(commit)"
 $(dir_build)/firm.o: $(dir_build)/modules.bin
-$(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell wc -c build/modules.bin | tr -d [:space:][:alpha:][:punct:])"
+$(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell wc -c $(dir_build)/modules.bin | tr -d [:space:][:alpha:][:punct:])"
 
 $(dir_build)/bundled.h: $(bundled)
 	@$(foreach f, $(bundled),\
