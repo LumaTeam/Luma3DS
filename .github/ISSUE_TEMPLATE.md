@@ -26,7 +26,7 @@
 
 **Luma3DS version:**
 
-[e.g. 7.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
+[e.g. 8.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
 <!--You can check which version you're on in System Settings. It will be on the bottom right of the top screen.-->
 
 
