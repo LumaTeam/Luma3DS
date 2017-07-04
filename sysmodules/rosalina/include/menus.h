@@ -34,4 +34,5 @@ extern Menu rosalinaMenu;
 
 void RosalinaMenu_TakeScreenshot(void);
 void RosalinaMenu_ShowCredits(void);
+void RosaPowerOff(void);
 void RosalinaMenu_ProcessList(void);

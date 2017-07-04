@@ -33,8 +33,22 @@
 
 #include "types.h"
 
-#define SPACING_Y 10
 #define SPACING_X 8
+#if defined FONT_6X10
+#define SPACING_Y 10
+#elif defined FONT_ACORN
+#define SPACING_Y 10
+#elif defined FONT_GB
+#define SPACING_Y 10
+#elif defined FONT_PEARL
+#define SPACING_Y 10
+#elif defined FONT_LL
+#define SPACING_Y 12
+#elif defined FONT_LS
+#define SPACING_Y 12
+#else
+#define SPACING_Y 10 // if nothing is selected
+#endif 
 
 #define COLOR_TITLE  0xFF9900
 #define COLOR_WHITE  0xFFFFFF

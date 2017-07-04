@@ -66,11 +66,11 @@ void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char charact
 {
     u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
 
-    for(u32 y = 0; y < 8; y++)
+    for(u32 y = 0; y < FONT_HEIGHT; y++)
     {
-        char charPos = font[character * 8 + y];
+        char charPos = font[character * FONT_HEIGHT + y];
 
-        for(u32 x = 0; x < 8; x++)
+        for(u32 x = 0; x < FONT_WIDTH; x++)
             if(((charPos >> (7 - x)) & 1) == 1)
             {
                 u32 screenPos = (posX * SCREEN_HEIGHT * 3 + (SCREEN_HEIGHT - y - posY - 1) * 3) + x * 3 * SCREEN_HEIGHT;
