@@ -30,4 +30,4 @@
 #include "kernel.h"
 #include "svc.h"
 
-void SetWifiEnabled(bool enable);
+Result SetWifiEnabled(bool enable);

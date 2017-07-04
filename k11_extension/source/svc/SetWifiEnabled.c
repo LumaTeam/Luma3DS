@@ -26,10 +26,12 @@
 
 #include "svc/SetWifiEnabled.h"
 
-void SetWifiEnabled(bool enable)
+Result SetWifiEnabled(bool enable)
 {
     if(enable)
         CFG11_WIFICNT |= 1;
     else
         CFG11_WIFICNT &= ~1;
+
+    return 0;
 }

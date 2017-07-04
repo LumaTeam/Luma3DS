@@ -74,10 +74,10 @@ _start:
             ; Skip a slash if there are two after the mountpoint,
             ; as some games mistakenly have those
             ldrh    r3, [r1, #2]
-            cmp r3, #0x2F ; '/'
+            cmp     r3, #0x2F ; '/'
             pathRedir_3:
                 ldrh    r2, [r1], #2
-                strneh    r2, [r0], #2
+                strneh  r2, [r0], #2
                 cmp     r2, #0
                 bne     pathRedir_3
             ldmfd   sp!, {r0-r3}
