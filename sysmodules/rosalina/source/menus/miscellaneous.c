@@ -37,12 +37,13 @@
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 6,
+    .nbItems = 7,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
+        { "Toggle Wireless", METHOD, .method = &MiscellaneousMenu_ToggleWireless },
         { "Power off", METHOD, .method = &MiscellaneousMenu_PowerOff },
         { "Reboot", METHOD, .method = &MiscellaneousMenu_Reboot },
     }
@@ -333,6 +334,39 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_Unlock();
     }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void MiscellaneousMenu_ToggleWireless(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+        Draw_DrawString(10, 40, COLOR_WHITE, "Current status:");
+
+        u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+        Draw_DrawString(100, 40, (wireless ? COLOR_GREEN : COLOR_RED), (wireless ? " ON " : " OFF"));
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            nwmExtInit();
+            NWMEXT_ControlWirelessEnabled(!wireless);
+            nwmExtExit();
+        }
+        else if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
 }
 
 void MiscellaneousMenu_Reboot(void)
