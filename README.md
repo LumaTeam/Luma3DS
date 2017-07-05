@@ -3,13 +3,14 @@
 
 ## What it is
 
-**Luma3DS-H** is a fork of [**Luma3DS**](https://github.com/AuroraWright/Luma3DS) that aims to be as hidden as possible.
+**Luma3DS-H** is a fork of [**Luma3DS**](https://github.com/AuroraWright/Luma3DS) that aims to be as hidden as possible
 
 
-## What's the difference ?
+## What\'s the difference ?
 
 **Luma3DS-H** does not allow access to Rosalina, the configuration menu and the chainloader making it hidden from plain view.
 For now **Luma3DS-H** still uses the config file so its advised to remove it
+
 ---
 
 ## Credits
