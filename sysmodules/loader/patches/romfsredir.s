@@ -64,17 +64,20 @@ _start:
             load    r3, customPath
             pathRedir_1:
                 ldrb    r2, [r3], #1
-                strh    r2, [r0], #2
                 cmp     r2, #0
+                strneh  r2, [r0], #2
                 bne     pathRedir_1
-            sub     r0, r0, #2
             pathRedir_2:
                 ldrh    r2, [r1], #2
                 cmp     r2, #0x3A ; ':'
                 bne     pathRedir_2
+            ; Skip a slash if there are two after the mountpoint,
+            ; as some games mistakenly have those
+            ldrh    r3, [r1, #2]
+            cmp     r3, #0x2F ; '/'
             pathRedir_3:
                 ldrh    r2, [r1], #2
-                strh    r2, [r0], #2
+                strneh  r2, [r0], #2
                 cmp     r2, #0
                 bne     pathRedir_3
             ldmfd   sp!, {r0-r3}

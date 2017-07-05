@@ -157,8 +157,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "for specific games.\n\n"
                                           "Also makes certain DLCs\n"
                                           "for out-of-region games work.\n\n"
-                                          "Enabling this requires the\n"
-                                          "archive patch to be applied.\n\n"
                                           "Refer to the wiki for instructions.",
 
                                           "Enable showing the current NAND/FIRM:\n\n"

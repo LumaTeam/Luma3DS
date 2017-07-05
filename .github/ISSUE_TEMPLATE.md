@@ -26,7 +26,7 @@
 
 **Luma3DS version:**
 
-[e.g. 7.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
+[e.g. 8.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
 <!--You can check which version you're on in System Settings. It will be on the bottom right of the top screen.-->
 
 
@@ -53,8 +53,6 @@ Enable loading external FIRMs and modules: ( )
 <!--Firmware (.bin) files are not required by Luma, or NTR CFW anymore.
 -- If you're having issues with this option enabled try deleting them from the luma folder on the root of the SD card and disabling this option.-->
 
-Use custom path: ( )
-
 Enable game patching: ( )
 
 Show NAND or user string in System Settings: ( )
@@ -64,6 +62,8 @@ Show GBA boot screen in patched AGB_FIRM: ( )
 Patch ARM9 access: ( )
 
 Set developer UNITINFO: ( )
+
+Disable ARM11 exception handlers: ( )
 
 --
 

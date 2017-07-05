@@ -27,6 +27,7 @@
 #include <3ds.h>
 #include "menus/miscellaneous.h"
 #include "input_redirection.h"
+#include "mcu.h"
 #include "memory.h"
 #include "draw.h"
 #include "hbloader.h"
@@ -37,13 +38,15 @@
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 6,
+    .nbItems = 8,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
-        { "Power off", METHOD, .method = &MiscellaneousMenu_PowerOff },
+        { "Toggle LEDs", METHOD, .method = &MiscellaneousMenu_ToggleLEDs },
+        { "Toggle Wireless", METHOD, .method = &MiscellaneousMenu_ToggleWireless },
+        { "Power Off", METHOD, .method = &MiscellaneousMenu_PowerOff },
         { "Reboot", METHOD, .method = &MiscellaneousMenu_Reboot },
     }
 };
@@ -129,6 +132,7 @@ static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
 
     out[-1] = 0;
 }
+
 void MiscellaneousMenu_ChangeMenuCombo(void)
 {
     char comboStrOrig[64], comboStr[64];
@@ -333,6 +337,73 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_Unlock();
     }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void MiscellaneousMenu_ToggleLEDs(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+        Draw_DrawString(10, 40, COLOR_RED, "NOTE: Entering sleep mode will reset the LED state!");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            mcuInit();
+            u8 result;
+            mcuGetLEDState(&result);
+            u8 value = ~result;
+            mcuWriteRegister(40, &value, 1);
+            mcuExit();
+        }
+        else if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
+}
+
+void MiscellaneousMenu_ToggleWireless(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+        Draw_DrawString(10, 40, COLOR_WHITE, "Current status:");
+
+        u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+        Draw_DrawString(100, 40, (wireless ? COLOR_GREEN : COLOR_RED), (wireless ? " ON " : " OFF"));
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            nwmExtInit();
+            NWMEXT_ControlWirelessEnabled(!wireless);
+            nwmExtExit();
+        }
+        else if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
 }
 
 void MiscellaneousMenu_Reboot(void)
