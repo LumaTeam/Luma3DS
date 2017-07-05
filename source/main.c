@@ -176,14 +176,6 @@ void main(int argc, char **argv, u32 magicWord)
     //If no configuration file exists or SELECT is held, load configuration menu
     bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
 
-    if(shouldLoadConfigMenu)
-    {
-        configMenu(pinExists, pinMode);
-
-        //Update pressed buttons
-        pressed = HID_PAD;
-    }
-
     if(!CFG_BOOTENV && pressed == SAFE_MODE)
     {
         nandType = FIRMWARE_SYSNAND;
@@ -205,11 +197,6 @@ void main(int argc, char **argv, u32 magicWord)
 
     if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
-    if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
-    {
-        loadHomebrewFirm(0);
-        pressed = HID_PAD;
-    }
     else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
             ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 

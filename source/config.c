@@ -155,8 +155,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         singleOptions[i].enabled = CONFIG(i);
 
-    initScreens();
-
     //Character to display a selected option
     char selected = 'x';
 
