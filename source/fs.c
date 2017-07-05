@@ -193,7 +193,8 @@ bool payloadMenu(char *path)
         initScreens();
 
         drawString(true, 10, 10, COLOR_TITLE, "Luma3DS chainloader");
-        drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
+        drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Rosalina-less version");	
+        drawString(true, 10, 20 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
 
         for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
         {

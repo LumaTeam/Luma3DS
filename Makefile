@@ -10,7 +10,7 @@ endif
 
 include $(DEVKITARM)/base_tools
 
-name := Luma3DS
+name := Luma3DS-R
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/')
 version_major := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f1 -d.)
 version_minor := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f2 -d.)
@@ -46,7 +46,6 @@ dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_k11_extension := k11_extension
 dir_sysmodules := sysmodules
 dir_loader := $(dir_sysmodules)/loader
-dir_rosalina := $(dir_sysmodules)/rosalina
 dir_build := build
 dir_out := out
 
@@ -59,8 +58,6 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o
-
-modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
@@ -82,7 +79,6 @@ clean:
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_k11_extension) clean
 	@$(MAKE) -C $(dir_loader) clean
-	@$(MAKE) -C $(dir_rosalina) clean
 	@rm -rf $(dir_out) $(dir_build)
 
 .PRECIOUS: $(dir_build)/%.bin
@@ -92,7 +88,6 @@ clean:
 .PHONY: $(dir_arm9_exceptions)
 .PHONY: $(dir_k11_extension)
 .PHONY: $(dir_loader)
-.PHONY: $(dir_rosalina)
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
@@ -118,10 +113,6 @@ $(dir_build)/k11_extension.bin: $(dir_k11_extension)
 	@$(MAKE) -C $<
 
 $(dir_build)/loader.cxi: $(dir_loader)
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $<
-
-$(dir_build)/rosalina.cxi: $(dir_rosalina)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
