@@ -233,9 +233,6 @@ void loadHomebrewFirm(u32 pressed)
 
     if(!found) return;
 
-    u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm),
-        payloadSize = fileRead(firm, path, maxPayloadSize);
-
     char absPath[24 + 255];
 
     if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);

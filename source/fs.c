@@ -121,40 +121,12 @@ void fileDelete(const char *path)
     f_unlink(path);
 }
 
-bool findPayload(char *path, u32 pressed)
+bool findPayload()
 {
-    const char *pattern;
-
-    if(pressed & BUTTON_LEFT) pattern = PATTERN("left");
-    else if(pressed & BUTTON_RIGHT) pattern = PATTERN("right");
-    else if(pressed & BUTTON_UP) pattern = PATTERN("up");
-    else if(pressed & BUTTON_DOWN) pattern = PATTERN("down");
-    else if(pressed & BUTTON_START) pattern = PATTERN("start");
-    else if(pressed & BUTTON_B) pattern = PATTERN("b");
-    else if(pressed & BUTTON_X) pattern = PATTERN("x");
-    else if(pressed & BUTTON_Y) pattern = PATTERN("y");
-    else if(pressed & BUTTON_R1) pattern = PATTERN("r");
-    else if(pressed & BUTTON_A) pattern = PATTERN("a");
-    else pattern = PATTERN("select");
-
-    DIR dir;
-    FILINFO info;
-    FRESULT result;
-
-    result = f_findfirst(&dir, &info, "payloads", pattern);
-
-    if(result != FR_OK) return false;
-
-    f_closedir(&dir);
-
-    if(!info.fname[0]) return false;
-
-    sprintf(path, "payloads/%s", info.fname);
-
-    return true;
+    return false;
 }
 
-bool payloadMenu(char *path)
+bool payloadMenu()
 {
     DIR dir;
 
@@ -184,9 +156,6 @@ bool payloadMenu(char *path)
     f_closedir(&dir);
 
     if(!payloadNum) return false;
-
-    u32 pressed = 0,
-        selectedPayload = 0;
 
     return false;
 }

@@ -78,39 +78,7 @@ void writeConfig(bool isConfigOptions)
 
 void configMenu(bool oldPinStatus, u32 oldPinMode)
 {
-    const char *multiOptionsText[]  = { "Boot Error",
-                                        "",
-										"Do not hold any button when booting",
-										"",
-										"",
-                                      };
 
-    const char *singleOptionsText[] = { "",
-	                                    "",
-										"",
-										"",
-										"",
-										"",
-										"",
-										"",
-										""
-                                      };
-
-    const char *optionsDescription[]  = { "",
-	                                      "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  "",
-										  ""
-                                      };
 
     struct multiOption {
         u32 posXs[4];
@@ -143,11 +111,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
     u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
-        singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption),
-        totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption,
-        singleSelected;
-    bool isMultiOption = false;
+        singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption);
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
@@ -166,28 +130,13 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         if(!multiOptions[i].visible) continue;
 
         multiOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(true, 10, multiOptions[i].posY, COLOR_WHITE, multiOptionsText[i]);
+        endPos = 0;
         drawCharacter(true, 10 + multiOptions[i].posXs[multiOptions[i].enabled] * SPACING_X, multiOptions[i].posY, COLOR_WHITE, selected);
     }
 
     endPos += SPACING_Y / 2;
 
     //Display all the normal options in white except for the first one
-    for(u32 i = 0, color = COLOR_RED; i < singleOptionsAmount; i++)
-    {
-        if(!singleOptions[i].visible) continue;
-
-        singleOptions[i].posY = endPos + SPACING_Y;
-        endPos = drawString(true, 10, singleOptions[i].posY, color, singleOptionsText[i]);
-        if(singleOptions[i].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[i].posY, color, selected);
-
-        if(color == COLOR_RED)
-        {
-            singleSelected = i;
-            selectedOption = i + multiOptionsAmount;
-            color = COLOR_WHITE;
-        }
-    }
 
 
     //Parse and write the new configuration
