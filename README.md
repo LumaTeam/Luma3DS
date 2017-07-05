@@ -7,7 +7,7 @@
 
 ---
 
-##Credits
+## Credits
 
 https://github.com/Jan200101/Luma3DS-Hidden/wiki/Credits
 
