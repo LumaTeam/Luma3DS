@@ -205,13 +205,15 @@ void main(int argc, char **argv, u32 magicWord)
 
     if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
+    bool autoBootEmu = CONFIG(AUTOBOOTEMU);
+
     if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
         loadHomebrewFirm(0);
         pressed = HID_PAD;
     }
-    else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
+    else if ((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
+             (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
     if(splashMode == 2) loadSplash();
 
@@ -235,7 +237,7 @@ void main(int argc, char **argv, u32 magicWord)
 
     /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
        with their own FIRM */
-    else firmSource = nandType = (CONFIG(AUTOBOOTEMU) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
+    else firmSource = nandType = (autoBootEmu == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
 
     //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
     if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
