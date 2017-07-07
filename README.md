@@ -9,9 +9,7 @@
 ## What\'s the difference ?
 
 **Luma3DS-H** does not allow access to Rosalina, the configuration menu and the chainloader making it hidden from plain view.
-For now **Luma3DS-H** still uses the config file so its advised to remove it
-
-## Boot\9Strap\-Hidden
+For now **Luma3DS-H** still uses the config file so its advised to remove it before using this.
 
 [**boot9strap-hidden**](https://github.com/T3CHNOLOG1C/boot9strap-hidde) is suggested when using **Luma3DS-H**
 ---
