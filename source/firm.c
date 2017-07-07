@@ -233,11 +233,6 @@ void loadHomebrewFirm(u32 pressed)
 
     if(!found) return;
 
-    u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm),
-        payloadSize = fileRead(firm, path, maxPayloadSize);
-
-    if(payloadSize <= 0x200 || !checkFirm(payloadSize)) error("The payload is invalid or corrupted.");
-
     char absPath[24 + 255];
 
     if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);
