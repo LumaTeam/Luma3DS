@@ -28,6 +28,7 @@
 #include "menu.h"
 #include "draw.h"
 #include "fmt.h"
+#include "mcu.h"
 #include "memory.h"
 #include "ifile.h"
 #include "menus.h"
@@ -125,11 +126,10 @@ u32 waitCombo(void)
 
 static Result _MCUHWC_GetBatteryLevel(u8 *out)
 {
-    #define TRY(expr) if(R_FAILED(res = (expr))) { svcCloseHandle(mcuhwcHandle); return res; }
+    #define TRY(expr) if(R_FAILED(res = (expr))) { mcuExit(); return res; }
     Result res;
-    Handle mcuhwcHandle;
 
-    TRY(srvGetServiceHandle(&mcuhwcHandle, "mcu::HWC"));
+    TRY(mcuInit());
 
     u32 *cmdbuf = getThreadCommandBuffer();
     cmdbuf[0] = 0x50000;
