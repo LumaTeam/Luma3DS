@@ -96,6 +96,9 @@ void initScreens(void)
 
     if(needToSetup)
     {
+        memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
+        invokeArm11Function(SETUP_FRAMEBUFFERS);
+
         if(!ARESCREENSINITIALIZED)
         {
             *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
@@ -106,8 +109,6 @@ void initScreens(void)
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
-        memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
-        invokeArm11Function(SETUP_FRAMEBUFFERS);
         clearScreens(true);
         needToSetup = false;
     }
