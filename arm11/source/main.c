@@ -37,7 +37,7 @@ extern u32 prepareForFirmlaunchSize;
 
 extern volatile Arm11Operation operation;
 
-static void initScreens(u32 brightnessLevel, struct fb *fbs)
+static void initScreens(u32 brightnessLevel)
 {
     *(vu32 *)0x10141200 = 0x1007F;
     *(vu32 *)0x10202014 = 0x00000001;
@@ -70,13 +70,9 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     *(vu32 *)0x1040045C = 0x00f00190;
     *(vu32 *)0x10400460 = 0x01c100d1;
     *(vu32 *)0x10400464 = 0x01920002;
-    *(vu32 *)0x10400468 = (u32)fbs[0].top_left;
-    *(vu32 *)0x1040046C = (u32)fbs[1].top_left;
     *(vu32 *)0x10400470 = 0x80341;
     *(vu32 *)0x10400474 = 0x00010501;
     *(vu32 *)0x10400478 = 0;
-    *(vu32 *)0x10400494 = (u32)fbs[0].top_right;
-    *(vu32 *)0x10400498 = (u32)fbs[1].top_right;
     *(vu32 *)0x10400490 = 0x000002D0;
     *(vu32 *)0x1040049C = 0x00000000;
 
@@ -107,8 +103,6 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     *(vu32 *)0x1040055C = 0x00f00140;
     *(vu32 *)0x10400560 = 0x01c100d1;
     *(vu32 *)0x10400564 = 0x01920052;
-    *(vu32 *)0x10400568 = (u32)fbs[0].bottom;
-    *(vu32 *)0x1040056C = (u32)fbs[1].bottom;
     *(vu32 *)0x10400570 = 0x80301;
     *(vu32 *)0x10400574 = 0x00010501;
     *(vu32 *)0x10400578 = 0;
@@ -118,6 +112,16 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     //Disco register
     for(u32 i = 0; i < 256; i++)
         *(vu32 *)0x10400584 = 0x10101 * i;
+}
+
+static void setupFramebuffers(struct fb *fbs)
+{
+    *(vu32 *)0x10400468 = (u32)fbs[0].top_left;
+    *(vu32 *)0x1040046c = (u32)fbs[1].top_left;
+    *(vu32 *)0x10400494 = (u32)fbs[0].top_right;
+    *(vu32 *)0x10400498 = (u32)fbs[1].top_right;
+    *(vu32 *)0x10400568 = (u32)fbs[0].bottom;
+    *(vu32 *)0x1040056c = (u32)fbs[1].bottom;
 }
 
 static void clearScreens(struct fb *fb)
@@ -173,7 +177,10 @@ void main(void)
             case ARM11_READY:
                 continue;
             case INIT_SCREENS:
-                initScreens(*(vu32 *)ARM11_PARAMETERS_ADDRESS, (struct fb *)(ARM11_PARAMETERS_ADDRESS + 4));
+                initScreens(*(vu32 *)ARM11_PARAMETERS_ADDRESS);
+                break;
+            case SETUP_FRAMEBUFFERS:
+                setupFramebuffers((struct fb *)ARM11_PARAMETERS_ADDRESS);
                 break;
             case CLEAR_SCREENS:
                 clearScreens((struct fb *)ARM11_PARAMETERS_ADDRESS);

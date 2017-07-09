@@ -49,7 +49,6 @@ bool loadSplash(void)
     if(!isTopSplashValid && !isBottomSplashValid) return false;
 
     initScreens();
-    clearScreens(true);
 
     if(isTopSplashValid) isTopSplashValid = fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE) == SCREEN_TOP_FBSIZE;
     if(isBottomSplashValid) isBottomSplashValid = fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;

@@ -99,7 +99,6 @@ void initScreens(void)
         if(!ARESCREENSINITIALIZED)
         {
             *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
-            memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
             invokeArm11Function(INIT_SCREENS);
 
             //Turn on backlight
@@ -107,10 +106,12 @@ void initScreens(void)
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
+        memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
+        invokeArm11Function(SETUP_FRAMEBUFFERS);
+        clearScreens(true);
         needToSetup = false;
     }
 
     clearScreens(false);
-    clearScreens(true);
     swapFramebuffers(false);
 }

@@ -54,6 +54,7 @@ struct fb {
 typedef enum
 {
     INIT_SCREENS = 0,
+    SETUP_FRAMEBUFFERS,
     CLEAR_SCREENS,
     SWAP_FRAMEBUFFERS,
     UPDATE_BRIGHTNESS,
