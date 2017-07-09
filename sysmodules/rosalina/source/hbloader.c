@@ -280,6 +280,8 @@ static void HBLDR_HandleCommands(void)
             localcaps1->priority = 0;
             memset(localcaps0->resourcelimitdescriptor, 0, 0x10);
             memset(localcaps1->resourcelimitdescriptor, 0, 0x10);
+            localcaps0->resourcelimitdescriptor[0] = 0x9E;
+            localcaps0->resourcelimitdescriptor[1] = 0x9E;
             memset(localcaps0->storageinfo.accessinfo, 0xFF, 7);
             memset(localcaps1->storageinfo.accessinfo, 0xFF, 7);
             memcpy(localcaps0->serviceaccesscontrol, serviceList, sizeof(serviceList));
