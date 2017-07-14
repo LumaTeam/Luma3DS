@@ -263,7 +263,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
             //Integer number formats - set up the flags and "break"
             case 'X':
                 flags |= UPPERCASE;
-
+                //Falls through
             case 'x':
                 isHex = true;
                 break;
@@ -271,7 +271,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
             case 'd':
             case 'i':
                 flags |= SIGN;
-
+                //Falls through
             case 'u':
                 isHex = false;
                 break;
