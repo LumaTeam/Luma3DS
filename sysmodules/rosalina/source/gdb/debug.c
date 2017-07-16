@@ -416,6 +416,8 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                 default:
                     break;
             }
+
+            break;
         }
 
         case DBGEVENT_SYSCALL_IN:
