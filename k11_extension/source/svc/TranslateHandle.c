@@ -50,14 +50,7 @@ Result TranslateHandle(u32 *outKAddr, char *outClassName, Handle handle)
     if(obj == NULL)
         return 0xD8E007F7; // invalid handle
 
-    if(kernelVersion >= SYSTEM_VERSION(2, 46, 0))
-    {
-        KClassToken tok;
-        obj->vtable->GetClassToken(&tok, obj);
-        name = tok.name;
-    }
-    else
-        name = obj->vtable->GetClassName(obj);
+    name = classNameOfAutoObject(obj);
 
     if(name == NULL) // shouldn't happen
         name = "KAutoObject";

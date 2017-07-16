@@ -1,7 +1,7 @@
 BasicInfo:
   Title                   : rosalina
   CompanyCode             : "00"
-  ProductCode             : 0828builder
+  ProductCode             : lennybuilder
   ContentType             : Application
   Logo                    : None
 
@@ -47,13 +47,13 @@ AccessControlInfo:
     # We're using the global custom bit31 mapping
 
   SystemCallAccess:
-  # The kernel extension removes svc perms checks, so...
-    SendSyncRequest2: 47    # CustomBackdoor
-    UnmapProcessMemory: 114
+  # The kernel extension removes svc perms checks, so below is just to avoid a makerom error
+    Backdoor: 123
+    KernelSetState: 124
 
   InterruptNumbers:
   ServiceAccessControl:
-    - srv:pm
+    - fs:USER # Not strictly needed as rosalina has access to everything, it's rather to avoid a makerom warning
   FileSystemAccess:
     - DirectSdmc
     - CtrNandRw

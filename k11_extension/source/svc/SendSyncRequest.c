@@ -37,15 +37,8 @@ Result SendSyncRequestHook(Handle handle)
     bool skip = false;
     Result res = 0;
 
-    bool isValidClientSession = false;
-    if(clientSession != NULL && kernelVersion >= SYSTEM_VERSION(2, 46, 0))
-    {
-        KClassToken tok;
-        clientSession->syncObject.autoObject.vtable->GetClassToken(&tok, &clientSession->syncObject.autoObject);
-        isValidClientSession = tok.flags == 0xA5;
-    }
-    else if(clientSession != NULL) // not the exact same test but it should work
-        isValidClientSession = strcmp(clientSession->syncObject.autoObject.vtable->GetClassName(&clientSession->syncObject.autoObject), "KClientSession") == 0;
+     // not the exact same test but it should work
+    bool isValidClientSession = clientSession != NULL && strcmp(classNameOfAutoObject(&clientSession->syncObject.autoObject), "KClientSession") == 0;
 
     if(isValidClientSession)
     {
@@ -54,7 +47,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x10042:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && strcmp(info->name, "srv:pm") == 0)
+                if(info != NULL && kernelVersion >= SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)
                 {
                     res = doPublishToProcessHook(handle, cmdbuf);
                     skip = true;
@@ -112,7 +105,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x50100:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && strcmp(info->name, "srv:") == 0)
+                if(info != NULL && (strcmp(info->name, "srv:") == 0 || (kernelVersion < SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)))
                 {
                     char name[9] = { 0 };
                     memcpy(name, cmdbuf + 1, 8);
@@ -126,7 +119,8 @@ Result SendSyncRequestHook(Handle handle)
                         outClientSession = (KClientSession *)KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);
                         if(outClientSession != NULL)
                         {
-                            SessionInfo_Add(outClientSession->parentSession, name);
+                            if(strcmp(classNameOfAutoObject(&outClientSession->syncObject.autoObject), "KClientSession") == 0)
+                                SessionInfo_Add(outClientSession->parentSession, name);
                             outClientSession->syncObject.autoObject.vtable->DecrementReferenceCount(&outClientSession->syncObject.autoObject);
                         }
                     }
@@ -163,7 +157,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x4010042:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && strcmp(info->name, "srv:pm") == 0)
+                if(info != NULL && kernelVersion < SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)
                 {
                     res = doPublishToProcessHook(handle, cmdbuf);
                     skip = true;

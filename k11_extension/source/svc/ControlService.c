@@ -42,20 +42,12 @@ Result ControlService(ServiceOp op, u32 varg1, u32 varg2)
             KAutoObject *obj = KProcessHandleTable__ToKAutoObject(handleTable, (Handle)varg2);
             if(obj == NULL)
                 return 0xD8E007F7; // invalid handle
-            else if(kernelVersion >= SYSTEM_VERSION(2, 46, 0))
-            {
-                KClassToken tok;
-                obj->vtable->GetClassToken(&tok, obj);
-                if(tok.flags == 0x95)
-                    session = ((KServerSession *)obj)->parentSession;
-                else if(tok.flags == 0xA5)
-                    session = ((KClientSession *)obj)->parentSession;
-            }
             else
-            {   // not the exact same tests but it should work
-                if(strcmp(obj->vtable->GetClassName(obj), "KServerSession") == 0)
+            {
+                // not the exact same tests but it should work
+                if(strcmp(classNameOfAutoObject(obj), "KServerSession") == 0)
                     session = ((KServerSession *)obj)->parentSession;
-                else if(strcmp(obj->vtable->GetClassName(obj), "KClientSession") == 0)
+                else if(strcmp(classNameOfAutoObject(obj), "KClientSession") == 0)
                     session = ((KClientSession *)obj)->parentSession;
             }
 

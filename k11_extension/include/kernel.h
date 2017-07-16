@@ -1178,6 +1178,20 @@ static inline KDebug *debugOfProcess(KProcess *process)
     return KPROCESS_GET_RVALUE(process, debug);
 }
 
+static inline const char *classNameOfAutoObject(KAutoObject *object)
+{
+    const char *name;
+    if(kernelVersion >= SYSTEM_VERSION(2, 46, 0))
+    {
+        KClassToken tok;
+        object->vtable->GetClassToken(&tok, object);
+        name = tok.name;
+    }
+    else
+        name = object->vtable->GetClassName(object);
+    return name;
+}
+
 extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 
 static inline Result createHandleForProcess(Handle *out, KProcess *process, KAutoObject *obj)
