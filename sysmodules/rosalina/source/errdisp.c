@@ -29,6 +29,8 @@
 #include "draw.h"
 #include "menu.h"
 #include "memory.h"
+#include "fmt.h"
+#include "ifile.h"
 
 static inline void assertSuccess(Result res)
 {
@@ -37,13 +39,13 @@ static inline void assertSuccess(Result res)
 }
 
 static MyThread errDispThread;
-static u8 ALIGN(8) errDispThreadStack[THREAD_STACK_SIZE];
+static u8 ALIGN(8) errDispThreadStack[0x2000];
 
 static char userString[0x100 + 1] = {0};
 
 MyThread *errDispCreateThread(void)
 {
-    if(R_FAILED(MyThread_Create(&errDispThread, errDispThreadMain, errDispThreadStack, THREAD_STACK_SIZE, 0x18, CORE_SYSTEM)))
+    if(R_FAILED(MyThread_Create(&errDispThread, errDispThreadMain, errDispThreadStack, 0x2000, 0x18, CORE_SYSTEM)))
         svcBreak(USERBREAK_PANIC);
     return &errDispThread;
 }
@@ -53,12 +55,14 @@ static inline u32 ERRF_DisplayRegisterValue(u32 posX, u32 posY, const char *name
     return Draw_DrawFormattedString(posX, posY, COLOR_WHITE, "%-9s %08x", name, value);
 }
 
-void ERRF_DisplayError(ERRF_FatalErrInfo *info)
+static inline int ERRF_FormatRegisterValue(char *out, const char *name, u32 value)
 {
-    Draw_Lock();
+    return sprintf(out, "%-9s %08x", name, value);
+}
 
-    u32 posY = Draw_DrawString(10, 10, COLOR_RED, userString[0] == 0 ? "An error occurred (ErrDisp)" : userString);
-
+static int ERRF_FormatError(char *out, ERRF_FatalErrInfo *info)
+{
+    char *outStart = out;
     static const char *types[] = {
         "generic", "corrupted", "card removed", "exception", "result failure", "logged", "invalid"
     };
@@ -68,25 +72,23 @@ void ERRF_DisplayError(ERRF_FatalErrInfo *info)
     };
 
     const char *type = (u32)info->type > (u32)ERRF_ERRTYPE_LOGGED ? types[6] : types[(u32)info->type];
-    posY = posY < 30 ? 30 : posY;
 
     if(info->type == ERRF_ERRTYPE_EXCEPTION)
     {
         const char *exceptionType = (u32)info->data.exception_data.excep.type > (u32)ERRF_EXCEPTION_VFP ?
                                     exceptionTypes[4] : exceptionTypes[(u32)info->data.exception_data.excep.type];
 
-        Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Error type:       exception (%s)", exceptionType);
+        out += sprintf(out, "Error type:       exception (%s)\n", exceptionType);
     }
     else
-        Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Error type:       %s", type);
+        out += sprintf(out, "Error type:       %s\n", type);
 
     if(info->type != ERRF_ERRTYPE_CARD_REMOVED)
     {
         Handle processHandle;
         Result res;
 
-        posY += SPACING_Y;
-        posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Process ID:       %u", info->procId);
+        out += sprintf(out, "\nProcess ID:       %u\n", info->procId);
 
         res = svcOpenProcess(&processHandle, info->procId);
         if(R_SUCCEEDED(res))
@@ -96,11 +98,11 @@ void ERRF_DisplayError(ERRF_FatalErrInfo *info)
             svcGetProcessInfo((s64 *)name, processHandle, 0x10000);
             svcGetProcessInfo((s64 *)&titleId, processHandle, 0x10001);
             svcCloseHandle(processHandle);
-            posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Process name:     %s", name);
-            posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Process title ID: 0x%016llx", titleId);
+            out += sprintf(out, "Process name:     %s\n", name);
+            out += sprintf(out, "Process title ID: 0x%016llx\n", titleId);
         }
 
-        posY += SPACING_Y;
+        out += sprintf(out, "\n");
     }
 
     if(info->type == ERRF_ERRTYPE_EXCEPTION)
@@ -113,33 +115,43 @@ void ERRF_DisplayError(ERRF_FatalErrInfo *info)
         u32 *regs = (u32 *)(&info->data.exception_data.regs);
         for(u32 i = 0; i < 17; i += 2)
         {
-            posY = ERRF_DisplayRegisterValue(10, posY + SPACING_Y, registerNames[i], regs[i]);
-
+            out += ERRF_FormatRegisterValue(out, registerNames[i], regs[i]);
             if(i != 16)
-                ERRF_DisplayRegisterValue(10 + 28 * SPACING_X, posY, registerNames[i + 1], i == 16 ? regs[20] : regs[i + 1]);
+            {
+                out += sprintf(out, "          ");
+                out += ERRF_FormatRegisterValue(out,  registerNames[i + 1], i == 16 ? regs[20] : regs[i + 1]);
+                out += sprintf(out, "\n");
+            }
         }
 
         if(info->data.exception_data.excep.type == ERRF_EXCEPTION_PREFETCH_ABORT
         || info->data.exception_data.excep.type == ERRF_EXCEPTION_DATA_ABORT)
         {
-            ERRF_DisplayRegisterValue(10 + 28 * SPACING_X, posY, "far", info->data.exception_data.excep.far);
-            posY = ERRF_DisplayRegisterValue(10, posY + SPACING_Y, "fsr", info->data.exception_data.excep.fsr);
+            out += sprintf(out, "          ");
+            out += ERRF_FormatRegisterValue(out, "far", info->data.exception_data.excep.far);
+            out += sprintf(out, "\n");
+            out += ERRF_FormatRegisterValue(out, "fsr", info->data.exception_data.excep.fsr);
         }
 
         else if(info->data.exception_data.excep.type == ERRF_EXCEPTION_VFP)
         {
-            ERRF_DisplayRegisterValue(10 + 28 * SPACING_X, posY, "fpexc", info->data.exception_data.excep.fpexc);
-            posY = ERRF_DisplayRegisterValue(10, posY + SPACING_Y, "fpinst", info->data.exception_data.excep.fpinst);
-            ERRF_DisplayRegisterValue(10 + 28 * SPACING_X, posY, "fpinst2", info->data.exception_data.excep.fpinst2);
+            out += sprintf(out, "          ");
+            out += ERRF_FormatRegisterValue(out, "fpexc", info->data.exception_data.excep.fpexc);
+            out += sprintf(out, "\n");
+            out += ERRF_FormatRegisterValue(out, "fpinst", info->data.exception_data.excep.fpinst);
+            out += sprintf(out, "          ");
+            out += ERRF_FormatRegisterValue(out, "fpinst2", info->data.exception_data.excep.fpinst2);
+            out += sprintf(out, "\n");
         }
-    }
 
+        out += sprintf(out, "\n");
+    }
     else if(info->type != ERRF_ERRTYPE_CARD_REMOVED)
     {
         if(info->type != ERRF_ERRTYPE_FAILURE)
-            posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Address:          0x%08x", info->pcAddr);
+            out += sprintf(out, "Address:          0x%08x\n", info->pcAddr);
 
-        posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Error code:       0x%08x", info->resCode);
+        out += sprintf(out, "Error code:       0x%08x\n", info->resCode);
     }
 
     const char *desc;
@@ -160,16 +172,70 @@ void ERRF_DisplayError(ERRF_FatalErrInfo *info)
             break;
     }
 
-    posY += SPACING_Y;
     if(desc[0] != 0)
-        posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, desc) + SPACING_Y;
-    posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Press any button to reboot");
+        out += sprintf(out, "\n%s\n", desc);
+    out += sprintf(out, "\n");
+    return out - outStart;
+}
+
+
+static void ERRF_DisplayError(ERRF_FatalErrInfo *info)
+{
+    Draw_Lock();
+
+    u32 posY = Draw_DrawString(10, 10, COLOR_RED, userString[0] == 0 ? "An error occurred (ErrDisp)" : userString);
+    char buf[0x400];
+    
+    ERRF_FormatError(buf, info);
+    posY = posY < 30 ? 30 : posY;
+
+    posY = Draw_DrawString(10, posY, COLOR_WHITE, buf);
+    posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Press any button to reboot.");
 
     Draw_FlushFramebuffer();
     Draw_Unlock();
 }
 
-void ERRF_HandleCommands(void)
+static Result ERRF_SaveErrorToFile(ERRF_FatalErrInfo *info)
+{
+    char buf[0x400];
+
+    FS_ArchiveID archiveId;
+    s64 out;
+    u64 size, total;
+    bool isSdMode;
+    int n = 0;
+    Result res = 0;
+    IFile file;
+
+    n = ERRF_FormatError(buf, info);
+    n += sprintf(buf + n, "-------------------------------------\n\n");
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    isSdMode = (bool)out;
+
+    archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/errdisp.txt"), FS_OPEN_WRITE | FS_OPEN_CREATE);
+    
+    if(R_FAILED(res))
+        return res;
+    
+    res = IFile_GetSize(&file, &size);
+    if(R_FAILED(res))
+    {
+        IFile_Close(&file);
+        return res;
+    }
+
+    file.pos = size;
+
+    res = IFile_Write(&file, &total, buf, (u32)n, 0);
+    IFile_Close(&file);
+
+    return res;
+}
+
+static void ERRF_HandleCommands(void)
 {
     u32 *cmdbuf = getThreadCommandBuffer();
 
@@ -178,27 +244,30 @@ void ERRF_HandleCommands(void)
         case 1: // Throw
         {
             ERRF_FatalErrInfo *info = (ERRF_FatalErrInfo *)(cmdbuf + 1);
-            menuEnter();
+            if(info->type != ERRF_ERRTYPE_LOGGED || info->procId == 0 || R_FAILED(ERRF_SaveErrorToFile(info)))
+            {
+                menuEnter();
 
-            Draw_Lock();
-            Draw_ClearFramebuffer();
-            Draw_FlushFramebuffer();
+                Draw_Lock();
+                Draw_ClearFramebuffer();
+                Draw_FlushFramebuffer();
 
-            ERRF_DisplayError(info);
+                ERRF_DisplayError(info);
 
-            /*
-            If we ever wanted to return:
-            draw_unlock();
-            menuLeave();
+                /*
+                If we ever wanted to return:
+                Draw_Unlock();
+                menuLeave();
+
+                but we don't
+                */
+                waitInput();
+                svcKernelSetState(7);
+                __builtin_unreachable();
+            }
 
             cmdbuf[0] = 0x10040;
             cmdbuf[1] = 0;
-
-            but we don't
-            */
-            waitInput();
-            svcKernelSetState(7);
-            __builtin_unreachable();
             break;
         }
 
