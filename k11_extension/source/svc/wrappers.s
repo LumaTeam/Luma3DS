@@ -37,6 +37,7 @@
         pop {r1, r2, r12, pc}
 .endm
 
+GEN_GETINFO_WRAPPER Handle
 GEN_GETINFO_WRAPPER System
 GEN_GETINFO_WRAPPER Process
 GEN_GETINFO_WRAPPER Thread

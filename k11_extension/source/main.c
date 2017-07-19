@@ -208,6 +208,7 @@ static void findUsefulSymbols(void)
                     decodeARMBranch((u32 *)officialSVCs[0x01] + 5);
     SleepThread = (void (*)(s64))officialSVCs[0x0A];
     CloseHandle = (Result (*)(Handle))officialSVCs[0x23];
+    GetHandleInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x29] + 3);
     GetSystemInfo = (Result (*)(s64 *, s32, s32))decodeARMBranch((u32 *)officialSVCs[0x2A] + 3);
     GetProcessInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2B] + 3);
     GetThreadInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2C] + 3);

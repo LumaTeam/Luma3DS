@@ -28,9 +28,10 @@
 #include "synchronization.h"
 #include "svc.h"
 #include "svc/ControlMemory.h"
+#include "svc/GetHandleInfo.h"
+#include "svc/GetSystemInfo.h"
 #include "svc/GetProcessInfo.h"
 #include "svc/GetThreadInfo.h"
-#include "svc/GetSystemInfo.h"
 #include "svc/GetCFWInfo.h"
 #include "svc/ConnectToPort.h"
 #include "svc/SendSyncRequest.h"
@@ -103,6 +104,8 @@ void *svcHook(u8 *pageEnd)
                 doingVeryShittyPmResLimitWorkaround = true;
             }
             return officialSVCs[0x17];
+        case 0x29:
+            return GetHandleInfoHookWrapper;
         case 0x2A:
             return GetSystemInfoHookWrapper;
         case 0x2B:

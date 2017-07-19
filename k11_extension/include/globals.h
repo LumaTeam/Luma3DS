@@ -56,6 +56,7 @@ extern void (*KScheduler__AttemptSwitchingThreadContext)(KScheduler *this);
 extern Result (*ControlMemory)(u32 *addrOut, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
 extern void (*SleepThread)(s64 ns);
 extern Result (*CloseHandle)(Handle handle);
+extern Result (*GetHandleInfo)(s64 *out, Handle handle, u32 type);
 extern Result (*GetSystemInfo)(s64 *out, s32 type, s32 param);
 extern Result (*GetProcessInfo)(s64 *out, Handle processHandle, u32 type);
 extern Result (*GetThreadInfo)(s64 *out, Handle threadHandle, u32 type);
