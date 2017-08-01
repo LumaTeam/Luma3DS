@@ -3,11 +3,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "fsldr.h"
-#include "ifile.h"
 #include "../build/bundled.h"
-
-static u32 config, multiConfig, bootConfig;
-static bool isN3DS, isSafeMode, isSdMode;
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
 {
@@ -32,7 +28,7 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s3
     return i;
 }
 
-static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
+Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags)
 {
     FS_Path filePath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
@@ -71,32 +67,6 @@ static u32 checkLumaDir(const char *path)
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
 
     return dirCheck(archiveId, path) ? archiveId : 0;
-}
-
-static inline void loadCFWInfo(void)
-{
-    static bool infoLoaded = false;
-    s64 out;
-
-    if(infoLoaded) return;
-
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
-    config = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
-    multiConfig = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
-    bootConfig = (u32)out;
-
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x201))) svcBreak(USERBREAK_ASSERT);
-    isN3DS = (bool)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x202))) svcBreak(USERBREAK_ASSERT);
-    isSafeMode = (bool)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
-    isSdMode = (bool)out;
-
-    IFile file;
-    if(isSafeMode) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
-    infoLoaded = true;
 }
 
 static inline bool secureInfoExists(void)
@@ -353,7 +323,7 @@ exit:
     return ret;
 }
 
-static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
+bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.bin"
        If it exists it should be a decrypted and decompressed binary code file */
@@ -363,22 +333,60 @@ static inline bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     IFile file;
 
-    if(!openLumaFile(&file, path)) return true;
+    if(!openLumaFile(&file, path)) return false;
 
-    bool ret;
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize > size) ret = false;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize > size) goto error;
     else
     {
         u64 total;
 
-        ret = R_SUCCEEDED(IFile_Read(&file, &total, code, fileSize)) && total == fileSize;
+        if(R_FAILED(IFile_Read(&file, &total, code, fileSize)) || total != fileSize) goto error;
     }
 
     IFile_Close(&file);
 
-    return ret;
+    return true;
+
+error:
+    IFile_Close(&file);
+
+    svcBreak(USERBREAK_ASSERT);
+    while(true);
+}
+
+bool loadTitleExheader(u64 progId, exheader_header *exheader)
+{
+    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/exheader.bin"
+       If it exists it should be a decrypted exheader */
+
+    char path[] = "/luma/titles/0000000000000000/exheader.bin";
+    progIdToStr(path + 28, progId);
+
+    IFile file;
+
+    if(!openLumaFile(&file, path)) return false;
+
+    u64 fileSize;
+
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(exheader_header)) goto error;
+    else
+    {
+        u64 total;
+
+        if(R_FAILED(IFile_Read(&file, &total, exheader, fileSize)) || total != fileSize) goto error;
+    }
+
+    IFile_Close(&file);
+
+    return true;
+
+error:
+    IFile_Close(&file);
+
+    svcBreak(USERBREAK_ASSERT);
+    while(true);
 }
 
 static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 *languageId, u8 *countryId, u8 *stateId)
@@ -570,8 +578,6 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
-    loadCFWInfo();
-
     if(progId == 0x0004003000008F02LL || //USA Home Menu
        progId == 0x0004003000008202LL || //JPN Home Menu
        progId == 0x0004003000009802LL || //EUR Home Menu
@@ -873,8 +879,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     if(CONFIG(PATCHGAMES))
     {
-        if(!loadTitleCodeSection(progId, code, size) ||
-           !applyCodeIpsPatch(progId, code, size)) goto error;
+        if(!applyCodeIpsPatch(progId, code, size)) goto error;
 
         if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
         {
@@ -894,5 +899,4 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
 error:
     svcBreak(USERBREAK_ASSERT);
-    while(true);
 }

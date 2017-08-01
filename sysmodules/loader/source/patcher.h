@@ -1,6 +1,8 @@
 #pragma once
 
 #include <3ds/types.h>
+#include "exheader.h"
+#include "ifile.h"
 
 #define MAKE_BRANCH(src,dst)      (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
@@ -35,4 +37,10 @@ enum singleOptions
     DISABLEARM11EXCHANDLERS
 };
 
+extern u32 config, multiConfig, bootConfig;
+extern bool isN3DS, isSafeMode, isSdMode;
+
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress);
+Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags);
+bool loadTitleCodeSection(u64 progId, u8 *code, u32 size);
+bool loadTitleExheader(u64 progId, exheader_header *exheader);

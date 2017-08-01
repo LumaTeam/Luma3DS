@@ -11,6 +11,9 @@
 #define MAX_SESSIONS    1
 #define HBLDR_3DSX_TID  (*(vu64 *)0x1FF81100)
 
+u32 config, multiConfig, bootConfig;
+bool isN3DS, isSafeMode, isSdMode;
+
 const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
 
 typedef struct
@@ -29,6 +32,28 @@ static int g_active_handles;
 static u64 g_cached_prog_handle;
 static exheader_header g_exheader;
 static char g_ret_buf[1024];
+
+static inline void loadCFWInfo(void)
+{
+    s64 out;
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
+    config = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
+    multiConfig = (u32)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
+    bootConfig = (u32)out;
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x201))) svcBreak(USERBREAK_ASSERT);
+    isN3DS = (bool)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x202))) svcBreak(USERBREAK_ASSERT);
+    isSafeMode = (bool)out;
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    isSdMode = (bool)out;
+
+    IFile file;
+    if(isSafeMode) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
+}
 
 static int lzss_decompress(u8 *end)
 {
@@ -116,44 +141,47 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
   u64 size;
   u64 total;
 
-  archivePath.type = PATH_BINARY;
-  archivePath.data = &prog_handle;
-  archivePath.size = 8;
-
-  filePath.type = PATH_BINARY;
-  filePath.data = CODE_PATH;
-  filePath.size = sizeof(CODE_PATH);
-  if (R_FAILED(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
+  if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(progid, (u8 *)shared->text_addr, (u64)shared->total_size << 12))
   {
-    svcBreak(USERBREAK_ASSERT);
-  }
+    archivePath.type = PATH_BINARY;
+    archivePath.data = &prog_handle;
+    archivePath.size = 8;
 
-  // get file size
-  if (R_FAILED(IFile_GetSize(&file, &size)))
-  {
-    IFile_Close(&file);
-    svcBreak(USERBREAK_ASSERT);
-  }
+    filePath.type = PATH_BINARY;
+    filePath.data = CODE_PATH;
+    filePath.size = sizeof(CODE_PATH);
+    if (R_FAILED(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
+    {
+        svcBreak(USERBREAK_ASSERT);
+    }
 
-  // check size
-  if (size > (u64)shared->total_size << 12)
-  {
-    IFile_Close(&file);
-    return 0xC900464F;
-  }
+    // get file size
+    if (R_FAILED(IFile_GetSize(&file, &size)))
+    {
+        IFile_Close(&file);
+        svcBreak(USERBREAK_ASSERT);
+    }
 
-  // read code
-  res = IFile_Read(&file, &total, (void *)shared->text_addr, size);
-  IFile_Close(&file); // done reading
-  if (R_FAILED(res))
-  {
-    svcBreak(USERBREAK_ASSERT);
-  }
+    // check size
+    if (size > (u64)shared->total_size << 12)
+    {
+        IFile_Close(&file);
+        return 0xC900464F;
+    }
 
-  // decompress
-  if (is_compressed)
-  {
-    lzss_decompress((u8 *)shared->text_addr + size);
+    // read code
+    res = IFile_Read(&file, &total, (void *)shared->text_addr, size);
+    IFile_Close(&file); // done reading
+    if (R_FAILED(res))
+    {
+        svcBreak(USERBREAK_ASSERT);
+    }
+
+    // decompress
+    if (is_compressed)
+    {
+      lzss_decompress((u8 *)shared->text_addr + size);
+    }
   }
 
   u16 progver = g_exheader.codesetinfo.flags.remasterversion[0] | (g_exheader.codesetinfo.flags.remasterversion[1] << 8);
@@ -212,21 +240,31 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
     exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
 
     // Tweak 3dsx placeholder title exheader
-    if (nbSection0Modules == 6 && exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+    if (nbSection0Modules == 6)
     {
-      Handle hbldr = 0;
-      res = HBLDR_Init(&hbldr);
-      if (R_SUCCEEDED(res))
+      if(exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
       {
-        u32* cmdbuf = getThreadCommandBuffer();
-        cmdbuf[0] = IPC_MakeHeader(4,0,2);
-        cmdbuf[1] = IPC_Desc_Buffer(sizeof(*exheader), IPC_BUFFER_RW);
-        cmdbuf[2] = (u32)exheader;
-        res = svcSendSyncRequest(hbldr);
-        svcCloseHandle(hbldr);
-        if (R_SUCCEEDED(res)) {
-          res = cmdbuf[1];
-        }
+      	Handle hbldr = 0;
+      	res = HBLDR_Init(&hbldr);
+      	if (R_SUCCEEDED(res))
+      	{
+      	  u32* cmdbuf = getThreadCommandBuffer();
+      	  cmdbuf[0] = IPC_MakeHeader(4,0,2);
+      	  cmdbuf[1] = IPC_Desc_Buffer(sizeof(*exheader), IPC_BUFFER_RW);
+      	  cmdbuf[2] = (u32)exheader;
+      	  res = svcSendSyncRequest(hbldr);
+      	  svcCloseHandle(hbldr);
+       	  if (R_SUCCEEDED(res)) {
+          	res = cmdbuf[1];
+          }
+      	}
+      }
+
+      u64 originalProgId = exheader->arm11systemlocalcaps.programid;
+      if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->arm11systemlocalcaps.programid, exheader))
+      {
+		exheader->arm11systemlocalcaps.programid = originalProgId;
+		exheader->accessdesc.arm11systemlocalcaps.programid = originalProgId;
       }
     }
   }
@@ -585,6 +623,8 @@ int main()
   {
     svcBreak(USERBREAK_ASSERT);
   }
+
+  loadCFWInfo();
 
   g_active_handles = 2;
   g_cached_prog_handle = 0;
