@@ -152,7 +152,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                           "Enable overriding the region and\n"
                                           "language configuration and the usage\n"
-                                          "of patched code binaries,\n"
+                                          "of patched code binaries, exHeaders,\n"
                                           "IPS code patches and LayeredFS\n"
                                           "for specific games.\n\n"
                                           "Also makes certain DLCs\n"

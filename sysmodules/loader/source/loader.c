@@ -263,8 +263,8 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
       u64 originalProgId = exheader->arm11systemlocalcaps.programid;
       if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->arm11systemlocalcaps.programid, exheader))
       {
-		exheader->arm11systemlocalcaps.programid = originalProgId;
-		exheader->accessdesc.arm11systemlocalcaps.programid = originalProgId;
+        exheader->arm11systemlocalcaps.programid = originalProgId;
+        exheader->accessdesc.arm11systemlocalcaps.programid = originalProgId;
       }
     }
   }
