@@ -255,7 +255,7 @@ void MiscellaneousMenu_InputRedirection(void)
         if(res != 0)
             sprintf(buf, "Failed to stop InputRedirection (0x%08x).", (u32)res);
         else
-            miscellaneousMenu.items[3].title = "Start InputRedirection";
+            miscellaneousMenu.items[2].title = "Start InputRedirection";
     }
     else
     {
@@ -311,7 +311,7 @@ void MiscellaneousMenu_InputRedirection(void)
                 if(res != 0)
                     sprintf(buf, "Starting InputRedirection... failed (0x%08x).", (u32)res);
                 else
-                    miscellaneousMenu.items[3].title = "Stop InputRedirection";
+                    miscellaneousMenu.items[2].title = "Stop InputRedirection";
 
                 done = true;
             }
