@@ -70,12 +70,13 @@ void main(int argc, char **argv, u32 magicWord)
 
         isFirmlaunch = true;
     }
-    else
+    else if(magicWord == 0xB002)
     {
         static const char argv[] = "firm0:";
         for(u32 i = 0; i < sizeof(argv); i++) //Copy and convert the path to UTF-16
             launchedPath[i] = argv[i];
     }
+    else error("Launched using an unsupported loader.");
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
     {

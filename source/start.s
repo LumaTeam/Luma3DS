@@ -43,7 +43,7 @@ _start:
     mrceq p15, 0, r5, c6, c7, 0
     ldreq r4, =0x1FFFE019
     cmpeq r4, r5
-    ldreq r2, =0xCAFE
+    ldreq r2, =0xB002
 
     mov r9, r0
     mov r10, r1
