@@ -31,9 +31,11 @@ _start:
     orr r4, #0x1C0
     msr cpsr_cxsf, r4
 
-    @ Check if r2 is 0 (r0-sp are supposed to be 0), and for regions 0, 5 and 7 of the MPU config
+    @ Check if r0-r2 are 0 (r0-sp are supposed to be 0), and for regions 0, 5 and 7 of the MPU config
     @ This is not foolproof but should work well enough
-    cmp r2, #0
+    cmp r0, #0
+    cmpeq r1, #0
+    cmpeq r2, #0
     ldreq r4, =0x20000035
     mrceq p15, 0, r5, c6, c0, 0
     cmpeq r4, r5
