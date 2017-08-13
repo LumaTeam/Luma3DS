@@ -99,15 +99,19 @@ void initScreens(void)
         if(!ARESCREENSINITIALIZED)
         {
             *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
+            memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
             invokeArm11Function(INIT_SCREENS);
 
             //Turn on backlight
             i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
         }
-        else updateBrightness(MULTICONFIG(BRIGHTNESS));
+        else
+        {
+            updateBrightness(MULTICONFIG(BRIGHTNESS));
+            memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
+            invokeArm11Function(SETUP_FRAMEBUFFERS);
+        }
 
-        memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
-        invokeArm11Function(SETUP_FRAMEBUFFERS);
         clearScreens(true);
         needToSetup = false;
     }
