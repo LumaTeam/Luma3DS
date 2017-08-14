@@ -60,7 +60,7 @@ static void K_EnableMonitorModeDebugging(void)
     __asm__ __volatile__("cpsid aif");
 
     u32 DSCR;
-    __asm__ __volatile__("mrc p15, 0, %[val], c0, c1, 0" : [val] "=r" (DSCR));
+    __asm__ __volatile__("mrc p14, 0, %[val], c0, c1, 0" : [val] "=r" (DSCR));
     DSCR |= 0x8000;
     __asm__ __volatile__("mcr p14, 0, %[val], c0, c1, 0" :: [val] "r" (DSCR));
 }
