@@ -40,10 +40,10 @@ Menu miscellaneousMenu = {
     "Miscellaneous options menu",
     .nbItems = 4,
     {
-        { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
-        { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
+        { "Switch HB. Title to the Current App.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
+        { "Change Menu Combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
-        { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
+        { "Save Settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
     }
 };
 
@@ -115,7 +115,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 
 static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
 {
-    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y" };
+    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y"  "ZL" "ZR"};
     for(s32 i = 11; i >= 0; i--)
     {
         if(combo & (1 << i))
