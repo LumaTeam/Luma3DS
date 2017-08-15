@@ -162,8 +162,9 @@ if __name__ == "__main__":
     objdump_res = ""
     try:
         path = os.path.join(os.environ["DEVKITARM"], "bin", "arm-none-eabi-objdump")
-        if os.name == "nt":
-            path = ''.join((path[1], ':', path[2:])).replace('/', '\\')
+
+        if os.name == "nt" and path[0] == '/':
+			path = ''.join((path[1], ':', path[2:]))
 
         objdump_res = subprocess.check_output((
                                                     path, "-marm", "-b", "binary",
