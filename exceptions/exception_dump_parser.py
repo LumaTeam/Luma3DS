@@ -90,6 +90,13 @@ def makeRegisterLine(A, rA, B, rB):
 handledExceptionNames = ("FIQ", "undefined instruction", "prefetch abort", "data abort")
 registerNames = tuple("r{0}".format(i) for i in range(13)) + ("sp", "lr", "pc", "cpsr") + ("dfsr", "ifsr", "far") + ("fpexc", "fpinst", "fpinst2")
 svcBreakReasons = ("(svcBreak: panic)", "(svcBreak: assertion failed)", "(svcBreak: user-related)")
+faultStatusSources = {
+    0b1:'Alignment', 0b100:'Instruction cache maintenance operation fault',
+    0b1100:'External Abort on translation - First-level', 0b1110:'External Abort on translation - Second-level',
+    0b101:'Translation - Section', 0b111:'Translation - Page', 0b11:'Access bit - Section', 0b110:'Access bit - Page',
+    0b1001:'Domain - Section', 0b1011:'Domain - Page', 0b1101:'Permission - Section', 0b1111:'Permission - Page',
+    0b1000:'Precise External Abort', 0b10110:'Imprecise External Abort', 0b10:'Debug event'
+}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parse Luma3DS exception dumps")
@@ -145,6 +152,10 @@ if __name__ == "__main__":
 
     thumb = registers[16] & 0x20 != 0
     addr = registers[15] - codeDumpSize + (2 if thumb else 4)
+
+    xfsr = registers[18] if exceptionType == 2 else registers[17] if exceptionType == 3 else 0
+    if xfsr != 0:
+        print("\nFault Status Source: " + faultStatusSources[xfsr & 0xf])
 
     print("\nCode dump:\n")
 
