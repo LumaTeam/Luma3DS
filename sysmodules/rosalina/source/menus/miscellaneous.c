@@ -224,7 +224,7 @@ void MiscellaneousMenu_SaveSettings(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Process patches menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
         if(R_SUCCEEDED(res))
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
         else
