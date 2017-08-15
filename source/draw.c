@@ -61,6 +61,23 @@ bool loadSplash(void)
     return true;
 }
 
+void clearLine(bool isTopScreen, u32 posY)
+{
+    u8  *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
+    u32 width = isTopScreen ? SCREEN_TOP_WIDTH : SCREEN_BOTTOM_WIDTH;
+    u32 screenPos = (SCREEN_HEIGHT - posY - 1) * 3 + 2;
+    u32 stride = 3 * SCREEN_HEIGHT;
+
+    for(u32 x = 0; x < width; x++)
+    {
+        u8     *screen = (u8 *)(select + screenPos);
+
+        for (u32 y = 0; y < 10 * 3; y++) *screen-- = 0x00;
+
+        screenPos += stride;
+    }
+}
+
 void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character)
 {
     u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
