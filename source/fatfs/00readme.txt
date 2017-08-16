@@ -1,4 +1,4 @@
-FatFs Module Source Files R0.12c
+FatFs Module Source Files R0.13
 
 
 FILES
@@ -11,11 +11,12 @@ FILES
   diskio.h       Common include file for FatFs and disk I/O module.
   diskio.c       An example of glue function to attach existing disk I/O module to FatFs.
   integer.h      Integer type definitions for FatFs.
-  option         Optional external modules.
+  ffunicode.c    Optional Unicode utility functions.
+  ffsystem.c     An example of optional O/S related functions.
 
 
   Low level disk I/O module is not included in this archive because the FatFs
   module is only a generic file system layer and it does not depend on any specific
-  storage device. You have to provide a low level disk I/O module written to
+  storage device. You need to provide a low level disk I/O module written to
   control the storage device that attached to the target system.
 
