@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='exception_dump_parser',
+    name='luma3ds_exception_dump_parser',
     version='1.2',
     url='https://github.com/AuroraWright/Luma3DS',
     author='TuxSH',
@@ -9,5 +9,5 @@ setup(
     description='Parses Luma3DS exception dumps',
     install_requires=[''],
     packages=find_packages(),
-    entry_points={'console_scripts': ['exception_dump_parser=exception_dump_parser.exception_dump_parser:main']},
+    entry_points={'console_scripts': ['luma3ds_exception_dump_parser=luma3ds_exception_dump_parser.__main__:main']},
 )
