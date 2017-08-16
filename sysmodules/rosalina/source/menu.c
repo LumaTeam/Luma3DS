@@ -272,6 +272,7 @@ void menuShow(Menu *root)
     Menu *currentMenu = root;
     u32 nbPreviousMenus = 0;
     Menu *previousMenus[0x80];
+    u32 previousSelectedItems[0x80];
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -297,6 +298,7 @@ void menuShow(Menu *root)
                         currentMenu->items[selectedItem].method();
                     break;
                 case MENU:
+                    previousSelectedItems[nbPreviousMenus] = selectedItem;
                     previousMenus[nbPreviousMenus++] = currentMenu;
                     currentMenu = currentMenu->items[selectedItem].menu;
                     selectedItem = 0;
@@ -316,7 +318,10 @@ void menuShow(Menu *root)
             Draw_Unlock();
 
             if(nbPreviousMenus > 0)
+            {
                 currentMenu = previousMenus[--nbPreviousMenus];
+                selectedItem = previousSelectedItems[nbPreviousMenus];
+            }
             else
                 break;
         }
