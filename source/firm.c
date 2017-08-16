@@ -108,14 +108,14 @@ static bool checkFirm(u32 firmSize)
 
 static inline u32 loadFirmFromStorage(FirmwareType firmType)
 {
-    const char *firmwareFiles[] = {
+    static const char *firmwareFiles[] = {
         "native.firm",
         "twl.firm",
         "agb.firm",
         "safe.firm",
         "sysupdater.firm"
     },
-               *cetkFiles[] = {
+                       *cetkFiles[] = {
         "cetk",
         "cetk_twl",
         "cetk_agb",
