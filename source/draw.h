@@ -45,6 +45,7 @@
 #define DRAW_MAX_FORMATTED_STRING_SIZE  512
 
 bool loadSplash(void);
+void clearLine(bool isTopScreen, u32 posY);
 void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character);
 u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string);
 u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...);

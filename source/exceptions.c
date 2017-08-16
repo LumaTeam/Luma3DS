@@ -23,7 +23,7 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
-
+#include "buttons.h"
 #include "exceptions.h"
 #include "fs.h"
 #include "strings.h"
@@ -82,7 +82,6 @@ void detectAndProcessExceptionDumps(void)
         0b1, 0b100, 0b1100, 0b1110, 0b101, 0b111, 0b11, 0b110, 0b1001, 0b1011, 0b1101,
         0b1111, 0b1000, 0b10110, 0b10
     };
-
 
     initScreens();
 
@@ -160,6 +159,16 @@ void detectAndProcessExceptionDumps(void)
             drawFormattedString(false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE, "%02X", *stackDump);
     }
 
+    drawString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Press A to save the crash dump");
+    drawString(true, 10, posY + SPACING_Y + SPACING_Y , COLOR_WHITE, "Press any other button to shutdown");
+
+    u32 key = waitInput(false);
+
+    if (key != BUTTON_A) goto exit;
+
+    clearLine(true, posY + SPACING_Y);
+    clearLine(true, posY + SPACING_Y + SPACING_Y);
+
     char folderPath[12],
          path[36],
          fileName[24];
@@ -180,5 +189,6 @@ void detectAndProcessExceptionDumps(void)
     memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
 
     waitInput(false);
+exit:
     mcuPowerOff();
 }
