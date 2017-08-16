@@ -32,6 +32,7 @@
 #include "draw.h"
 #include "utils.h"
 #include "fmt.h"
+#include "buttons.h"
 #include "../build/bundled.h"
 
 void installArm9Handlers(void)
@@ -160,6 +161,16 @@ void detectAndProcessExceptionDumps(void)
             drawFormattedString(false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE, "%02X", *stackDump);
     }
 
+    static const char *choiceMessage[] = {"Press A to save the crash dump", "Press any other button to shutdown"};
+
+    drawString(true, 10, posY + SPACING_Y, COLOR_WHITE, choiceMessage[0]);
+    drawString(true, 10, posY + SPACING_Y + SPACING_Y , COLOR_WHITE, choiceMessage[1]);
+
+    if(waitInput(false) != BUTTON_A) goto exit;
+
+    drawString(true, 10, posY + SPACING_Y, COLOR_BLACK, choiceMessage[0]);
+    drawString(true, 10, posY + SPACING_Y + SPACING_Y , COLOR_BLACK, choiceMessage[1]);
+
     char folderPath[12],
          path[36],
          fileName[24];
@@ -170,8 +181,8 @@ void detectAndProcessExceptionDumps(void)
 
     if(fileWrite((void *)dumpHeader, path, dumpHeader->totalSize))
     {
-        posY = drawString(true, 10, posY + SPACING_Y, COLOR_WHITE, "You can find a dump in the following file:");
-        posY = drawString(true, 10, posY + SPACING_Y, COLOR_WHITE, path) + SPACING_Y;
+        posY = drawString(true, 10, posY + SPACING_Y, COLOR_WHITE, "You can find the dump in the following file:");
+        posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%s:/luma/%s", isSdMode ? "SD" : "CTRNAND", path) + SPACING_Y;
     }
     else posY = drawString(true, 10, posY + SPACING_Y, COLOR_RED, "Error writing the dump file");
 
@@ -179,6 +190,7 @@ void detectAndProcessExceptionDumps(void)
 
     memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
 
+exit:
     waitInput(false);
     mcuPowerOff();
 }
