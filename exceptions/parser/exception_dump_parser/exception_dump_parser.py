@@ -98,7 +98,7 @@ faultStatusSources = {
     0b1000:'Precise External Abort', 0b10110:'Imprecise External Abort', 0b10:'Debug event'
 }
 
-if __name__ == "__main__":
+def main(args=None):
     parser = argparse.ArgumentParser(description="Parse Luma3DS exception dumps")
     parser.add_argument("filename")
     args = parser.parse_args()
@@ -141,6 +141,11 @@ if __name__ == "__main__":
         typeDetailsStr = " (VFP exception)"
 
     print("Exception type: {0}{1}".format("unknown" if exceptionType >= len(handledExceptionNames) else handledExceptionNames[exceptionType], typeDetailsStr))
+
+    xfsr = registers[18] if exceptionType == 2 else registers[17] if exceptionType == 3 else 0
+    if xfsr != 0:
+        print("Fault status: " + faultStatusSources[xfsr & 0xf])
+
     if additionalDataSize != 0:
         print("Current process: {0} ({1:016x})".format(additionalData[:8].decode("ascii"), unpack_from("<Q", additionalData, 8)[0]))
 
@@ -150,12 +155,11 @@ if __name__ == "__main__":
         print(makeRegisterLine(registerNames[i], registers[i], registerNames[i+1], registers[i+1]))
     if nbRegisters % 2 == 1: print("{0:<15}{1:<20}".format(registerNames[nbRegisters - 1], "{0:08x}".format(registers[nbRegisters - 1])))
 
+    if exceptionType == 3:
+        print("{0:<15}{1:<20}Access type: {2}".format("FAR", "{0:08x}".format(registers[19]), "Write" if registers[17] & (1 << 11) != 0 else "Read"))
+
     thumb = registers[16] & 0x20 != 0
     addr = registers[15] - codeDumpSize + (2 if thumb else 4)
-
-    xfsr = registers[18] if exceptionType == 2 else registers[17] if exceptionType == 3 else 0
-    if xfsr != 0:
-        print("\nFault Status Source: " + faultStatusSources[xfsr & 0xf])
 
     print("\nCode dump:\n")
 
@@ -164,7 +168,7 @@ if __name__ == "__main__":
         path = os.path.join(os.environ["DEVKITARM"], "bin", "arm-none-eabi-objdump")
 
         if os.name == "nt" and path[0] == '/':
-			path = ''.join((path[1], ':', path[2:]))
+            path = ''.join((path[1], ':', path[2:]))
 
         objdump_res = subprocess.check_output((
                                                     path, "-marm", "-b", "binary",
@@ -179,3 +183,6 @@ if __name__ == "__main__":
 
     print("\nStack dump:\n")
     print(hexdump(registers[13], stackDump))
+
+if __name__ == "__main__":
+    main()
