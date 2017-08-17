@@ -191,10 +191,9 @@ void detectAndProcessExceptionDumps(void)
 
     drawString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
 
-    memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
-
     waitInput(false);
 
 exit:
+    memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
     mcuPowerOff();
 }
