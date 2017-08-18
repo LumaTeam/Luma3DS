@@ -11,6 +11,6 @@ SECTIONS
     .data   : ALIGN(4) { *(.data*); . = ALIGN(4); }
     .bss    : ALIGN(8) { __bss_start = .; *(.bss* COMMON); . = ALIGN(8); __bss_end = .; }
 
-    __stack_top__    = 0x1FFFF000;
+    __stack_top__    = 0x1FFFE000;
     . = ALIGN(4);
 }

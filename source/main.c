@@ -43,7 +43,8 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 bool isFirmlaunch = false,
-     isSdMode;
+     isSdMode,
+     isNTRCARDBoot;
 u16 launchedPath[41];
 
 void main(int argc, char **argv, u32 magicWord)
@@ -53,6 +54,13 @@ void main(int argc, char **argv, u32 magicWord)
     FirmwareType firmType;
     FirmwareSource nandType;
 
+    static const u8 *const bootMediaStatus = (const u8 * const)0x1FFFE00C;
+    static const u8 *const bootPartitionsStatus = (const u8 * const)0x1FFFE010;
+    static const u8 zeroes[8] = {0};
+    isNTRCARDBoot =
+                bootMediaStatus[3] == 2 && //shell closed
+                bootMediaStatus[1] == 0 && //no error booting NTRCARD
+                memcmp(bootPartitionsStatus, zeroes, 8) == 0; //NAND paritions not even considered
     if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal boot
     {
         u32 i;
@@ -72,9 +80,27 @@ void main(int argc, char **argv, u32 magicWord)
     }
     else if(magicWord == 0xB002)
     {
-        static const char argv[] = "firm0:";
-        for(u32 i = 0; i < sizeof(argv); i++) //Copy and convert the path to UTF-16
-            launchedPath[i] = argv[i];
+        bool isFirm1 = bootPartitionsStatus[2] != 0; //No NTRCARD boot and FIRM0 didn't boot successfully
+        char path[9] = {0}; // Clearing here for null terminator
+        u32 pathLen;
+        if(isNTRCARDBoot)
+        {
+            memcpy(path, "ntrcard:", 8); //This mount point doesn't actually exist, firmlaunch will fail as intended
+            pathLen = 8;
+        }
+        else if(!isFirm1)
+        {
+            memcpy(path, "firm0:", 6);
+            pathLen = 6;
+        }
+        else
+        {
+            memcpy(path, "firm1:", 6);
+            pathLen = 6;
+        }
+
+        for(u32 i = 0; i < pathLen + 1; i++) //Copy and convert the path to UTF-16
+            launchedPath[i] = path[i];
     }
     else error("Launched using an unsupported loader.");
 
@@ -89,7 +115,7 @@ void main(int argc, char **argv, u32 magicWord)
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
-    else if(memcmp(launchedPath, u"firm", 8) == 0)
+    else if(memcmp(launchedPath, u"firm", 8) == 0 || memcmp(launchedPath, u"ntrcard", 14) == 0)
     {
         setupKeyslots();
 
@@ -174,8 +200,8 @@ void main(int argc, char **argv, u32 magicWord)
     u32 pinMode = MULTICONFIG(PIN);
     bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
-    //If no configuration file exists or SELECT is held, load configuration menu
-    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
+    //If no configuration file exists or SELECT is held or if booted from NTRCARD, load configuration menu
+    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT) || isNTRCARDBoot;
 
     if(shouldLoadConfigMenu)
     {
