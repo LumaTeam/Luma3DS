@@ -44,23 +44,19 @@ extern FirmwareSource firmSource;
 
 bool isFirmlaunch = false,
      isSdMode,
-     isNTRCARDBoot;
+     isNtrcardBoot;
 u16 launchedPath[41];
 
 void main(int argc, char **argv, u32 magicWord)
 {
     bool isSafeMode = false,
          isNoForceFlagSet = false;
+    const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C,
+              *bootPartitionsStatus = (const vu8 *)0x1FFFE010;
+    isNtrcardBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1]; //Shell closed, no error booting NTRCARD, NAND paritions not even considered
     FirmwareType firmType;
     FirmwareSource nandType;
 
-    static const u8 *const bootMediaStatus = (const u8 * const)0x1FFFE00C;
-    static const u8 *const bootPartitionsStatus = (const u8 * const)0x1FFFE010;
-    static const u8 zeroes[8] = {0};
-    isNTRCARDBoot =
-                bootMediaStatus[3] == 2 && //shell closed
-                bootMediaStatus[1] == 0 && //no error booting NTRCARD
-                memcmp(bootPartitionsStatus, zeroes, 8) == 0; //NAND paritions not even considered
     if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal boot
     {
         u32 i;
@@ -80,26 +76,10 @@ void main(int argc, char **argv, u32 magicWord)
     }
     else if(magicWord == 0xB002)
     {
-        bool isFirm1 = bootPartitionsStatus[2] != 0; //No NTRCARD boot and FIRM0 didn't boot successfully
-        char path[9] = {0}; // Clearing here for null terminator
-        u32 pathLen;
-        if(isNTRCARDBoot)
-        {
-            memcpy(path, "ntrcard:", 8); //This mount point doesn't actually exist, firmlaunch will fail as intended
-            pathLen = 8;
-        }
-        else if(!isFirm1)
-        {
-            memcpy(path, "firm0:", 6);
-            pathLen = 6;
-        }
-        else
-        {
-            memcpy(path, "firm1:", 6);
-            pathLen = 6;
-        }
+        //"ntrcard:" doesn't actually exist, firmlaunch will fail as intended
+        const char *path = isNtrcardBoot ? "ntrcard:" : (!bootPartitionsStatus[2] ? "firm1:" : "firm0:");
 
-        for(u32 i = 0; i < pathLen + 1; i++) //Copy and convert the path to UTF-16
+        for(u32 i = 0; i < 40 && path[i] != 0; i++) //Copy and convert the path to UTF-16
             launchedPath[i] = path[i];
     }
     else error("Launched using an unsupported loader.");
@@ -201,7 +181,7 @@ void main(int argc, char **argv, u32 magicWord)
     bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
     //If no configuration file exists or SELECT is held or if booted from NTRCARD, load configuration menu
-    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT) || isNTRCARDBoot;
+    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT) || isNtrcardBoot;
 
     if(shouldLoadConfigMenu)
     {

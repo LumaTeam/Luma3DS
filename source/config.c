@@ -239,7 +239,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
     initScreens();
 
-    u32 endPos = drawFormattedString(true, 10, 10, COLOR_TITLE, "%s%s\n%s", CONFIG_TITLE, isNTRCARDBoot ? "\nBooted from NTRCARD" : "", "Press A to select, START to save");
+    u32 endPos = drawFormattedString(true, 10, 10, COLOR_TITLE, "%s%s\n%s", CONFIG_TITLE, isNtrcardBoot ? "\nBooted from NTRCARD" : "", "Press A to select, START to save");
     endPos += SPACING_Y;
 
     //Character to display a selected option
