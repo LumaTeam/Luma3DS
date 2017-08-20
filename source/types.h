@@ -115,7 +115,8 @@ typedef enum FirmwareType
 } FirmwareType;
 
 extern bool isFirmlaunch,
-            isSdMode;
+            isSdMode,
+            isNtrcardBoot;
 
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[41];

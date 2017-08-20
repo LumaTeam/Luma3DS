@@ -43,13 +43,13 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 bool isFirmlaunch = false,
-     isSdMode;
+     isSdMode,
+     isNtrcardBoot;
 u16 launchedPath[41];
 
 void main(int argc, char **argv, u32 magicWord)
 {
     bool isFirmProtEnabled,
-         isNtrcardBoot,
          isSafeMode = false,
          isNoForceFlagSet = false;
     FirmwareType firmType;
