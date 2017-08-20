@@ -43,9 +43,9 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 bool isFirmlaunch = false,
-     isSdMode,
-     isNtrcardBoot;
+     isSdMode;
 u16 launchedPath[41];
+BootType bootType;
 
 void main(int argc, char **argv, u32 magicWord)
 {
@@ -58,7 +58,7 @@ void main(int argc, char **argv, u32 magicWord)
     const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
 
     //Shell closed, no error booting NTRCARD, NAND paritions not even considered
-    isNtrcardBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
+    bootType = (bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1]) ? NTR : B9S;
 
     if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal (B9S) boot
     {
@@ -79,9 +79,19 @@ void main(int argc, char **argv, u32 magicWord)
     }
     else if(magicWord == 0xB002) //FIRM/NTRCARD boot
     {
-        if(!isNtrcardBoot)
+        if(bootType != NTR)
         {
-        	const char *path = !((vu8 *)bootPartitionsStatus)[2] ? "firm1:" : "firm0:";
+        	const char *path;
+        	if(!((vu8 *)bootPartitionsStatus)[2])
+        	{
+        		bootType = FIRM0;
+        		path = "firm0:";
+        	}
+        	else
+        	{
+        		bootType = FIRM1;
+        		path = "firm1:";
+        	}
 
         	for(u32 i = 0; i < 7; i++) //Copy and convert the path to UTF-16
           		launchedPath[i] = path[i];
@@ -100,7 +110,7 @@ void main(int argc, char **argv, u32 magicWord)
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
-    else if(memcmp(launchedPath, u"firm", 8) == 0 || isNtrcardBoot)
+    else if(bootType != B9S)
     {
         setupKeyslots();
 
@@ -120,7 +130,7 @@ void main(int argc, char **argv, u32 magicWord)
         error("Launched from an unsupported location: %s.", mountPoint);
     }
 
-    if(isNtrcardBoot && magicWord == 0xB002)
+    if(bootType == NTR && magicWord == 0xB002)
     {
     	loadHomebrewFirm(0);
     	mcuPowerOff();
@@ -158,7 +168,7 @@ void main(int argc, char **argv, u32 magicWord)
     installArm9Handlers();
 
     firmType = NATIVE_FIRM;
-    isFirmProtEnabled = !isNtrcardBoot;
+    isFirmProtEnabled = bootType != NTR;
 
     //Get pressed buttons
     u32 pressed = HID_PAD;
@@ -301,7 +311,7 @@ boot:
 
     if(!isFirmlaunch)
     {
-        configData.bootConfig = ((u32)isNtrcardBoot << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.bootConfig = ((bootType == NTR ? 1 : 0) << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 

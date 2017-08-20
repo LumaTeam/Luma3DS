@@ -239,8 +239,14 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
     initScreens();
 
-    drawFormattedString(true, 10, 10, COLOR_TITLE, "%s%s", CONFIG_TITLE, isNtrcardBoot ? " (ntrboot)" : "");
+    static const char *bootTypes[] = { "B9S",
+                                       "B9S (ntrboothax)",
+                                       "FIRM0",
+                                       "FIRM1" };
+
+    drawString(true, 10, 10, COLOR_TITLE, CONFIG_TITLE);
     drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to save");
+    drawFormattedString(false, 10, SCREEN_HEIGHT - 2 * SPACING_Y, COLOR_YELLOW, "Booted from %s via %s", isSdMode ? "SD" : "CTRNAND", bootTypes[(u32)bootType]);
 
     //Character to display a selected option
     char selected = 'x';

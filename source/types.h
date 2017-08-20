@@ -114,9 +114,18 @@ typedef enum FirmwareType
     NATIVE_FIRM1X2X
 } FirmwareType;
 
+typedef enum bootType
+{
+    B9S = 0,
+    NTR,
+    FIRM0,
+    FIRM1
+} BootType;
+
 extern bool isFirmlaunch,
-            isSdMode,
-            isNtrcardBoot;
+            isSdMode;
+
+extern BootType bootType;
 
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[41];
