@@ -335,7 +335,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
     }
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isFirmProtEnabled, bool isSafeMode, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -376,7 +376,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, firm->section[2].address, firmVersion);
 
     //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
-    else ret += patchFirmWrites(process9Offset, process9Size);
+    else if(isFirmProtEnabled) ret += patchFirmWrites(process9Offset, process9Size);
 
     //Apply firmlaunch patches
     ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);

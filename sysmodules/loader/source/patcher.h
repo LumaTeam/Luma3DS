@@ -14,6 +14,7 @@
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
 #define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(6, 1)
+#define BOOTCFG_NTRCARDBOOT  BOOTCONFIG(7, 1)
 
 enum multiOptions
 {

@@ -43,21 +43,24 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 bool isFirmlaunch = false,
-     isSdMode,
-     isNtrcardBoot;
+     isSdMode;
 u16 launchedPath[41];
 
 void main(int argc, char **argv, u32 magicWord)
 {
-    bool isSafeMode = false,
+    bool isFirmProtEnabled,
+         isNtrcardBoot,
+         isSafeMode = false,
          isNoForceFlagSet = false;
-    const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C,
-              *bootPartitionsStatus = (const vu8 *)0x1FFFE010;
-    isNtrcardBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1]; //Shell closed, no error booting NTRCARD, NAND paritions not even considered
     FirmwareType firmType;
     FirmwareSource nandType;
+    const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
+    const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
 
-    if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal boot
+    //Shell closed, no error booting NTRCARD, NAND paritions not even considered
+    isNtrcardBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
+
+    if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal (B9S) boot
     {
         u32 i;
         for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
@@ -74,13 +77,15 @@ void main(int argc, char **argv, u32 magicWord)
 
         isFirmlaunch = true;
     }
-    else if(magicWord == 0xB002)
+    else if(magicWord == 0xB002) //FIRM/NTRCARD boot
     {
-        //"ntrcard:" doesn't actually exist, firmlaunch will fail as intended
-        const char *path = isNtrcardBoot ? "ntrcard:" : (!bootPartitionsStatus[2] ? "firm1:" : "firm0:");
+        if(!isNtrcardBoot)
+        {
+        	const char *path = !((vu8 *)bootPartitionsStatus)[2] ? "firm1:" : "firm0:";
 
-        for(u32 i = 0; i < 40 && path[i] != 0; i++) //Copy and convert the path to UTF-16
-            launchedPath[i] = path[i];
+        	for(u32 i = 0; i < 7; i++) //Copy and convert the path to UTF-16
+          		launchedPath[i] = path[i];
+        }
     }
     else error("Launched using an unsupported loader.");
 
@@ -95,7 +100,7 @@ void main(int argc, char **argv, u32 magicWord)
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
-    else if(memcmp(launchedPath, u"firm", 8) == 0 || memcmp(launchedPath, u"ntrcard", 14) == 0)
+    else if(memcmp(launchedPath, u"firm", 8) == 0 || isNtrcardBoot)
     {
         setupKeyslots();
 
@@ -113,6 +118,12 @@ void main(int argc, char **argv, u32 magicWord)
         mountPoint[i] = 0;
 
         error("Launched from an unsupported location: %s.", mountPoint);
+    }
+
+    if(isNtrcardBoot && magicWord == 0xB002)
+    {
+    	loadHomebrewFirm(0);
+    	mcuPowerOff();
     }
 
     //Attempt to read the configuration file
@@ -138,6 +149,7 @@ void main(int argc, char **argv, u32 magicWord)
 
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
+        isFirmProtEnabled = !BOOTCFG_NTRCARDBOOT;
 
         goto boot;
     }
@@ -146,6 +158,7 @@ void main(int argc, char **argv, u32 magicWord)
     installArm9Handlers();
 
     firmType = NATIVE_FIRM;
+    isFirmProtEnabled = !isNtrcardBoot;
 
     //Get pressed buttons
     u32 pressed = HID_PAD;
@@ -181,7 +194,7 @@ void main(int argc, char **argv, u32 magicWord)
     bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
     //If no configuration file exists or SELECT is held or if booted from NTRCARD, load configuration menu
-    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT) || isNtrcardBoot;
+    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
 
     if(shouldLoadConfigMenu)
     {
@@ -288,7 +301,7 @@ boot:
 
     if(!isFirmlaunch)
     {
-        configData.bootConfig = ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        configData.bootConfig = ((u32)isNtrcardBoot << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
 
@@ -302,7 +315,7 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isSafeMode, doUnitinfoPatch);
+            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isFirmProtEnabled, isSafeMode, doUnitinfoPatch);
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
