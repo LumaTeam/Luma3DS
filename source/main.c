@@ -132,6 +132,7 @@ void main(int argc, char **argv, u32 magicWord)
 
     if(bootType == NTR && magicWord == 0xB002)
     {
+    	while(HID_PAD & NTRBOOT_BUTTONS);
     	loadHomebrewFirm(0);
     	mcuPowerOff();
     }
