@@ -104,7 +104,7 @@ u32 waitInput(bool isMenu)
 
 void mcuPowerOff(void)
 {
-    if(!isFirmlaunch && ARESCREENSINITIALIZED) clearScreens(false);
+    if(bootType != FIRMLAUNCH && ARESCREENSINITIALIZED) clearScreens(false);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
@@ -131,7 +131,7 @@ void error(const char *fmt, ...)
     vsprintf(buf, fmt, args);
     va_end(args);
 
-    if(!isFirmlaunch)
+    if(bootType != FIRMLAUNCH)
     {
         initScreens();
 

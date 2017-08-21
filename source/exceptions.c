@@ -89,20 +89,7 @@ void detectAndProcessExceptionDumps(void)
     drawString(true, 10, 10, COLOR_RED, "An exception occurred");
     u32 posY;
     if(dumpHeader->processor == 11) posY = drawFormattedString(true, 10, 30, COLOR_WHITE, "Processor:       ARM11 (core %u)", dumpHeader->core);
-    else posY = drawString(true, 10, 30, COLOR_WHITE, "Processor:       ARM9"); 
-
-    const char *faultStatusInfos = NULL;
-    if(dumpHeader->type >= 2)
-    {
-        u32 xfsr = dumpHeader->type == 2 ? regs[18] : regs[17];
-        xfsr &= 0xF;
-        for(u32 i = 0; i < 15; i++)
-            if(xfsr == faultStatusValues[i])
-            {
-                faultStatusInfos = faultStatusNames[i];
-                break;
-            }
-    }
+    else posY = drawString(true, 10, 30, COLOR_WHITE, "Processor:       ARM9");
 
     if(dumpHeader->type == 2)
     {
@@ -130,7 +117,17 @@ void detectAndProcessExceptionDumps(void)
     else
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Exception type:  %s", handledExceptionNames[dumpHeader->type]);
 
-    if(faultStatusInfos != NULL) posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Fault status:    %s", faultStatusInfos);
+    if(dumpHeader->type >= 2)
+    {
+        u32 xfsr = (dumpHeader->type == 2 ? regs[18] : regs[17]) & 0xF;
+
+        for(u32 i = 0; i < 15; i++)
+            if(xfsr == faultStatusValues[i])
+            {
+                posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Fault status:    %s", faultStatusNames[i]);
+                break;
+            }
+    }
 
     if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE,

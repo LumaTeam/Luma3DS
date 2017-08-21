@@ -117,16 +117,16 @@ typedef enum FirmwareType
 typedef enum bootType
 {
     B9S = 0,
-    NTR,
+    B9SNTR,
     FIRM0,
-    FIRM1
+    FIRM1,
+    FIRMLAUNCH,
+    NTR
 } BootType;
 
-extern bool isFirmlaunch,
-            isSdMode;
+extern bool isSdMode;
 
 extern BootType bootType;
 
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[41];
-

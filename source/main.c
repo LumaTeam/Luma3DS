@@ -42,8 +42,7 @@ extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-bool isFirmlaunch = false,
-     isSdMode;
+bool isSdMode;
 u16 launchedPath[41];
 BootType bootType;
 
@@ -51,17 +50,20 @@ void main(int argc, char **argv, u32 magicWord)
 {
     bool isFirmProtEnabled,
          isSafeMode = false,
-         isNoForceFlagSet = false;
+         isNoForceFlagSet = false,
+         isNtrBoot;
     FirmwareType firmType;
     FirmwareSource nandType;
     const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
     const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
 
     //Shell closed, no error booting NTRCARD, NAND paritions not even considered
-    bootType = (bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1]) ? NTR : B9S;
-
+    isNtrBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
+ 
     if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal (B9S) boot
     {
+        bootType = isNtrBoot ? B9SNTR : B9S;
+
         u32 i;
         for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
             launchedPath[i] = argv[0][i];
@@ -69,33 +71,36 @@ void main(int argc, char **argv, u32 magicWord)
     }
     else if(magicWord == 0xBABE && argc == 2) //Firmlaunch
     {
+        bootType = FIRMLAUNCH;
+
         u32 i;
         u16 *p = (u16 *)argv[0];
         for(i = 0; i < 40 && p[i] != 0; i++)
             launchedPath[i] = p[i];
         launchedPath[i] = 0;
-
-        isFirmlaunch = true;
     }
     else if(magicWord == 0xB002) //FIRM/NTRCARD boot
     {
-        if(bootType != NTR)
+        if(isNtrBoot) bootType = NTR;
+        else
         {
-        	const char *path;
-        	if(!((vu8 *)bootPartitionsStatus)[2])
-        	{
-        		bootType = FIRM0;
-        		path = "firm0:";
-        	}
-        	else
-        	{
-        		bootType = FIRM1;
-        		path = "firm1:";
-        	}
+            const char *path;
+            if(!((vu8 *)bootPartitionsStatus)[2])
+            {
+                bootType = FIRM0;
+                path = "firm0:";
+            }
+            else
+            {
+                bootType = FIRM1;
+                path = "firm1:";
+            }
 
-        	for(u32 i = 0; i < 7; i++) //Copy and convert the path to UTF-16
-          		launchedPath[i] = path[i];
+            for(u32 i = 0; i < 7; i++) //Copy and convert the path to UTF-16
+                launchedPath[i] = path[i];
         }
+
+        setupKeyslots();
     }
     else error("Launched using an unsupported loader.");
 
@@ -110,13 +115,18 @@ void main(int argc, char **argv, u32 magicWord)
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
-    else if(bootType != B9S)
+    else if(bootType == NTR || memcmp(launchedPath, u"firm", 8) == 0)
     {
-        setupKeyslots();
-
         if(mountFs(true, false)) isSdMode = true;
         else if(mountFs(false, true)) isSdMode = false;
         else error("Failed to mount SD and CTRNAND.");
+
+        if(bootType == NTR)
+        {
+            while(HID_PAD & NTRBOOT_BUTTONS);
+            loadHomebrewFirm(0);
+            mcuPowerOff();
+        }
     }
     else
     {
@@ -130,18 +140,11 @@ void main(int argc, char **argv, u32 magicWord)
         error("Launched from an unsupported location: %s.", mountPoint);
     }
 
-    if(bootType == NTR && magicWord == 0xB002)
-    {
-    	while(HID_PAD & NTRBOOT_BUTTONS);
-    	loadHomebrewFirm(0);
-    	mcuPowerOff();
-    }
-
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
-    if(isFirmlaunch)
+    if(bootType == FIRMLAUNCH)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
@@ -177,7 +180,6 @@ void main(int argc, char **argv, u32 magicWord)
     //If it's a MCU reboot, try to force boot options
     if(CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
-
         //Always force a SysNAND boot when quitting AGB_FIRM
         if(CFG_BOOTENV == 7)
         {
@@ -310,7 +312,7 @@ boot:
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&firmSource);
 
-    if(!isFirmlaunch)
+    if(bootType == FIRMLAUNCH)
     {
         configData.bootConfig = ((bootType == NTR ? 1 : 0) << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
@@ -343,6 +345,6 @@ boot:
 
     if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
-    if(!isFirmlaunch) deinitScreens();
+    if(bootType != FIRMLAUNCH) deinitScreens();
     launchFirm(0, NULL);
 }
