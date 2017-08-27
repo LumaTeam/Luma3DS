@@ -312,7 +312,7 @@ boot:
     else if(firmSource != FIRMWARE_SYSNAND)
         locateEmuNand(&firmSource);
 
-    if(bootType == FIRMLAUNCH)
+    if(bootType != FIRMLAUNCH)
     {
         configData.bootConfig = ((bootType == NTR ? 1 : 0) << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
