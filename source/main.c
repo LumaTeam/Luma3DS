@@ -37,6 +37,7 @@
 #include "crypto.h"
 #include "memory.h"
 #include "screen.h"
+#include "fatfs/sdmmc/sdmmc.h"
 
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
@@ -306,6 +307,12 @@ boot:
     {
         locateEmuNand(&nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
+    }
+
+    //If we're using EmuNAND, make sure the SD card isn't write protected
+    if(nandType != FIRMWARE_SYSNAND && (*(vu16*)(SDMMC_BASE + REG_SDSTATUS0) & TMIO_STAT0_WRPROTECT) == 0) 
+    {
+        error("The SD card is locked, EmuNAND can not be used.\n\nPlease turn the write protection switch off.");
     }
 
     //Same if we're using EmuNAND as the FIRM source

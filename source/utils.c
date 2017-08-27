@@ -109,6 +109,9 @@ void mcuPowerOff(void)
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
 
+    //Deinitialize the screens
+    deinitScreens();
+
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
     while(true);
 }
