@@ -28,6 +28,7 @@
 *   Code for locating the SDMMC struct by Normmatt
 */
 
+
 #include "emunand.h"
 #include "memory.h"
 #include "utils.h"
@@ -35,7 +36,7 @@
 #include "../build/bundled.h"
 
 u32 emuOffset,
-    emuHeader = 0;
+    emuHeader;
 
 void locateEmuNand(FirmwareSource *nandType)
 {
@@ -77,6 +78,7 @@ void locateEmuNand(FirmwareSource *nandType)
             {
                 emuOffset = nandOffset + 1;
                 emuHeader = nandOffset + 1;
+                return;
             }
 
             //Check for Gateway EmuNAND
@@ -84,14 +86,6 @@ void locateEmuNand(FirmwareSource *nandType)
             {
                 emuOffset = nandOffset;
                 emuHeader = nandOffset + nandSize;
-            }
-
-            if(emuHeader != 0)
-            {
-                //Make sure the SD card isn't write protected
-                if((*(vu16 *)(SDMMC_BASE + REG_SDSTATUS0) & TMIO_STAT0_WRPROTECT) == 0)
-                    error("The SD card is locked, EmuNAND can not be used.\nPlease turn the write protection switch off.");
-
                 return;
             }
         }

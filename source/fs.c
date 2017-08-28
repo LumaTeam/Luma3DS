@@ -66,6 +66,7 @@ bool mountFs(bool isSd, bool switchToCtrNand)
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
+    FRESULT result = FR_OK;
     u32 ret = 0;
 
     if(f_open(&file, path, FA_READ) != FR_OK) return ret;
@@ -73,10 +74,10 @@ u32 fileRead(void *dest, const char *path, u32 maxSize)
     u32 size = f_size(&file);
     if(dest == NULL) ret = size;
     else if(size <= maxSize)
-        f_read(&file, dest, size, (unsigned int *)&ret);
-    f_close(&file);
+        result = f_read(&file, dest, size, (unsigned int *)&ret);
+    result |= f_close(&file);
 
-    return ret;
+    return result == FR_OK ? ret : 0;
 }
 
 u32 getFileSize(const char *path)
@@ -181,9 +182,7 @@ bool payloadMenu(char *path)
         payloadNum++;
     }
 
-    f_closedir(&dir);
-
-    if(!payloadNum) return false;
+    if(f_closedir(&dir) != FR_OK || !payloadNum) return false;
 
     u32 pressed = 0,
         selectedPayload = 0;
@@ -281,9 +280,7 @@ u32 firmRead(void *dest, u32 firmType)
         if(tempVersion < firmVersion) firmVersion = tempVersion;
     }
 
-    f_closedir(&dir);
-
-    if(firmVersion == 0xFFFFFFFF) goto exit;
+    if(f_closedir(&dir) != FR_OK || firmVersion == 0xFFFFFFFF) goto exit;
 
     //Complete the string with the .app name
     sprintf(path, "%s/%08x.app", folderPath, firmVersion);
