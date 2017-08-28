@@ -51,8 +51,7 @@ static bool switchToMainDir(bool isSd)
         case FR_OK:
             return true;
         case FR_NO_PATH:
-            f_mkdir(mainDir);
-            return switchToMainDir(isSd);
+            return f_mkdir(mainDir) == FR_OK && switchToMainDir(isSd);
         default:
             return false;
     }
@@ -88,17 +87,18 @@ u32 getFileSize(const char *path)
 bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
+    FRESULT result;
 
     switch(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS))
     {
         case FR_OK:
         {
             unsigned int written;
-            f_write(&file, buffer, size, &written);
-            f_truncate(&file);
-            f_close(&file);
+            result = f_write(&file, buffer, size, &written);
+            if(result == FR_OK) result = f_truncate(&file);
+            result |= f_close(&file);
 
-            return (u32)written == size;
+            return result == FR_OK && (u32)written == size;
         }
         case FR_NO_PATH:
             for(u32 i = 1; path[i] != 0; i++)
@@ -107,18 +107,18 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
                     char folder[i + 1];
                     memcpy(folder, path, i);
                     folder[i] = 0;
-                    f_mkdir(folder);
+                    result = f_mkdir(folder);
                 }
 
-            return fileWrite(buffer, path, size);
+            return result == FR_OK && fileWrite(buffer, path, size);
         default:
             return false;
     }
 }
 
-void fileDelete(const char *path)
+bool fileDelete(const char *path)
 {
-    f_unlink(path);
+    return f_unlink(path) == FR_OK;
 }
 
 bool findPayload(char *path, u32 pressed)

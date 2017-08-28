@@ -395,12 +395,16 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << i;
 
+    writeConfig(true);
+
     u32 newPinMode = MULTICONFIG(PIN);
 
     if(newPinMode != 0) newPin(oldPinStatus && newPinMode == oldPinMode, newPinMode);
-    else if(oldPinStatus) fileDelete(PIN_FILE);
-
-    writeConfig(true);
+    else if(oldPinStatus)
+    {
+        if(!fileDelete(PIN_FILE))
+            error("Unable to delete PIN file");
+    }
 
     while(HID_PAD & PIN_BUTTONS);
     wait(2000ULL);

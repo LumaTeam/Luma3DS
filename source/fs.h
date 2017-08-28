@@ -34,7 +34,7 @@ bool mountFs(bool isSd, bool switchToCtrNand);
 u32 fileRead(void *dest, const char *path, u32 maxSize);
 u32 getFileSize(const char *path);
 bool fileWrite(const void *buffer, const char *path, u32 size);
-void fileDelete(const char *path);
+bool fileDelete(const char *path);
 bool findPayload(char *path, u32 pressed);
 bool payloadMenu(char *path);
 u32 firmRead(void *dest, u32 firmType);
