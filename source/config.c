@@ -240,7 +240,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     initScreens();
 
     static const char *bootTypes[] = { "B9S",
-                                       "B9S (ntrboothax)",
+                                       "B9S (ntrboot)",
                                        "FIRM0",
                                        "FIRM1" };
 
