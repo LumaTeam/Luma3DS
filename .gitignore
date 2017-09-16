@@ -3,6 +3,7 @@ out
 build
 arm11/build
 sysmodules/loader/build
+sysmodules/loader/hb_stub/build
 sysmodules/rosalina/build
 chainloader/build
 exceptions/arm9/build

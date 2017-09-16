@@ -7,12 +7,15 @@
 #include "fsreg.h"
 #include "pxipm.h"
 #include "srvsys.h"
+#include "../build/bundled.h"
 
 #define MAX_SESSIONS    1
 #define HBLDR_3DSX_TID  (*(vu64 *)0x1FF81100)
 
 u32 config, multiConfig, bootConfig;
 bool isN3DS, isSafeMode, isSdMode;
+static u64 hbTargetTitle = 0ULL;
+static u8 hbTargetMedia = 0;
 
 const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
 
@@ -207,6 +210,66 @@ static Result HBLDR_Init(Handle *session)
   return res;
 }
 
+static inline bool hasHbTarget() {
+    return (hbTargetTitle != 0ULL);
+}
+
+void updateHbTarget() {
+    if (hasHbTarget()) return;
+    Handle hbldr;
+    Result res = HBLDR_Init(&hbldr);
+    if (R_FAILED(res)) return;
+    u32* cmdbuf = getThreadCommandBuffer();
+    cmdbuf[0] = IPC_MakeHeader(8,0,0);
+    res = svcSendSyncRequest(hbldr);
+    svcCloseHandle(hbldr);
+    if (R_FAILED(res)) return;
+    res = cmdbuf[1];
+    if (R_FAILED(res)) return;
+    hbTargetTitle = (u64)cmdbuf[2] | ((u64)cmdbuf[3]<<32);
+    hbTargetMedia = cmdbuf[4];
+}
+
+void eraseHbTarget() {
+    hbTargetTitle = 0ULL;
+    hbTargetMedia = 0;
+    Handle hbldr;
+    Result res = HBLDR_Init(&hbldr);
+    if (R_FAILED(res)) return;
+    u32* cmdbuf = getThreadCommandBuffer();
+    cmdbuf[0] = IPC_MakeHeader(7,3,0);
+    cmdbuf[1] = 0;
+    cmdbuf[2] = 0;
+    cmdbuf[3] = 0;
+    svcSendSyncRequest(hbldr);
+    svcCloseHandle(hbldr);
+}
+
+bool isHbTarget(u64 titleId) {
+    if (hbTargetMedia == 2 && titleId == 0ULL) return true;
+    if (!hasHbTarget()) return false;
+    if ((titleId >> 32) == 0x0004000E) titleId &= 0xfffffff0ffffffffULL;
+    return (hbTargetTitle == titleId);
+}
+
+void addHbTargetServiceAccess(u64* serviceAccessControl) {
+    const char hbServiceList[][8] = {
+        "csnd:SND",
+        ""
+    };
+    
+    // find first free slot in list
+    int i = 0;
+    for (; serviceAccessControl[i] != 0; i++)
+        if (i >= 0x22) return;
+    
+    for (int j = 0; hbServiceList[j][0] != 0; j++) {
+        memcpy(&serviceAccessControl[i],hbServiceList[j],sizeof(u64));
+        i++;
+        if (i >= 0x22) return;
+    }
+}
+
 static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 {
   Result res;
@@ -238,6 +301,8 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
     // Force always having sdmc:/ and nand:/rw permission
     exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
     exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
+	
+	
 
     // Tweak 3dsx placeholder title exheader
     if (nbSection0Modules == 6)
@@ -265,6 +330,17 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
       {
         exheader->arm11systemlocalcaps.programid = originalProgId;
         exheader->accessdesc.arm11systemlocalcaps.programid = originalProgId;
+      }
+	  
+	  if (isHbTarget(exheader->arm11systemlocalcaps.programid))
+	  {
+        // Force having the same storage-access bits on as home menu and mset.
+        // Some homebrew relies on this.
+        exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x311081;
+        exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x311081;
+        
+        addHbTargetServiceAccess(exheader->arm11systemlocalcaps.serviceaccesscontrol);
+        addHbTargetServiceAccess(exheader->accessdesc.arm11systemlocalcaps.serviceaccesscontrol);
       }
     }
   }
@@ -297,7 +373,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
       return res;
     }
   }
-
+  
   // get kernel flags
   flags = 0;
   for (count = 0; count < 28; count++)
@@ -349,6 +425,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   }
 
   // allocate process memory
+  bool HbTarget = (isHbTarget(progid) && (g_exheader.codesetinfo.text.codesize + 4095) > 0x8000);
   vaddr.text_addr = g_exheader.codesetinfo.text.address;
   vaddr.text_size = (g_exheader.codesetinfo.text.codesize + 4095) >> 12;
   vaddr.ro_addr = g_exheader.codesetinfo.ro.address;
@@ -365,6 +442,11 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   // load code
   if ((res = load_code(progid, &shared_addr, prog_handle, g_exheader.codesetinfo.flags.flag & 1)) >= 0)
   {
+    if (HbTarget)
+    {
+		// copy the loader stub over the EP
+		memcpy((void *)shared_addr.text_addr,hb_stub_bin,hb_stub_bin_size);
+    }
     memcpy(&codesetinfo.name, g_exheader.codesetinfo.name, 8);
     codesetinfo.program_id = progid;
     codesetinfo.text_addr = vaddr.text_addr;
@@ -398,6 +480,15 @@ static Result loader_RegisterProgram(u64 *prog_handle, FS_ProgramInfo *title, FS
   u64 prog_id;
 
   prog_id = title->programId;
+  
+  updateHbTarget();
+  
+  if (isHbTarget(prog_id)) {
+    // for compatibility: make sure any update-title is not used
+	if ((prog_id >> 32) == 0x0004000E) prog_id &= 0xfffffff0ffffffffULL;
+    update = title;
+  }
+  
   if (prog_id >> 32 != 0xFFFF0000)
   {
     res = FSREG_CheckHostLoadId(prog_id);

@@ -24,7 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
-/* File mainly written by fincs */
+/* File originally written by fincs */
+/* 2017-09: additions by Riley (title-3dsx support) */
 #pragma once
 
 #include <3ds/types.h>

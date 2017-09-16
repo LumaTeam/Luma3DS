@@ -10,6 +10,7 @@ name := $(shell basename $(CURDIR))
 
 dir_source := source
 dir_patches := patches
+dir_hb_stub := hb_stub
 dir_build := build
 dir_out := ../../$(dir_build)
 
@@ -26,7 +27,7 @@ LDFLAGS := -specs=3dsx.specs $(ASFLAGS) -Wl,--section-start,.text=0x14000000
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
 
-bundled = $(dir_build)/romfsredir.bin.o
+bundled = $(dir_build)/romfsredir.bin.o $(dir_build)/hb_stub.bin.o
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
@@ -37,7 +38,10 @@ all: $(dir_out)/$(name).cxi
 
 .PHONY: clean
 clean:
+	@$(MAKE) -C $(dir_hb_stub) clean
 	@rm -rf $(dir_build)
+
+.PHONY: $(dir_hb_stub)
 
 .PRECIOUS: $(dir_build)/%.bin
 
@@ -53,6 +57,10 @@ $(dir_build)/%.bin.o: $(dir_build)/%.bin
 $(dir_build)/%.bin: $(dir_patches)/%.s
 	@mkdir -p "$(@D)"	
 	@armips $<
+	
+$(dir_build)/hb_stub.bin: $(dir_hb_stub)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 

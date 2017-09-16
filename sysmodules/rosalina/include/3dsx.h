@@ -24,7 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
-/* File entirely written by fincs */
+/* File originally written by fincs */
+/* 2017-09: additions by Riley (title-3dsx support) */
 
 #pragma once
 #include <3ds/types.h>
@@ -107,5 +108,8 @@ typedef struct
 #define ARGVBUF_SIZE 0x400
 extern u32 ldrArgvBuf[ARGVBUF_SIZE/4];
 
+u32 IFile_Read2(IFile *file, void* buffer, u32 size, u32 offset);
 bool Ldr_Get3dsxSize(u32* pSize, IFile *file);
 Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile *file, u64 tid);
+Result Ldr_Load3dsxToBuffers(IFile* file,u8* text,u32 text_size,size_t text_addr,u8* ro,u32 ro_size,size_t ro_addr,u8* rw,u32 rw_size,size_t rw_addr,size_t heap_size);
+
