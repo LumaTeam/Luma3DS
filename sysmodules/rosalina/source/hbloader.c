@@ -24,7 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
-/* This file was entirely written by fincs */
+/* This file was originally written by fincs */
+/* 2017-09: additions by Riley (title-3dsx support) */
 
 #include <3ds.h>
 #include "hbloader.h"
@@ -126,6 +127,8 @@ static inline void assertSuccess(Result res)
 static MyThread hbldrThread;
 static u8 ALIGN(8) hbldrThreadStack[THREAD_STACK_SIZE];
 static u16 hbldrTarget[PATH_MAX+1];
+static u64 hbldrTargetTitle;
+static u8 hbldrTargetMedia;
 
 MyThread *hbldrCreateThread(void)
 {
@@ -320,6 +323,133 @@ static void HBLDR_HandleCommands(void)
             cmdbuf[3] = (u32)exh;
             break;
         }
+		case 5:
+        {
+            if (cmdbuf[0] != IPC_MakeHeader(5, 7, 6) ||
+			    cmdbuf[8] != IPC_Desc_Buffer(cmdbuf[1],IPC_BUFFER_W) ||
+				cmdbuf[10] != IPC_Desc_Buffer(cmdbuf[3],IPC_BUFFER_W) ||
+				cmdbuf[12] != IPC_Desc_Buffer(cmdbuf[5],IPC_BUFFER_W))
+            {
+                error(cmdbuf, 0xD9001830);
+                break;
+            }
+			
+			u32 cmdbufCopy[14];
+			for (int i = 0; i < 14; i++) cmdbufCopy[i] = cmdbuf[i];
+
+            if (hbldrTarget[0] == 0)
+            {
+                u16_strncpy(hbldrTarget, u"/boot.3dsx", PATH_MAX);
+                ldrArgvBuf[0] = 1;
+                strncpy((char*)&ldrArgvBuf[1], "sdmc:/boot.3dsx", sizeof(ldrArgvBuf)-4);
+            }
+
+            res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_UTF16, hbldrTarget), FS_OPEN_READ);
+            hbldrTarget[0] = 0;
+            if (R_FAILED(res))
+            {
+                error(cmdbuf, res);
+                break;
+            }
+			
+			u32 totalSize = 0;
+            res = Ldr_Get3dsxSize(&totalSize, &file);
+            if (R_FAILED(res))
+            {
+                IFile_Close(&file);
+                error(cmdbuf, res);
+                break;
+            }
+			
+			if (totalSize+0x1000 > cmdbufCopy[1]+cmdbufCopy[3]+cmdbufCopy[5])
+			{
+				IFile_Close(&file);
+                error(cmdbuf, MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_LDR, RD_INVALID_SIZE));
+                break;
+			}
+
+            res = Ldr_Load3dsxToBuffers(&file,(u8*)cmdbufCopy[9],cmdbufCopy[1],cmdbufCopy[2],(u8*)cmdbufCopy[11],cmdbufCopy[3],cmdbufCopy[4],(u8*)cmdbufCopy[13],cmdbufCopy[5] - 0x2000,cmdbufCopy[6],cmdbufCopy[7]);
+            IFile_Close(&file);
+
+            if (R_FAILED(res))
+			{
+				error(cmdbuf,res);
+				break;
+			}
+
+            cmdbuf[0] = IPC_MakeHeader(5, 1, 6);
+            cmdbuf[1] = 0;
+			for (int i = 0; i < 6; i++) cmdbuf[i+2] = cmdbufCopy[i+8];
+            break;
+        }
+		case 6:
+		{
+			if (cmdbuf[0] != IPC_MakeHeader(6, 0, 0))
+            {
+                error(cmdbuf, 0xD9001830);
+                break;
+            }
+			
+			if (hbldrTarget[0] == 0)
+            {
+                u16_strncpy(hbldrTarget, u"/boot.3dsx", PATH_MAX);
+                ldrArgvBuf[0] = 1;
+                strncpy((char*)&ldrArgvBuf[1], "sdmc:/boot.3dsx", sizeof(ldrArgvBuf)-4);
+            }
+			
+			res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_UTF16, hbldrTarget), FS_OPEN_READ);
+            if (R_FAILED(res))
+            {
+                error(cmdbuf, res);
+                break;
+            }
+			
+			_3DSX_Header hdr;
+			res = IFile_Read2(&file, &hdr, sizeof(hdr), 0);
+			IFile_Close(&file);
+			if (!res)
+            {
+                error(cmdbuf, -1);
+                break;
+            }
+			
+			cmdbuf[0] = IPC_MakeHeader(6,4,0);
+			cmdbuf[1] = 0;
+			cmdbuf[2] = ((hdr.codeSegSize+0xFFF) &~ 0xFFF);
+			cmdbuf[3] = ((hdr.rodataSegSize+0xFFF) &~ 0xFFF);
+			cmdbuf[4] = ((hdr.dataSegSize+0xFFF) &~ 0xFFF);
+			
+			break;
+		}
+		case 7:
+		{
+			if (cmdbuf[0] != IPC_MakeHeader(7, 3, 0))
+            {
+                error(cmdbuf, 0xD9001830);
+                break;
+            }
+			hbldrTargetTitle = (u64)cmdbuf[1] | ((u64)cmdbuf[2]<<32);
+			hbldrTargetMedia = cmdbuf[3];
+			
+			cmdbuf[0] = IPC_MakeHeader(7,1,0);
+			cmdbuf[1] = 0;
+			break;
+		}
+		case 8:
+		{
+			if (cmdbuf[0] != IPC_MakeHeader(8, 0, 0))
+            {
+                error(cmdbuf, 0xD9001830);
+                break;
+            }
+			
+			cmdbuf[0] = IPC_MakeHeader(8,4,0);
+			cmdbuf[1] = 0;
+			cmdbuf[2] = hbldrTargetTitle;
+			cmdbuf[3] = hbldrTargetTitle >> 32;
+			cmdbuf[4] = hbldrTargetMedia;
+			break;
+		}
         default:
         {
             error(cmdbuf, 0xD900182F);

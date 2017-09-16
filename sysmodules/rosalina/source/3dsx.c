@@ -24,7 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
-/* This file was entirely written by fincs */
+/* This file was originally written by fincs */
+/* 2017-09: additions by Riley (title-3dsx support) */
 
 #include <3ds.h>
 #include "3dsx.h"
@@ -98,64 +99,53 @@ static inline u32 min(u32 a, u32 b)
     return a < b ? a : b;
 }
 
-Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile *file, u64 tid)
+static u8 Ldr_Load3dsx(_3DSX_Header* hdr,_3DSX_LoadInfo* d,IFile* file,bool twoPages)
 {
     u32 i,j,k,m;
-    Result res;
-    _3DSX_Header hdr;
-    IFile_Read2(file, &hdr, sizeof(hdr), 0);
+	u32* codePages = (u32*) (d->segPtrs[0]);
+	u32 codeSize = (hdr->codeSegSize+0xFFF) &~ 0xFFF;
+	u32 rodataSize = (hdr->rodataSegSize+0xFFF) &~ 0xFFF;
+	u32 rwdataSize = (hdr->dataSegSize+0xFFF) &~ 0xFFF;
+	u32 offsets[2] = { codeSize, codeSize + rodataSize };
+    u32* segLimit = d->segPtrs[2] + d->segSizes[2];
 
-    _3DSX_LoadInfo d;
-    d.segSizes[0] = (hdr.codeSegSize+0xFFF) &~ 0xFFF;
-    d.segSizes[1] = (hdr.rodataSegSize+0xFFF) &~ 0xFFF;
-    d.segSizes[2] = (hdr.dataSegSize+0xFFF) &~ 0xFFF;
-    d.segPtrs[0] = codePages;
-    d.segPtrs[1] = (char*)d.segPtrs[0] + d.segSizes[0];
-    d.segPtrs[2] = (char*)d.segPtrs[1] + d.segSizes[1];
-    d.segAddrs[0] = baseAddr;
-    d.segAddrs[1] = d.segAddrs[0] + d.segSizes[0];
-    d.segAddrs[2] = d.segAddrs[1] + d.segSizes[1];
+    u32 readOffset = hdr->headerSize;
 
-    u32 offsets[2] = { d.segSizes[0], d.segSizes[0] + d.segSizes[1] };
-    u32* segLimit = d.segPtrs[2] + d.segSizes[2];
-
-    u32 readOffset = hdr.headerSize;
-
-    u32 nRelocTables = hdr.relocHdrSize/4;
+    u32 nRelocTables = hdr->relocHdrSize/4;
     SEC_ASSERT((3*4*nRelocTables) <= 0x1000);
-    u32* extraPage = (u32*)((char*)d.segPtrs[2] + d.segSizes[2]);
-    u32 extraPageAddr = d.segAddrs[2] + d.segSizes[2];
+    u32* extraPage = (u32*)((char*)d->segPtrs[2] + rwdataSize);
+    u32 extraPageAddr = d->segAddrs[2] + rwdataSize;
 
     // Read the relocation headers
     for (i = 0; i < 3; i ++)
     {
-        if (IFile_Read2(file, &extraPage[i*nRelocTables], hdr.relocHdrSize, readOffset) != hdr.relocHdrSize)
+        if (IFile_Read2(file, &extraPage[i*nRelocTables], hdr->relocHdrSize, readOffset) != hdr->relocHdrSize)
         {
             Log_PrintP("Cannot read relheader %d", i);
             return 0;
         }
-        readOffset += hdr.relocHdrSize;
+        readOffset += hdr->relocHdrSize;
     }
 
     // Read the code segment
-    if (IFile_Read2(file, d.segPtrs[0], hdr.codeSegSize, readOffset) != hdr.codeSegSize)
+    if (IFile_Read2(file, d->segPtrs[0], hdr->codeSegSize, readOffset) != hdr->codeSegSize)
     {
         Log_PrintP("Cannot read code segment");
         return 0;
     }
-    readOffset += hdr.codeSegSize;
+    readOffset += hdr->codeSegSize;
 
     // Read the rodata segment
-    if (IFile_Read2(file, d.segPtrs[1], hdr.rodataSegSize, readOffset) != hdr.rodataSegSize)
+    if (IFile_Read2(file, d->segPtrs[1], hdr->rodataSegSize, readOffset) != hdr->rodataSegSize)
     {
         Log_PrintP("Cannot read rodata segment");
         return 0;
     }
-    readOffset += hdr.rodataSegSize;
+    readOffset += hdr->rodataSegSize;
 
     // Read the data segment
-    u32 dataLoadSegSize = hdr.dataSegSize - hdr.bssSize;
-    if (IFile_Read2(file, d.segPtrs[2], dataLoadSegSize, readOffset) != dataLoadSegSize)
+    u32 dataLoadSegSize = hdr->dataSegSize - hdr->bssSize;
+    if (IFile_Read2(file, d->segPtrs[2], dataLoadSegSize, readOffset) != dataLoadSegSize)
     {
         Log_PrintP("Cannot read data segment");
         return 0;
@@ -175,8 +165,8 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
                 continue;
             }
 
-            u32* pos = (u32*)d.segPtrs[i];
-            u32* endPos = pos + (d.segSizes[i]/4);
+            u32* pos = (u32*)d->segPtrs[i];
+            u32* endPos = pos + (d->segSizes[i]/4);
             SEC_ASSERT(endPos <= segLimit);
 
             while (nRelocs)
@@ -198,10 +188,10 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
                     u32 nPatches = s_relocBuf[k].patch;
                     for (m = 0; m < nPatches && pos < endPos; m ++)
                     {
-                        u32 inAddr = baseAddr + 4*(pos - codePages);
+                        u32 inAddr = d->segAddrs[0] + 4*(pos - codePages);
                         u32 origData = *pos;
                         u32 subType = origData >> (32-4);
-                        u32 addr = TranslateAddr(origData &~ 0xF0000000, &d, offsets);
+                        u32 addr = TranslateAddr(origData &~ 0xF0000000, d, offsets);
                         //Log_PrintP("%08lX<-%08lX", inAddr, addr);
                         switch (j)
                         {
@@ -240,9 +230,9 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
     PrmStruct* pst = (PrmStruct*) &codePages[1];
     if (pst->magic == _PRM_MAGIC)
     {
-        memset(extraPage, 0, 0x1000);
+        memset(extraPage, 0, (twoPages ? 0x2000 : 0x1000));
         memcpy(extraPage, ldrArgvBuf, sizeof(ldrArgvBuf));
-        pst->pSrvOverride = extraPageAddr + 0xFFC;
+        pst->pSrvOverride = extraPageAddr + 0xffc;
         pst->pArgList = extraPageAddr;
         pst->runFlags |= RUNFLAG_APTCHAINLOAD;
         s64 dummy;
@@ -257,6 +247,27 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
             pst->linearHeapSize = 32*1024*1024;
         }
     }
+	return 1;
+}
+
+Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile *file, u64 tid)
+{
+    Result res;
+    _3DSX_Header hdr;
+    IFile_Read2(file, &hdr, sizeof(hdr), 0);
+
+    _3DSX_LoadInfo d;
+    d.segSizes[0] = (hdr.codeSegSize+0xFFF) &~ 0xFFF;
+    d.segSizes[1] = (hdr.rodataSegSize+0xFFF) &~ 0xFFF;
+    d.segSizes[2] = (hdr.dataSegSize+0xFFF) &~ 0xFFF;
+    d.segPtrs[0] = codePages;
+    d.segPtrs[1] = (char*)d.segPtrs[0] + d.segSizes[0];
+    d.segPtrs[2] = (char*)d.segPtrs[1] + d.segSizes[1];
+    d.segAddrs[0] = baseAddr;
+    d.segAddrs[1] = d.segAddrs[0] + d.segSizes[0];
+    d.segAddrs[2] = d.segAddrs[1] + d.segSizes[1];
+
+    if (!Ldr_Load3dsx(&hdr,&d,file,false)) return 0;
 
     // Create the codeset
     CodeSetInfo csinfo;
@@ -281,4 +292,31 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
     }
 
     return hCodeset;
+}
+
+Result Ldr_Load3dsxToBuffers(IFile* file,u8* text,u32 text_size,size_t text_addr,u8* ro,u32 ro_size,size_t ro_addr,u8* rw,u32 rw_size,size_t rw_addr,size_t heap_size)
+{
+    _3DSX_Header hdr;
+    IFile_Read2(file, &hdr, sizeof(hdr), 0);
+
+    _3DSX_LoadInfo d;
+    d.segSizes[0] = text_size;
+    d.segSizes[1] = ro_size;
+    d.segSizes[2] = rw_size;
+    d.segPtrs[0] = (char*)text;
+    d.segPtrs[1] = (char*)ro;
+    d.segPtrs[2] = (char*)rw;
+    d.segAddrs[0] = text_addr;
+    d.segAddrs[1] = ro_addr;
+    d.segAddrs[2] = rw_addr;
+
+    if (!Ldr_Load3dsx(&hdr,&d,file,true)) return MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_LDR, RD_NOT_IMPLEMENTED); // this result could be better
+	
+	// when loading homebrew this way, errors can happen when 32MB linear heap on o3ds
+	// i have no N3DS to test there, so to be safe, use O3DS values there too (*hax payloads use same values everywhere btw)
+	PrmStruct* pst = (PrmStruct*) &text[4];
+	pst->heapSize = heap_size - 32*1024*1024;
+	pst->linearHeapSize = 32*1024*1024;
+
+    return MAKERESULT(RL_SUCCESS,RS_SUCCESS,RM_LDR,RD_SUCCESS);
 }
