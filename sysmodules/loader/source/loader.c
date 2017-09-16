@@ -446,6 +446,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     {
 		// copy the loader stub over the EP
 		memcpy((void *)shared_addr.text_addr,hb_stub_bin,hb_stub_bin_size);
+        eraseHbTarget();
     }
     memcpy(&codesetinfo.name, g_exheader.codesetinfo.name, 8);
     codesetinfo.program_id = progid;
