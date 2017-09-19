@@ -761,6 +761,25 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             }
         }
 
+        if(progVer > 0x12)
+        {
+            static const u8 pattern[] = {
+                0x00, 0xB1, 0x15, 0x00
+            };
+
+            u8 *roStart = code + ((textSize + 4095) & 0xFFFFF000),
+               *start = memsearch(roStart, pattern, roSize, sizeof(pattern));
+
+            if(start == NULL) goto error;
+
+            start++;
+            u8 *end;
+            for(end = start + 8; *(u32 *)end != 0xCC010000; end += 8)
+                if(end >= roStart + roSize - 12) goto error;
+
+            memset32(start, 0, end - start);
+        }
+
         s64 nbSection0Modules;
         svcGetSystemInfo(&nbSection0Modules, 26, 0);
 
