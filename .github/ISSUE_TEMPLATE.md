@@ -2,10 +2,12 @@
 -- THIS IS NOT A SUPPORT FORUM! For support go here:
 -- Nintendo Hacking: https://discord.gg/MjzatM8y
 --
+-- Rosalina feature requests go here: https://github.com/AuroraWright/Luma3DS/issues/752
+--
 -- Also check the Wiki (https://github.com/AuroraWright/Luma3DS/wiki) before making an issue.
 --
 -- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: https://3ds.guide/troubleshooting
--- If you're using an emu/redNAND anything related to that must also be installed to sysNAND.
+-- If you're using an emu/redNAND try installing anything on it to sysNAND.
 -- Please make sure to read "Enable game patching" https://github.com/AuroraWright/Luma3DS/wiki/Options-and-usage before posting any issues about the "Enable game patching" option(s).
 --
 -- Luma updaters that don't support Boot9Strap/Sighax won't work.
@@ -18,7 +20,7 @@
 
 **SysNAND version (+emu/redNAND version if applicable):**
 
-[e.g. 11.4.0-37U SysNAND, 11.4.0-37J EmuNAND]
+[e.g. 11.6.0-39U SysNAND, 11.6.0-39J EmuNAND]
 
 **Entrypoint (How/what you're using to boot Luma3DS):**
 
@@ -26,7 +28,7 @@
 
 **Luma3DS version:**
 
-[e.g. 8.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
+[e.g. 8.1.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
 <!--You can check which version you're on in System Settings. It will be on the bottom right of the top screen.-->
 
 
@@ -51,7 +53,7 @@ Use EmuNAND FIRM if booting with R: ( )
 
 Enable loading external FIRMs and modules: ( )
 <!--Firmware (.bin) files are not required by Luma, or NTR CFW anymore.
--- If you're having issues with this option enabled try deleting them from the luma folder on the root of the SD card and disabling this option.-->
+-- If you're having issues with this option enabled try deleting them from the luma folder on the root of the SD card or /rw/luma on CTRNAND and disabling this option.-->
 
 Enable game patching: ( )
 
@@ -83,6 +85,6 @@ Disable ARM11 exception handlers: ( )
 
 
 **Dump file:**
-<!--If the issue leads to a crash you can generate a crash dump by checking the "Enable exception handlers" option.
+<!--If the issue leads to a crash you must uncheck the "Disable ARM11 exception handlers" option.
 -- The error message will tell you where the dump is.
 -- Zip the dmp file and drag & drop it below.-->
