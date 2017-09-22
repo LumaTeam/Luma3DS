@@ -112,7 +112,6 @@ void main(int argc, char **argv, u32 magicWord)
     }
     else if(memcmp(launchedPath, u"nand", 8) == 0)
     {
-        firmSource = FIRMWARE_SYSNAND;
         if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
         isSdMode = false;
     }
@@ -320,8 +319,6 @@ boot:
         configData.bootConfig = ((bootType == NTR ? 1 : 0) << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
         writeConfig(false);
     }
-
-    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
 
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
     u32 firmVersion = loadNintendoFirm(&firmType, firmSource, loadFromStorage, isSafeMode);

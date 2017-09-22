@@ -152,6 +152,8 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
 
 u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
+    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
+
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
 
