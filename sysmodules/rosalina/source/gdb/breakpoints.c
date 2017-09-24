@@ -114,9 +114,6 @@ int GDB_DisableBreakpointById(GDBContext *ctx, u32 id)
 
 int GDB_RemoveBreakpoint(GDBContext *ctx, u32 address)
 {
-    if(!thumb && (address & 3) != 0)
-        return -EINVAL;
-
     address &= ~1;
 
     u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
