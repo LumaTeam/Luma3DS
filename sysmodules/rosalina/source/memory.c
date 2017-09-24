@@ -171,6 +171,13 @@ const char *strchr(const char *string, int c)
     return NULL;
 }
 
+void strcat(char *dest, const char *src)
+{
+	while(*dest++);
+	dest--;
+	while((*dest++ = *src++));
+}
+
 void hexItoa(u64 number, char *out, u32 digits, bool uppercase)
 {
     const char hexDigits[] = "0123456789ABCDEF";

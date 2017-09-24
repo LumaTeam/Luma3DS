@@ -45,6 +45,7 @@
 #define BUTTON_X          (1 << 10)
 #define BUTTON_Y          (1 << 11)
 
+#define BUTTON_ANY    			0x00000FFF
 #define DEFAULT_MENU_COMBO  (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)
 
 #define CORE_APPLICATION  0
