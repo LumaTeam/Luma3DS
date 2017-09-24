@@ -68,14 +68,17 @@ int GDB_GetBreakpointInstruction(u32 *instruction, GDBContext *ctx, u32 address)
 
 int GDB_AddBreakpoint(GDBContext *ctx, u32 address, bool thumb, bool persist)
 {
+    if(!thumb && (address & 3) != 0)
+        return -EINVAL;
+
+    address &= ~1;
+
     u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
 
     if(id != ctx->nbBreakpoints && ctx->breakpoints[id].instructionSize != 0 && ctx->breakpoints[id].address == address)
         return 0;
     else if(ctx->nbBreakpoints == MAX_BREAKPOINT)
         return -EBUSY;
-    else if((thumb && (address & 1) != 0) || (!thumb && (address & 3) != 0))
-        return -EINVAL;
 
     for(u32 i = ctx->nbBreakpoints; i > id && i != 0; i--)
         ctx->breakpoints[i] = ctx->breakpoints[i - 1];
@@ -111,6 +114,11 @@ int GDB_DisableBreakpointById(GDBContext *ctx, u32 id)
 
 int GDB_RemoveBreakpoint(GDBContext *ctx, u32 address)
 {
+    if(!thumb && (address & 3) != 0)
+        return -EINVAL;
+
+    address &= ~1;
+
     u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
     if(id == ctx->nbBreakpoints || ctx->breakpoints[id].address != address)
         return -EINVAL;
