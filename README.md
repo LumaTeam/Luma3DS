@@ -28,9 +28,11 @@ See https://github.com/AuroraWright/Luma3DS/wiki
 
 ---
 
-## Credits
+**Credits:**
 
-See https://github.com/AuroraWright/Luma3DS/wiki/Credits
+[Luma3DS](https://github.com/AuroraWright/Luma3DS): for code source Luma3ds   
+[d0k3](https://github.com/d0k3/Decrypt9WIP): for code source Decrypt9WIP   
+[Smealum](https://github.com/smealum/ctrulib): for ctrulib   
 
 ---
 
