@@ -113,7 +113,7 @@ void CIA_menu(void)
 		}
 		
 		Draw_Lock();
-		Draw_DrawString(10, 10, COLOR_TITLE, "Menu Install Cia");
+		Draw_DrawString(10, 10, COLOR_TITLE, "CIA Install Menu");
 		Draw_DrawString(10, 30, COLOR_WHITE, "Press A to install, press B to return");
 		for(int i = 0; i < count; i++)
 		{
@@ -260,8 +260,8 @@ Result installCIA(const char *path, FS_MediaType media)
 		return ret;
 	}
 	
-	Draw_DrawString(10, 30, COLOR_WHITE, "Wait Cia Install...");
-	Draw_DrawString(10, 30, COLOR_WHITE, "Press B to canceled...");
+	Draw_DrawString(10, 30, COLOR_WHITE, "Waiting for CIA installation...");
+	Draw_DrawString(10, 30, COLOR_WHITE, "Press B to cancel...");
 	
 	
 	ret = AM_StartCiaInstall(media, &ciaHandle);
@@ -342,7 +342,7 @@ Result installCIA(const char *path, FS_MediaType media)
 	}
 	
 	Draw_DrawString(10, 50, COLOR_GREEN, "100%");
-	Draw_DrawString(10, 70, COLOR_GREEN, "Installation Cia successfully...");
+	Draw_DrawString(10, 70, COLOR_GREEN, "CIA installation successful.");
 	Draw_FlushFramebuffer();
 	Draw_Unlock();
 	

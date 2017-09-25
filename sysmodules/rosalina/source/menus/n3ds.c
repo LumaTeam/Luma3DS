@@ -33,7 +33,7 @@
 static char clkRateBuf[128 + 1];
 
 Menu N3DSMenu = {
-    "New 3DS menu",
+    "New 3DS Menu",
     .nbItems = 2,
     {
         { "Enable L2 cache", METHOD, .method = &N3DSMenu_EnableDisableL2Cache },

@@ -41,7 +41,7 @@
 #include "fmt.h"
 
 Menu rosalinaMenu = {
-    "Rosalina menu",
+    "Rosalina Menu",
     .nbItems = 11,
     {
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
@@ -68,7 +68,7 @@ void RosalinaMenu_ShowCredits(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS credits");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS Credits");
 
         u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Luma3DS (c) 2016-2017 AuroraWright, TuxSH") + SPACING_Y;
 
@@ -102,7 +102,7 @@ void RosalinaMenu_Reboot(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina Menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -127,7 +127,7 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina Menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();

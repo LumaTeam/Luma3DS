@@ -84,7 +84,7 @@ void DebuggerMenu_EnableDebugger(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Debugger options menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Debugger Options Menu");
 
         if(alreadyEnabled)
             Draw_DrawString(10, 30, COLOR_WHITE, "Already enabled!");
@@ -142,7 +142,7 @@ void DebuggerMenu_DisableDebugger(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Debugger options menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Debugger Options Menu");
         Draw_DrawString(10, 30, COLOR_WHITE, initialized ? (res == 0 ? "Debugger disabled successfully." : buf) : "Debugger not enabled.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
