@@ -41,22 +41,27 @@ const char *get_ext(const char *filename)
     return dot + 1;
 }
 
-Dir_Name* Dir = (Dir_Name*)MAP_BASE_1;
-int *prev_index = (int *)0x080FFF00;
 
-int sDir = 0;
-int index = 0;
-int pos_index = 0;
-int pos = 0;
 
-//bool FoFext[128];//File or Folder
 
-int loadFiles(int sDir)
+void Explorer(void)
 {
+	
 	bool returnhomemenu = false;
 	reboot = false;
 	
-	while(true)
+	Dir_Name* Dir = (Dir_Name*)MAP_BASE_1;
+	int *prev_index = (int *)0x080FFF00;
+	int sDir = 0;
+	int index = 0;
+	int pos_index = 0;
+	int pos = 0;
+	
+	u32 tmp = 0;
+	svcControlMemoryEx(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
+	memcpy(Dir[sDir].Path,"/", 2);
+	
+	do
 	{
 		for(int i=0;i<128;i++)
 			Dir[0].FoFext[i] = true;
@@ -76,7 +81,8 @@ int loadFiles(int sDir)
 		u32 fileRead = 0;
 		int count = 0;
 		
-		while (true) {
+		do 
+		{
 			
 			FSDIR_Read(handle, &fileRead, 1, (FS_DirectoryEntry*)&entry);
 			if (!fileRead) {
@@ -105,9 +111,10 @@ int loadFiles(int sDir)
 			svcCloseHandle(FoFHandle);
 			count++;
 		}
+		while(!terminationRequest);
 		
 		
-		while(true)
+		do
 		{
 			
 			
@@ -188,29 +195,21 @@ int loadFiles(int sDir)
 			
 			
 		}
+		while(!terminationRequest);
 		if(returnhomemenu && reboot)svcKernelSetState(7);
-		if(returnhomemenu)break;
-		
+		if(returnhomemenu)
+		{
+			
+			amExit();
+			svcControlMemory(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_FREE, 0);
+			return;
+		}
 		FSDIR_Close(handle);
 		svcCloseHandle(handle);
 		FSUSER_CloseArchive(sdmcArchive);
+		
 	}
+	while(!terminationRequest);
 	
 
-	return 0;
-}
-
-void Menu_Explorer()
-{	
-	u32 tmp = 0;
-	svcControlMemoryEx(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
-	memcpy(Dir[sDir].Path,"/", 2);
-	while (aptMainLoop())
-	{
-		loadFiles(sDir);
-		break;
-	}
-	amExit();
-	svcControlMemory(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_FREE, 0);
-	return;
 }

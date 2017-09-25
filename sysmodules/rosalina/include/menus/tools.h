@@ -7,9 +7,9 @@
 typedef struct {
     char shortDescription[0x40];
     //char longDescription[0x80];
-	char productCode[0x10];
+	//char productCode[0x10];
    //char publisher[0x40];
-	u8 largeIcon[0x1200];
+	//u8 largeIcon[0x1200];
 	
 }Info_Title;
 
@@ -44,7 +44,7 @@ extern Menu MenuOptions;
 
 void get_Name_TitleID(u64 titleId, u32 count, Info_Title* info);
 void CIA_menu(void);
-void Delete_Title(void);
-Result installCIA(char *path, FS_MediaType media);
+//void Delete_Title(void);
+Result installCIA(const char *path, FS_MediaType media);
 
 SMDH_title* select_smdh_title(SMDH* smdh);

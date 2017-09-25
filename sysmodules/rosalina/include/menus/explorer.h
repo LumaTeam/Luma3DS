@@ -5,6 +5,7 @@
 #include "menu.h"
 
 #define MAX_FILES 256
+
 #define nullptr (void *)0
 
 typedef struct {
@@ -16,5 +17,4 @@ typedef struct {
 	
 }Dir_Name;
 
-int loadFiles(int sDir);
-void Menu_Explorer();
+void Explorer(void);

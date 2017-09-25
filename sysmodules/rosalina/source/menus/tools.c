@@ -32,7 +32,7 @@ Menu MenuOptions = {
     " Menu Tools",
     .nbItems = 2,
     {
-        { "Explorer", METHOD, .method = &Menu_Explorer },
+        { "Explorer", METHOD, .method = &Explorer },
 		{ "Install Cia", METHOD, .method = &CIA_menu },
 		//{ "Delete Title", METHOD, .method = &Delete_Title },
     }
@@ -64,9 +64,7 @@ void CIA_menu(void)
 		return;
 	}
 	
-	if (FSUSER_OpenDirectory(&handle, sdmcArchive, PathCia) == 0) {
-		Draw_DrawString(10, 20, COLOR_WHITE, "/cias directory already exists");
-	}else{
+	if (FSUSER_OpenDirectory(&handle, sdmcArchive, PathCia) != 0) {
 		Draw_DrawString(10, 60, COLOR_RED, "No /cias directory");
 		waitInputWithTimeout(1000);
 		return;
@@ -100,15 +98,27 @@ void CIA_menu(void)
 	
       
 	int index = 0;
+	int pos = 0;
 	while(true)
 	{
+		if(index==0)pos=0;
+		if(count>16)
+		{
+			if((pos+15)<index){
+				pos++; 
+				
+			}
+			if(pos>index)pos--;
+			if(index==count-1)pos=count-16;
+		}
 		
 		Draw_Lock();
 		Draw_DrawString(10, 10, COLOR_TITLE, "Menu Install Cia");
 		Draw_DrawString(10, 30, COLOR_WHITE, "Press A to install, press B to return");
 		for(int i = 0; i < count; i++)
 		{
-			Draw_DrawFormattedString(30, 60+(i*10), (i == index) ? COLOR_SEL : COLOR_WHITE, "   %s",cianame->fileNames[i]);
+			Draw_DrawString(30, 60+(i*10), COLOR_BLACK, "                                                  ");
+			Draw_DrawFormattedString(30, 60+(i*10), (i == index) ? COLOR_SEL : COLOR_WHITE, "   %s",cianame->fileNames[i+pos]);
 			if(i == index)Draw_DrawString(30, 60+(i*10),COLOR_SEL, "=>");
 		}
 		Draw_FlushFramebuffer();
@@ -182,12 +192,12 @@ char* get_eta(u64 seconds) {
     seconds     -= minutes* 60;
 	
 	
-	sprintf(disp, "%02u:%02u:%02u",hours,minutes,(u8) seconds);
+	sprintf(disp, "%02uh%02um%02us",hours,minutes,(u8) seconds);
 
     return disp;
 }
 
-Result installCIA(char *path, FS_MediaType media)
+Result installCIA(const char *path, FS_MediaType media)
 {
 	amInit();
     AM_InitializeExternalTitleDatabase(false);
@@ -339,10 +349,12 @@ Result installCIA(char *path, FS_MediaType media)
 	Draw_ClearFramebuffer();
 	Draw_FlushFramebuffer();
 	Draw_Unlock();
+
 	FSDIR_Close(ciaHandle);
 	svcCloseHandle(ciaHandle);
 	FSDIR_Close(fileHandle);
 	svcCloseHandle(fileHandle);
+	
 	return 0;
 }
 
