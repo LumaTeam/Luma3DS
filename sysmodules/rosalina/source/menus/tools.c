@@ -200,7 +200,10 @@ char* get_eta(u64 seconds) {
 Result installCIA(const char *path, FS_MediaType media)
 {
 	amInit();
-    AM_InitializeExternalTitleDatabase(false);
+   
+	bool* available = false;
+	AM_QueryAvailableExternalTitleDatabase(available);
+	if(!available)AM_InitializeExternalTitleDatabase(false);
 	
 	u32 tmp = 0;
 	svcControlMemoryEx(&tmp, MAP_BASE_2, 0, MAP_BASE_SIZE, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
@@ -260,7 +263,7 @@ Result installCIA(const char *path, FS_MediaType media)
 	Draw_DrawString(10, 30, COLOR_WHITE, "Wait Cia Install...");
 	Draw_DrawString(10, 30, COLOR_WHITE, "Press B to canceled...");
 	
-	//AM_QueryAvailableExternalTitleDatabase(NULL);
+	
 	ret = AM_StartCiaInstall(media, &ciaHandle);
 	if (R_FAILED(ret)){
 		Draw_ClearFramebuffer();
