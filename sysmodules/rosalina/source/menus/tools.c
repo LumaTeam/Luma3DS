@@ -120,6 +120,7 @@ void CIA_menu(void)
 			Draw_DrawString(30, 60+(i*10), COLOR_BLACK, "                                                  ");
 			Draw_DrawFormattedString(30, 60+(i*10), (i == index) ? COLOR_SEL : COLOR_WHITE, "   %s",cianame->fileNames[i+pos]);
 			if(i == index)Draw_DrawString(30, 60+(i*10),COLOR_SEL, "=>");
+			if(i==15)break;
 		}
 		Draw_FlushFramebuffer();
 		Draw_Unlock();
@@ -218,65 +219,28 @@ Result installCIA(const char *path, FS_MediaType media)
 	Handle ciaHandle = 0;
 	Handle fileHandle = 0;
 	
-	
-	
 	Draw_DrawFormattedString(10, 10, COLOR_TITLE, "Open File %s.",path);
 	Result ret = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_ASCII, ""), fsMakePath(PATH_ASCII, path), FS_OPEN_READ, 0);
 	if (R_FAILED(ret)){
-		Draw_ClearFramebuffer();
-		Draw_FlushFramebuffer();
-		Draw_Unlock();
-		reboot = false;
-		FSDIR_Close(ciaHandle);
-		svcCloseHandle(ciaHandle);
-		FSDIR_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		return ret;
+		goto error;
 	}
 	ret = AM_GetCiaFileInfo(media, title, fileHandle);
 	if (R_FAILED(ret)){
-		Draw_ClearFramebuffer();
-		Draw_FlushFramebuffer();
-		Draw_Unlock();
-		reboot = false;
-		FSDIR_Close(ciaHandle);
-		svcCloseHandle(ciaHandle);
-		FSDIR_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		return ret;
+		goto error;
 	}
-	
 	
 	ret = FSFILE_GetSize(fileHandle, &size);
 	if (R_FAILED(ret)){
-		Draw_ClearFramebuffer();
-		Draw_FlushFramebuffer();
-		Draw_Unlock();
-		reboot = false;
-		FSDIR_Close(ciaHandle);
-		svcCloseHandle(ciaHandle);
-		FSDIR_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		return ret;
+		goto error;
 	}
 	
 	Draw_DrawString(10, 30, COLOR_WHITE, "Waiting for CIA installation...");
 	Draw_DrawString(10, 30, COLOR_WHITE, "Press B to cancel...");
 	
-	
 	ret = AM_StartCiaInstall(media, &ciaHandle);
 	if (R_FAILED(ret)){
-		Draw_ClearFramebuffer();
-		Draw_FlushFramebuffer();
-		Draw_Unlock();
-		reboot = false;
-		FSDIR_Close(ciaHandle);
-		svcCloseHandle(ciaHandle);
-		FSDIR_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		return ret;
+		goto error;
 	}
-	
 	
 	u64 timer0 = svcGetSystemTick()/TICKS_PER_MSEC/1000;
 	
@@ -286,7 +250,7 @@ Result installCIA(const char *path, FS_MediaType media)
 	{
 		if (size < read)
 			read = size;
-	
+			
 		u64 timer1 = (svcGetSystemTick()/TICKS_PER_MSEC/1000)-timer0;
 		char* units = get_size_units(size);
 		u64 getsize = get_size(size);
@@ -299,16 +263,8 @@ Result installCIA(const char *path, FS_MediaType media)
 		
 		if(HID_PAD & BUTTON_B)
 		{
-			AM_CancelCIAInstall (ciaHandle);
-			Draw_ClearFramebuffer();
-			Draw_FlushFramebuffer();
-			Draw_Unlock();
-			reboot = false;
-			FSDIR_Close(ciaHandle);
-			svcCloseHandle(ciaHandle);
-			FSDIR_Close(fileHandle);
-			svcCloseHandle(fileHandle);
-			return 1;
+			ret = AM_CancelCIAInstall (ciaHandle);
+			goto error;
 		}
 		FSFILE_Read(fileHandle, &bytes, startSize-size, cia_buffer, read);
 		FSFILE_Write(ciaHandle, &bytes, startSize-size, cia_buffer, read, 0);
@@ -318,27 +274,11 @@ Result installCIA(const char *path, FS_MediaType media)
 	
 	ret = AM_FinishCiaInstall(ciaHandle);
 	if (R_FAILED(ret)){
-		Draw_ClearFramebuffer();
-		Draw_FlushFramebuffer();
-		Draw_Unlock();
-		reboot = false;
-		FSDIR_Close(ciaHandle);
-		svcCloseHandle(ciaHandle);
-		FSDIR_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		return ret;
+		goto error;
 	}
 	ret = svcCloseHandle(fileHandle);
 	if (R_FAILED(ret)){
-		Draw_ClearFramebuffer();
-		Draw_FlushFramebuffer();
-		Draw_Unlock();
-		reboot = false;
-		FSDIR_Close(ciaHandle);
-		svcCloseHandle(ciaHandle);
-		FSDIR_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		return ret;
+		goto error;
 	}
 	
 	Draw_DrawString(10, 50, COLOR_GREEN, "100%");
@@ -359,6 +299,17 @@ Result installCIA(const char *path, FS_MediaType media)
 	svcCloseHandle(fileHandle);
 	
 	return 0;
+	
+	error:
+		Draw_ClearFramebuffer();
+		Draw_FlushFramebuffer();
+		Draw_Unlock();
+		reboot = false;
+		FSDIR_Close(ciaHandle);
+		svcCloseHandle(ciaHandle);
+		FSDIR_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return ret;
 }
 
 /*void Delete_Title(void)
