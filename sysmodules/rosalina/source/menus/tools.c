@@ -45,7 +45,6 @@ void CIA_menu(void)
 	
 	Dir_Name* cianame = (Dir_Name*)MAP_BASE_1;
 	reboot = false;
-	//char cianame[128][128];
 	Draw_Lock();
     Draw_ClearFramebuffer();
 	Draw_FlushFramebuffer();
@@ -102,14 +101,14 @@ void CIA_menu(void)
 	while(true)
 	{
 		if(index==0)pos=0;
-		if(count>16)
+		if(count>13)
 		{
-			if((pos+15)<index){
+			if((pos+12)<index){
 				pos++; 
 				
 			}
 			if(pos>index)pos--;
-			if(index==count-1)pos=count-16;
+			if(index==count-1)pos=count-13;
 		}
 		
 		Draw_Lock();
@@ -120,7 +119,7 @@ void CIA_menu(void)
 			Draw_DrawString(30, 60+(i*10), COLOR_BLACK, "                                                  ");
 			Draw_DrawFormattedString(30, 60+(i*10), (i == index) ? COLOR_SEL : COLOR_WHITE, "   %s",cianame->fileNames[i+pos]);
 			if(i == index)Draw_DrawString(30, 60+(i*10),COLOR_SEL, "=>");
-			if(i==15)break;
+			if(i==12)break;
 		}
 		Draw_FlushFramebuffer();
 		Draw_Unlock();
@@ -234,7 +233,7 @@ Result installCIA(const char *path, FS_MediaType media)
 		goto error;
 	}
 	
-	Draw_DrawString(10, 30, COLOR_WHITE, "Waiting for CIA installation...");
+	Draw_DrawString(10, 20, COLOR_WHITE, "Waiting for CIA installation...");
 	Draw_DrawString(10, 30, COLOR_WHITE, "Press B to cancel...");
 	
 	ret = AM_StartCiaInstall(media, &ciaHandle);
