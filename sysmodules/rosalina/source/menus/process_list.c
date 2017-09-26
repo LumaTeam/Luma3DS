@@ -105,8 +105,6 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             #define ROWS_PER_SCREEN 0x10
             #define BYTES_PER_ROW 0x10
 
-            u8 arr[BYTES_PER_ROW] = {0};
-
             const u32 rows = totalSize/BYTES_PER_ROW;
 
             u32 scroll = 0, selected = 0;
@@ -121,7 +119,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
-                Draw_DrawFormattedString(10, 26, COLOR_WHITE, "Use D-PAD to navigate.");
+                Draw_DrawString(10, 26, COLOR_WHITE, "Use D-PAD to navigate.");
 
                 for (u32 i = 0; i < rows; i++)
                 {
@@ -139,7 +137,6 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                 for (u32 i = scroll; i < (scroll + ROWS_PER_SCREEN); i++)
                 {
-                    // u8 ** membuf = (u8**)startAddress;
                     u32 offset = i-scroll;
                     u32 y = 44 + offset*12;
 
@@ -151,8 +148,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                         for (int cursor = 0; cursor < BYTES_PER_ROW; cursor++)
                         {
                             Draw_DrawFormattedString(10+66+cursor*14+(cursor >= BYTES_PER_ROW/2)*10, y, i*BYTES_PER_ROW +cursor == selected ? COLOR_GREEN : COLOR_WHITE, "%.2x",
-                            // membuf[i*BYTES_PER_ROW][cursor]);
-                            arr[cursor]);
+                            ((u8*)destAddress)[i*BYTES_PER_ROW + cursor]);
                         }
                     }
                 }
