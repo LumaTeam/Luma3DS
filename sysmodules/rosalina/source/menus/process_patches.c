@@ -34,7 +34,7 @@
 #include "utils.h"
 
 Menu processPatchesMenu = {
-    "Process patches menu",
+    "Process Patches Menu",
     .nbItems = 2,
     {
         { "Patch SM for the service checks", METHOD, .method = &ProcessPatchesMenu_PatchUnpatchSM },
@@ -164,7 +164,7 @@ static void ProcessPatchesMenu_PatchUnpatchProcess(const char *processName, Resu
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Process patches menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Process Patches Menu");
         if(R_SUCCEEDED(res))
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
         else
