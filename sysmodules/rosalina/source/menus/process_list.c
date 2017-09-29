@@ -104,104 +104,250 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
         {
             #define ROWS_PER_SCREEN 0x10
             #define BYTES_PER_ROW 0x10
+            #define VIEWER_PAGE_SIZE (ROWS_PER_SCREEN*BYTES_PER_ROW)
 
-            const u32 rows = totalSize/BYTES_PER_ROW;
+            enum MenuModes {
+                MENU_MODE_NORMAL = 0,
+                MENU_MODE_GOTO,
+                MENU_MODE_SEARCH,
 
-            u32 scroll = 0, selected = 0;
-            #define SELECTED_ROW ((selected - (selected%BYTES_PER_ROW))/BYTES_PER_ROW)
+                MENU_MODE_MAX,
+            };
 
-            Draw_Lock();
-            Draw_ClearFramebuffer();
-            Draw_FlushFramebuffer();
-            Draw_Unlock();
+            typedef struct {
+                u32 selected;
+                u8 * buf;
 
-            do
+                u32 starti;
+                u32 max;
+
+                bool editing;
+
+                void (*shoulderLeft)(void);
+                void (*shoulderRight)(void);
+            } MenuData;
+
+            MenuData menus[MENU_MODE_MAX] = {0};
+            int menuMode = MENU_MODE_NORMAL;
+
+            // Editing
+            void selectedByteIncrement(void) { menus[menuMode].buf[menus[menuMode].selected]++; }
+            void selectedByteDecrement(void) { menus[menuMode].buf[menus[menuMode].selected]--; }
+
+            void selectedByteAdd0x10(void) { menus[menuMode].buf[menus[menuMode].selected] += 0x10; }
+            void selectedByteSub0x10(void) { menus[menuMode].buf[menus[menuMode].selected] -= 0x10; }
+            // ------------------------------------------
+
+            // Movement
+            #define SELECTED_DEC(decval) if(menus[menuMode].selected >= decval) menus[menuMode].selected -= decval
+            #define SELECTED_INC(incval) if(menus[menuMode].selected < (menus[menuMode].max - incval)) menus[menuMode].selected += incval
+
+            void selectedMoveLeft(void) { SELECTED_DEC(1); }
+            void selectedMoveRight(void) { SELECTED_INC(1); }
+
+            void selectedMoveUp(void) { SELECTED_DEC(BYTES_PER_ROW); }
+            void selectedMoveDown(void) { SELECTED_INC(BYTES_PER_ROW); }
+
+            void selectedMovePageUp(void) {    SELECTED_DEC(VIEWER_PAGE_SIZE); }
+            void selectedMovePageDown(void) { SELECTED_INC(VIEWER_PAGE_SIZE); }
+            // ------------------------------------------
+
+            // Viewing
+            menus[MENU_MODE_NORMAL].buf = (u8*)destAddress;
+            menus[MENU_MODE_NORMAL].max = totalSize/BYTES_PER_ROW;
+            // ------------------------------------------
+
+            // Jumping
+            u32 gotoAddress = 0;
+
+            void finishJumping(void) { menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); }
+
+            menus[MENU_MODE_GOTO].buf = (u8*)&gotoAddress;
+            menus[MENU_MODE_GOTO].max = sizeof(u32);
+            // ------------------------------------------
+
+            // Searching
+            #define searchPatternSize menus[MENU_MODE_SEARCH].max
+            #define searchPatternMaxSize (u32)VIEWER_PAGE_SIZE
+            u8 searchPattern[searchPatternMaxSize] = {0};
+
+            void searchPatternEnlarge(void) { if(searchPatternSize < (searchPatternMaxSize - 1)) searchPatternSize++; }
+            void searchPatternReduce(void) { if(searchPatternSize > 0) searchPatternSize--; }
+
+            void finishSearching(void)
+            {
+                u8 * startpos = menus[MENU_MODE_NORMAL].buf + menus[MENU_MODE_NORMAL].selected;
+                menus[MENU_MODE_NORMAL].selected = (u32)memsearch(startpos, searchPattern, totalSize, searchPatternSize) - destAddress;
+            }
+
+            menus[MENU_MODE_SEARCH].buf = searchPattern;
+            menus[MENU_MODE_SEARCH].max = 1;
+            // ------------------------------------------
+
+            void drawMenu(void)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
                 Draw_DrawString(10, 26, COLOR_WHITE, "Use D-PAD to navigate.");
 
-                for (u32 i = 0; i < rows; i++)
+                for (u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
-                    if (rows <= ROWS_PER_SCREEN)
-                        break;
-
-                    if (scroll > SELECTED_ROW)
-                        scroll--;
-
-                    if ((i <= SELECTED_ROW) && \
-                       ((SELECTED_ROW - scroll) >= ROWS_PER_SCREEN) && \
-                       (scroll != (rows - ROWS_PER_SCREEN)))
-                        scroll++;
-                }
-
-                for (u32 i = scroll; i < (scroll + ROWS_PER_SCREEN); i++)
-                {
-                    u32 offset = i-scroll;
+                    u32 offset = row - menus[menuMode].starti;
                     u32 y = 44 + offset*12;
 
-                    if (i > totalSize)
-                        Draw_DrawFormattedString(10, y, COLOR_WHITE, "                                                ");
-                    else
+                    offset = row*BYTES_PER_ROW;
+                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", offset);
+
+                    for (int cursor = 0; cursor < BYTES_PER_ROW; cursor++)
                     {
-                        Draw_DrawFormattedString(10, y, COLOR_WHITE, "%.8lx | ", i*BYTES_PER_ROW);
-                        for (int cursor = 0; cursor < BYTES_PER_ROW; cursor++)
+                        offset += cursor;
+                        u32 x = 10+66 + cursor*14 + (cursor >= BYTES_PER_ROW/2)*10;
+
+                        if(offset < menus[menuMode].max)
                         {
-                            Draw_DrawFormattedString(10+66+cursor*14+(cursor >= BYTES_PER_ROW/2)*10, y, i*BYTES_PER_ROW +cursor == selected ? COLOR_GREEN : COLOR_WHITE, "%.2x",
-                            ((u8*)destAddress)[i*BYTES_PER_ROW + cursor]);
+                            Draw_DrawFormattedString(x, y,
+                            offset == menus[menuMode].selected ? (menus[menuMode].editing ? COLOR_RED : COLOR_GREEN) : COLOR_WHITE,
+                            "%.2x",
+                            menus[menuMode].buf[offset]);
                         }
+                        else
+                            Draw_DrawString(x, y, COLOR_WHITE, "  ");
                     }
                 }
 
                 Draw_FlushFramebuffer();
                 Draw_Unlock();
+            }
+
+            void clearMenu(void)
+            {
+                Draw_Lock();
+                Draw_ClearFramebuffer();
+                Draw_FlushFramebuffer();
+                Draw_Unlock();
+            }
+
+            clearMenu();
+
+            do
+            {
+                //handle scrolling
+                for (u32 i = 0; i < menus[MENU_MODE_NORMAL].max; i++)
+                {
+                    if (menus[MENU_MODE_NORMAL].max <= ROWS_PER_SCREEN)
+                        break;
+
+                    u32 scroll = menus[MENU_MODE_NORMAL].starti;
+                    u32 selectedRow = (menus[MENU_MODE_NORMAL].selected - (menus[MENU_MODE_NORMAL].selected % BYTES_PER_ROW))/BYTES_PER_ROW;
+
+                    if (scroll > selectedRow)
+                        scroll--;
+
+                    if ((i <= selectedRow) && \
+                       ((selectedRow - scroll) >= ROWS_PER_SCREEN) && \
+                       (scroll != (menus[MENU_MODE_NORMAL].max - ROWS_PER_SCREEN)))
+                        scroll++;
+
+                    menus[MENU_MODE_NORMAL].starti = scroll;
+                }
+
+                drawMenu();
 
                 u32 pressed = waitInputWithTimeout(1000);
 
-                if(pressed & BUTTON_LEFT) // -1 byte
+                if(pressed & BUTTON_A)
+                    menus[menuMode].editing = !menus[menuMode].editing;
+                else if(pressed & BUTTON_X)
                 {
-                    if (selected != 0)
-                        selected--;
+                    if(menuMode == MENU_MODE_GOTO)
+                    {
+                        menuMode = MENU_MODE_NORMAL;
+                        finishJumping();
+                    }
+                    else
+                    {
+                        menuMode = MENU_MODE_GOTO;
+                    }
                 }
-                else if(pressed & BUTTON_RIGHT) // +1 byte
+                else if(pressed & BUTTON_Y)
                 {
-                    if (selected != totalSize)
-                        selected++;
+                    if(menuMode == MENU_MODE_SEARCH)
+                    {
+                        menuMode = MENU_MODE_NORMAL;
+                        finishSearching();
+                    }
+                    else
+                    {
+                        menuMode = MENU_MODE_SEARCH;
+                    }
                 }
-                else if(pressed & BUTTON_UP) // -1 line (0x10 bytes)
+
+                if(menus[menuMode].editing)
                 {
-                    if (selected >= BYTES_PER_ROW)
-                        selected -= BYTES_PER_ROW;
+                    if(pressed & BUTTON_LEFT)
+                    {
+                        selectedByteDecrement();
+                    }
+                    else if(pressed & BUTTON_RIGHT)
+                    {
+                        selectedByteIncrement();
+                    }
+                    else if(pressed & BUTTON_UP)
+                    {
+                        selectedByteAdd0x10();
+                    }
+                    else if(pressed & BUTTON_DOWN)
+                    {
+                        selectedByteSub0x10();
+                    }
                 }
-                else if(pressed & BUTTON_DOWN) // +1 line (0x10 bytes)
+                else
                 {
-                    if (selected <= totalSize-BYTES_PER_ROW)
-                        selected += BYTES_PER_ROW;
+                    if(pressed & BUTTON_LEFT)
+                    {
+                        selectedMoveLeft();
+                    }
+                    else if(pressed & BUTTON_RIGHT)
+                    {
+                        selectedMoveRight();
+                    }
+                    else if(pressed & BUTTON_UP)
+                    {
+                        selectedMoveUp();
+                    }
+                    else if(pressed & BUTTON_DOWN)
+                    {
+                        selectedMoveDown();
+                    }
+
+                    else if(pressed & BUTTON_L1)
+                    {
+                        if(menuMode == MENU_MODE_NORMAL)
+                            selectedMovePageUp();
+                        else if(menuMode == MENU_MODE_SEARCH)
+                            searchPatternReduce();
+                    }
+                    else if(pressed & BUTTON_R1)
+                    {
+                        if(menuMode == MENU_MODE_NORMAL)
+                            selectedMovePageDown();
+                        else if(menuMode == MENU_MODE_SEARCH)
+                            searchPatternEnlarge();
+                    }
                 }
-                if(pressed & BUTTON_L1) // -1 screen (0x100 bytes)
-                {
-                    if (selected >= (BYTES_PER_ROW*ROWS_PER_SCREEN))
-                        selected -= (BYTES_PER_ROW*ROWS_PER_SCREEN);
-                }
-                if(pressed & BUTTON_R1) // +1 screen (0x100 bytes)
-                {
-                    if (selected <= totalSize-(BYTES_PER_ROW*ROWS_PER_SCREEN))
-                        selected += (BYTES_PER_ROW*ROWS_PER_SCREEN);
-                }
-                else if(pressed & BUTTON_B) // go back to the list
+
+                if(pressed & BUTTON_B) // go back to the list
                     break;
 
-                if (selected == totalSize)
-                    selected -= 1;
+                if(menus[menuMode].selected >= menus[menuMode].max)
+                    menus[menuMode].selected = menus[menuMode].max - 1;
             }
             while(!terminationRequest);
 
-            Draw_Lock();
-            Draw_ClearFramebuffer();
-            Draw_FlushFramebuffer();
-            Draw_Unlock();
+            clearMenu();
 
             svcUnmapProcessMemoryEx(processHandle, destAddress, totalSize);
+            svcCloseHandle(processHandle);
         }
     }
 }
