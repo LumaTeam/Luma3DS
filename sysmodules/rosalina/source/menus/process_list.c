@@ -219,7 +219,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
-                Draw_DrawString(10, 26, COLOR_WHITE, "Use D-PAD to navigate.");
+                Draw_DrawString(10, 26, COLOR_WHITE, "D-PAD to move, A to edit, X to jump, Y to search.");
 
                 for(u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
