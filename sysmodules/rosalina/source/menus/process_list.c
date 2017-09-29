@@ -127,6 +127,20 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             MenuData menus[MENU_MODE_MAX] = {0};
             int menuMode = MENU_MODE_NORMAL;
 
+            bool checkMode(int newMode)
+            {
+                if(menuMode == newMode)
+                {
+                    menuMode = MENU_MODE_NORMAL;
+                    return true;
+                }
+                else
+                {
+                    menuMode = newMode;
+                    return false;
+                }
+            }
+
             // Editing
             void selectedByteIncrement(void) { menus[menuMode].buf[menus[menuMode].selected]++; }
             void selectedByteDecrement(void) { menus[menuMode].buf[menus[menuMode].selected]--; }
@@ -280,25 +294,13 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     editing = !editing;
                 else if(pressed & BUTTON_X)
                 {
-                    if(menuMode == MENU_MODE_GOTO)
-                    {
-                        menuMode = MENU_MODE_NORMAL;
+                    if(checkMode(MENU_MODE_GOTO))
                         finishJumping();
-                    }
-                    else
-                    {
-                        menuMode = MENU_MODE_GOTO;
-                    }
                 }
                 else if(pressed & BUTTON_Y)
                 {
-                    if(menuMode == MENU_MODE_SEARCH)
-                    {
-                        menuMode = MENU_MODE_NORMAL;
+                    if(checkMode(MENU_MODE_SEARCH))
                         finishSearching();
-                    }
-                    else
-                        menuMode = MENU_MODE_SEARCH;
                 }
 
                 if(editing)
