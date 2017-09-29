@@ -88,7 +88,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
     Result res = OpenProcessByName(info->name, &processHandle);
 
-    if (R_SUCCEEDED(res))
+    if(R_SUCCEEDED(res))
     {
         svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002);
         svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
@@ -100,7 +100,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
         res = svcMapProcessMemoryEx(processHandle, destAddress, (u32)startAddress, totalSize);
 
-        if (R_SUCCEEDED(res))
+        if(R_SUCCEEDED(res))
         {
             #define ROWS_PER_SCREEN 0x10
             #define BYTES_PER_ROW 0x10
@@ -120,9 +120,9 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                 u32 starti;
                 u32 max;
-
-                bool editing;
             } MenuData;
+
+            bool editing;
 
             MenuData menus[MENU_MODE_MAX] = {0};
             int menuMode = MENU_MODE_NORMAL;
@@ -136,8 +136,15 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             // ------------------------------------------
 
             // Movement
-            #define SELECTED_DEC(decval) if(menus[menuMode].selected >= decval) menus[menuMode].selected -= decval
-            #define SELECTED_INC(incval) if(menus[menuMode].selected < (menus[menuMode].max - incval)) menus[menuMode].selected += incval
+            #define SELECTED_DEC(decval) do { \
+                if(menus[menuMode].selected >= decval) \
+                    menus[menuMode].selected -= decval; \
+            } while(0)
+
+            #define SELECTED_INC(incval) do { \
+                if(menus[menuMode].selected < (menus[menuMode].max - incval)) \
+                    menus[menuMode].selected += incval; \
+            } while(0)
 
             void selectedMoveLeft(void) { SELECTED_DEC(1); }
             void selectedMoveRight(void) { SELECTED_INC(1); }
@@ -145,7 +152,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             void selectedMoveUp(void) { SELECTED_DEC(BYTES_PER_ROW); }
             void selectedMoveDown(void) { SELECTED_INC(BYTES_PER_ROW); }
 
-            void selectedMovePageUp(void) {    SELECTED_DEC(VIEWER_PAGE_SIZE); }
+            void selectedMovePageUp(void) { SELECTED_DEC(VIEWER_PAGE_SIZE); }
             void selectedMovePageDown(void) { SELECTED_INC(VIEWER_PAGE_SIZE); }
             // ------------------------------------------
 
@@ -157,10 +164,13 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             // Jumping
             u32 gotoAddress = 0;
 
-            void finishJumping(void) { menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); }
+            void finishJumping(void)
+            {
+                menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
+            }
 
             menus[MENU_MODE_GOTO].buf = (u8*)&gotoAddress;
-            menus[MENU_MODE_GOTO].max = sizeof(u32);
+            menus[MENU_MODE_GOTO].max = sizeof(gotoAddress);
             // ------------------------------------------
 
             // Searching
@@ -168,8 +178,18 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             #define searchPatternMaxSize (u32)VIEWER_PAGE_SIZE
             u8 searchPattern[searchPatternMaxSize] = {0};
 
-            void searchPatternEnlarge(void) { if(searchPatternSize < (searchPatternMaxSize - 1)) searchPatternSize++; }
-            void searchPatternReduce(void) { if(searchPatternSize > 0) searchPatternSize--; }
+            void searchPatternEnlarge(void)
+            {
+                searchPatternSize++;
+                if(searchPatternSize > searchPatternMaxSize)
+                    searchPatternSize = 1;
+            }
+            void searchPatternReduce(void)
+            {
+                searchPatternSize--;
+                if(searchPatternSize > searchPatternMaxSize)
+                    searchPatternSize = searchPatternMaxSize;
+            }
 
             void finishSearching(void)
             {
@@ -187,25 +207,24 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
                 Draw_DrawString(10, 26, COLOR_WHITE, "Use D-PAD to navigate.");
 
-                for (u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
+                for(u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
                     u32 offset = row - menus[menuMode].starti;
                     u32 y = 44 + offset*12;
 
-                    offset = row*BYTES_PER_ROW;
-                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", offset);
+                    u32 address = row*BYTES_PER_ROW;
+                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address);
 
-                    for (int cursor = 0; cursor < BYTES_PER_ROW; cursor++)
+                    for(int cursor = 0; cursor < BYTES_PER_ROW; cursor++, address++)
                     {
-                        offset += cursor;
                         u32 x = 10+66 + cursor*14 + (cursor >= BYTES_PER_ROW/2)*10;
 
-                        if(offset < menus[menuMode].max)
+                        if(address < menus[menuMode].max)
                         {
                             Draw_DrawFormattedString(x, y,
-                            offset == menus[menuMode].selected ? (menus[menuMode].editing ? COLOR_RED : COLOR_GREEN) : COLOR_WHITE,
+                            address == menus[menuMode].selected ? (editing ? COLOR_RED : COLOR_GREEN) : COLOR_WHITE,
                             "%.2x",
-                            menus[menuMode].buf[offset]);
+                            menus[menuMode].buf[address]);
                         }
                         else
                             Draw_DrawString(x, y, COLOR_WHITE, "  ");
@@ -224,36 +243,41 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 Draw_Unlock();
             }
 
-            clearMenu();
-
-            do
+            void handleScrolling(void)
             {
-                //handle scrolling
-                for (u32 i = 0; i < menus[MENU_MODE_NORMAL].max; i++)
+                for(u32 i = 0; i < menus[MENU_MODE_NORMAL].max; i++)
                 {
-                    if (menus[MENU_MODE_NORMAL].max <= ROWS_PER_SCREEN)
+                    if(menus[MENU_MODE_NORMAL].max <= ROWS_PER_SCREEN)
                         break;
 
                     u32 scroll = menus[MENU_MODE_NORMAL].starti;
                     u32 selectedRow = (menus[MENU_MODE_NORMAL].selected - (menus[MENU_MODE_NORMAL].selected % BYTES_PER_ROW))/BYTES_PER_ROW;
 
-                    if (scroll > selectedRow)
+                    if(scroll > selectedRow)
                         scroll--;
 
-                    if ((i <= selectedRow) && \
+                    if((i <= selectedRow) && \
                        ((selectedRow - scroll) >= ROWS_PER_SCREEN) && \
                        (scroll != (menus[MENU_MODE_NORMAL].max - ROWS_PER_SCREEN)))
                         scroll++;
 
                     menus[MENU_MODE_NORMAL].starti = scroll;
                 }
+            }
+
+            clearMenu();
+
+            do
+            {
+                if(menuMode == MENU_MODE_NORMAL)
+                    handleScrolling();
 
                 drawMenu();
 
                 u32 pressed = waitInputWithTimeout(1000);
 
                 if(pressed & BUTTON_A)
-                    menus[menuMode].editing = !menus[menuMode].editing;
+                    editing = !editing;
                 else if(pressed & BUTTON_X)
                 {
                     if(menuMode == MENU_MODE_GOTO)
@@ -274,48 +298,32 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                         finishSearching();
                     }
                     else
-                    {
                         menuMode = MENU_MODE_SEARCH;
-                    }
                 }
 
-                if(menus[menuMode].editing)
+                if(editing)
                 {
+                    // Edit the highlighted byte
                     if(pressed & BUTTON_LEFT)
-                    {
-                        selectedByteDecrement();
-                    }
-                    else if(pressed & BUTTON_RIGHT)
-                    {
-                        selectedByteIncrement();
-                    }
-                    else if(pressed & BUTTON_UP)
-                    {
                         selectedByteAdd0x10();
-                    }
-                    else if(pressed & BUTTON_DOWN)
-                    {
+                    else if(pressed & BUTTON_RIGHT)
                         selectedByteSub0x10();
-                    }
+                    else if(pressed & BUTTON_UP)
+                        selectedByteIncrement();
+                    else if(pressed & BUTTON_DOWN)
+                        selectedByteDecrement();
                 }
                 else
                 {
+                    // Move the cursor
                     if(pressed & BUTTON_LEFT)
-                    {
                         selectedMoveLeft();
-                    }
                     else if(pressed & BUTTON_RIGHT)
-                    {
                         selectedMoveRight();
-                    }
                     else if(pressed & BUTTON_UP)
-                    {
                         selectedMoveUp();
-                    }
                     else if(pressed & BUTTON_DOWN)
-                    {
                         selectedMoveDown();
-                    }
 
                     else if(pressed & BUTTON_L1)
                     {
@@ -333,8 +341,16 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     }
                 }
 
-                if(pressed & BUTTON_B) // go back to the list
-                    break;
+                if(pressed & BUTTON_B) // go back to the list, or the simple viewer
+                {
+                    if(menuMode != MENU_MODE_NORMAL)
+                    {
+                        menuMode = MENU_MODE_NORMAL;
+                        editing = false;
+                    }
+                    else
+                        break;
+                }
 
                 if(menus[menuMode].selected >= menus[menuMode].max)
                     menus[menuMode].selected = menus[menuMode].max - 1;
