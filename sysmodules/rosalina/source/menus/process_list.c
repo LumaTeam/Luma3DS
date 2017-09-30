@@ -208,7 +208,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             void finishSearching(void)
             {
                 u8 * startpos = menus[MENU_MODE_NORMAL].buf + menus[MENU_MODE_NORMAL].selected;
-                menus[MENU_MODE_NORMAL].selected = (u32)memsearch(startpos, searchPattern, totalSize, searchPatternSize) - destAddress;
+                u32 size = totalSize - menus[MENU_MODE_NORMAL].selected;
+                menus[MENU_MODE_NORMAL].selected = (u32)memsearch(startpos, searchPattern, size, searchPatternSize) - (u32)menus[MENU_MODE_NORMAL].buf;
             }
 
             menus[MENU_MODE_SEARCH].buf = searchPattern;
