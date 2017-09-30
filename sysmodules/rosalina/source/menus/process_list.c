@@ -106,6 +106,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             #define BYTES_PER_ROW 0x10
             #define VIEWER_PAGE_SIZE (ROWS_PER_SCREEN*BYTES_PER_ROW)
 
+            u32 totalRows = (totalSize - (totalSize % BYTES_PER_ROW))/ROWS_PER_SCREEN;
+
             enum MenuModes {
                 MENU_MODE_NORMAL = 0,
                 MENU_MODE_GOTO,
@@ -172,7 +174,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             // Viewing
             menus[MENU_MODE_NORMAL].buf = (u8*)destAddress;
-            menus[MENU_MODE_NORMAL].max = totalSize/BYTES_PER_ROW;
+            menus[MENU_MODE_NORMAL].max = totalSize;
             // ------------------------------------------
 
             // Jumping
@@ -277,9 +279,9 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void handleScrolling(void)
             {
-                for(u32 i = 0; i < menus[MENU_MODE_NORMAL].max; i++)
+                for(u32 i = 0; i < totalRows; i++)
                 {
-                    if(menus[MENU_MODE_NORMAL].max <= ROWS_PER_SCREEN)
+                    if(totalRows <= ROWS_PER_SCREEN)
                         break;
 
                     u32 scroll = menus[MENU_MODE_NORMAL].starti;
@@ -290,7 +292,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                     if((i <= selectedRow) && \
                        ((selectedRow - scroll) >= ROWS_PER_SCREEN) && \
-                       (scroll != (menus[MENU_MODE_NORMAL].max - ROWS_PER_SCREEN)))
+                       (scroll != (totalRows - ROWS_PER_SCREEN)))
                         scroll++;
 
                     menus[MENU_MODE_NORMAL].starti = scroll;
