@@ -220,7 +220,23 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
-                Draw_DrawString(10, 26, COLOR_WHITE, "D-PAD to move, A to edit, X to jump, Y to search.");
+                Draw_DrawString(10, 26, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
+
+                #define CHARACTER_WIDTH 6
+                if(editing)
+                    Draw_DrawString(10 + CHARACTER_WIDTH* 44, 26, COLOR_RED, "edit");
+
+                char * modeStr[] = {
+                    "move",
+                    "jump",
+                    "search",
+                };
+                u32 modeStrPos[] = {
+                    9,
+                    20,
+                    31,
+                };
+                Draw_DrawString(10 + CHARACTER_WIDTH*modeStrPos[menuMode], 26, COLOR_GREEN, modeStr[menuMode]);
 
                 for(u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
