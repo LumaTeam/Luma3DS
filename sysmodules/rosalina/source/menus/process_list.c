@@ -201,7 +201,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             void searchPatternReduce(void)
             {
                 searchPatternSize--;
-                if(searchPatternSize > searchPatternMaxSize)
+                if(searchPatternSize < 1)
                     searchPatternSize = searchPatternMaxSize;
             }
 
