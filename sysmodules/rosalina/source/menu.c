@@ -28,7 +28,6 @@
 #include "menu.h"
 #include "draw.h"
 #include "fmt.h"
-#include "mcu.h"
 #include "memory.h"
 #include "ifile.h"
 #include "menus.h"
@@ -124,26 +123,6 @@ u32 waitCombo(void)
     return waitComboWithTimeout(0);
 }
 
-static Result _MCUHWC_GetBatteryLevel(u8 *out)
-{
-    #define TRY(expr) if(R_FAILED(res = (expr))) { mcuExit(); return res; }
-    Result res;
-
-    TRY(mcuInit());
-
-    u32 *cmdbuf = getThreadCommandBuffer();
-    cmdbuf[0] = 0x50000;
-
-    TRY(svcSendSyncRequest(mcuhwcHandle));
-
-    *out = (u8) cmdbuf[2];
-
-    svcCloseHandle(mcuhwcHandle);
-    return cmdbuf[1];
-
-    #undef TRY
-}
-
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
 static u8 batteryLevel = 255;
@@ -215,8 +194,12 @@ static void menuDraw(Menu *menu, u32 selected)
     u32 version, commitHash;
     bool isRelease;
 
-    if(R_FAILED(_MCUHWC_GetBatteryLevel(&batteryLevel)))
-        batteryLevel = 255;
+    if(R_SUCCEEDED(mcuHwcInit()))
+    {
+        if(R_FAILED(mcuHwcGetBatteryLevel(&batteryLevel)))
+            batteryLevel = 255;
+        mcuHwcExit();
+    }
 
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;

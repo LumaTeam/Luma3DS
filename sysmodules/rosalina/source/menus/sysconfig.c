@@ -26,7 +26,6 @@
 
 #include <3ds.h>
 #include "menus/sysconfig.h"
-#include "mcu.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
@@ -65,12 +64,12 @@ void SysConfigMenu_ToggleLEDs(void)
 
         if(pressed & BUTTON_A)
         {
-            mcuInit();
+            mcuHwcInit();
             u8 result;
-            mcuGetLEDState(&result);
-            u8 value = ~result;
-            mcuWriteRegister(40, &value, 1);
-            mcuExit();
+            mcuHwcReadRegister(0x28, &result, 1);
+            result = ~result;
+            mcuHwcWriteRegister(40, &result, 1);
+            mcuHwcExit();
         }
         else if(pressed & BUTTON_B)
             return;
