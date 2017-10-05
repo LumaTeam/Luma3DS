@@ -72,8 +72,8 @@ void detectAndProcessExceptionDumps(void)
         "SP", "LR", "PC", "CPSR", "FPEXC"
     },
                       *faultStatusNames[] = {
-        "Alignment", "Instruction cache maintenance operation",
-        "External Abort on translation - First-level", "External Abort on translation - Second-level",
+        "Alignment", "Instr.cache maintenance op.",
+        "Ext.Abort on translation - Lv1", "Ext.Abort on translation - Lv2",
         "Translation - Section", "Translation - Page", "Access bit - Section", "Access bit - Page",
         "Domain - Section", "Domain - Page", "Permission - Section", "Permission - Page",
         "Precise External Abort", "Imprecise External Abort", "Debug event"
