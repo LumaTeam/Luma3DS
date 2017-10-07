@@ -129,7 +129,7 @@ void detectAndProcessExceptionDumps(void)
             }
     }
 
-    if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
+    if(dumpHeader->additionalDataSize != 0)
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE,
                                    "Current process: %.8s (%016llX)", (const char *)additionalData, *(vu64 *)(additionalData + 8));
     posY += SPACING_Y;
