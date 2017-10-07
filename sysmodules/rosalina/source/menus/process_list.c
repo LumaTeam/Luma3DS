@@ -81,32 +81,43 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
 
 static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 {
-    s64 startAddress, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
-    u32 totalSize;
-    const u32 destAddress = 0x00100000;
     Handle processHandle;
-
     Result res = OpenProcessByName(info->name, &processHandle);
 
     if(R_SUCCEEDED(res))
     {
+        u32 codeStartAddress, heapStartAddress;
+        u32 codeDestAddress, heapDestAddress;
+        u32 codeTotalSize, heapTotalSize;
+
+        s64 textStartAddress, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
+
         svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002);
         svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
         svcGetProcessInfo(&dataTotalRoundedSize, processHandle, 0x10004);
 
-        totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
+        svcGetProcessInfo(&textStartAddress, processHandle, 0x10005);
 
-        svcGetProcessInfo(&startAddress, processHandle, 0x10005);
+        codeTotalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
+        codeDestAddress = codeStartAddress = (u32)textStartAddress; //should be 0x00100000
 
-        res = svcMapProcessMemoryEx(processHandle, destAddress, (u32)startAddress, totalSize);
+        MemInfo info;
+        PageInfo out;
 
-        if(R_SUCCEEDED(res))
+        heapDestAddress = heapStartAddress = 0x08000000;
+        svcQueryProcessMemory(&info, &out, processHandle, heapStartAddress);
+        heapTotalSize = info.size;
+
+        Result codeRes = svcMapProcessMemoryEx(processHandle, codeDestAddress, codeStartAddress, codeTotalSize);
+        Result heapRes = svcMapProcessMemoryEx(processHandle, heapDestAddress, heapStartAddress, heapTotalSize);
+
+        if(R_SUCCEEDED(codeRes | heapRes))
         {
             #define ROWS_PER_SCREEN 0x10
             #define BYTES_PER_ROW 0x10
             #define VIEWER_PAGE_SIZE (ROWS_PER_SCREEN*BYTES_PER_ROW)
 
-            u32 totalRows = (totalSize - (totalSize % BYTES_PER_ROW))/ROWS_PER_SCREEN;
+            #define totalRows ((menus[MENU_MODE_NORMAL].max - (menus[MENU_MODE_NORMAL].max % BYTES_PER_ROW))/ROWS_PER_SCREEN)
 
             enum MenuModes {
                 MENU_MODE_NORMAL = 0,
@@ -167,14 +178,21 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void selectedMoveUp(void) { SELECTED_DEC(BYTES_PER_ROW); }
             void selectedMoveDown(void) { SELECTED_INC(BYTES_PER_ROW); }
-
-            void selectedMovePageUp(void) { SELECTED_DEC(VIEWER_PAGE_SIZE); }
-            void selectedMovePageDown(void) { SELECTED_INC(VIEWER_PAGE_SIZE); }
             // ------------------------------------------
 
             // Viewing
-            menus[MENU_MODE_NORMAL].buf = (u8*)destAddress;
-            menus[MENU_MODE_NORMAL].max = totalSize;
+            void viewHeap(void)
+            {
+                menus[MENU_MODE_NORMAL].buf = (u8*)heapDestAddress;
+                menus[MENU_MODE_NORMAL].max = heapTotalSize;
+            }
+            void viewCode(void)
+            {
+                menus[MENU_MODE_NORMAL].buf = (u8*)codeDestAddress;
+                menus[MENU_MODE_NORMAL].max = codeTotalSize;
+            }
+
+            viewHeap();
             // ------------------------------------------
 
             // Jumping
@@ -210,7 +228,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             void finishSearching(void)
             {
                 u8 * startpos = menus[MENU_MODE_NORMAL].buf + menus[MENU_MODE_NORMAL].selected;
-                u32 size = totalSize - menus[MENU_MODE_NORMAL].selected;
+                u32 size = menus[MENU_MODE_NORMAL].max - menus[MENU_MODE_NORMAL].selected;
                 if (size >= searchPatternSize)
                     menus[MENU_MODE_NORMAL].selected = (u32)memsearch(startpos, searchPattern, size, searchPatternSize) - (u32)menus[MENU_MODE_NORMAL].buf;
             }
@@ -350,14 +368,14 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     else if(pressed & BUTTON_L1)
                     {
                         if(menuMode == MENU_MODE_NORMAL)
-                            selectedMovePageUp();
+                            viewHeap();
                         else if(menuMode == MENU_MODE_SEARCH)
                             searchPatternReduce();
                     }
                     else if(pressed & BUTTON_R1)
                     {
                         if(menuMode == MENU_MODE_NORMAL)
-                            selectedMovePageDown();
+                            viewCode();
                         else if(menuMode == MENU_MODE_SEARCH)
                             searchPatternEnlarge();
                     }
@@ -380,10 +398,14 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             while(!terminationRequest);
 
             clearMenu();
-
-            svcUnmapProcessMemoryEx(processHandle, destAddress, totalSize);
-            svcCloseHandle(processHandle);
         }
+
+        if(R_SUCCEEDED(codeRes))
+            svcUnmapProcessMemoryEx(processHandle, codeDestAddress, codeTotalSize);
+        if(R_SUCCEEDED(heapRes))
+            svcUnmapProcessMemoryEx(processHandle, heapDestAddress, heapTotalSize);
+
+        svcCloseHandle(processHandle);
     }
 }
 
