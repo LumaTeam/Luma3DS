@@ -117,7 +117,7 @@ void detectAndProcessExceptionDumps(void)
     else
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Exception type:  %s", handledExceptionNames[dumpHeader->type]);
 
-    if(dumpHeader->type >= 2)
+    if(dumpHeader->processor == 11 && dumpHeader->type >= 2)
     {
         u32 xfsr = (dumpHeader->type == 2 ? regs[18] : regs[17]) & 0xF;
 
@@ -144,7 +144,7 @@ void detectAndProcessExceptionDumps(void)
             posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08X", registerNames[i + 1], regs[20]);
     }
 
-    if(dumpHeader->type == 3)
+    if(dumpHeader->processor == 11 && dumpHeader->type == 3)
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08X       Access type: %s", "FAR", regs[19], regs[17] & (1u << 11) ? "Write" : "Read");
 
     posY += SPACING_Y;
