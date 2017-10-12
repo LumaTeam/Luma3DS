@@ -96,7 +96,7 @@ clean:
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
-	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
+	@[ -f "$@" ] || 7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser -xr!.DS_Store
 
 $(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf $(dir_build)/k11_extension.bin
 	@mkdir -p "$(@D)"
