@@ -30,122 +30,147 @@ bool reboot;
 
 Menu MenuOptions = {
     " Menu Tools",
-    .nbItems = 2,
+    .nbItems = 3,
     {
         { "Explorer", METHOD, .method = &Explorer },
 		{ "Install Cia", METHOD, .method = &CIA_menu },
-		//{ "Delete Title", METHOD, .method = &Delete_Title },
+		{ "Delete Title", METHOD, .method = &Delete_Title },
     }
 };
 
 void CIA_menu(void)
 {
+	
 	u32 tmp = 0;
 	svcControlMemoryEx(&tmp, MAP_BASE_1, 0, 0x6000, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
 	
 	Dir_Name* cianame = (Dir_Name*)MAP_BASE_1;
+	bool quit = true;
 	reboot = false;
-	Draw_Lock();
-    Draw_ClearFramebuffer();
-	Draw_FlushFramebuffer();
-	Draw_Unlock();
-	//===================================
 	
-	Draw_Lock();
-	
-	FS_Archive sdmcArchive;
-	const FS_Path PathCia = fsMakePath(PATH_ASCII, "/cias");
 	Handle handle = 0;
-	
-	if (FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, NULL)) != 0) {
-		Draw_DrawString(10, 60, COLOR_RED, "Could not access SD Card !!!");
-		waitInputWithTimeout(1000);
-		return;
-	}
-	
-	if (FSUSER_OpenDirectory(&handle, sdmcArchive, PathCia) != 0) {
-		Draw_DrawString(10, 60, COLOR_RED, "No /cias directory");
-		waitInputWithTimeout(1000);
-		return;
-	}
-	Draw_FlushFramebuffer();
-	Draw_Unlock();
-	
-	u32 fileRead = 0;
-	int count = 0;
-	while (true) {
-		
-		FS_DirectoryEntry entry = {};
-		FSDIR_Read(handle, &fileRead, 1, &entry);
-		if (!fileRead) {
-			break;
-		}
-		
-		char name[262] = { 0 };
-		for (size_t i = 0; i < 262; i++) {
-			name[i] = entry.name[i] % 0xff;
-		}
-		 
-		memcpy(cianame->fileNames[count], name, 128);
-		count++;
-	}
-    FSDIR_Close(handle);
-	svcCloseHandle(handle);
-	
-	//_============================
-	
-	
-      
-	int index = 0;
-	int pos = 0;
-	while(true)
+	FS_Archive sdmcArchive;
+	while (true) 
 	{
-		if(index==0)pos=0;
-		if(count>13)
-		{
-			if((pos+12)<index){
-				pos++; 
-				
-			}
-			if(pos>index)pos--;
-			if(index==count-1)pos=count-13;
-		}
 		
 		Draw_Lock();
-		Draw_DrawString(10, 10, COLOR_TITLE, "CIA Install Menu");
-		Draw_DrawString(10, 30, COLOR_WHITE, "Press A to install, press B to return");
-		for(int i = 0; i < count; i++)
-		{
-			Draw_DrawString(30, 60+(i*10), COLOR_BLACK, "                                                  ");
-			Draw_DrawFormattedString(30, 60+(i*10), (i == index) ? COLOR_SEL : COLOR_WHITE, "   %s",cianame->fileNames[i+pos]);
-			if(i == index)Draw_DrawString(30, 60+(i*10),COLOR_SEL, "=>");
-			if(i==12)break;
+		const FS_Path PathCia = fsMakePath(PATH_ASCII, "/cias");
+		
+		if (FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, NULL)) != 0) {
+			Draw_DrawString(10, 60, COLOR_RED, "Could not access SD Card !!!");
+			Draw_FlushFramebuffer();
+			Draw_Unlock();
+			waitInputWithTimeout(0);
+			return;
+		}
+		
+		if (FSUSER_OpenDirectory(&handle, sdmcArchive, PathCia) != 0) {
+			Draw_DrawString(10, 60, COLOR_RED, "No /cias directory");
+			Draw_FlushFramebuffer();
+			Draw_Unlock();
+			waitInputWithTimeout(0);
+			return;
 		}
 		Draw_FlushFramebuffer();
 		Draw_Unlock();
 		
-		u32 pressed = waitInputWithTimeout(1000);
-		if(pressed & BUTTON_A){
+		Draw_Lock();
+		Draw_ClearFramebuffer();
+		Draw_FlushFramebuffer();
+		Draw_Unlock();
+		
+		quit = true;
+		u32 fileRead = 0;
+		int count = 0;
+		while (true) {
 			
-			reboot = true;
-			memcpy(cianame->Path, "/cias/",7);
-			strcat(cianame->Path, cianame->fileNames[index]);
-			installCIA(cianame->Path, MEDIATYPE_SD);
-			
-			
-		} else if(pressed & BUTTON_DOWN){
-			index = (index == count-1) ? 0 : index+1;
-		} else if(pressed & BUTTON_UP){
-			index = (index == 0) ? count-1 : index-1;
-		} else if(pressed & BUTTON_B){
-			break;
+			FS_DirectoryEntry entry = {};
+			FSDIR_Read(handle, &fileRead, 1, &entry);
+			if (!fileRead) {
+				break;
+			}
+			utf16_to_utf8((uint8_t*) cianame->fileNames[count], entry.name, 512 - 1);
+			count++;
 		}
+		FSDIR_Close(handle);
+		svcCloseHandle(handle);
+		
+		//_============================
 		
 		
+		  
+		int index = 0;
+		int pos = 0;
+		while(true)
+		{
+			if(index==0)pos=0;
+			if(count>13)
+			{
+				if((pos+12)<index){
+					pos++; 
+					
+				}
+				if(pos>index)pos--;
+				if(index==count-1)pos=count-13;
+			}
+			
+			Draw_Lock();
+			Draw_DrawString(10, 10, COLOR_TITLE, "CIA Install Menu");
+			Draw_DrawString(10, 30, COLOR_WHITE, "Press A to install, press B to return");
+			Draw_DrawString(10, 40, COLOR_WHITE, "Press X delete");
+			for(int i = 0; i < count; i++)
+			{
+				Draw_DrawString(30, 60+(i*10), COLOR_BLACK, "                                                ");
+				Draw_DrawFormattedString(30, 60+(i*10), (i+pos == index) ? COLOR_SEL : COLOR_WHITE, "   %s",cianame->fileNames[i+pos]);
+				if(i+pos== index)Draw_DrawString(30, 60+(i*10),COLOR_SEL, "=>");
+				if(i==12)break;
+			}
+			Draw_FlushFramebuffer();
+			Draw_Unlock();
+			
+			u32 pressed = waitInputWithTimeout(0);
+			if(pressed & BUTTON_A){
+				
+				reboot = true;
+				sprintf(cianame->Path,  "/cias/%s", cianame->fileNames[index]);
+				installCIA(cianame->Path, MEDIATYPE_SD);
+				
+				
+			} else if(pressed & BUTTON_DOWN){
+				index = (index == count-1) ? 0 : index+1;
+			} else if(pressed & BUTTON_UP){
+				index = (index == 0) ? count-1 : index-1;
+			} else if(pressed & BUTTON_X){
+				
+				if(ShowUnlockSequence(1))
+				{
+					sprintf(cianame->Path,  "/cias/%s", cianame->fileNames[index]);
+					FSUSER_DeleteFile(sdmcArchive, fsMakePath(PATH_ASCII, cianame->Path));
+					
+					quit = false;
+					break;
+				}
+				
+			}else if(pressed & BUTTON_B){
+				quit = true;
+				break;
+			}
+			
+		}
+		FSUSER_CloseArchive(sdmcArchive);
+		if(quit)break;
 	}
+	
+	//if(reboot)svcKernelSetState(7);
+		
+	
+	
+	
+	FSDIR_Close(handle);
+	svcCloseHandle(handle);
 	FSUSER_CloseArchive(sdmcArchive);
-	if(reboot)svcKernelSetState(7);
 	svcControlMemory(&tmp, MAP_BASE_1, 0, 0x6000, MEMOP_FREE, 0);
+
 	return;
     
 }
@@ -285,7 +310,7 @@ Result installCIA(const char *path, FS_MediaType media)
 	Draw_FlushFramebuffer();
 	Draw_Unlock();
 	
-	waitInputWithTimeout(100000);
+	waitInputWithTimeout(0);
 	
 	Draw_Lock();
 	Draw_ClearFramebuffer();
@@ -296,7 +321,7 @@ Result installCIA(const char *path, FS_MediaType media)
 	svcCloseHandle(ciaHandle);
 	FSDIR_Close(fileHandle);
 	svcCloseHandle(fileHandle);
-	
+	amExit();
 	return 0;
 	
 	error:
@@ -308,18 +333,18 @@ Result installCIA(const char *path, FS_MediaType media)
 		svcCloseHandle(ciaHandle);
 		FSDIR_Close(fileHandle);
 		svcCloseHandle(fileHandle);
+		amExit();
 		return ret;
 }
 
-/*void Delete_Title(void)
+void Delete_Title(void)
 {
 	amInit();
 	reboot = false;
 	bool reboothomemenu = false;
 	
 	u32 tmp = 0;
-	svcControlMemoryEx(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
-	svcControlMemory(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_FREE, 0);
+	
 	svcControlMemoryEx(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
 	
 	AM_TitleEntry* title = (AM_TitleEntry*)0x08006000;
@@ -363,20 +388,72 @@ Result installCIA(const char *path, FS_MediaType media)
 				if(index==titleCount-1)pos=titleCount-11;
 			}
 			
+			/*
+			for(int y = 0; y < 240; y++)
+			{	 
+				for(int x = 0; x < 320; x++)	
+				{
+					//u32 screenPos = (posX * 240 * 2 + (240 - x - posY -1) * 2) + y * 2 * 240;
+					u32 screenPos = (0 * 240 * 3 + (240 - x - 0 -1) * 3) + y * 3 * 240;
+					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = 0x30;
+					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = 0x30;
+					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = 0x30;
+				}	
+			}*/
 			
 			Draw_Lock();
 			Draw_DrawString(10, 10, COLOR_TITLE, "Menu Delete Title");
-			Draw_DrawFormattedString(10, 20, COLOR_WHITE, "Title ID [%s]          ",info[index].productCode);
+			Draw_DrawFormattedString(80, 180, COLOR_WHITE, "Title ID : %s                              ",info[index].productCode);
+			Draw_DrawFormattedString(80, 195, COLOR_WHITE, "Publicher: %s                              ",info[index].publisher);
 			for(u32 i = 0; i < titleCount; i++)
 			{
+				Draw_DrawString(10, 40+(i*10), COLOR_BLACK, "                                                  ");
 				Draw_DrawFormattedString(10, 40+(i*10), i+pos == index ? COLOR_TITLE : COLOR_WHITE, "   %s", info[i+pos].shortDescription);
-				if(i == index)Draw_DrawString(10, 40+(i*10),COLOR_TITLE, "=>");
+				if(i+pos == index)Draw_DrawString(10, 40+(i*10),COLOR_TITLE, "=>");
 				if(i==10)break;
 			}
+			
+			
+			//=======SDMH======
+			
+			u8 IconPixel[0x1200];
+			u8 OrdrePixel[64] = {
+			0,  1,  8,  9,  2,  3,  10, 11, 16, 17, 24, 25, 18, 19, 26, 27,
+			4,  5,  12, 13, 6,  7,  14, 15, 20, 21, 28, 29, 22, 23, 30, 31,
+			32, 33, 40, 41, 34, 35, 42, 43, 48, 49, 56, 57, 50, 51, 58, 59,
+			36, 37, 44, 45, 38, 39, 46, 47, 52, 53, 60, 61, 54, 55, 62, 63 };
+			int count = 0;
+			for( int y = 0; y < 48; y += 8)
+			{
+				for(int x = 0; x < 48; x += 8)
+				{
+					for(int k = 0; k < 64; k++)
+					{
+						u8 xx =  (OrdrePixel[k] & 0x7);
+						u8 yy =  (OrdrePixel[k] >> 3);
+						IconPixel[(((x + xx) * 48 + (y + yy)) * 2)+0] = info[index].largeIcon[count++];
+						IconPixel[(((x + xx) * 48 + (y + yy)) * 2)+1] = info[index].largeIcon[count++];
+					}
+				}
+			}
+			
+			int pixel=0;
+			for(int y = 0; y < 48; y++)
+			{	 
+				for(int x = 0; x < 48; x++)	
+				{
+					//u32 screenPos = (posX * 240 * 2 + (240 - x - posY -1) * 2) + y * 2 * 240;
+					u32 screenPos = (20 * 240 * 2 + (240 - x - 170 -1) * 2) + y * 2 * 240;
+					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = IconPixel[pixel++];
+					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = IconPixel[pixel++];
+				}	
+			}
+			//====================
+			
 			Draw_FlushFramebuffer();
 			Draw_Unlock();
 			
-			u32 pressed = waitInputWithTimeout(1000);
+			u32 pressed = waitInputWithTimeout(0);
 			if(pressed & BUTTON_A){
 				
 				if(ShowUnlockSequence(1))
@@ -390,7 +467,7 @@ Result installCIA(const char *path, FS_MediaType media)
 					Draw_FlushFramebuffer();
 					Draw_Unlock();
 					
-					waitInputWithTimeout(10000);
+					waitInputWithTimeout(0);
 					
 					Draw_Lock();
 					Draw_ClearFramebuffer();
@@ -412,7 +489,7 @@ Result installCIA(const char *path, FS_MediaType media)
 		if(reboothomemenu)break;
 	}
 	
-	if(reboot)svcKernelSetState(7);
+	//if(reboot)svcKernelSetState(7);
 	titleIds = NULL;
 	svcControlMemory(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_FREE, 0);
 	
@@ -490,6 +567,7 @@ void get_Name_TitleID(u64 titleId, u32 count, Info_Title* info)
 				
 				utf16_to_utf8((uint8_t*) info[count].shortDescription, smdhTitle->shortDescription, sizeof(info[count].shortDescription) - 1);
 				//utf16_to_utf8((uint8_t*) info[count].longDescription, smdhTitle->longDescription, sizeof(info[count].longDescription) - 1);
+				utf16_to_utf8((uint8_t*) info[count].publisher, smdhTitle->publisher, sizeof(info[count].publisher) - 1);
 				memcpy(info[count].largeIcon, smdh->largeIcon, 0x1200);
 				
 			} 
@@ -501,4 +579,40 @@ void get_Name_TitleID(u64 titleId, u32 count, Info_Title* info)
 	cfguExit();
 	
 }
-*/
+
+
+	//===================================
+	/*
+	for(int i = 50; i > 0; i--)
+	{	 
+		
+		for(int j = 0; j < 100; j++)	
+		{
+			u32 offset = (240*(10+j)+240-(10+i))*3;
+			*((u8*)FB_TOP_PRIMARY_VRAM_ADDR + offset++) = 0xFF;
+			*((u8*)FB_TOP_SECONDARY_VRAM_ADDR + offset+240*3) = 0x99;
+			*((u8*)FB_TOP_PRIMARY_VRAM_ADDR + offset++) = 0xFF;
+			*((u8*)FB_TOP_SECONDARY_VRAM_ADDR + offset+240*3) = 0x99;
+			*((u8*)FB_TOP_PRIMARY_VRAM_ADDR + offset++) = 0xFF;
+			*((u8*)FB_TOP_SECONDARY_VRAM_ADDR + offset+240*3) = 0x99;
+		}	
+		
+	}
+	*/
+	//===================================
+	/*
+	for(int i = 50; i > 0; i--)
+	{	 
+		
+		for(int j = 0; j < 100; j++)	
+		{
+			u32 offset = (240*(10+j)+240-(10+i))*3;
+			
+			*((u8*)FB_BOTTOM_VRAM_ADDR + offset++) = 0xFF;
+			*((u8*)FB_BOTTOM_VRAM_ADDR + offset++) = 0xFF;
+			*((u8*)FB_BOTTOM_VRAM_ADDR + offset++) = 0xFF;
+			
+		}	
+		
+	}
+	*/

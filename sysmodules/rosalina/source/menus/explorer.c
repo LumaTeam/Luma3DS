@@ -1,6 +1,8 @@
 #include <3ds.h>
 #include "menus/explorer.h"
 #include "menus/tools.h"
+#include "menus/permissions.h"
+
 #include "mcu.h"
 #include "memory.h"
 #include "draw.h"
@@ -9,16 +11,20 @@
 #include "ifile.h"
 
 #define MAP_BASE_1	0x08000000
-
 #define MAP_BASE_2 	0x10000000
-
 #define MAP_BASE_SIZE	0x100000
 
 #define MEMOP_FREE 		1
 #define MEMOP_ALLOC 	3
-	
 #define MEMPERM_READ 	1
 #define MEMPERM_WRITE 	2
+
+//Result FSUSER_RenameDirectory(FS_Archive srcArchive, FS_Path srcPath, FS_Archive dstArchive, FS_Path dstPath);
+//Result FSUSER_RenameFile(FS_Archive srcArchive, FS_Path srcPath, FS_Archive dstArchive, FS_Path dstPath);
+//Result FSUSER_GetFreeBytes(u64* freeBytes, FS_Archive archive);
+
+
+
 extern bool reboot;
 
 
@@ -79,8 +85,8 @@ void Explorer(void)
 		FSUSER_OpenDirectory(&handle, sdmcArchive, dirPath);
 		
 		u32 fileRead = 0;
-		int count = 0;
 		
+		int count = 0;
 		do 
 		{
 			
@@ -89,12 +95,7 @@ void Explorer(void)
 				break;
 			}
 			
-			char name[262] = { 0 };
-			for (size_t i = 0; i < 262; i++) {
-				name[i] = entry.name[i] % 0xff;
-			}
-			 
-			memcpy(Dir[sDir].fileNames[count], name, 128);
+			utf16_to_utf8((uint8_t*) Dir[sDir].fileNames[count], entry.name, 512 - 1);
 			
 			//folder or file
 			memcpy(Dir[0].PathDir, Dir[sDir].Path, 512);
@@ -130,7 +131,7 @@ void Explorer(void)
 			}
 			Draw_Lock();
 			Draw_DrawString(10, 10, COLOR_TITLE, "Menu Explorer");
-			
+			Draw_DrawString(10, 20, COLOR_WHITE, "Press A to install CIA, Press X delete");
 			for(int i = 0; i < count; i++)
 			{
 				Draw_DrawString(50, 40+(i*10), COLOR_BLACK, "                                                  ");
@@ -142,7 +143,7 @@ void Explorer(void)
 			Draw_FlushFramebuffer();
 			Draw_Unlock();
 			
-			u32 pressed = waitInputWithTimeout(1000);
+			u32 pressed = waitInputWithTimeout(0);
 			if(pressed & BUTTON_A){
 				
 				if(Dir[0].FoFext[index])
@@ -179,7 +180,27 @@ void Explorer(void)
 				index = (index == count-1) ? 0 : index+1;
 			} else if(pressed & BUTTON_UP){
 				index = (index == 0) ? count-1 : index-1;
-			} else if(pressed & BUTTON_B){
+			} else if(pressed & BUTTON_X){
+				
+				if(ShowUnlockSequence(1))
+				{
+					memcpy(Dir[0].PathDir, Dir[sDir].Path, 512);
+					if(sDir>0)strcat(Dir[0].PathDir, "/");
+					strcat(Dir[0].PathDir, Dir[sDir].fileNames[index]);
+					
+					Result ret = FSUSER_DeleteFile(sdmcArchive, fsMakePath(PATH_ASCII, Dir[0].PathDir));
+					if (R_FAILED(ret)){
+						ret = FSUSER_DeleteDirectory(sdmcArchive, fsMakePath(PATH_ASCII, Dir[0].PathDir));
+						if (R_FAILED(ret)){
+							FSUSER_DeleteDirectoryRecursively(sdmcArchive, fsMakePath(PATH_ASCII, Dir[0].PathDir));
+						}
+					}
+						
+					index = 0;
+					break;
+				}
+				
+			}else if(pressed & BUTTON_B){
 				
 				
 				memcpy(Dir[sDir].Path, "", 2);
@@ -192,15 +213,15 @@ void Explorer(void)
 				break;
 				
 			} 
-			
-			
+			if(returnhomemenu)break;
 		}
 		while(!terminationRequest);
-		if(returnhomemenu && reboot)svcKernelSetState(7);
+		//if(returnhomemenu && reboot)svcKernelSetState(7);
 		if(returnhomemenu)
 		{
-			
-			amExit();
+			FSDIR_Close(handle);
+			svcCloseHandle(handle);
+			FSUSER_CloseArchive(sdmcArchive);
 			svcControlMemory(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_FREE, 0);
 			return;
 		}

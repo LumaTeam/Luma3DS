@@ -157,7 +157,7 @@ MyThread *menuCreateThread(void)
 
 extern bool isN3DS;
 u32 menuCombo;
-
+#include "menus/tools.h"
 void menuThreadMain(void)
 {
     if(!isN3DS)
@@ -177,6 +177,23 @@ void menuThreadMain(void)
             if(isN3DS) N3DSMenu_UpdateStatus();
             menuShow(&rosalinaMenu);
             menuLeave();
+        }
+		if((HID_PAD & MENU_TOOLS_COMBO) == MENU_TOOLS_COMBO)
+        {
+			menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&MenuOptions);
+            menuLeave();
+			
+			nsInit();
+			NS_TerminateProcessTID(0x0004003000009802ULL);
+			nsExit();
+			
+			
+        }
+		if((HID_PAD & DESACTIVE_ROSALINA_COMBO) == DESACTIVE_ROSALINA_COMBO)
+        {
+			return;
         }
         svcSleepThread(50 * 1000 * 1000LL);
     }

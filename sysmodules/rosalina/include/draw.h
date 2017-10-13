@@ -50,6 +50,12 @@
 #define GPU_TRANSFER_CNT            REG32(0x10400C18)
 #define GPU_CMDLIST_CNT             REG32(0x104018F0)
 
+#define FB_TOP_PRIMARY_VRAM_ADDR	((void *)0x1f1e6000) // cached
+#define FB_TOP_SECONDARY_VRAM_ADDR	((void *)0x1f273000) // cached
+#define FB_TOP_VRAM_PA           	0x1848F000
+#define FB_TOP_SIZE              	(400 * 240 * 2)
+
+
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
