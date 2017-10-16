@@ -33,7 +33,7 @@
 #include "ifile.h"
 
 Menu sysconfigMenu = {
-    "System configuration menu",
+    "System Configuration Menu",
     .nbItems = 2,
     {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
@@ -51,8 +51,8 @@ void SysConfigMenu_ToggleLEDs(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+        Draw_DrawString(10, 10, COLOR_TITLE, "System Configuration Menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, B to go back.");
         Draw_DrawString(10, 50, COLOR_RED, "WARNING:");
         Draw_DrawString(10, 60, COLOR_WHITE, "  * Entering sleep mode will reset the LED state!");
         Draw_DrawString(10, 70, COLOR_WHITE, "  * LEDs cannot be toggled when the battery is low!");
@@ -112,8 +112,8 @@ void SysConfigMenu_ToggleWireless(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+        Draw_DrawString(10, 10, COLOR_TITLE, "System Configuration Menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, B to go back.");
 
         u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
 
