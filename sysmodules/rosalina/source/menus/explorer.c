@@ -10,20 +10,6 @@
 #include "utils.h"
 #include "ifile.h"
 
-#define MAP_BASE_1	0x08000000
-#define MAP_BASE_2 	0x10000000
-#define MAP_BASE_SIZE	0x100000
-
-#define MEMOP_FREE 		1
-#define MEMOP_ALLOC 	3
-#define MEMPERM_READ 	1
-#define MEMPERM_WRITE 	2
-
-//Result FSUSER_RenameDirectory(FS_Archive srcArchive, FS_Path srcPath, FS_Archive dstArchive, FS_Path dstPath);
-//Result FSUSER_RenameFile(FS_Archive srcArchive, FS_Path srcPath, FS_Archive dstArchive, FS_Path dstPath);
-//Result FSUSER_GetFreeBytes(u64* freeBytes, FS_Archive archive);
-
-
 
 extern bool reboot;
 

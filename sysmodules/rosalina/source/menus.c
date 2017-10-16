@@ -36,15 +36,17 @@
 #include "menus/sysconfig.h"
 #include "menus/tools.h"
 #include "menus/explorer.h"
+#include "menus/chainloader.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
 
 Menu rosalinaMenu = {
     "Rosalina Menu",
-    .nbItems = 11,
+    .nbItems = 12,
     {
-        { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
+        { "ChainLoader", METHOD, .method = &bootloader },
+		{ "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Process patches menu...", MENU, .menu = &processPatchesMenu },
         { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },

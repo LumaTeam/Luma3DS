@@ -4,6 +4,8 @@
 #include <3ds.h>
 #include "menus/tools.h"
 #include "menus/explorer.h"
+
+
 #include "menus/permissions.h"
 #include "mcu.h"
 #include "memory.h"
@@ -11,19 +13,6 @@
 #include "fmt.h"
 #include "utils.h"
 #include "ifile.h"
-
-#define MAP_BASE_1		0x08000000
-#define MAP_BASE_2 		0x10000000
-#define MAP_BASE_SIZE	  0x200000
-
-#define MEMOP_FREE 		1
-#define MEMOP_ALLOC 	3
-	
-#define MEMPERM_READ 	1
-#define MEMPERM_WRITE 	2
-
-#define TICKS_PER_MSEC 268111.856
-
 
 
 bool reboot;
@@ -394,8 +383,7 @@ void Delete_Title(void)
 				for(int x = 0; x < 320; x++)	
 				{
 					//u32 screenPos = (posX * 240 * 2 + (240 - x - posY -1) * 2) + y * 2 * 240;
-					u32 screenPos = (0 * 240 * 3 + (240 - x - 0 -1) * 3) + y * 3 * 240;
-					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = 0x30;
+					u32 screenPos = (0 * 240 * 2 + (240 - x - 0 -1) * 2) + y * 2 * 240;
 					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = 0x30;
 					*((u8*)FB_BOTTOM_VRAM_ADDR + screenPos++) = 0x30;
 				}	
