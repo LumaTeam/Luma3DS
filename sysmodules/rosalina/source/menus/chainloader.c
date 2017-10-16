@@ -21,7 +21,7 @@ void bootloader(void)
 	Dir_Name* firm = (Dir_Name*)MAP_BASE_1;
 	
 	Draw_Lock();
-	const FS_Path PathCia = fsMakePath(PATH_ASCII, "/luma/payloads");
+	const FS_Path PathFirm = fsMakePath(PATH_ASCII, "/luma/payloads");
 	
 	if (FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, NULL)) != 0) {
 		Draw_DrawString(10, 60, COLOR_RED, "Could not access SD Card !!!");
@@ -31,7 +31,7 @@ void bootloader(void)
 		return;
 	}
 	
-	if (FSUSER_OpenDirectory(&handle, sdmcArchive, PathCia) != 0) {
+	if (FSUSER_OpenDirectory(&handle, sdmcArchive, PathFirm) != 0) {
 		Draw_DrawString(10, 60, COLOR_RED, "No directory");
 		Draw_FlushFramebuffer();
 		Draw_Unlock();

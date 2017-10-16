@@ -202,7 +202,13 @@ void Explorer(void)
 			if(returnhomemenu)break;
 		}
 		while(!terminationRequest);
-		//if(returnhomemenu && reboot)svcKernelSetState(7);
+		
+		if(returnhomemenu && reboot){
+			nsInit();
+			NS_TerminateProcessTID(0x0004003000009802ULL);
+			nsExit();
+		}
+		
 		if(returnhomemenu)
 		{
 			FSDIR_Close(handle);

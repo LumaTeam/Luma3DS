@@ -150,10 +150,12 @@ void CIA_menu(void)
 		if(quit)break;
 	}
 	
-	//if(reboot)svcKernelSetState(7);
+	if(reboot){
 		
-	
-	
+		nsInit();
+		NS_TerminateProcessTID(0x0004003000009802ULL);
+		nsExit();
+	}	
 	
 	FSDIR_Close(handle);
 	svcCloseHandle(handle);
@@ -477,7 +479,12 @@ void Delete_Title(void)
 		if(reboothomemenu)break;
 	}
 	
-	//if(reboot)svcKernelSetState(7);
+	if(reboot){
+		
+		nsInit();
+		NS_TerminateProcessTID(0x0004003000009802ULL);
+		nsExit();
+	}	
 	titleIds = NULL;
 	svcControlMemory(&tmp, MAP_BASE_1, 0, MAP_BASE_SIZE, MEMOP_FREE, 0);
 	
