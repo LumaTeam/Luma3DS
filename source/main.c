@@ -239,7 +239,9 @@ void main(int argc, char **argv, u32 magicWord)
     if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
     bool autoBootEmu = CONFIG(AUTOBOOTEMU);
-
+	
+	bootonce("/bootonce.firm");
+	
     if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
         loadHomebrewFirm(0);
