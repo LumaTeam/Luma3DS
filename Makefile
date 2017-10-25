@@ -19,7 +19,7 @@ commit := $(shell git rev-parse --short=8 HEAD)
 is_release := 0
 
 ifeq ($(strip $(revision)),)
-	revision := v8.1.1-Rosalina Mod By Kasai07
+	revision := v8.1.1-Rosalina Mod
 	version_major := 8
 	version_minor := 1
 	version_build := 1
