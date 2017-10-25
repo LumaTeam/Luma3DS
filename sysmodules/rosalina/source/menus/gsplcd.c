@@ -29,12 +29,6 @@ void setup_Brightness(void)
 	
 	gspLcdInit();
 	
-	//new3ds
-	//u32 BrightnessTop = getBrightness(GSPLCD_SCREEN_TOP);
-	//u32 BrightnessBottom = getBrightness(GSPLCD_SCREEN_BOTTOM);
-	
-	
-	
 	while(true)
 	{
 		

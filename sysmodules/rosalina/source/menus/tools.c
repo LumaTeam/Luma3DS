@@ -574,3 +574,100 @@ void get_Name_TitleID(u64 titleId, u32 count, Info_Title* info)
 	
 }
 
+typedef struct 
+{
+	char signature[2];
+	int size;				
+	int rsv;				
+	int offsetim;			
+	int size_imhead;		 
+	
+	int width;			
+	int height;				
+	
+	short nbplans; 			// toujours 1
+	short bpp;				//bit Pixel
+	int compression;		
+	int sizeim;				
+	int hres;				
+	int vres;				
+	int cpalette;			// color palette
+	int cIpalette;			
+	
+	u8 pixel24[400*240*3];
+	u8 pixel16[400*240*2];
+	
+} __attribute__((packed)) BMP_Data;
+
+void drawimage(void)
+{
+	u32 tmp = 0;
+	svcControlMemoryEx(&tmp, 0x10000000, 0, 0x200000, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE, true);
+	
+	BMP_Data* bmp = (BMP_Data*)0x10100000;
+	
+	FS_Archive sdmcArchive;
+	Handle fileHandle;
+	u64 fileSize;
+	
+	FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, NULL));
+	FSUSER_OpenFile(&fileHandle, sdmcArchive, fsMakePath(PATH_ASCII, "/bg.bmp"), FS_OPEN_READ, 0);
+	FSFILE_GetSize(fileHandle, &fileSize);
+	
+	Draw_DrawFormattedString(0, 0, COLOR_WHITE, "%d",fileSize);
+	waitInputWithTimeout(0);
+	
+	u32 bytes;
+	u32 read = 	10000;
+	u8 *buffer = (u8 *)0x10000000;
+	
+	for (u64 start = fileSize; fileSize != 0; fileSize -= read) 
+	{
+		if (fileSize < read)
+			read = fileSize;
+			
+		FSFILE_Read(fileHandle, &bytes, start-fileSize, buffer, read);
+		
+	}
+	memcpy(bmp, buffer, sizeof(BMP_Data*));
+	
+	u32 size_pixel = bmp->width*bmp->height;
+	
+	Draw_DrawFormattedString(10, 100, COLOR_WHITE, "%d",buffer);
+	Draw_DrawFormattedString(10, 110, COLOR_WHITE, "%d",bmp->height);
+	Draw_DrawFormattedString(10, 120, COLOR_WHITE, "%d",bmp->bpp);
+	Draw_DrawFormattedString(10, 130, COLOR_WHITE, "%d",size_pixel);
+	
+	waitInputWithTimeout(0);
+	
+	int dir = 0;
+	for(u32 i = 0; i > size_pixel; i +=3)
+	{
+		u8 red   = bmp->pixel24[i+0];
+		u8 green = bmp->pixel24[i+1];
+		u8 blue  = bmp->pixel24[i+2];
+		
+		u16 b = (blue >> 3) & 0x1f;
+		u16 g = ((green >> 2) & 0x3f) << 5;
+		u16 r =  ((red >> 3)& 0x1f) << 11;
+		
+		bmp->pixel16[dir++] = (r|g|b);
+	}
+	
+	FSFILE_Close(fileHandle);
+	FSUSER_CloseArchive(sdmcArchive);
+	
+	dir = 0;
+	for(int y = 0; y < 240; y++)
+	{	 
+		for(int x = 0; x < 320; x++)	
+		{
+			//u32 screenPos = (posX * 240 * 2 + (240 - x - posY -1) * 2) + y * 2 * 240;
+			u32 screenPos = (0 * 240 + (240 - x - 0 -1)) + y * 240;
+			*((u16*)FB_BOTTOM_VRAM_ADDR + screenPos++) = bmp->pixel16[dir++];
+		}	
+	}
+	
+	svcControlMemory(&tmp, 0x10000000, 0, 0x200000, MEMOP_FREE, 0);
+	return;
+}	
