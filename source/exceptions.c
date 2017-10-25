@@ -72,8 +72,8 @@ void detectAndProcessExceptionDumps(void)
         "SP", "LR", "PC", "CPSR", "FPEXC"
     },
                       *faultStatusNames[] = {
-        "Alignment", "Instruction cache maintenance operation",
-        "External Abort on translation - First-level", "External Abort on translation - Second-level",
+        "Alignment", "Instr.cache maintenance op.",
+        "Ext.Abort on translation - Lv1", "Ext.Abort on translation - Lv2",
         "Translation - Section", "Translation - Page", "Access bit - Section", "Access bit - Page",
         "Domain - Section", "Domain - Page", "Permission - Section", "Permission - Page",
         "Precise External Abort", "Imprecise External Abort", "Debug event"
@@ -117,7 +117,7 @@ void detectAndProcessExceptionDumps(void)
     else
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "Exception type:  %s", handledExceptionNames[dumpHeader->type]);
 
-    if(dumpHeader->type >= 2)
+    if(dumpHeader->processor == 11 && dumpHeader->type >= 2)
     {
         u32 xfsr = (dumpHeader->type == 2 ? regs[18] : regs[17]) & 0xF;
 
@@ -129,7 +129,7 @@ void detectAndProcessExceptionDumps(void)
             }
     }
 
-    if(dumpHeader->processor == 11 && dumpHeader->additionalDataSize != 0)
+    if(dumpHeader->additionalDataSize != 0)
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE,
                                    "Current process: %.8s (%016llX)", (const char *)additionalData, *(vu64 *)(additionalData + 8));
     posY += SPACING_Y;
@@ -144,7 +144,7 @@ void detectAndProcessExceptionDumps(void)
             posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08X", registerNames[i + 1], regs[20]);
     }
 
-    if(dumpHeader->type == 3)
+    if(dumpHeader->processor == 11 && dumpHeader->type == 3)
         posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08X       Access type: %s", "FAR", regs[19], regs[17] & (1u << 11) ? "Write" : "Read");
 
     posY += SPACING_Y;

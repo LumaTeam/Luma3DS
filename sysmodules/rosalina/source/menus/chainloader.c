@@ -158,7 +158,7 @@ u32 copy_firm_to_buf(FS_Archive sdmcArchive, const char *Path)
 	}
 	
 	u32 bytes;
-	u32 read = 	0x1000;
+	u32 read = 	0x10000;
 	u8 *firm_buffer = (u8 *)0x08100000;
 	
 	for (u64 startSize = fileSize; fileSize != 0; fileSize -= read) 

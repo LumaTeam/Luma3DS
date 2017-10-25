@@ -1,6 +1,6 @@
 <!--
 -- THIS IS NOT A SUPPORT FORUM! For support go here:
--- Nintendo Hacking: https://discord.gg/MjzatM8y
+-- Nintendo Homebrew: https://discord.gg/MjzatM8
 --
 -- Rosalina feature requests go here: https://github.com/AuroraWright/Luma3DS/issues/752
 --

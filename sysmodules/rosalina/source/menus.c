@@ -36,19 +36,19 @@
 #include "menus/sysconfig.h"
 #include "menus/tools.h"
 #include "menus/explorer.h"
-#include "menus/chainloader.h"
+#include "menus/gsplcd.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
 
 Menu rosalinaMenu = {
-    "Rosalina Menu",
+    "Rosalina menu",
     .nbItems = 12,
     {
-        { "ChainLoader", METHOD, .method = &bootloader },
+		{ "Screens Brightness", METHOD, .method = &setup_Brightness },
 		{ "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Process patches menu...", MENU, .menu = &processPatchesMenu },
-        { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
+		{ "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
@@ -56,7 +56,7 @@ Menu rosalinaMenu = {
         { "Tools", MENU, .menu = &MenuOptions },
 		{ "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
     }
 };
 
@@ -70,7 +70,7 @@ void RosalinaMenu_ShowCredits(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS Credits");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS credits");
 
         u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Luma3DS (c) 2016-2017 AuroraWright, TuxSH") + SPACING_Y;
 
@@ -104,7 +104,7 @@ void RosalinaMenu_Reboot(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -129,7 +129,7 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();

@@ -50,12 +50,6 @@
 #define GPU_TRANSFER_CNT            REG32(0x10400C18)
 #define GPU_CMDLIST_CNT             REG32(0x104018F0)
 
-#define FB_TOP_PRIMARY_VRAM_ADDR	((void *)0x1f1e6000) // cached
-#define FB_TOP_SECONDARY_VRAM_ADDR	((void *)0x1f273000) // cached
-#define FB_TOP_VRAM_PA           	0x1848F000
-#define FB_TOP_SIZE              	(400 * 240 * 2)
-
-
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
@@ -65,6 +59,7 @@
 
 #define SPACING_Y 11
 #define SPACING_X 6
+
 
 #define COLOR_SEL			RGB565(0xD7, 0x9A, 0x28)
 #define COLOR_TITLE 		RGB565(0x00, 0x26, 0x1F)
@@ -77,7 +72,6 @@
 #define COLOR_DARKRED       RGB565(0x80, 0x00, 0x00)
 #define COLOR_BRIGHTBLUE    RGB565(0x30, 0x30, 0xFF)
 #define COLOR_BRIGHTYELLOW  RGB565(0xFF, 0xFF, 0x30)
-
 
 #define DRAW_MAX_FORMATTED_STRING_SIZE  512
 

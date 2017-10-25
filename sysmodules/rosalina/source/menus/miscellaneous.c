@@ -27,7 +27,6 @@
 #include <3ds.h>
 #include "menus/miscellaneous.h"
 #include "input_redirection.h"
-#include "mcu.h"
 #include "memory.h"
 #include "draw.h"
 #include "hbloader.h"
@@ -37,7 +36,7 @@
 #include "ifile.h"
 
 Menu miscellaneousMenu = {
-    "Miscellaneous Options Menu",
+    "Miscellaneous options menu",
     .nbItems = 4,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
@@ -100,7 +99,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous Options Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
 
         if(R_SUCCEEDED(res))
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
@@ -142,7 +141,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     MiscellaneousMenu_ConvertComboToString(comboStrOrig, menuCombo);
 
     Draw_Lock();
-    Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous Options Menu");
+    Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
 
     posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "The current menu combo is:  %s", comboStrOrig);
     posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo:");
@@ -156,7 +155,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous Options Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
 
         posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "The current menu combo is:  %s", comboStrOrig);
         posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo: %s", comboStr) + SPACING_Y;
@@ -224,7 +223,7 @@ void MiscellaneousMenu_SaveSettings(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous Options Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
         if(R_SUCCEEDED(res))
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
         else
@@ -283,7 +282,7 @@ void MiscellaneousMenu_InputRedirection(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous Options Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
 
         if(!wasEnabled && cantStart)
             Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger before the system has fi-\nnished loading.");

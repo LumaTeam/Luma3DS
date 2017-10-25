@@ -4,24 +4,22 @@
 #include <3ds.h>
 #include "menus/tools.h"
 #include "menus/explorer.h"
-
-
 #include "menus/permissions.h"
-#include "mcu.h"
+#include "menus/chainloader.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
 #include "utils.h"
-#include "ifile.h"
-
+#include "menus/gsplcd.h"
 
 bool reboot;
 
 Menu MenuOptions = {
     " Menu Tools",
-    .nbItems = 3,
+    .nbItems = 4,
     {
         { "Explorer", METHOD, .method = &Explorer },
+		{ "ChainLoader", METHOD, .method = &bootloader },
 		{ "Install Cia", METHOD, .method = &CIA_menu },
 		{ "Delete Title", METHOD, .method = &Delete_Title },
     }
@@ -92,6 +90,7 @@ void CIA_menu(void)
 		int pos = 0;
 		while(true)
 		{
+			
 			if(index==0)pos=0;
 			if(count>13)
 			{
@@ -575,39 +574,3 @@ void get_Name_TitleID(u64 titleId, u32 count, Info_Title* info)
 	
 }
 
-
-	//===================================
-	/*
-	for(int i = 50; i > 0; i--)
-	{	 
-		
-		for(int j = 0; j < 100; j++)	
-		{
-			u32 offset = (240*(10+j)+240-(10+i))*3;
-			*((u8*)FB_TOP_PRIMARY_VRAM_ADDR + offset++) = 0xFF;
-			*((u8*)FB_TOP_SECONDARY_VRAM_ADDR + offset+240*3) = 0x99;
-			*((u8*)FB_TOP_PRIMARY_VRAM_ADDR + offset++) = 0xFF;
-			*((u8*)FB_TOP_SECONDARY_VRAM_ADDR + offset+240*3) = 0x99;
-			*((u8*)FB_TOP_PRIMARY_VRAM_ADDR + offset++) = 0xFF;
-			*((u8*)FB_TOP_SECONDARY_VRAM_ADDR + offset+240*3) = 0x99;
-		}	
-		
-	}
-	*/
-	//===================================
-	/*
-	for(int i = 50; i > 0; i--)
-	{	 
-		
-		for(int j = 0; j < 100; j++)	
-		{
-			u32 offset = (240*(10+j)+240-(10+i))*3;
-			
-			*((u8*)FB_BOTTOM_VRAM_ADDR + offset++) = 0xFF;
-			*((u8*)FB_BOTTOM_VRAM_ADDR + offset++) = 0xFF;
-			*((u8*)FB_BOTTOM_VRAM_ADDR + offset++) = 0xFF;
-			
-		}	
-		
-	}
-	*/

@@ -28,12 +28,12 @@
 #include "menu.h"
 #include "draw.h"
 #include "fmt.h"
-#include "mcu.h"
 #include "memory.h"
 #include "ifile.h"
 #include "menus.h"
 #include "utils.h"
 #include "menus/n3ds.h"
+#include "menus/tools.h"
 #include "minisoc.h"
 
 u32 waitInputWithTimeout(u32 msec)
@@ -124,26 +124,6 @@ u32 waitCombo(void)
     return waitComboWithTimeout(0);
 }
 
-static Result _MCUHWC_GetBatteryLevel(u8 *out)
-{
-    #define TRY(expr) if(R_FAILED(res = (expr))) { mcuExit(); return res; }
-    Result res;
-
-    TRY(mcuInit());
-
-    u32 *cmdbuf = getThreadCommandBuffer();
-    cmdbuf[0] = 0x50000;
-
-    TRY(svcSendSyncRequest(mcuhwcHandle));
-
-    *out = (u8) cmdbuf[2];
-
-    svcCloseHandle(mcuhwcHandle);
-    return cmdbuf[1];
-
-    #undef TRY
-}
-
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
 static u8 batteryLevel = 255;
@@ -157,7 +137,7 @@ MyThread *menuCreateThread(void)
 
 extern bool isN3DS;
 u32 menuCombo;
-#include "menus/tools.h"
+
 void menuThreadMain(void)
 {
     if(!isN3DS)
@@ -185,16 +165,12 @@ void menuThreadMain(void)
             menuShow(&MenuOptions);
             menuLeave();
 			
-			nsInit();
-			NS_TerminateProcessTID(0x0004003000009802ULL);
-			nsExit();
-			
-			
         }
 		if((HID_PAD & DESACTIVE_ROSALINA_COMBO) == DESACTIVE_ROSALINA_COMBO)
         {
 			return;
         }
+		
         svcSleepThread(50 * 1000 * 1000LL);
     }
 }
@@ -232,8 +208,12 @@ static void menuDraw(Menu *menu, u32 selected)
     u32 version, commitHash;
     bool isRelease;
 
-    if(R_FAILED(_MCUHWC_GetBatteryLevel(&batteryLevel)))
-        batteryLevel = 255;
+    if(R_SUCCEEDED(mcuHwcInit()))
+    {
+        if(R_FAILED(mcuHwcGetBatteryLevel(&batteryLevel)))
+            batteryLevel = 255;
+        mcuHwcExit();
+    }
 
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;
@@ -276,7 +256,7 @@ static void menuDraw(Menu *menu, u32 selected)
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
 
     if(isRelease)
-        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);
+        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-Rosalina Mod by Kasai07", versionString);
     else
         Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-%08x", versionString, commitHash);
 

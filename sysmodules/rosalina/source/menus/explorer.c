@@ -2,13 +2,10 @@
 #include "menus/explorer.h"
 #include "menus/tools.h"
 #include "menus/permissions.h"
-
-#include "mcu.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
 #include "utils.h"
-#include "ifile.h"
 
 
 extern bool reboot;

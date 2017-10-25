@@ -650,22 +650,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         off[1] = 0xE12FFF1E; //bx lr
     }
 
-    else if(progId == 0x0004013000003202LL) //FRIENDS
-    {
-        static const u8 pattern[] = {
-            0x42, 0xE0, 0x1E, 0xFF
-        };
-
-        u8 mostRecentFpdVer = 0xB;
-
-        u8 *off = memsearch(code, pattern, textSize, sizeof(pattern));
-
-        if(off == NULL) goto error;
-
-        //Allow online access to work with old friends modules
-        if(off[0xA] < mostRecentFpdVer) off[0xA] = mostRecentFpdVer;
-    }
-
     else if((progId == 0x0004001000021000LL || //USA MSET
              progId == 0x0004001000020000LL || //JPN MSET
              progId == 0x0004001000022000LL || //EUR MSET

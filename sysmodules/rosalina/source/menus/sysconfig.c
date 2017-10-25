@@ -26,7 +26,6 @@
 
 #include <3ds.h>
 #include "menus/sysconfig.h"
-#include "mcu.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
@@ -34,7 +33,7 @@
 #include "ifile.h"
 
 Menu sysconfigMenu = {
-    "System Configuration Menu",
+    "System configuration menu",
     .nbItems = 2,
     {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
@@ -52,8 +51,8 @@ void SysConfigMenu_ToggleLEDs(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "System Configuration Menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, B to go back.");
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
         Draw_DrawString(10, 50, COLOR_RED, "WARNING:");
         Draw_DrawString(10, 60, COLOR_WHITE, "  * Entering sleep mode will reset the LED state!");
         Draw_DrawString(10, 70, COLOR_WHITE, "  * LEDs cannot be toggled when the battery is low!");
@@ -65,12 +64,12 @@ void SysConfigMenu_ToggleLEDs(void)
 
         if(pressed & BUTTON_A)
         {
-            mcuInit();
+            mcuHwcInit();
             u8 result;
-            mcuGetLEDState(&result);
-            u8 value = ~result;
-            mcuWriteRegister(40, &value, 1);
-            mcuExit();
+            mcuHwcReadRegister(0x28, &result, 1);
+            result = ~result;
+            mcuHwcWriteRegister(40, &result, 1);
+            mcuHwcExit();
         }
         else if(pressed & BUTTON_B)
             return;
@@ -113,8 +112,8 @@ void SysConfigMenu_ToggleWireless(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "System Configuration Menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, B to go back.");
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
 
         u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
 
