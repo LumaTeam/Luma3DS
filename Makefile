@@ -19,10 +19,10 @@ commit := $(shell git rev-parse --short=8 HEAD)
 is_release := 0
 
 ifeq ($(strip $(revision)),)
-	revision := v0.0.0-0
-	version_major := 0
-	version_minor := 0
-	version_build := 0
+	revision := v8.1.1-Rosalina Mod
+	version_major := 8
+	version_minor := 1
+	version_build := 1
 endif
 
 ifeq ($(strip $(commit)),)

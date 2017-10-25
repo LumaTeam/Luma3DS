@@ -33,6 +33,7 @@
 #include "menus.h"
 #include "utils.h"
 #include "menus/n3ds.h"
+#include "menus/tools.h"
 #include "minisoc.h"
 
 u32 waitInputWithTimeout(u32 msec)
@@ -157,6 +158,19 @@ void menuThreadMain(void)
             menuShow(&rosalinaMenu);
             menuLeave();
         }
+		if((HID_PAD & MENU_TOOLS_COMBO) == MENU_TOOLS_COMBO)
+        {
+			menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&MenuOptions);
+            menuLeave();
+			
+        }
+		if((HID_PAD & DESACTIVE_ROSALINA_COMBO) == DESACTIVE_ROSALINA_COMBO)
+        {
+			return;
+        }
+		
         svcSleepThread(50 * 1000 * 1000LL);
     }
 }
@@ -242,7 +256,7 @@ static void menuDraw(Menu *menu, u32 selected)
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
 
     if(isRelease)
-        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);
+        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-Rosalina Mod by Kasai07", versionString);
     else
         Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-%08x", versionString, commitHash);
 

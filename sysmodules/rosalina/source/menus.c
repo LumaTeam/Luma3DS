@@ -34,24 +34,29 @@
 #include "menus/debugger.h"
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
+#include "menus/tools.h"
+#include "menus/explorer.h"
+#include "menus/gsplcd.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 10,
+    .nbItems = 12,
     {
-        { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
+		{ "Screens Brightness", METHOD, .method = &setup_Brightness },
+		{ "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Process patches menu...", MENU, .menu = &processPatchesMenu },
-        { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
+		{ "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
-        { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
+        { "Tools", MENU, .menu = &MenuOptions },
+		{ "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
     }
 };
 
