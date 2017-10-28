@@ -228,6 +228,30 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
     return firmVersion;
 }
 
+void bootonce(const char *path)
+{
+	u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm),
+        payloadSize = fileRead(firm, path, maxPayloadSize);
+		
+	
+	if(payloadSize <= 0x200 || !checkFirm(payloadSize)){
+		fileDelete(path);
+		return;
+	}
+	
+	char path_bootonce[24 + 255];
+	sprintf(path_bootonce, "sdmc:%s", path);
+	char *argv[2] = {path_bootonce, (char *)fbs};
+	
+	fileDelete(path);
+	
+	initScreens();
+	
+	launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
+	
+	
+}
+
 void loadHomebrewFirm(u32 pressed)
 {
     char path[10 + 255];
