@@ -32,6 +32,7 @@ static int g_active_handles;
 static u64 g_cached_prog_handle;
 static exheader_header g_exheader;
 static char g_ret_buf[1024];
+static Cxi *external_sysmodule;
 
 static inline void loadCFWInfo(void)
 {
@@ -130,6 +131,19 @@ static Result allocate_shared_mem(prog_addrs_t *shared, prog_addrs_t *vaddr, int
   shared->ro_addr = shared->text_addr + (shared->text_size << 12);
   shared->data_addr = shared->ro_addr + (shared->ro_size << 12);
   return svcControlMemory(&dummy, shared->text_addr, 0, shared->total_size << 12, (flags & 0xF00) | MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+}
+
+// FIXME: Figure out if that is enough (tests seems to prove the opposite)
+static Result load_sections_from_exfs(Cxi *cxi, prog_addrs_t *shared, int is_compressed)
+{
+  u32 exeFSAddr = (u32)cxi + cxi->ncch.exeFsOffset * 0x200;
+  ExeFS *exeFS = (ExeFS*)exeFSAddr;
+  memcpy((void *)shared->text_addr, (void*)(exeFSAddr + sizeof(ExeFS) + exeFS->headers[0].offset), exeFS->headers[0].size);
+  if (is_compressed)
+  {
+    lzss_decompress((u8 *)shared->text_addr + exeFS->headers[0].size);
+  }
+  return 0;
 }
 
 static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int is_compressed)
@@ -285,6 +299,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   CodeSetInfo codesetinfo;
   u32 data_mem_size;
   u64 progid;
+  bool is_cxi;
 
   // make sure the cached info corrosponds to the current prog_handle
   if (g_cached_prog_handle != prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
@@ -296,6 +311,12 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
       g_cached_prog_handle = 0;
       return res;
     }
+  }
+  progid = g_exheader.arm11systemlocalcaps.programid;
+  is_cxi = !loadCXI(progid, &external_sysmodule);
+  if (is_cxi)
+  {
+    g_exheader = external_sysmodule->exHeader;
   }
 
   // get kernel flags
@@ -363,7 +384,16 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   }
 
   // load code
-  if ((res = load_code(progid, &shared_addr, prog_handle, g_exheader.codesetinfo.flags.flag & 1)) >= 0)
+  if (is_cxi)
+  {
+    res = load_sections_from_exfs(external_sysmodule, &shared_addr, g_exheader.codesetinfo.flags.flag & 1);
+  }
+  else
+  {
+    res = load_code(progid, &shared_addr, prog_handle, g_exheader.codesetinfo.flags.flag & 1);
+  }
+
+  if (res >= 0)
   {
     memcpy(&codesetinfo.name, g_exheader.codesetinfo.name, 8);
     codesetinfo.program_id = progid;
@@ -383,11 +413,22 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
       svcCloseHandle(codeset);
       if (res >= 0)
       {
+        if (is_cxi)
+        {
+          // clean up if sucess
+          freeCXI(&external_sysmodule);
+          external_sysmodule = NULL;
+        }
         return 0;
       }
     }
   }
 
+  if (is_cxi)
+  {
+    freeCXI(&external_sysmodule);
+    external_sysmodule = NULL;
+  }
   svcControlMemory(&dummy, shared_addr.text_addr, 0, shared_addr.total_size << 12, MEMOP_FREE, 0);
   return res;
 }

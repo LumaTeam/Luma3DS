@@ -3,6 +3,7 @@
 #include <3ds/types.h>
 #include "exheader.h"
 #include "ifile.h"
+#include "3dsheaders_custom.h"
 
 #define MAKE_BRANCH(src,dst)      (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
@@ -45,3 +46,5 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags);
 bool loadTitleCodeSection(u64 progId, u8 *code, u32 size);
 bool loadTitleExheader(u64 progId, exheader_header *exheader);
+void freeCXI(Cxi **input);
+bool loadCXI(u64 progId, Cxi **out);
