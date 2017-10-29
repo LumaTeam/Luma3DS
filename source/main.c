@@ -240,7 +240,8 @@ void main(int argc, char **argv, u32 magicWord)
 
     bool autoBootEmu = CONFIG(AUTOBOOTEMU);
 
-    if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
+    bootonce("/bootonce.firm");
+	if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
         loadHomebrewFirm(0);
         pressed = HID_PAD;
