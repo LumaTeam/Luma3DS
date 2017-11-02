@@ -91,7 +91,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Enable game patching",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
-                                               "( ) Patch ARM9 access",
                                                "( ) Set developer UNITINFO",
                                                "( ) Disable ARM11 exception handlers",
                                              };
@@ -174,10 +173,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Enable showing the GBA boot screen\n"
                                                  "when booting GBA games.",
 
-                                                 "Disable ARM9 exheader access checks.\n\n"
-                                                 "Only select this if you know what you\n"
-                                                 "are doing!",
-
                                                  "Make the console be always detected\n"
                                                  "as a development unit, and conversely.\n"
                                                  "(which breaks online features, amiibo\n"
@@ -214,7 +209,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     } singleOptions[] = {
         { .visible = isSdMode },
         { .visible = isSdMode },
-        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },

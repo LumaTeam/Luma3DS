@@ -13,13 +13,6 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 #include "srv_pm.h"
 #include "list.h"
 
-extern u32 __ctru_heap;
-extern u32 __ctru_linear_heap;
-extern char (*serviceAccessListBuffers)[34][8];
-
-u32 __ctru_heap_size = 0x4000;
-u32 __ctru_linear_heap_size = 0;
-
 u32 nbSection0Modules;
 Handle resumeGetServiceHandleOrPortRegisteredSemaphore;
 
@@ -43,7 +36,6 @@ void __appInit(void)
     svcGetSystemInfo(&out, 26, 0);
     nbSection0Modules = out;
     assertSuccess(svcCreateSemaphore(&resumeGetServiceHandleOrPortRegisteredSemaphore, 0, 64));
-    serviceAccessListBuffers = (char (*)[34][8])__ctru_heap;
 
     buildList(&freeSessionDataList, sessionDataPool, sizeof(sessionDataPool) / sizeof(SessionData), sizeof(SessionData));
     buildList(&freeProcessDataList, processDataPool, sizeof(processDataPool) / sizeof(ProcessData), sizeof(ProcessData));
@@ -53,16 +45,7 @@ void __appInit(void)
 // this is called after main exits
 void __appExit(void){}
 
-void __system_allocateHeaps(void)
-{
-    u32 tmp = 0;
-
-    // Allocate the application heap
-    __ctru_heap = 0x08000000;
-    svcControlMemory(&tmp, __ctru_heap, 0x0, __ctru_heap_size, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
-
-    __ctru_linear_heap = 0;
-}
+void __system_allocateHeaps(void){}
 
 void __system_initSyscalls(void){}
 

@@ -29,7 +29,4 @@
 #include <3ds/types.h>
 #include "menu.h"
 
-extern Menu processPatchesMenu;
-
-void ProcessPatchesMenu_PatchUnpatchSM(void);
-void ProcessPatchesMenu_PatchUnpatchFS(void);
+void ProcessPatchesMenu_PatchUnpatchFSDirectly(void);

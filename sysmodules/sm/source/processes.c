@@ -10,10 +10,6 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 #include "services.h"
 
 ProcessDataList processDataInUseList = { NULL, NULL }, freeProcessDataList = { NULL, NULL };
-char (*serviceAccessListBuffers)[34][8];
-
-// The kernel limits the number of processes to 47 anyways...
-static u64 freeServiceAccessListBuffersIds = (1ULL << 59) - 1;
 
 ProcessData *findProcessData(u32 pid)
 {
@@ -28,20 +24,10 @@ ProcessData *findProcessData(u32 pid)
 
 ProcessData *doRegisterProcess(u32 pid, char (*serviceAccessList)[8], u32 serviceAccessListSize)
 {
+    (void)serviceAccessList; // Service access list checks removed for Luma3DS, see original 3ds_sm for implementation details.
+    (void)serviceAccessListSize;
+
     ProcessData *processData = (ProcessData *)allocateNode(&processDataInUseList, &freeProcessDataList, sizeof(ProcessData), false);
-    if(serviceAccessListSize != 0)
-    {
-        s32 bufferId = 63 - __builtin_clzll(freeServiceAccessListBuffersIds);
-        if(bufferId == -1)
-            panic();
-        else
-        {
-            freeServiceAccessListBuffersIds &= ~(1ULL << bufferId);
-            processData->serviceAccessList = serviceAccessListBuffers[bufferId];
-            processData->serviceAccessListSize = serviceAccessListSize;
-            memcpy(processData->serviceAccessList, serviceAccessList, serviceAccessListSize);
-        }
-    }
 
     assertSuccess(svcCreateSemaphore(&processData->notificationSemaphore, 0, 0x10));
     processData->pid = pid;
@@ -80,8 +66,6 @@ Result UnregisterProcess(u32 pid)
             servicesInfo[i] = servicesInfo[--nbServices];
         }
     }
-
-    freeServiceAccessListBuffersIds |= 1ULL << (u32)((processData->serviceAccessList - serviceAccessListBuffers[0]) / 34);
 
     moveNode(processData, &freeProcessDataList, false);
     return 0;

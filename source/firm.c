@@ -405,7 +405,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
     ret += patchKernel9Panic(arm9Section, kernel9Size);
 
-    if(CONFIG(PATCHACCESS)) ret += patchP9AccessChecks(process9Offset, process9Size);
+    ret += patchP9AccessChecks(process9Offset, process9Size);
 
     mergeSection0(NATIVE_FIRM, firmVersion, loadFromStorage);
     firm->section[0].size = 0;

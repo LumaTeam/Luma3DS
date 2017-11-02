@@ -85,6 +85,8 @@ void initSystem()
 
     miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
                                                                                   "Switch the hb. title to hblauncher_loader";
+
+    ProcessPatchesMenu_PatchUnpatchFSDirectly();
     __sync_init();
     __appInit();
 }
