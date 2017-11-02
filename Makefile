@@ -47,6 +47,8 @@ dir_k11_extension := k11_extension
 dir_sysmodules := sysmodules
 dir_loader := $(dir_sysmodules)/loader
 dir_rosalina := $(dir_sysmodules)/rosalina
+dir_sm := $(dir_sysmodules)/sm
+dir_pxi := $(dir_sysmodules)/pxi
 dir_build := build
 dir_out := out
 
@@ -60,7 +62,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o
 
-modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi
+modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi $(dir_build)/sm.cxi $(dir_build)/pxi.cxi
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
@@ -83,6 +85,8 @@ clean:
 	@$(MAKE) -C $(dir_k11_extension) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_rosalina) clean
+	@$(MAKE) -C $(dir_sm) clean
+	@$(MAKE) -C $(dir_pxi) clean
 	@rm -rf $(dir_out) $(dir_build)
 
 .PRECIOUS: $(dir_build)/%.bin
@@ -93,6 +97,9 @@ clean:
 .PHONY: $(dir_k11_extension)
 .PHONY: $(dir_loader)
 .PHONY: $(dir_rosalina)
+.PHONY: $(dir_sm)
+.PHONY: $(dir_pxi)
+
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
@@ -122,6 +129,14 @@ $(dir_build)/loader.cxi: $(dir_loader)
 	@$(MAKE) -C $<
 
 $(dir_build)/rosalina.cxi: $(dir_rosalina)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/sm.cxi: $(dir_sm)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/pxi.cxi: $(dir_pxi)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
