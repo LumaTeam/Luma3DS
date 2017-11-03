@@ -183,11 +183,13 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             // Viewing
             void viewHeap(void)
             {
+                menus[MENU_MODE_NORMAL].selected = 0;
                 menus[MENU_MODE_NORMAL].buf = (u8*)heapDestAddress;
                 menus[MENU_MODE_NORMAL].max = heapTotalSize;
             }
             void viewCode(void)
             {
+                menus[MENU_MODE_NORMAL].selected = 0;
                 menus[MENU_MODE_NORMAL].buf = (u8*)codeDestAddress;
                 menus[MENU_MODE_NORMAL].max = codeTotalSize;
             }
