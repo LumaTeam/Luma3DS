@@ -6,11 +6,6 @@ endif
 
 include $(DEVKITARM)/3ds_rules
 
-CC := arm-none-eabi-gcc
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-OC := arm-none-eabi-objcopy
-
 name := sm
 
 dir_source := source
