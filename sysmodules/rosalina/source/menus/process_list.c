@@ -267,7 +267,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     u32 y = 44 + offset*12;
 
                     u32 address = row*BYTES_PER_ROW;
-                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address);
+                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address + ((menuMode == MENU_MODE_NORMAL) ? (u32)menus[MENU_MODE_NORMAL].buf : 0));
 
                     for(int cursor = 0; cursor < BYTES_PER_ROW; cursor++, address++)
                     {
