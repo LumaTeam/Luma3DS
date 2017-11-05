@@ -203,6 +203,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             void finishJumping(void)
             {
                 menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
+                menus[MENU_MODE_NORMAL].starti = totalRows;
             }
 
             menus[MENU_MODE_GOTO].buf = (u8*)&gotoAddress;
@@ -299,10 +300,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void handleScrolling(void)
             {
-                for(u32 i = 0; i < totalRows; i++)
+                for(u32 i = totalRows; i > 0 ; i--)
                 {
-                    if(totalRows <= ROWS_PER_SCREEN)
-                        break;
 
                     u32 scroll = menus[MENU_MODE_NORMAL].starti;
                     u32 selectedRow = (menus[MENU_MODE_NORMAL].selected - (menus[MENU_MODE_NORMAL].selected % BYTES_PER_ROW))/BYTES_PER_ROW;
