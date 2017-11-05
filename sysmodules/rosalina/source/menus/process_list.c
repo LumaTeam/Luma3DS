@@ -316,6 +316,9 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                     menus[MENU_MODE_NORMAL].starti = scroll;
                 }
+
+                if (menus[MENU_MODE_NORMAL].starti > (totalRows - ROWS_PER_SCREEN))
+                    menus[MENU_MODE_NORMAL].starti = totalRows - ROWS_PER_SCREEN;
             }
 
             clearMenu();
