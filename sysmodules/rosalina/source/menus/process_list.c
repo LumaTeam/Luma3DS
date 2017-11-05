@@ -202,6 +202,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void finishJumping(void)
             {
+                gotoAddress -= __builtin_bswap32((u32)menus[MENU_MODE_NORMAL].buf);
                 menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
                 menus[MENU_MODE_NORMAL].starti = totalRows;
             }
@@ -338,6 +339,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 {
                     if(checkMode(MENU_MODE_GOTO))
                         finishJumping();
+                    else
+                        gotoAddress = __builtin_bswap32((u32)menus[MENU_MODE_NORMAL].buf);
                 }
                 else if(pressed & BUTTON_Y)
                 {
