@@ -142,7 +142,7 @@ void menuThreadMain(void)
     if(!isN3DS)
     {
         rosalinaMenu.nbItems--;
-        for(u32 i = 3; i <= rosalinaMenu.nbItems; i++)
+        for(u32 i = 2; i <= rosalinaMenu.nbItems; i++)
             rosalinaMenu.items[i] = rosalinaMenu.items[i+1];
     }
     else
