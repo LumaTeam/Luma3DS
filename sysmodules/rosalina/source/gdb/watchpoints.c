@@ -37,7 +37,16 @@
     We'll reserve and use all 4 of them
 */
 
+// For accessing physmem uncached (and directly)
+#define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
+
+#ifndef PA_FROM_VA_PTR
+#define PA_FROM_VA_PTR(addr)    PA_PTR(svcConvertVAToPA((const void *)(addr), false))
+#endif
+
 RecursiveLock watchpointManagerLock;
+static u32 g_debugArgs[10] = {0};
+static u32 *g_paArgs = (u32 *)0;
 
 typedef struct Watchpoint
 {
@@ -141,6 +150,69 @@ static void K_SetWatchpoint1WithContextId(u32 DVA, u32 WCR, u32 contextId)
     __asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 5" :: [val] "r" (0) : "memory"); // DMB
 }
 
+static s32 K_GetCurrentCPU(void)
+{
+    s32 cpu;
+
+    __asm__ __volatile__("mrc p15, 0, %[val], c0, c0, 5" : [val] "=r" (cpu));
+    return (cpu & 3);
+}
+
+static u32 GetCurrentCPU(void)
+{
+    return svcBackdoor(K_GetCurrentCPU);
+}
+
+void    CreateSyncInterrupt(void)
+{
+    g_paArgs = PA_FROM_VA_PTR(g_debugArgs);
+
+    svcKernelSetState(0x10003, (u32)g_paArgs);
+    svcSleepThread(1000000);
+}
+
+#define WRITEREG(addr, val) *(vu32*)(addr) = (vu32)(val)
+
+s32     K_TriggerInterrupt(u32 filter, u32 cpuList , u32 id)
+{
+    WRITEREG((0xFFFEE000 + 0x1000 + 0xF00), ((filter & 0x3) << 24 | ((cpuList & 0xF) << 16) | (id & 0x3FF)));
+    return (0);
+}
+
+void Sync(u32 cmd, u32 arg1, u32 arg2, u32 arg3, u32 arg4)
+{
+    g_paArgs[0] = cmd;
+    g_paArgs[1] = arg1;
+    g_paArgs[2] = arg2;
+    g_paArgs[3] = arg3;
+    g_paArgs[4] = arg4;
+    u32 cpu = GetCurrentCPU();
+
+    for (u32 i = 0; i < 4; i++)
+        if (i != cpu)
+            svcCustomBackdoor(K_TriggerInterrupt, 0, 1 << i, 12);
+}
+
+void SyncInit(void)
+{
+    svcCustomBackdoor(K_EnableMonitorModeDebugging);
+    svcCustomBackdoor(K_DisableWatchpoint, 0);
+    svcCustomBackdoor(K_DisableWatchpoint, 1);
+    Sync(0, 0, 0, 0, 0);
+}
+
+void SyncSetWatchpoint(u32 id, u32 DVA, u32 WCR, u32 contextId)
+{
+    svcCustomBackdoor(id == 0 ? K_SetWatchpoint0WithContextId : K_SetWatchpoint1WithContextId, DVA, WCR, contextId);
+    Sync(1, id, DVA, WCR, contextId);
+}
+
+void SyncDisableWatchpoint(u32 id)
+{
+    svcCustomBackdoor(K_DisableWatchpoint, id);
+    Sync(2, id, 0, 0, 0);
+}
+
 void GDB_ResetWatchpoints(void)
 {
     static bool lockInitialized = false;
@@ -148,12 +220,11 @@ void GDB_ResetWatchpoints(void)
     {
         RecursiveLock_Init(&watchpointManagerLock);
         lockInitialized = true;
+        CreateSyncInterrupt();
     }
     RecursiveLock_Lock(&watchpointManagerLock);
 
-    svcCustomBackdoor(K_EnableMonitorModeDebugging);
-    svcCustomBackdoor(K_DisableWatchpoint, 0);
-    svcCustomBackdoor(K_DisableWatchpoint, 1);
+    SyncInit();
 
     memset(&manager, 0, sizeof(WatchpointManager));
 
@@ -192,7 +263,7 @@ int GDB_AddWatchpoint(GDBContext *ctx, u32 address, u32 size, WatchpointKind kin
 
     if(R_SUCCEEDED(r))
     {
-        svcCustomBackdoor(id == 0 ? K_SetWatchpoint0WithContextId : K_SetWatchpoint1WithContextId, address, WCR, (u32)out);
+        SyncSetWatchpoint(id, address, WCR, (u32)out);
         Watchpoint *watchpoint = &manager.watchpoints[id];
         manager.total++;
         watchpoint->address = address;
@@ -224,8 +295,7 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
     }
     else
     {
-        svcCustomBackdoor(K_DisableWatchpoint, id);
-
+        SyncDisableWatchpoint(id);
         memset(&manager.watchpoints[id], 0, sizeof(Watchpoint));
         manager.total--;
 

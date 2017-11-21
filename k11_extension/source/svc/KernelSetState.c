@@ -28,6 +28,7 @@
 #include "synchronization.h"
 #include "ipc.h"
 #include "memory.h"
+#include "debug.h"
 
 #define MAX_DEBUG 3
 
@@ -142,7 +143,13 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             res = SetSyscallDebugEventMask(varg1, (bool)varg2, (const u32 *)varg3);
             break;
         }
+        case 0x10003: // Init hardware debugger
+        {
+            g_paArgs = (u32 *)varg1;
 
+            K_InstallSyncInterrupt();
+            break;
+        }
         default:
         {
             res = KernelSetState(type, varg1, varg2, varg3);
