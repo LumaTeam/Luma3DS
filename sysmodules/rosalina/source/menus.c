@@ -151,7 +151,6 @@ void RosalinaMenu_TakeScreenshot(void)
     IFile file;
     Result res;
 
-    u32 filenum;
     char filename[64];
 
     FS_Archive archive;
