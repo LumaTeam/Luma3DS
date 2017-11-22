@@ -164,7 +164,7 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
 WatchpointKind GDB_GetWatchpointKind(GDBContext *ctx, u32 address)
 {
     u32 id;
-    for(id = 0; id < 2 && manager.watchpoints[id].address != address && manager.watchpoints[id].debug != ctx->debug; id++);
+    for(id = 0; id < 2 && (manager.watchpoints[id].address != address || manager.watchpoints[id].debug != ctx->debug); id++);
 
     return id == 2 ? WATCHPOINT_DISABLED : manager.watchpoints[id].kind;
 }
