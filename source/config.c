@@ -288,6 +288,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         }
         while(!(pressed & MENU_BUTTONS));
 
+        pressed &= MENU_BUTTONS;
+
         if(pressed == BUTTON_START) break;
 
         if(pressed != BUTTON_A)

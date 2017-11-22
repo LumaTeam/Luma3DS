@@ -208,6 +208,8 @@ bool payloadMenu(char *path)
             }
             while(!(pressed & MENU_BUTTONS));
 
+            pressed &= MENU_BUTTONS;
+
             u32 oldSelectedPayload = selectedPayload;
 
             switch(pressed)
