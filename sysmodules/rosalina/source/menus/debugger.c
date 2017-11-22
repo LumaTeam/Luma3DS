@@ -36,10 +36,11 @@
 
 Menu debuggerMenu = {
     "Debugger options menu",
-    .nbItems = 2,
+    .nbItems = 3,
     {
         { "Enable debugger",  METHOD, .method = &DebuggerMenu_EnableDebugger  },
-        { "Disable debugger", METHOD, .method = &DebuggerMenu_DisableDebugger }
+        { "Disable debugger", METHOD, .method = &DebuggerMenu_DisableDebugger },
+        { "Enable unsafe mode", METHOD, .method = &DebuggerMenu_ToggleUnsafeMode }
     }
 };
 
@@ -148,6 +149,20 @@ void DebuggerMenu_DisableDebugger(void)
         Draw_Unlock();
     }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void DebuggerMenu_ToggleUnsafeMode(void)
+{
+    if (gdbServer.isUnsafeModeEnabled)
+    {
+        gdbServer.isUnsafeModeEnabled = false;
+        debuggerMenu.items[2].title = "Enable unsafe mode";
+    }
+    else
+    {
+        gdbServer.isUnsafeModeEnabled = true;
+        debuggerMenu.items[2].title = "Disable unsafe mode";
+    }
 }
 
 void debuggerSocketThreadMain(void)

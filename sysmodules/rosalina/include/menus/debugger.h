@@ -33,3 +33,4 @@ extern Menu debuggerMenu;
 
 void DebuggerMenu_EnableDebugger(void);
 void DebuggerMenu_DisableDebugger(void);
+void DebuggerMenu_ToggleUnsafeMode(void);
