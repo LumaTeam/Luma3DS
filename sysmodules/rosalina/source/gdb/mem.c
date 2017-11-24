@@ -26,7 +26,10 @@
 
 #include "gdb/mem.h"
 #include "gdb/net.h"
+#include "gdb/server.h"
 #include "utils.h"
+
+extern GDBServer gdbServer;
 
 static void *k_memcpy_no_interrupt(void *dst, const void *src, u32 len)
 {
@@ -41,23 +44,27 @@ Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
 
     if(addr < (1u << (32 - (u32)TTBCR)))
         return svcReadProcessMemory(out, ctx->debug, addr, len);
-    else if(addr >= 0x80000000 && addr < 0xB0000000)
+    if (gdbServer.isUnsafeModeEnabled)
     {
-        memcpy(out, (const void *)addr, len);
-        return 0;
-    }
-    else
-    {
-        u32 PA = svcConvertVAToPA((const void *)addr, false);
-
-        if(PA == 0)
-            return -1;
-        else
+        if(addr >= 0x80000000 && addr < 0xB0000000)
         {
-            svcCustomBackdoor(k_memcpy_no_interrupt, out, (const void *)addr, len);
+            memcpy(out, (const void *)addr, len);
             return 0;
         }
+        else
+        {
+            u32 PA = svcConvertVAToPA((const void *)addr, false);
+
+            if(PA == 0)
+                return -1;
+            else
+            {
+                svcCustomBackdoor(k_memcpy_no_interrupt, out, (const void *)addr, len);
+                return 0;
+            }
+        }
     }
+    return -1;
 }
 
 Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
@@ -68,32 +75,36 @@ Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
     if(addr < (1u << (32 - (u32)TTBCR)))
         return svcWriteProcessMemory(ctx->debug, in, addr, len); // not sure if it checks if it's IO or not. It probably does
 
-    else if(addr >= 0x80000000 && addr < 0xB0000000)
+    if (gdbServer.isUnsafeModeEnabled)
     {
-        memcpy((void *)addr, in, len);
-        return 0;
-    }
-    else
-    {
-        u32 PA = svcConvertVAToPA((const void *)addr, true);
-
-        if(PA != 0)
+        if(addr >= 0x80000000 && addr < 0xB0000000)
         {
-            svcCustomBackdoor(k_memcpy_no_interrupt, (void *)addr, in, len);
+            memcpy((void *)addr, in, len);
             return 0;
         }
         else
         {
-            // Unreliable, use at your own risk
+            u32 PA = svcConvertVAToPA((const void *)addr, true);
 
-            svcFlushEntireDataCache();
-            svcInvalidateEntireInstructionCache();
-            Result ret = GDB_WriteMemoryInPage(ctx, PA_FROM_VA_PTR(in), addr, len);
-            svcFlushEntireDataCache();
-            svcInvalidateEntireInstructionCache();
-            return ret;
+            if(PA != 0)
+            {
+                svcCustomBackdoor(k_memcpy_no_interrupt, (void *)addr, in, len);
+                return 0;
+            }
+            else
+            {
+                // Unreliable, use at your own risk
+
+                svcFlushEntireDataCache();
+                svcInvalidateEntireInstructionCache();
+                Result ret = GDB_WriteMemoryInPage(ctx, PA_FROM_VA_PTR(in), addr, len);
+                svcFlushEntireDataCache();
+                svcInvalidateEntireInstructionCache();
+                return ret;
+            }
         }
     }
+    return (-1);
 }
 
 int GDB_SendMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr, u32 len)
