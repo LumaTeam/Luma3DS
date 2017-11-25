@@ -93,9 +93,8 @@ Result patchGSP(void)
                 memcpy(originalValues[0], (u32 *)(patchOffset + 0x68), 4*sizeof(u32));
                 memcpy(originalValues[1], (u32 *)(patchOffset + 0xC8), 4*sizeof(u32));
 
-                u32 replacement[4] = {0};
-                memcpy((u32 *)(patchOffset + 0x68), replacement, 4*sizeof(u32));
-                memcpy((u32 *)(patchOffset + 0xC8), replacement, 4*sizeof(u32));
+                memset((u32 *)(patchOffset + 0x68), 0, 4*sizeof(u32));
+                memset((u32 *)(patchOffset + 0xC8), 0, 4*sizeof(u32));
 
                 patchApplied = true;
             }
