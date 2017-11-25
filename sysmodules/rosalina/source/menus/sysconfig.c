@@ -50,6 +50,10 @@ void SysConfigMenu_ChangeBrightness(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
+    s64 out = 0;
+    svcGetSystemInfo(&out, 0x10000, 0x201);
+    bool isN3DS = (bool)out;
+
     u8 model = 0;
     cfguInit();
     CFGU_GetSystemModel(&model);
@@ -122,12 +126,14 @@ void SysConfigMenu_ChangeBrightness(void)
 
         if(pressed & BUTTON_A)
         {
-            patchGSP();
+            if(isN3DS)
+                res = patchGSP();
             return;
         }
         if(pressed & BUTTON_X)
         {
-            unpatchGSP();
+            if(isN3DS)
+                res = unpatchGSP();
             return;
         }
         else if(pressed & BUTTON_Y)
