@@ -31,15 +31,159 @@
 #include "fmt.h"
 #include "utils.h"
 #include "ifile.h"
+#include "gsp.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",
-    .nbItems = 2,
+    .nbItems = 3,
     {
+        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
     }
 };
+
+void SysConfigMenu_ChangeBrightness(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    u8 model = 0;
+    cfguInit();
+    CFGU_GetSystemModel(&model);
+    cfguExit();
+
+    enum consoleModel {
+        MODEL_OLD3DS = 0,
+        MODEL_OLD3DSXL,
+        MODEL_NEW3DS,
+        MODEL_2DS,
+        MODEL_NEW3DSXL,
+        MODEL_NEW2DSXL
+    };
+
+    float bottomScreenMultipliers[] = {
+        2.15,
+        1.5,
+        1.35,
+        1.0,
+        1.5,
+        1.06
+    };
+
+    float multiplier = bottomScreenMultipliers[model];
+
+    u32 maximumBrightness[2];
+    //normal level 5 on 2ds is 0x154
+    maximumBrightness[GFX_TOP] = (model == MODEL_2DS ? 0x1FF : 0xFF);
+    maximumBrightness[GFX_BOTTOM] = (u32)(maximumBrightness[GFX_TOP]*multiplier);
+
+    u32 brightnessOffset = 0x40;
+    u32 topScreenPA = 0x10202200;
+    u32 bottomScreenPA = 0x10202A00;
+
+    u32 brightness[2] = {0};
+    brightness[GFX_TOP] = REG32(topScreenPA+brightnessOffset);
+    brightness[GFX_BOTTOM] = REG32(bottomScreenPA+brightnessOffset);
+
+    //while unrestricted, you can change each screen separately
+    bool unrestricted = false;
+    gfxScreen_t selectedScreen = GFX_TOP;
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press LEFT/RIGHT to change by 10s,");
+        Draw_DrawString(10, 40, COLOR_WHITE, "     or UP/DOWN to change by 1s.");
+        Draw_DrawString(10, 50, COLOR_WHITE, "Press A to apply, press B to go back.");
+        if(unrestricted)
+            Draw_DrawString(10, 60, COLOR_WHITE, "Press L/R to select which screen to modify.");
+        else
+            Draw_DrawString(10, 60, COLOR_WHITE, "                                           ");
+
+        Draw_DrawString(10, 80, COLOR_RED, "WARNING:");
+        Draw_DrawString(10, 90, COLOR_RED, "We're not responsible for any damage caused");
+        Draw_DrawString(10, 100, COLOR_RED, "to your device if you set it too high!");
+
+        Draw_DrawFormattedString(10, 120,
+            ((unrestricted && (selectedScreen == GFX_TOP)) ? COLOR_GREEN : COLOR_WHITE),
+            "Top screen brightness: 0x%.3lX", brightness[GFX_TOP]);
+        Draw_DrawFormattedString(10, 130,
+            (selectedScreen == GFX_BOTTOM ? COLOR_GREEN : COLOR_WHITE),
+            "Bottom screen brightness: 0x%.3lX", brightness[GFX_BOTTOM]);
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            patchGSP();
+            return;
+        }
+        if(pressed & BUTTON_X)
+        {
+            unpatchGSP();
+            return;
+        }
+        else if(pressed & BUTTON_Y)
+        {
+            if (model != MODEL_2DS)
+            {
+                unrestricted = !unrestricted;
+                selectedScreen = GFX_TOP;
+            }
+        }
+        else if(pressed & BUTTON_L1)
+        {
+            if(unrestricted)
+                selectedScreen = GFX_TOP;
+        }
+        else if(pressed & BUTTON_R1)
+        {
+            if(unrestricted)
+                selectedScreen = GFX_BOTTOM;
+        }
+        else if(pressed & BUTTON_RIGHT)
+        {
+            brightness[selectedScreen] += 0x10;
+            if(brightness[selectedScreen] > maximumBrightness[selectedScreen])
+                brightness[selectedScreen] = maximumBrightness[selectedScreen];
+        }
+        else if(pressed & BUTTON_LEFT)
+        {
+            brightness[selectedScreen] -= 0x10;
+            if(brightness[selectedScreen] > maximumBrightness[selectedScreen])
+                brightness[selectedScreen] = 0;
+        }
+        else if(pressed & BUTTON_UP)
+        {
+            brightness[selectedScreen] += 1;
+            if(brightness[selectedScreen] > maximumBrightness[selectedScreen])
+                brightness[selectedScreen] = maximumBrightness[selectedScreen];
+        }
+        else if(pressed & BUTTON_DOWN)
+        {
+            brightness[selectedScreen] -= 1;
+            if(brightness[selectedScreen] > maximumBrightness[selectedScreen])
+                brightness[selectedScreen] = 0;
+        }
+        else if(pressed & BUTTON_B)
+            return;
+
+        //show the changes real-time
+        REG32(topScreenPA+brightnessOffset) = brightness[GFX_TOP];
+        //in restricted mode, the bottom screen brightness changes depending on the top screen brightness
+        if(!unrestricted)
+            brightness[GFX_BOTTOM] = (u32)(brightness[GFX_TOP]*multiplier);
+        REG32(bottomScreenPA+brightnessOffset) = brightness[GFX_BOTTOM];
+    }
+    while(!terminationRequest);
+}
 
 void SysConfigMenu_ToggleLEDs(void)
 {
