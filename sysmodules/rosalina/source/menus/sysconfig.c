@@ -37,7 +37,7 @@ Menu sysconfigMenu = {
     "System configuration menu",
     .nbItems = 3,
     {
-        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
+        { "Change Brightness", METHOD, .method = &SysConfigMenu_ChangeBrightness },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
     }
