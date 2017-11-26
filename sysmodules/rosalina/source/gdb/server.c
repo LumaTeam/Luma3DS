@@ -211,7 +211,7 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->nbThreads = 0;
     memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
     ctx->catchThreadEvents = false;
-    ctx->isGDB = false;
+    ctx->enableExternalMemoryAccess = false;
     RecursiveLock_Unlock(&ctx->lock);
 }
 

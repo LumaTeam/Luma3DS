@@ -36,10 +36,11 @@ struct
     GDBCommandHandler handler;
 } remoteCommandHandlers[] =
 {
-    { "syncrequestinfo", GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo) },
-    { "translatehandle", GDB_REMOTE_COMMAND_HANDLER(TranslateHandle) },
-    { "getmmuconfig"   , GDB_REMOTE_COMMAND_HANDLER(GetMmuConfig) },
-    { "flushcaches"    , GDB_REMOTE_COMMAND_HANDLER(FlushCaches) },
+    { "syncrequestinfo"   , GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo) },
+    { "translatehandle"   , GDB_REMOTE_COMMAND_HANDLER(TranslateHandle) },
+    { "getmmuconfig"      , GDB_REMOTE_COMMAND_HANDLER(GetMmuConfig) },
+    { "flushcaches"       , GDB_REMOTE_COMMAND_HANDLER(FlushCaches) },
+    { "toggleextmemaccess", GDB_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess) },
 };
 
 static const char *GDB_SkipSpaces(const char *pos)
@@ -234,6 +235,18 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(FlushCaches)
     svcInvalidateEntireInstructionCache();
 
     return GDB_ReplyOk(ctx);
+}
+
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess)
+{
+    int n;
+    char outbuf[GDB_BUF_LEN / 2 + 1];
+
+    ctx->enableExternalMemoryAccess = !ctx->enableExternalMemoryAccess;
+
+    n = sprintf(outbuf, "External memory access %s successfully.\n", ctx->enableExternalMemoryAccess ? "enabled" : "disabled");
+
+    return GDB_SendHexPacket(ctx, outbuf, n);
 }
 
 GDB_DECLARE_QUERY_HANDLER(Rcmd)

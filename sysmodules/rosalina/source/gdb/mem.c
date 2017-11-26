@@ -41,6 +41,8 @@ Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
 
     if(addr < (1u << (32 - (u32)TTBCR)))
         return svcReadProcessMemory(out, ctx->debug, addr, len);
+    else if(!ctx->enableExternalMemoryAccess)
+        return -1;
     else if(addr >= 0x80000000 && addr < 0xB0000000)
     {
         memcpy(out, (const void *)addr, len);
@@ -67,7 +69,8 @@ Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
 
     if(addr < (1u << (32 - (u32)TTBCR)))
         return svcWriteProcessMemory(ctx->debug, in, addr, len); // not sure if it checks if it's IO or not. It probably does
-
+    else if(!ctx->enableExternalMemoryAccess)
+        return -1;
     else if(addr >= 0x80000000 && addr < 0xB0000000)
     {
         memcpy((void *)addr, in, len);
