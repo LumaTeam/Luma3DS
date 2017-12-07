@@ -101,12 +101,12 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
         codeTotalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
         codeDestAddress = codeStartAddress = (u32)textStartAddress; //should be 0x00100000
 
-        MemInfo info;
+        MemInfo mem;
         PageInfo out;
 
         heapDestAddress = heapStartAddress = 0x08000000;
-        svcQueryProcessMemory(&info, &out, processHandle, heapStartAddress);
-        heapTotalSize = info.size;
+        svcQueryProcessMemory(&mem, &out, processHandle, heapStartAddress);
+        heapTotalSize = mem.size;
 
         Result codeRes = svcMapProcessMemoryEx(processHandle, codeDestAddress, codeStartAddress, codeTotalSize);
         Result heapRes = svcMapProcessMemoryEx(processHandle, heapDestAddress, heapStartAddress, heapTotalSize);
