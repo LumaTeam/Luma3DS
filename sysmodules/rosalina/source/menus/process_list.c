@@ -119,7 +119,7 @@ static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
         FSUSER_CloseArchive(archive);
     }
 
-    int seconds, minutes, hours, days, year, month;
+    unsigned int seconds, minutes, hours, days, year, month;
     u64 milliseconds = osGetTime();
     seconds = milliseconds/1000;
     milliseconds %= 1000;
@@ -135,7 +135,7 @@ static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
     while(true)
     {
         bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
-        int daysInYear = leapYear ? 366 : 365;
+        unsigned int daysInYear = leapYear ? 366 : 365;
         if (days >= daysInYear)
         {
             days -= daysInYear;
@@ -143,10 +143,10 @@ static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
         }
         else
         {
-            const int daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            const unsigned int daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
             for(month = 0; month < 12; ++month)
             {
-                int dim = daysInMonth[month];
+                unsigned int dim = daysInMonth[month];
 
                 if (month == 1 && leapYear)
                     ++dim;
@@ -162,7 +162,7 @@ static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
     days++;
     month++;
 
-    sprintf(filename, "/luma/dumps/memory/%.8s_%lx_%.4i-%.2i-%.2iT%.2i-%.2i-%.2i.bin", name, (u32)start, year, month, days, hours, minutes, seconds);
+    sprintf(filename, "/luma/dumps/memory/%.8s_0x%.8lx_%.4u-%.2u-%.2uT%.2u-%.2u-%.2u.bin", name, (u32)start, year, month, days, hours, minutes, seconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     TRY(IFile_Write(&file, &total, start, size, 0));
     TRY(IFile_Close(&file));
