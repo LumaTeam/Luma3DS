@@ -453,6 +453,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     if(checkMode(MENU_MODE_GOTO))
                         finishJumping();
                     else
+                        // gotoAddress = __builtin_bswap32(((u32)menus[MENU_MODE_NORMAL].buf) + menus[MENU_MODE_NORMAL].selected);
                         gotoAddress = __builtin_bswap32((u32)menus[MENU_MODE_NORMAL].buf);
                 }
                 else if(pressed & BUTTON_Y)
