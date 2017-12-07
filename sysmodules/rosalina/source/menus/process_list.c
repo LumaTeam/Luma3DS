@@ -32,6 +32,7 @@
 #include "menu.h"
 #include "utils.h"
 #include "fmt.h"
+#include "ifile.h"
 #include "gdb/server.h"
 #include "minisoc.h"
 #include <arpa/inet.h>
@@ -77,6 +78,119 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
     }
 
     return sprintf(out, "%s%-4u    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
+}
+
+static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
+{
+#define TRY(expr) if(R_FAILED(res = (expr))) goto end;
+
+    Draw_Lock();
+    Draw_DrawString(10, 10, COLOR_TITLE, "Memory dump");
+    const char * wait_message = "Please wait, this may take a while...";
+    Draw_DrawString(10, 30, COLOR_WHITE, wait_message);
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    u64 total;
+    IFile file;
+    Result res;
+
+    char filename[64] = {0};
+
+    FS_Archive archive;
+    FS_ArchiveID archiveId;
+    s64 out;
+    bool isSdMode;
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    isSdMode = (bool)out;
+
+    archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+
+    res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
+    if(R_SUCCEEDED(res))
+    {
+        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/dumps"), 0);
+        if((u32)res == 0xC82044BE) // directory already exists
+            res = 0;
+        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/dumps/memory"), 0);
+        if((u32)res == 0xC82044BE) // directory already exists
+            res = 0;
+        FSUSER_CloseArchive(archive);
+    }
+
+    int seconds, minutes, hours, days, year, month;
+    u64 milliseconds = osGetTime();
+    seconds = milliseconds/1000;
+    milliseconds %= 1000;
+    minutes = seconds / 60;
+    seconds %= 60;
+    hours = minutes / 60;
+    minutes %= 60;
+    days = hours / 24;
+    hours %= 24;
+
+    year = 1900;
+
+    while(true)
+    {
+        bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+        int daysInYear = leapYear ? 366 : 365;
+        if (days >= daysInYear)
+        {
+            days -= daysInYear;
+            ++year;
+        }
+        else
+        {
+            const int daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            for(month = 0; month < 12; ++month)
+            {
+                int dim = daysInMonth[month];
+
+                if (month == 1 && leapYear)
+                    ++dim;
+
+                if (days >= dim)
+                    days -= dim;
+                else
+                    break;
+            }
+            break;
+        }
+    }
+    days++;
+    month++;
+
+    sprintf(filename, "/luma/dumps/memory/%.8s_%lx_%.4i-%.2i-%.2iT%.2i-%.2i-%.2i.bin", name, (u32)start, year, month, days, hours, minutes, seconds);
+    TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
+    TRY(IFile_Write(&file, &total, start, size, 0));
+    TRY(IFile_Close(&file));
+
+end:
+    IFile_Close(&file);
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Memory dump");
+        Draw_DrawFormattedString(10, 30, COLOR_WHITE, "%*s", strlen(wait_message), " ");
+        if(R_FAILED(res))
+        {
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%.8lx).", res);
+        }
+        else
+        {
+            Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
+        }
+        Draw_DrawString(10, 30+SPACING_Y, COLOR_WHITE, "Press B to go back.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+
+#undef TRY
 }
 
 static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
@@ -346,6 +460,12 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 {
                     if(checkMode(MENU_MODE_SEARCH))
                         finishSearching();
+                }
+                else if(pressed & BUTTON_SELECT)
+                {
+                    clearMenu();
+                    ProcessListMenu_DumpMemory(info->name, menus[MENU_MODE_NORMAL].buf, menus[MENU_MODE_NORMAL].max);
+                    clearMenu();
                 }
 
                 if(editing)
