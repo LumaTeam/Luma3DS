@@ -359,11 +359,10 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
-                Draw_DrawString(10, 26, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
+                Draw_DrawString(10, 30, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
 
-                #define CHARACTER_WIDTH 6
                 if(editing)
-                    Draw_DrawString(10 + CHARACTER_WIDTH* 44, 26, COLOR_RED, "edit");
+                    Draw_DrawString(10 + SPACING_X* 44, 30, COLOR_RED, "edit");
 
                 char * modeStr[] = {
                     "move",
@@ -375,12 +374,12 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     20,
                     31,
                 };
-                Draw_DrawString(10 + CHARACTER_WIDTH*modeStrPos[menuMode], 26, COLOR_GREEN, modeStr[menuMode]);
+                Draw_DrawString(10 + SPACING_X*modeStrPos[menuMode], 30, COLOR_GREEN, modeStr[menuMode]);
 
                 for(u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
                     u32 offset = row - menus[menuMode].starti;
-                    u32 y = 44 + offset*12;
+                    u32 y = 50 + offset*SPACING_Y;
 
                     u32 address = row*BYTES_PER_ROW;
                     Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address + ((menuMode == MENU_MODE_NORMAL) ? (u32)menus[MENU_MODE_NORMAL].buf : 0));
