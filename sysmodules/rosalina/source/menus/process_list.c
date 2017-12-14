@@ -225,7 +225,10 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
         Result codeRes = svcMapProcessMemoryEx(processHandle, codeDestAddress, codeStartAddress, codeTotalSize);
         Result heapRes = svcMapProcessMemoryEx(processHandle, heapDestAddress, heapStartAddress, heapTotalSize);
 
-        if(R_SUCCEEDED(codeRes | heapRes))
+        bool codeAvailable = R_SUCCEEDED(codeRes);
+        bool heapAvailable = R_SUCCEEDED(heapRes);
+
+        if(codeAvailable || heapAvailable)
         {
             #define ROWS_PER_SCREEN 0x10
             #define BYTES_PER_ROW 0x10
@@ -297,18 +300,23 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             // Viewing
             void viewHeap(void)
             {
+                if(!heapAvailable) return;
                 menus[MENU_MODE_NORMAL].selected = 0;
                 menus[MENU_MODE_NORMAL].buf = (u8*)heapDestAddress;
                 menus[MENU_MODE_NORMAL].max = heapTotalSize;
             }
             void viewCode(void)
             {
+                if(!codeAvailable) return;
                 menus[MENU_MODE_NORMAL].selected = 0;
                 menus[MENU_MODE_NORMAL].buf = (u8*)codeDestAddress;
                 menus[MENU_MODE_NORMAL].max = codeTotalSize;
             }
 
-            viewHeap();
+            if(heapAvailable)
+                viewHeap();
+            else
+                viewCode();
             // ------------------------------------------
 
             // Jumping
@@ -359,27 +367,47 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
-                Draw_DrawString(10, 30, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
+
+                // Instructions
+                const u32 instructionsY = 30;
+                u32 viewerY = instructionsY + SPACING_Y + 6;
+                Draw_DrawString(10, instructionsY, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
+
+                switch(menuMode)
+                {
+                    case MENU_MODE_NORMAL:
+                        Draw_DrawString(10 + SPACING_X * 9, instructionsY, COLOR_GREEN, "move");
+                        break;
+                    case MENU_MODE_GOTO:
+                        Draw_DrawString(10 + SPACING_X * 20, instructionsY, COLOR_GREEN, "jump");
+                        break;
+                    case MENU_MODE_SEARCH:
+                        Draw_DrawString(10 + SPACING_X * 31, instructionsY, COLOR_GREEN, "search");
+                        break;
+                    default: break;
+                }
 
                 if(editing)
-                    Draw_DrawString(10 + SPACING_X* 44, 30, COLOR_RED, "edit");
+                    Draw_DrawString(10 + SPACING_X * 44, instructionsY, COLOR_RED, "edit");
+                // ------------------------------------------
 
-                char * modeStr[] = {
-                    "move",
-                    "jump",
-                    "search",
-                };
-                u32 modeStrPos[] = {
-                    9,
-                    20,
-                    31,
-                };
-                Draw_DrawString(10 + SPACING_X*modeStrPos[menuMode], 30, COLOR_GREEN, modeStr[menuMode]);
+                // Location
+                if(codeAvailable && heapAvailable)
+                {
+                    const u32 infoY = instructionsY + SPACING_Y;
+                    viewerY += SPACING_Y;
+                    Draw_DrawString(10, infoY, COLOR_WHITE, "Press L or R to switch between heap and code.");
+                    if((u32)menus[MENU_MODE_NORMAL].buf == heapDestAddress)
+                        Draw_DrawString(10 + SPACING_X * 31, infoY, COLOR_GREEN, "heap");
+                    if((u32)menus[MENU_MODE_NORMAL].buf == codeDestAddress)
+                        Draw_DrawString(10 + SPACING_X * 40, infoY, COLOR_GREEN, "code");
+                }
+                // ------------------------------------------
 
                 for(u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
                     u32 offset = row - menus[menuMode].starti;
-                    u32 y = 50 + offset*SPACING_Y;
+                    u32 y = viewerY + offset*SPACING_Y;
 
                     u32 address = row*BYTES_PER_ROW;
                     Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address + ((menuMode == MENU_MODE_NORMAL) ? (u32)menus[MENU_MODE_NORMAL].buf : 0));
@@ -527,9 +555,9 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             clearMenu();
         }
 
-        if(R_SUCCEEDED(codeRes))
+        if(codeAvailable)
             svcUnmapProcessMemoryEx(processHandle, codeDestAddress, codeTotalSize);
-        if(R_SUCCEEDED(heapRes))
+        if(heapAvailable)
             svcUnmapProcessMemoryEx(processHandle, heapDestAddress, heapTotalSize);
 
         svcCloseHandle(processHandle);
