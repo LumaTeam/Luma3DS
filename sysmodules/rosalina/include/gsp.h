@@ -27,10 +27,6 @@
 #pragma once
 
 #include <3ds/types.h>
-#include "menu.h"
 
-extern Menu sysconfigMenu;
-
-void SysConfigMenu_ChangeBrightness(void);
-void SysConfigMenu_ToggleLEDs(void);
-void SysConfigMenu_ToggleWireless(void);
+Result patchGSP(void);
+Result unpatchGSP(void);
