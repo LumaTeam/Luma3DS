@@ -114,7 +114,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 
 static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
 {
-    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y"  "ZL" "ZR"};
+    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y"};
     for(s32 i = 11; i >= 0; i--)
     {
         if(combo & (1 << i))
