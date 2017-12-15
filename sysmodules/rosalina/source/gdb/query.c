@@ -120,6 +120,7 @@ GDB_DECLARE_QUERY_HANDLER(Supported)
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 {
+    ctx->isGDB = true;
     ctx->state = GDB_STATE_NOACK_SENT;
     return GDB_ReplyOk(ctx);
 }
