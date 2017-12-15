@@ -43,7 +43,7 @@ Menu rosalinaMenu = {
     .nbItems = 9,
     {
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
-        { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
+        { "Screenshot (hold L = Bottom, R = Top)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
