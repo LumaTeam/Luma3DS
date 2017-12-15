@@ -180,23 +180,7 @@ static inline void Draw_WriteUnaligned(u8 *dst, u32 tmp, u32 size)
     memcpy(dst, &tmp, size);
 }
 
-void Draw_CreateBitmapHeader(u8 *dst, u32 width, u32 heigth)
-{
-    static const u8 bmpHeaderTemplate[54] = {
-        0x42, 0x4D, 0xCC, 0xCC, 0xCC, 0xCC, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x28, 0x00,
-        0x00, 0x00, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0x01, 0x00, 0x18, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0xCC, 0xCC, 0xCC, 0xCC, 0x12, 0x0B, 0x00, 0x00, 0x12, 0x0B, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    };
-
-    memcpy(dst, bmpHeaderTemplate, 54);
-    Draw_WriteUnaligned(dst + 2, 54 + 3 * width * heigth, 4);
-    Draw_WriteUnaligned(dst + 0x12, width, 4);
-    Draw_WriteUnaligned(dst + 0x16, heigth, 4);
-    Draw_WriteUnaligned(dst + 0x22, 3 * width * heigth, 4);
-}
-
-static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_FramebufferFormats srcFormat)
+static inline void Draw_ConvertPixelToRGB8(u8 *dst, const u8 *src, GSPGPU_FramebufferFormats srcFormat)
 {
     u8 red, green, blue;
     switch(srcFormat)
@@ -204,16 +188,16 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
         case GSP_RGBA8_OES:
         {
             u32 px = *(u32 *)src;
-            dst[0] = (px >>  8) & 0xFF;
+            dst[2] = (px >>  8) & 0xFF;
             dst[1] = (px >> 16) & 0xFF;
-            dst[2] = (px >> 24) & 0xFF;
+            dst[0] = (px >> 24) & 0xFF;
             break;
         }
         case GSP_BGR8_OES:
         {
-            dst[2] = src[2];
+            dst[0] = src[2];
             dst[1] = src[1];
-            dst[0] = src[0];
+            dst[2] = src[0];
             break;
         }
         case GSP_RGB565_OES:
@@ -224,9 +208,9 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
             green = (px >> 5) & 0x3F;
             red = (px >> 11) & 0x1F;
 
-            dst[0] = (blue  << 3) | (blue  >> 2);
+            dst[2] = (blue  << 3) | (blue  >> 2);
             dst[1] = (green << 2) | (green >> 4);
-            dst[2] = (red   << 3) | (red   >> 2);
+            dst[0] = (red   << 3) | (red   >> 2);
 
             break;
         }
@@ -237,9 +221,9 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
             green = (px >> 6) & 0x1F;
             red = (px >> 11) & 0x1F;
 
-            dst[0] = (blue  << 3) | (blue  >> 2);
+            dst[2] = (blue  << 3) | (blue  >> 2);
             dst[1] = (green << 3) | (green >> 2);
-            dst[2] = (red   << 3) | (red   >> 2);
+            dst[0] = (red   << 3) | (red   >> 2);
 
             break;
         }
@@ -250,9 +234,9 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
             green = (px >> 8) & 0xF;
             red = (px >> 12) & 0xF;
 
-            dst[0] = (blue  << 4) | (blue  >> 4);
+            dst[2] = (blue  << 4) | (blue  >> 4);
             dst[1] = (green << 4) | (green >> 4);
-            dst[2] = (red   << 4) | (red   >> 4);
+            dst[0] = (red   << 4) | (red   >> 4);
 
             break;
         }
@@ -260,16 +244,22 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
     }
 }
 
-void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool left, u32 y)
+void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool wide, u32 y)
 {
     GSPGPU_FramebufferFormats fmt = top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
     u32 width = top ? 400 : 320;
     u8 formatSizes[] = { 4, 3, 2, 2, 2 };
     u32 stride = top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
 
-    u32 pa = Draw_GetCurrentFramebufferAddress(top, left);
+    u32 pa = Draw_GetCurrentFramebufferAddress(top, true);
     u8 *addr = (u8 *)PA_PTR(pa);
 
+    if (!top && wide) {
+        memset(line, 0, 40 * 3);
+        memset(line + (40 + 320) * 3, 0, 40 * 3);
+        line += 40 * 3;
+    }
+
     for(u32 x = 0; x < width; x++)
-        Draw_ConvertPixelToBGR8(line + x * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
+        Draw_ConvertPixelToRGB8(line + x * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
 }
