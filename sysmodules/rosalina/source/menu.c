@@ -42,7 +42,7 @@ u32 waitInputWithTimeout(u32 msec)
     u32 n = 0;
 
     //Wait for no keys to be pressed
-    while(HID_PAD & ~(BUTTON_L1 | BUTTON_R1) && !terminationRequest && (msec == 0 || n < msec))
+    while(HID_PAD && !terminationRequest && (msec == 0 || n < msec))
     {
         svcSleepThread(1 * 1000 * 1000LL);
         n++;
