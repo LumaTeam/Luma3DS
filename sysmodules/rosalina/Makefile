@@ -6,6 +6,11 @@ endif
 
 include $(DEVKITARM)/3ds_rules
 
+CC := arm-none-eabi-gcc
+AS := arm-none-eabi-as
+LD := arm-none-eabi-ld
+OC := arm-none-eabi-objcopy
+
 name := $(shell basename $(CURDIR))
 
 dir_source := source
@@ -13,7 +18,7 @@ dir_include := include
 dir_build := build
 dir_out := ../../$(dir_build)
 
-LIBS := -lctru
+LIBS := -lctru -lm
 LIBDIRS	:= $(CTRULIB)
 LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
