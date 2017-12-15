@@ -111,8 +111,10 @@ void RosalinaMenu_Reboot(void)
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & BUTTON_A)
-            svcKernelSetState(7);
-        else if(pressed & BUTTON_B)
+        {
+            APT_HardwareResetAsync();
+            menuLeave();
+        } else if(pressed & BUTTON_B)
             return;
     }
     while(!terminationRequest);
