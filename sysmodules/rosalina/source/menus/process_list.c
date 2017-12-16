@@ -324,8 +324,17 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void finishJumping(void)
             {
-                gotoAddress -= __builtin_bswap32((u32)menus[MENU_MODE_NORMAL].buf);
-                menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
+                gotoAddress = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
+
+                u32 codeEndAddress = codeStartAddress + codeTotalSize;
+                u32 heapEndAddress = heapStartAddress + heapTotalSize;
+                if(gotoAddress >= codeStartAddress && gotoAddress < codeEndAddress)
+                    viewCode();
+                else if(gotoAddress >= heapStartAddress && gotoAddress < heapEndAddress)
+                    viewHeap();
+
+                gotoAddress -= (u32)menus[MENU_MODE_NORMAL].buf;
+                menus[MENU_MODE_NORMAL].selected = gotoAddress;
                 menus[MENU_MODE_NORMAL].starti = totalRows;
             }
 
