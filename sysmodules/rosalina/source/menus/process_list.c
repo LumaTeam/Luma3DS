@@ -213,7 +213,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
         svcGetProcessInfo(&textStartAddress, processHandle, 0x10005);
 
         codeTotalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
-        codeDestAddress = codeStartAddress = (u32)textStartAddress; //should be 0x00100000
+        codeStartAddress = (u32)textStartAddress; //should be 0x00100000, rarely 0x14000000
+        codeDestAddress = 0x00100000;
 
         MemInfo mem;
         PageInfo out;
