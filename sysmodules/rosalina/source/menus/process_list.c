@@ -32,6 +32,7 @@
 #include "menu.h"
 #include "utils.h"
 #include "fmt.h"
+#include "ifile.h"
 #include "gdb/server.h"
 #include "minisoc.h"
 #include <arpa/inet.h>
@@ -79,6 +80,119 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
     return sprintf(out, "%s%-4u    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
 }
 
+static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
+{
+#define TRY(expr) if(R_FAILED(res = (expr))) goto end;
+
+    Draw_Lock();
+    Draw_DrawString(10, 10, COLOR_TITLE, "Memory dump");
+    const char * wait_message = "Please wait, this may take a while...";
+    Draw_DrawString(10, 30, COLOR_WHITE, wait_message);
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    u64 total;
+    IFile file;
+    Result res;
+
+    char filename[64] = {0};
+
+    FS_Archive archive;
+    FS_ArchiveID archiveId;
+    s64 out;
+    bool isSdMode;
+
+    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    isSdMode = (bool)out;
+
+    archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+
+    res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
+    if(R_SUCCEEDED(res))
+    {
+        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/dumps"), 0);
+        if((u32)res == 0xC82044BE) // directory already exists
+            res = 0;
+        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/dumps/memory"), 0);
+        if((u32)res == 0xC82044BE) // directory already exists
+            res = 0;
+        FSUSER_CloseArchive(archive);
+    }
+
+    unsigned int seconds, minutes, hours, days, year, month;
+    u64 milliseconds = osGetTime();
+    seconds = milliseconds/1000;
+    milliseconds %= 1000;
+    minutes = seconds / 60;
+    seconds %= 60;
+    hours = minutes / 60;
+    minutes %= 60;
+    days = hours / 24;
+    hours %= 24;
+
+    year = 1900;
+
+    while(true)
+    {
+        bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+        unsigned int daysInYear = leapYear ? 366 : 365;
+        if (days >= daysInYear)
+        {
+            days -= daysInYear;
+            ++year;
+        }
+        else
+        {
+            const unsigned int daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            for(month = 0; month < 12; ++month)
+            {
+                unsigned int dim = daysInMonth[month];
+
+                if (month == 1 && leapYear)
+                    ++dim;
+
+                if (days >= dim)
+                    days -= dim;
+                else
+                    break;
+            }
+            break;
+        }
+    }
+    days++;
+    month++;
+
+    sprintf(filename, "/luma/dumps/memory/%.8s_0x%.8lx_%.4u-%.2u-%.2uT%.2u-%.2u-%.2u.bin", name, (u32)start, year, month, days, hours, minutes, seconds);
+    TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
+    TRY(IFile_Write(&file, &total, start, size, 0));
+    TRY(IFile_Close(&file));
+
+end:
+    IFile_Close(&file);
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Memory dump");
+        Draw_DrawFormattedString(10, 30, COLOR_WHITE, "%*s", strlen(wait_message), " ");
+        if(R_FAILED(res))
+        {
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%.8lx).", res);
+        }
+        else
+        {
+            Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
+        }
+        Draw_DrawString(10, 30+SPACING_Y, COLOR_WHITE, "Press B to go back.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+
+#undef TRY
+}
+
 static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 {
     Handle processHandle;
@@ -99,19 +213,23 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
         svcGetProcessInfo(&textStartAddress, processHandle, 0x10005);
 
         codeTotalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
-        codeDestAddress = codeStartAddress = (u32)textStartAddress; //should be 0x00100000
+        codeStartAddress = (u32)textStartAddress; //should be 0x00100000, rarely 0x14000000
+        codeDestAddress = 0x00100000;
 
-        MemInfo info;
+        MemInfo mem;
         PageInfo out;
 
         heapDestAddress = heapStartAddress = 0x08000000;
-        svcQueryProcessMemory(&info, &out, processHandle, heapStartAddress);
-        heapTotalSize = info.size;
+        svcQueryProcessMemory(&mem, &out, processHandle, heapStartAddress);
+        heapTotalSize = mem.size;
 
         Result codeRes = svcMapProcessMemoryEx(processHandle, codeDestAddress, codeStartAddress, codeTotalSize);
         Result heapRes = svcMapProcessMemoryEx(processHandle, heapDestAddress, heapStartAddress, heapTotalSize);
 
-        if(R_SUCCEEDED(codeRes | heapRes))
+        bool codeAvailable = R_SUCCEEDED(codeRes);
+        bool heapAvailable = R_SUCCEEDED(heapRes);
+
+        if(codeAvailable || heapAvailable)
         {
             #define ROWS_PER_SCREEN 0x10
             #define BYTES_PER_ROW 0x10
@@ -183,16 +301,23 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             // Viewing
             void viewHeap(void)
             {
+                if(!heapAvailable) return;
+                menus[MENU_MODE_NORMAL].selected = 0;
                 menus[MENU_MODE_NORMAL].buf = (u8*)heapDestAddress;
                 menus[MENU_MODE_NORMAL].max = heapTotalSize;
             }
             void viewCode(void)
             {
+                if(!codeAvailable) return;
+                menus[MENU_MODE_NORMAL].selected = 0;
                 menus[MENU_MODE_NORMAL].buf = (u8*)codeDestAddress;
                 menus[MENU_MODE_NORMAL].max = codeTotalSize;
             }
 
-            viewHeap();
+            if(heapAvailable)
+                viewHeap();
+            else
+                viewCode();
             // ------------------------------------------
 
             // Jumping
@@ -200,7 +325,18 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void finishJumping(void)
             {
-                menus[MENU_MODE_NORMAL].selected = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
+                gotoAddress = __builtin_bswap32(gotoAddress); // The data is edited in reverse, so it needs to be swapped before usage
+
+                u32 codeEndAddress = codeStartAddress + codeTotalSize;
+                u32 heapEndAddress = heapStartAddress + heapTotalSize;
+                if(gotoAddress >= codeStartAddress && gotoAddress < codeEndAddress)
+                    viewCode();
+                else if(gotoAddress >= heapStartAddress && gotoAddress < heapEndAddress)
+                    viewHeap();
+
+                gotoAddress -= (u32)menus[MENU_MODE_NORMAL].buf;
+                menus[MENU_MODE_NORMAL].selected = gotoAddress;
+                menus[MENU_MODE_NORMAL].starti = totalRows;
             }
 
             menus[MENU_MODE_GOTO].buf = (u8*)&gotoAddress;
@@ -227,7 +363,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void finishSearching(void)
             {
-                u8 * startpos = menus[MENU_MODE_NORMAL].buf + menus[MENU_MODE_NORMAL].selected;
+                u8 * startpos = (u8*)((u32)menus[MENU_MODE_NORMAL].buf + menus[MENU_MODE_NORMAL].selected);
                 u32 size = menus[MENU_MODE_NORMAL].max - menus[MENU_MODE_NORMAL].selected;
                 if (size >= searchPatternSize)
                     menus[MENU_MODE_NORMAL].selected = (u32)memsearch(startpos, searchPattern, size, searchPatternSize) - (u32)menus[MENU_MODE_NORMAL].buf;
@@ -241,31 +377,50 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             {
                 Draw_Lock();
                 Draw_DrawString(10, 10, COLOR_TITLE, "Memory viewer");
-                Draw_DrawString(10, 26, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
 
-                #define CHARACTER_WIDTH 6
+                // Instructions
+                const u32 instructionsY = 30;
+                u32 viewerY = instructionsY + SPACING_Y + 6;
+                Draw_DrawString(10, instructionsY, COLOR_WHITE, "D-PAD to move, X to jump, Y to search, A to edit.");
+
+                switch(menuMode)
+                {
+                    case MENU_MODE_NORMAL:
+                        Draw_DrawString(10 + SPACING_X * 9, instructionsY, COLOR_GREEN, "move");
+                        break;
+                    case MENU_MODE_GOTO:
+                        Draw_DrawString(10 + SPACING_X * 20, instructionsY, COLOR_GREEN, "jump");
+                        break;
+                    case MENU_MODE_SEARCH:
+                        Draw_DrawString(10 + SPACING_X * 31, instructionsY, COLOR_GREEN, "search");
+                        break;
+                    default: break;
+                }
+
                 if(editing)
-                    Draw_DrawString(10 + CHARACTER_WIDTH* 44, 26, COLOR_RED, "edit");
+                    Draw_DrawString(10 + SPACING_X * 44, instructionsY, COLOR_RED, "edit");
+                // ------------------------------------------
 
-                char * modeStr[] = {
-                    "move",
-                    "jump",
-                    "search",
-                };
-                u32 modeStrPos[] = {
-                    9,
-                    20,
-                    31,
-                };
-                Draw_DrawString(10 + CHARACTER_WIDTH*modeStrPos[menuMode], 26, COLOR_GREEN, modeStr[menuMode]);
+                // Location
+                if(codeAvailable && heapAvailable)
+                {
+                    const u32 infoY = instructionsY + SPACING_Y;
+                    viewerY += SPACING_Y;
+                    Draw_DrawString(10, infoY, COLOR_WHITE, "Press L or R to switch between heap and code.");
+                    if((u32)menus[MENU_MODE_NORMAL].buf == heapDestAddress)
+                        Draw_DrawString(10 + SPACING_X * 31, infoY, COLOR_GREEN, "heap");
+                    if((u32)menus[MENU_MODE_NORMAL].buf == codeDestAddress)
+                        Draw_DrawString(10 + SPACING_X * 40, infoY, COLOR_GREEN, "code");
+                }
+                // ------------------------------------------
 
                 for(u32 row = menus[menuMode].starti; row < (menus[menuMode].starti + ROWS_PER_SCREEN); row++)
                 {
                     u32 offset = row - menus[menuMode].starti;
-                    u32 y = 44 + offset*12;
+                    u32 y = viewerY + offset*SPACING_Y;
 
                     u32 address = row*BYTES_PER_ROW;
-                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address);
+                    Draw_DrawFormattedString(10, y, COLOR_TITLE, "%.8lx | ", address + ((menuMode == MENU_MODE_NORMAL) ? (u32)menus[MENU_MODE_NORMAL].buf : 0));
 
                     for(int cursor = 0; cursor < BYTES_PER_ROW; cursor++, address++)
                     {
@@ -297,10 +452,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
             void handleScrolling(void)
             {
-                for(u32 i = 0; i < totalRows; i++)
+                for(u32 i = totalRows; i > 0 ; i--)
                 {
-                    if(totalRows <= ROWS_PER_SCREEN)
-                        break;
 
                     u32 scroll = menus[MENU_MODE_NORMAL].starti;
                     u32 selectedRow = (menus[MENU_MODE_NORMAL].selected - (menus[MENU_MODE_NORMAL].selected % BYTES_PER_ROW))/BYTES_PER_ROW;
@@ -315,6 +468,9 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                     menus[MENU_MODE_NORMAL].starti = scroll;
                 }
+
+                if (menus[MENU_MODE_NORMAL].starti > (totalRows - ROWS_PER_SCREEN))
+                    menus[MENU_MODE_NORMAL].starti = totalRows - ROWS_PER_SCREEN;
             }
 
             clearMenu();
@@ -334,11 +490,19 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 {
                     if(checkMode(MENU_MODE_GOTO))
                         finishJumping();
+                    else
+                        gotoAddress = __builtin_bswap32(((u32)menus[MENU_MODE_NORMAL].buf) + menus[MENU_MODE_NORMAL].selected);
                 }
                 else if(pressed & BUTTON_Y)
                 {
                     if(checkMode(MENU_MODE_SEARCH))
                         finishSearching();
+                }
+                else if(pressed & BUTTON_SELECT)
+                {
+                    clearMenu();
+                    ProcessListMenu_DumpMemory(info->name, menus[MENU_MODE_NORMAL].buf, menus[MENU_MODE_NORMAL].max);
+                    clearMenu();
                 }
 
                 if(editing)
@@ -400,9 +564,9 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             clearMenu();
         }
 
-        if(R_SUCCEEDED(codeRes))
+        if(codeAvailable)
             svcUnmapProcessMemoryEx(processHandle, codeDestAddress, codeTotalSize);
-        if(R_SUCCEEDED(heapRes))
+        if(heapAvailable)
             svcUnmapProcessMemoryEx(processHandle, heapDestAddress, heapTotalSize);
 
         svcCloseHandle(processHandle);
