@@ -576,7 +576,10 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
 {
     if(!gdbServer.super.running || info->isZombie)
+    {
         ProcessListMenu_MemoryViewer(info);
+        return;
+    }
 
     u32 id;
     for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
