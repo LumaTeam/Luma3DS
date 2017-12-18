@@ -68,9 +68,11 @@ static u64 chrono(void)
 u32 waitInput(bool isMenu)
 {
     static u64 dPadDelay = 0ULL;
+    static u32 shouldShellShutdown = 2;
     u64 initialValue = 0ULL;
     u32 key,
         oldKey = HID_PAD;
+    if(shouldShellShutdown == 2) shouldShellShutdown = (bootType == B9SNTR || bootType == NTR) ? 0 : 1;
 
     if(isMenu)
     {
@@ -85,7 +87,13 @@ u32 waitInput(bool isMenu)
 
         if(!key)
         {
-            if((i2cReadRegister(I2C_DEV_MCU, 0x10) & 1)== 1) mcuPowerOff();
+        	if((i2cReadRegister(I2C_DEV_MCU, 0x10) & 1) == 1) mcuPowerOff();
+        	if(!(i2cReadRegister(I2C_DEV_MCU, 0xF) & 2))
+        	{
+        		if(shouldShellShutdown) mcuPowerOff();
+        	}
+        	else shouldShellShutdown = 1;
+
             oldKey = 0;
             dPadDelay = 0;
             continue;
