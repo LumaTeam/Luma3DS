@@ -191,21 +191,21 @@ void RosalinaMenu_TakeScreenshot(void)
 
     year = 1900; // osGetTime starts in 1900
 
-    while(1)
+    while(true)
     {
         bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
-        uint16_t daysInYear = leapYear ? 366 : 365;
-        if (days >= daysInYear)
+        u16 daysInYear = leapYear ? 366 : 365;
+        if(days >= daysInYear)
         {
             days -= daysInYear;
             ++year;
         }
         else
         {
-            static const uint8_t daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            static const u8 daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
             for(month = 0; month < 12; ++month)
             {
-                uint8_t dim = daysInMonth[month];
+                u8 dim = daysInMonth[month];
 
                 if (month == 1 && leapYear)
                     ++dim;
