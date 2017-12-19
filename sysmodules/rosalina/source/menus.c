@@ -25,6 +25,7 @@
 */
 
 #include <3ds.h>
+#include <3ds/os.h>
 #include "menus.h"
 #include "menu.h"
 #include "draw.h"
@@ -152,7 +153,6 @@ void RosalinaMenu_TakeScreenshot(void)
     IFile file;
     Result res;
 
-    u32 filenum;
     char filename[64];
 
     FS_Archive archive;
@@ -178,28 +178,50 @@ void RosalinaMenu_TakeScreenshot(void)
         FSUSER_CloseArchive(archive);
     }
 
-    for(filenum = 0; filenum <= 9999999; filenum++) // find an unused file name
+    u32 seconds, minutes, hours, days, year, month;
+    u64 milliseconds = osGetTime();
+    seconds = milliseconds/1000;
+    milliseconds %= 1000;
+    minutes = seconds / 60;
+    seconds %= 60;
+    hours = minutes / 60;
+    minutes %= 60;
+    days = hours / 24;
+    hours %= 24;
+
+    year = 1900; // osGetTime starts in 1900
+
+    while(1)
     {
-        Result res1, res2, res3;
-        IFile fileR;
+        bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+        uint16_t daysInYear = leapYear ? 366 : 365;
+        if (days >= daysInYear)
+        {
+            days -= daysInYear;
+            ++year;
+        }
+        else
+        {
+            static const uint8_t daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            for(month = 0; month < 12; ++month)
+            {
+                uint8_t dim = daysInMonth[month];
 
-        sprintf(filename, "/luma/screenshots/top_%04u.bmp", filenum);
-        res1 = IFile_Open(&fileR, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_READ);
-        IFile_Close(&fileR);
+                if (month == 1 && leapYear)
+                    ++dim;
 
-        sprintf(filename, "/luma/screenshots/bot_%04u.bmp", filenum);
-        res2 = IFile_Open(&fileR, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_READ);
-        IFile_Close(&fileR);
-
-        sprintf(filename, "/luma/screenshots/top_right_%04u.bmp", filenum);
-        res3 = IFile_Open(&fileR, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_READ);
-        IFile_Close(&fileR);
-
-        if(R_FAILED(res1) && R_FAILED(res2) && R_FAILED(res3))
+                if (days >= dim)
+                    days -= dim;
+                else
+                    break;
+            }
             break;
+        }
     }
+    days++;
+    month++;
 
-    sprintf(filename, "/luma/screenshots/top_%04u.bmp", filenum);
+    sprintf(filename, "/luma/screenshots/%04u-%02u-%02u_%02u-%02u-%02u.%03u_top.bmp", year, month, days, hours, minutes, seconds, milliseconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     Draw_CreateBitmapHeader(framebufferCache, 400, 240);
 
@@ -214,7 +236,7 @@ void RosalinaMenu_TakeScreenshot(void)
     TRY(IFile_Write(&file, &total, framebufferCache, 3 * 400 * 120, 0));
     TRY(IFile_Close(&file));
 
-    sprintf(filename, "/luma/screenshots/bot_%04u.bmp", filenum);
+    sprintf(filename, "/luma/screenshots/%04u-%02u-%02u_%02u-%02u-%02u.%03u_bot.bmp", year, month, days, hours, minutes, seconds, milliseconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     Draw_CreateBitmapHeader(framebufferCache, 320, 240);
 
@@ -231,7 +253,7 @@ void RosalinaMenu_TakeScreenshot(void)
 
     if((GPU_FB_TOP_FMT & 0x20) && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
     {
-        sprintf(filename, "/luma/screenshots/top_right_%04u.bmp", filenum);
+        sprintf(filename, "/luma/screenshots/%04u-%02u-%02u_%02u-%02u-%02u.%03u_top_right.bmp", year, month, days, hours, minutes, seconds, milliseconds);
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
         Draw_CreateBitmapHeader(framebufferCache, 400, 240);
 
