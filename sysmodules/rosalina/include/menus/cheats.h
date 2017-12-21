@@ -1,4 +1,3 @@
-
 /*
 *   This file is part of Luma3DS
 *   Copyright (C) 2016-2017 Aurora Wright, TuxSH
@@ -28,13 +27,9 @@
 #pragma once
 
 #include <3ds/types.h>
-#include "menu.h"
 
-extern Menu rosalinaMenu;
+#define CHEATS_PER_MENU_PAGE 18
 
-void RosalinaMenu_TakeScreenshot(void);
-void RosalinaMenu_ShowCredits(void);
-void RosalinaMenu_ProcessList(void);
-void RosalinaMenu_PowerOff(void);
-void RosalinaMenu_Reboot(void);
 void RosalinaMenu_Cheats(void);
+u32 Cheats_GetCurrentPID(u64* titleId);
+void Cheats_applyKeyCheats();
