@@ -118,7 +118,7 @@ u8 Cheat_getNextTypeE(const CheatDescription* cheat) {
 			>> (typeEMapping[cheat_state.typeEIdx])) & 0xFF);
 }
 
-void Cheat_applyCheat(CheatDescription* const cheat) {
+void Cheat_applyCheat(const CheatDescription* const cheat) {
 	cheat_state.index = 0;
 	cheat_state.offset = 0;
 	cheat_state.data = 0;
@@ -129,8 +129,6 @@ void Cheat_applyCheat(CheatDescription* const cheat) {
 	cheat_state.storedStack = 0;
 	cheat_state.ifCount = 0;
 	cheat_state.storedIfCount = 0;
-
-	cheat->keyCombo = 0;
 
 	while (cheat_state.index < cheat->codesCount) {
 		u32 skipExecution = cheat_state.ifStack & 0x00000001;
@@ -585,7 +583,6 @@ void Cheat_applyCheat(CheatDescription* const cheat) {
 			case 0x0D:
 				// DD Type
 			{
-				cheat->keyCombo |= (arg1 & 0xFFF);
 				u32 newSkip;
 				if ((HID_PAD & arg1) == arg1) {
 					newSkip = 0;
@@ -763,7 +760,8 @@ void loadCheatsIntoMemory(u64 titleId) {
 				tmp = (tmp << 8) + buffer[k];
 			}
 			Cheats_addCode(cheat, tmp);
-			if (((tmp >> 56) & 0xFF) == 0xDD) {
+			if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000) {
+				cheat->keyCombo |= (tmp & 0xFFF);
 				cheat->keyActivated = 1;
 			}
 		}
