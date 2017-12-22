@@ -1,3 +1,31 @@
+/*
+ *   This file is part of Luma3DS
+ *   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
+
+/* This file was entirely written by Duckbill */
+
 #include <3ds.h>
 #include "menus/cheats.h"
 #include "memory.h"
@@ -16,7 +44,6 @@ typedef struct CheatProcessInfo {
 } CheatProcessInfo;
 
 typedef struct CheatDescription {
-	u64 titleId;
 	u32 active;
 	u32 keyActivated;
 	u32 keyCombo;
@@ -26,7 +53,9 @@ typedef struct CheatDescription {
 } CheatDescription;
 
 CheatDescription* cheats[1024] = { 0 };
-u8 cheatBuffer[65536] = { 0 };
+u8 cheatFileBuffer[16384] = { 0 };
+u32 cheatFilePos = 0;
+u8 cheatBuffer[16384] = { 0 };
 
 static CheatProcessInfo cheatinfo[0x40] = { 0 };
 
@@ -703,7 +732,7 @@ static bool Cheat_openLumaFile(IFile *file, const char *path) {
 	return R_SUCCEEDED(Cheat_fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ));
 }
 
-CheatDescription* Cheats_allocCheat() {
+CheatDescription* Cheat_allocCheat() {
 	CheatDescription* cheat;
 	if (cheatCount == 0) {
 		cheat = (CheatDescription*) cheatBuffer;
@@ -712,18 +741,175 @@ CheatDescription* Cheats_allocCheat() {
 		cheat = (CheatDescription *) ((u8*) (prev) + sizeof(CheatDescription)
 				+ sizeof(u64) * (prev->codesCount));
 	}
+	cheat->active = 0;
+	cheat->codesCount = 0;
+	cheat->keyActivated = 0;
+	cheat->keyCombo = 0;
+	cheat->name[0] = '\0';
 
 	cheats[cheatCount] = cheat;
 	cheatCount++;
 	return cheat;
 }
 
-void Cheats_addCode(CheatDescription* cheat, u64 code) {
-	cheat->codes[cheat->codesCount] = code;
-	(cheat->codesCount)++;
+void Cheat_addCode(CheatDescription* cheat, u64 code) {
+	if (cheat) {
+		cheat->codes[cheat->codesCount] = code;
+		(cheat->codesCount)++;
+	}
 }
 
-void loadCheatsIntoMemory(u64 titleId) {
+Result Cheat_readLine(char* line) {
+	Result res = 0;
+
+	char c = '\0';
+	u32 idx = 0;
+	while (R_SUCCEEDED(res)) {
+		c = cheatFileBuffer[cheatFilePos++];
+		res = c ? 0 : -1;
+		if (R_SUCCEEDED(res) && c != '\0') {
+			if (c == '\n' || c == '\r' || idx >= 1023) {
+				line[idx++] = '\0';
+				return idx;
+			} else {
+				line[idx++] = c;
+			}
+		} else {
+			if (idx > 0) {
+				line[idx++] = '\0';
+				return idx;
+			}
+		}
+	}
+	return res;
+}
+
+bool Cheat_isCodeLine(const char *line) {
+	s32 len = strnlen(line, 1023);
+	if (len != 17) {
+		return false;
+	}
+	if (line[8] != ' ') {
+		return false;
+	}
+
+	int i;
+	for (i = 0; i < 8; i++) {
+		char c = line[i];
+		if (!(('0' <= c && c <= '9') || ('A' <= c && c <= 'F')
+				|| ('a' <= c && c <= 'f'))) {
+			return false;
+		}
+	}
+
+	for (i = 9; i < 17; i++) {
+		char c = line[i];
+		if (!(('0' <= c && c <= '9') || ('A' <= c && c <= 'F')
+				|| ('a' <= c && c <= 'f'))) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+u64 Cheat_getCode(const char *line) {
+	u64 tmp = 0;
+	int i;
+	for (i = 0; i < 8; i++) {
+		char c = line[i];
+		u8 code = 0;
+		if ('0' <= c && c <= '9') {
+			code = c - '0';
+		}
+		if ('A' <= c && c <= 'F') {
+			code = c - 'A' + 10;
+		}
+		if ('a' <= c && c <= 'f') {
+			code = c - 'a' + 10;
+		}
+		tmp <<= 4;
+		tmp |= (code & 0xF);
+	}
+
+	for (i = 9; i < 17; i++) {
+		char c = line[i];
+		u8 code = 0;
+		if ('0' <= c && c <= '9') {
+			code = c - '0';
+		}
+		if ('A' <= c && c <= 'F') {
+			code = c - 'A' + 10;
+		}
+		if ('a' <= c && c <= 'f') {
+			code = c - 'a' + 10;
+		}
+		tmp <<= 4;
+		tmp |= (code & 0xF);
+	}
+
+	return tmp;
+}
+
+void Cheat_loadCheatsIntoMemory(u64 titleId) {
+	cheatCount = 0;
+	cheatTitleInfo = titleId;
+	hasKeyActivated = 0;
+
+	char path[] = "/luma/titles/0000000000000000/cheats.txt";
+	Cheat_progIdToStr(path + 28, titleId);
+
+	IFile file;
+
+	if (!Cheat_openLumaFile(&file, path))
+		return;
+
+	u64 fileLen = 0;
+	IFile_GetSize(&file, &fileLen);
+	if (fileLen > 16384) {
+		fileLen = 16384;
+	}
+
+	u64 total;
+	IFile_Read(&file, &total, cheatFileBuffer, fileLen);
+	IFile_Close(&file);
+	for (int i = fileLen; i < 16384; i++) {
+		cheatFileBuffer[i] = 0;
+	}
+
+	char line[1024] = { 0 };
+	strncpy(line, "asasd", 39);
+	Result res = 0;
+	CheatDescription* cheat = 0;
+	cheatFilePos = 0;
+	do {
+		res = Cheat_readLine(line);
+		if (R_SUCCEEDED(res)) {
+			s32 lineLen = strnlen(line, 1023);
+			if (!lineLen) {
+				continue;
+			}
+			if (line[0] == '#') {
+				continue;
+			}
+			if (Cheat_isCodeLine(line)) {
+				if (cheat) {
+					u64 tmp = Cheat_getCode(line);
+					Cheat_addCode(cheat, tmp);
+					if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000) {
+						cheat->keyCombo |= (tmp & 0xFFF);
+						cheat->keyActivated = 1;
+					}
+				}
+			} else {
+				cheat = Cheat_allocCheat();
+				strncpy(cheat->name, line, 39);
+			}
+		}
+	} while (R_SUCCEEDED(res));
+}
+
+void loadCheatsIntoMemoryBin(u64 titleId) {
 	cheatCount = 0;
 	cheatTitleInfo = titleId;
 	hasKeyActivated = 0;
@@ -742,7 +928,7 @@ void loadCheatsIntoMemory(u64 titleId) {
 	IFile_Read(&file, &total, buffer, 1);
 	u8 cc = buffer[0];
 	for (u8 i = 0; i < cc; i++) {
-		CheatDescription* cheat = Cheats_allocCheat();
+		CheatDescription* cheat = Cheat_allocCheat();
 		cheat->active = 0;
 		IFile_Read(&file, &total, buffer, 1);
 		u8 nameLen = buffer[0];
@@ -759,7 +945,7 @@ void loadCheatsIntoMemory(u64 titleId) {
 			for (u8 k = 1; k < 8; k++) {
 				tmp = (tmp << 8) + buffer[k];
 			}
-			Cheats_addCode(cheat, tmp);
+			Cheat_addCode(cheat, tmp);
 			if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000) {
 				cheat->keyCombo |= (tmp & 0xFFF);
 				cheat->keyActivated = 1;
@@ -770,7 +956,7 @@ void loadCheatsIntoMemory(u64 titleId) {
 	IFile_Close(&file);
 }
 
-u32 Cheats_GetCurrentPID(u64* titleId) {
+u32 Cheat_GetCurrentPID(u64* titleId) {
 	s32 processAmount = Cheats_FetchProcessInfo();
 
 	s32 index = -1;
@@ -794,7 +980,7 @@ u32 Cheats_GetCurrentPID(u64* titleId) {
 	}
 }
 
-void Cheats_applyKeyCheats(void) {
+void Cheat_applyKeyCheats(void) {
 	if (!cheatCount) {
 		return;
 	}
@@ -803,7 +989,7 @@ void Cheats_applyKeyCheats(void) {
 	}
 
 	u64 titleId = 0;
-	u32 pid = Cheats_GetCurrentPID(&titleId);
+	u32 pid = Cheat_GetCurrentPID(&titleId);
 
 	if (!titleId) {
 		cheatCount = 0;
@@ -828,11 +1014,11 @@ void Cheats_applyKeyCheats(void) {
 
 void RosalinaMenu_Cheats(void) {
 	u64 titleId = 0;
-	u32 pid = Cheats_GetCurrentPID(&titleId);
+	u32 pid = Cheat_GetCurrentPID(&titleId);
 
 	if (titleId != 0) {
 		if (cheatTitleInfo != titleId) {
-			loadCheatsIntoMemory(titleId);
+			Cheat_loadCheatsIntoMemory(titleId);
 		}
 	}
 

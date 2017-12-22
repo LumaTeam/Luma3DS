@@ -24,6 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
+/* This file was entirely written by Duckbill */
+
 #pragma once
 
 #include <3ds/types.h>
@@ -31,5 +33,4 @@
 #define CHEATS_PER_MENU_PAGE 18
 
 void RosalinaMenu_Cheats(void);
-u32 Cheats_GetCurrentPID(u64* titleId);
-void Cheats_applyKeyCheats();
+void Cheat_applyKeyCheats();
