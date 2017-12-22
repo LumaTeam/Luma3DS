@@ -22,8 +22,11 @@ typedef struct CheatDescription {
 	u32 keyCombo;
 	char name[40];
 	u32 codesCount;
-	u64 codes[64];
+	u64 codes[0];
 } CheatDescription;
+
+CheatDescription* cheats[1024] = { 0 };
+u8 cheatBuffer[65536] = { 0 };
 
 static CheatProcessInfo cheatinfo[0x40] = { 0 };
 
@@ -56,7 +59,6 @@ s32 Cheats_FetchProcessInfo(void) {
 }
 
 typedef struct CheatState {
-	u8 id;
 	u32 index;
 	u32 offset;
 	u32 data;
@@ -77,7 +79,7 @@ CheatState cheat_state = { 0 };
 u8 cheatCount = 0;
 u8 hasKeyActivated = 0;
 u64 cheatTitleInfo = -1ULL;
-CheatDescription cheatDescriptions[0x20] = { 0 };
+//CheatDescription cheatDescriptions[0x20] = { 0 };
 
 char failureReason[64];
 
@@ -103,7 +105,8 @@ u32 Cheat_read32(u32 offset) {
 
 u8 typeEMapping[] = { 4 << 3, 5 << 3, 6 << 3, 7 << 3, 0 << 3, 1 << 3, 2 << 3, 3
 		<< 3 };
-u8 Cheat_getNextTypeE() {
+
+u8 Cheat_getNextTypeE(const CheatDescription* cheat) {
 
 	if (cheat_state.typeEIdx == 7) {
 		cheat_state.typeEIdx = 0;
@@ -111,12 +114,11 @@ u8 Cheat_getNextTypeE() {
 	} else {
 		cheat_state.typeEIdx++;
 	}
-	return (u8) ((cheatDescriptions[cheat_state.id].codes[cheat_state.typeELine]
+	return (u8) ((cheat->codes[cheat_state.typeELine]
 			>> (typeEMapping[cheat_state.typeEIdx])) & 0xFF);
 }
 
-void Cheat_applyCheat(u8 cheatId) {
-	cheat_state.id = cheatId;
+void Cheat_applyCheat(CheatDescription* const cheat) {
 	cheat_state.index = 0;
 	cheat_state.offset = 0;
 	cheat_state.data = 0;
@@ -128,16 +130,14 @@ void Cheat_applyCheat(u8 cheatId) {
 	cheat_state.ifCount = 0;
 	cheat_state.storedIfCount = 0;
 
-	cheatDescriptions[cheat_state.id].keyCombo = 0;
+	cheat->keyCombo = 0;
 
-	while (cheat_state.index < cheatDescriptions[cheat_state.id].codesCount) {
+	while (cheat_state.index < cheat->codesCount) {
 		u32 skipExecution = cheat_state.ifStack & 0x00000001;
-		u32 arg0 =
-				(u32) ((cheatDescriptions[cheat_state.id].codes[cheat_state.index]
-						>> 32) & 0x00000000FFFFFFFFULL);
-		u32 arg1 =
-				(u32) ((cheatDescriptions[cheat_state.id].codes[cheat_state.index])
-						& 0x00000000FFFFFFFFULL);
+		u32 arg0 = (u32) ((cheat->codes[cheat_state.index] >> 32)
+				& 0x00000000FFFFFFFFULL);
+		u32 arg1 = (u32) ((cheat->codes[cheat_state.index])
+				& 0x00000000FFFFFFFFULL);
 		if (arg0 == 0 && arg1 == 0) {
 			goto end_main_loop;
 		}
@@ -585,7 +585,7 @@ void Cheat_applyCheat(u8 cheatId) {
 			case 0x0D:
 				// DD Type
 			{
-				cheatDescriptions[cheat_state.id].keyCombo |= (arg1 & 0xFFF);
+				cheat->keyCombo |= (arg1 & 0xFFF);
 				u32 newSkip;
 				if ((HID_PAD & arg1) == arg1) {
 					newSkip = 0;
@@ -616,7 +616,7 @@ void Cheat_applyCheat(u8 cheatId) {
 			cheat_state.typeELine = cheat_state.index;
 			cheat_state.typeEIdx = 7;
 			for (u32 i = 0; i < count; i++) {
-				u8 byte = Cheat_getNextTypeE();
+				u8 byte = Cheat_getNextTypeE(cheat);
 				if (!skipExecution) {
 					Cheat_write8(beginOffset + i, byte);
 				}
@@ -632,7 +632,7 @@ void Cheat_applyCheat(u8 cheatId) {
 	end_main_loop: ;
 }
 
-Result Cheat_mapMemoryAndApplyCheat(u32 pid, u32 cheatIdx) {
+Result Cheat_mapMemoryAndApplyCheat(u32 pid, CheatDescription* const cheat) {
 	Handle processHandle;
 	Result res;
 	res = svcOpenProcess(&processHandle, pid);
@@ -668,7 +668,7 @@ Result Cheat_mapMemoryAndApplyCheat(u32 pid, u32 cheatIdx) {
 				heapStartAddress, heapTotalSize);
 
 		if (R_SUCCEEDED(codeRes | heapRes)) {
-			Cheat_applyCheat(cheatIdx);
+			Cheat_applyCheat(cheat);
 
 			if (R_SUCCEEDED(codeRes))
 				svcUnmapProcessMemoryEx(processHandle, codeDestAddress,
@@ -678,7 +678,7 @@ Result Cheat_mapMemoryAndApplyCheat(u32 pid, u32 cheatIdx) {
 						heapTotalSize);
 
 			svcCloseHandle(processHandle);
-			cheatDescriptions[cheatIdx].active = 1;
+			cheat->active = 1;
 		} else {
 			svcCloseHandle(processHandle);
 		}
@@ -706,6 +706,26 @@ static bool Cheat_openLumaFile(IFile *file, const char *path) {
 	return R_SUCCEEDED(Cheat_fileOpen(file, ARCHIVE_SDMC, path, FS_OPEN_READ));
 }
 
+CheatDescription* Cheats_allocCheat() {
+	CheatDescription* cheat;
+	if (cheatCount == 0) {
+		cheat = (CheatDescription*) cheatBuffer;
+	} else {
+		CheatDescription* prev = cheats[cheatCount - 1];
+		cheat = (CheatDescription *) ((u8*) (prev) + sizeof(CheatDescription)
+				+ sizeof(u64) * (prev->codesCount));
+	}
+
+	cheats[cheatCount] = cheat;
+	cheatCount++;
+	return cheat;
+}
+
+void Cheats_addCode(CheatDescription* cheat, u64 code) {
+	cheat->codes[cheat->codesCount] = code;
+	(cheat->codesCount)++;
+}
+
 void loadCheatsIntoMemory(u64 titleId) {
 	cheatCount = 0;
 	cheatTitleInfo = titleId;
@@ -723,26 +743,28 @@ void loadCheatsIntoMemory(u64 titleId) {
 	u64 total;
 
 	IFile_Read(&file, &total, buffer, 1);
-	cheatCount = buffer[0];
-	for (u8 i = 0; i < cheatCount; i++) {
-		cheatDescriptions[i].active = 0;
+	u8 cc = buffer[0];
+	for (u8 i = 0; i < cc; i++) {
+		CheatDescription* cheat = Cheats_allocCheat();
+		cheat->active = 0;
 		IFile_Read(&file, &total, buffer, 1);
 		u8 nameLen = buffer[0];
-		IFile_Read(&file, &total, cheatDescriptions[i].name, nameLen);
-		cheatDescriptions[i].name[nameLen] = '\0';
+		IFile_Read(&file, &total, cheat->name, nameLen);
+		cheat->name[nameLen] = '\0';
 		IFile_Read(&file, &total, buffer, 1);
-		cheatDescriptions[i].codesCount = buffer[0];
-		cheatDescriptions[i].keyActivated = 0;
-		cheatDescriptions[i].keyCombo = 0;
-		for (u8 j = 0; j < cheatDescriptions[i].codesCount; j++) {
+		u8 codeCount = buffer[0];
+		cheat->codesCount = 0;
+		cheat->keyActivated = 0;
+		cheat->keyCombo = 0;
+		for (u8 j = 0; j < codeCount; j++) {
 			IFile_Read(&file, &total, buffer, 8);
 			u64 tmp = buffer[0];
 			for (u8 k = 1; k < 8; k++) {
 				tmp = (tmp << 8) + buffer[k];
 			}
-			cheatDescriptions[i].codes[j] = tmp;
+			Cheats_addCode(cheat, tmp);
 			if (((tmp >> 56) & 0xFF) == 0xDD) {
-				cheatDescriptions[i].keyActivated = 1;
+				cheat->keyActivated = 1;
 			}
 		}
 	}
@@ -799,9 +821,9 @@ void Cheats_applyKeyCheats(void) {
 
 	u32 keys = HID_PAD & 0xFFF;
 	for (int i = 0; i < cheatCount; i++) {
-		if (cheatDescriptions[i].active && cheatDescriptions[i].keyActivated
-				&& (cheatDescriptions[i].keyCombo & keys) == keys) {
-			Cheat_mapMemoryAndApplyCheat(pid, i);
+		if (cheats[i]->active && cheats[i]->keyActivated
+				&& (cheats[i]->keyCombo & keys) == keys) {
+			Cheat_mapMemoryAndApplyCheat(pid, cheats[i]);
 		}
 	}
 }
@@ -850,12 +872,9 @@ void RosalinaMenu_Cheats(void) {
 							&& page * CHEATS_PER_MENU_PAGE + i < cheatCount;
 					i++) {
 				char buf[65] = { 0 };
-				const char * checkbox = (
-						cheatDescriptions[i].active ? "(x) " : "( ) ");
-				const char * keyAct = (
-						cheatDescriptions[i].keyActivated ? "*" : " ");
-				sprintf(buf, "%s%s%s", checkbox, keyAct,
-						cheatDescriptions[i].name);
+				const char * checkbox = (cheats[i]->active ? "(x) " : "( ) ");
+				const char * keyAct = (cheats[i]->keyActivated ? "*" : " ");
+				sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[i]->name);
 
 				Draw_DrawString(30, 30 + i * SPACING_Y, COLOR_WHITE, buf);
 				Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE,
@@ -879,15 +898,14 @@ void RosalinaMenu_Cheats(void) {
 			if (pressed & BUTTON_B)
 				break;
 			else if (pressed & BUTTON_A) {
-				if (cheatDescriptions[selected].active) {
-					cheatDescriptions[selected].active = 0;
+				if (cheats[selected]->active) {
+					cheats[selected]->active = 0;
 				} else {
-					Cheat_mapMemoryAndApplyCheat(pid, selected);
+					Cheat_mapMemoryAndApplyCheat(pid, cheats[selected]);
 				}
 				hasKeyActivated = 0;
 				for (int i = 0; i < cheatCount; i++) {
-					if (cheatDescriptions[i].active
-							&& cheatDescriptions[i].keyActivated) {
+					if (cheats[i]->active && cheats[i]->keyActivated) {
 						hasKeyActivated = 1;
 						break;
 					}
