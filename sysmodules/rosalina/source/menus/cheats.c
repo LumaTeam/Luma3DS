@@ -1056,14 +1056,14 @@ void RosalinaMenu_Cheats(void) {
 							&& page * CHEATS_PER_MENU_PAGE + i < cheatCount;
 					i++) {
 				char buf[65] = { 0 };
-				const char * checkbox = (cheats[i]->active ? "(x) " : "( ) ");
-				const char * keyAct = (cheats[i]->keyActivated ? "*" : " ");
-				sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[i]->name);
+				s32 j = page * CHEATS_PER_MENU_PAGE + i;
+				const char * checkbox = (cheats[j]->active ? "(x) " : "( ) ");
+				const char * keyAct = (cheats[j]->keyActivated ? "*" : " ");
+				sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[j]->name);
 
 				Draw_DrawString(30, 30 + i * SPACING_Y, COLOR_WHITE, buf);
 				Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE,
-						page * CHEATS_PER_MENU_PAGE + i == selected ?
-								'>' : ' ');
+						j == selected ?	'>' : ' ');
 			}
 
 			Draw_FlushFramebuffer();
