@@ -878,7 +878,6 @@ void Cheat_loadCheatsIntoMemory(u64 titleId) {
 	}
 
 	char line[1024] = { 0 };
-	strncpy(line, "asasd", 39);
 	Result res = 0;
 	CheatDescription* cheat = 0;
 	cheatFilePos = 0;
@@ -902,7 +901,14 @@ void Cheat_loadCheatsIntoMemory(u64 titleId) {
 					}
 				}
 			} else {
-				cheat = Cheat_allocCheat();
+				if (!cheat) {
+					cheat = Cheat_allocCheat();
+				} else {
+					if (cheat->codesCount > 0) {
+						// Add new cheat only if previous has body. In other case just rewrite it's name
+						cheat = Cheat_allocCheat();
+					}
+				}
 				strncpy(cheat->name, line, 39);
 			}
 		}
