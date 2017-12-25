@@ -913,6 +913,10 @@ void Cheat_loadCheatsIntoMemory(u64 titleId) {
 			}
 		}
 	} while (R_SUCCEEDED(res));
+
+	if ((cheatCount > 0) && (cheats[cheatCount - 1]->codesCount == 0)) {
+		cheatCount--; // Remove last empty cheat
+	}
 }
 
 void loadCheatsIntoMemoryBin(u64 titleId) {
