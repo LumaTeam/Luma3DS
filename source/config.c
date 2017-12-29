@@ -81,6 +81,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     static const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                                "Screen brightness: 4( ) 3( ) 2( ) 1( )",
                                                "Splash: Off( ) Before( ) After( ) payloads",
+                                               "Splash duration: 1( ) 3( ) 5( ) 7( ) seconds",
                                                "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                                "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                              };
@@ -108,6 +109,11 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "button hints).\n\n"
                                                  "\t* 'After payloads' displays it\n"
                                                  "afterwards.",
+
+                                                 "Select how long the splash screen\n"
+                                                 "displays.\n\n"
+                                                 "This has no effect if the splash\n"
+                                                 "screen is not enabled.",
 
                                                  "Activate a PIN lock.\n\n"
                                                  "The PIN will be asked each time\n"
@@ -198,6 +204,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .posXs = {19, 24, 29, 34}, .visible = isSdMode },
         { .posXs = {21, 26, 31, 36}, .visible = true },
         { .posXs = {12, 22, 31, 0}, .visible = true  },
+        { .posXs = {19, 24, 29, 34}, .visible = true },
         { .posXs = {14, 19, 24, 29}, .visible = true },
         { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
     };
