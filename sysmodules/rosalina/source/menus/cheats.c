@@ -866,8 +866,8 @@ void Cheat_loadCheatsIntoMemory(u64 titleId) {
 
 	u64 fileLen = 0;
 	IFile_GetSize(&file, &fileLen);
-	if (fileLen > 16384) {
-		fileLen = 16384;
+	if (fileLen > 16383) {
+		fileLen = 16383;
 	}
 
 	u64 total;
