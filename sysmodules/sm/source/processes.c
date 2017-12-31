@@ -58,13 +58,16 @@ Result UnregisterProcess(u32 pid)
     svcCloseHandle(processData->notificationSemaphore);
 
     // Unregister the services registered by the process
-    for(u32 i = 0; i < nbServices; i++)
+    u32 i = 0;
+    while(i < nbServices)
     {
         if(servicesInfo[i].pid == pid)
         {
             svcCloseHandle(servicesInfo[i].clientPort);
             servicesInfo[i] = servicesInfo[--nbServices];
         }
+        else
+            ++i;
     }
 
     moveNode(processData, &freeProcessDataList, false);
