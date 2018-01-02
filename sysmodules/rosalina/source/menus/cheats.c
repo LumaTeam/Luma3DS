@@ -45,12 +45,17 @@ typedef struct CheatProcessInfo {
 
 typedef struct CheatDescription {
 	u32 active;
+	u32 valid;
 	u32 keyActivated;
 	u32 keyCombo;
 	char name[40];
 	u32 codesCount;
 	u64 codes[0];
 } CheatDescription;
+
+u32 codeStartAddress, heapStartAddress;
+u32 codeTotalSize, heapTotalSize;
+
 
 CheatDescription* cheats[1024] = { 0 };
 u8 cheatFileBuffer[16384] = { 0 };
@@ -112,14 +117,36 @@ u64 cheatTitleInfo = -1ULL;
 
 char failureReason[64];
 
-void Cheat_write8(u32 offset, u8 value) {
-	*((u8*) (cheat_state.offset + offset)) = value;
+bool Cheat_isValidAddress(u32 address) {
+	if (codeStartAddress <= address && address <= codeStartAddress + codeTotalSize) {
+		return true;
+	}
+	if (heapStartAddress <= address && address <= heapStartAddress + heapTotalSize) {
+		return true;
+	}
+	return false;
 }
-void Cheat_write16(u32 offset, u16 value) {
-	*((u16*) (cheat_state.offset + offset)) = value;
+
+bool Cheat_write8(u32 offset, u8 value) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+		*((u8*) (cheat_state.offset + offset)) = value;
+		return true;
+	}
+	return false;
 }
-void Cheat_write32(u32 offset, u32 value) {
-	*((u32*) (cheat_state.offset + offset)) = value;
+bool Cheat_write16(u32 offset, u16 value) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+		*((u16*) (cheat_state.offset + offset)) = value;
+		return true;
+	}
+	return false;
+}
+bool Cheat_write32(u32 offset, u32 value) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+		*((u32*) (cheat_state.offset + offset)) = value;
+		return true;
+	}
+	return false;
 }
 
 u8 Cheat_read8(u32 offset) {
@@ -147,7 +174,7 @@ u8 Cheat_getNextTypeE(const CheatDescription* cheat) {
 			>> (typeEMapping[cheat_state.typeEIdx])) & 0xFF);
 }
 
-void Cheat_applyCheat(const CheatDescription* const cheat) {
+u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 	cheat_state.index = 0;
 	cheat_state.offset = 0;
 	cheat_state.data = 0;
@@ -166,7 +193,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 		u32 arg1 = (u32) ((cheat->codes[cheat_state.index])
 				& 0x00000000FFFFFFFFULL);
 		if (arg0 == 0 && arg1 == 0) {
-			goto end_main_loop;
+			return 0;
 		}
 		u32 code = ((arg0 >> 28) & 0x0F);
 		u32 subcode = ((arg0 >> 24) & 0x0F);
@@ -177,7 +204,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Format: 0XXXXXXX YYYYYYYY
 			// Description: 32bit write of YYYYYYYY to 0XXXXXXX.
 			if (!skipExecution) {
-				Cheat_write32((arg0 & 0x0FFFFFFF), arg1);
+				if (!Cheat_write32((arg0 & 0x0FFFFFFF), arg1)) return 0;
 			}
 			break;
 		case 0x1:
@@ -185,7 +212,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Format: 1XXXXXXX 0000YYYY
 			// Description: 16bit write of YYYY to 0XXXXXXX.
 			if (!skipExecution) {
-				Cheat_write16((arg0 & 0x0FFFFFFF), (u16) (arg1 & 0xFFFF));
+				if (!Cheat_write16((arg0 & 0x0FFFFFFF), (u16) (arg1 & 0xFFFF))) return 0;
 			}
 			break;
 		case 0x2:
@@ -193,7 +220,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Format: 2XXXXXXX 000000YY
 			// Description: 8bit write of YY to 0XXXXXXX.
 			if (!skipExecution) {
-				Cheat_write8((arg0 & 0x0FFFFFFF), (u8) (arg1 & 0xFF));
+				if (!Cheat_write8((arg0 & 0x0FFFFFFF), (u8) (arg1 & 0xFF))) return 0;
 			}
 			break;
 		case 0x3:
@@ -537,7 +564,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 				// Note: used with the C, D3, and D9 types.
 				// Example: D3000000 023D6B28
 				if (!skipExecution) {
-					Cheat_write32(arg1, cheat_state.data);
+					if (!Cheat_write32(arg1, cheat_state.data)) return 0;
 					cheat_state.offset += 4;
 				}
 				break;
@@ -549,7 +576,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 				// Note: used with the C, D3, and DA types.
 				// Example: D7000000 023D6B28
 				if (!skipExecution) {
-					Cheat_write16(arg1, (u16) (cheat_state.data & 0xFFFF));
+					if (!Cheat_write16(arg1, (u16) (cheat_state.data & 0xFFFF))) return 0;
 					cheat_state.offset += 2;
 				}
 				break;
@@ -561,7 +588,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 				// Note: used with the C, D3, and DB types.
 				// Example: D8000000 023D6B28
 				if (!skipExecution) {
-					Cheat_write8(arg1, (u8) (cheat_state.data & 0xFF));
+					if (!Cheat_write8(arg1, (u8) (cheat_state.data & 0xFF))) return 0;
 					cheat_state.offset += 1;
 				}
 				break;
@@ -625,7 +652,7 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 			}
 				break;
 			default:
-				goto end_main_loop;
+				return 0;
 			}
 			break;
 		case 0xE:
@@ -644,18 +671,18 @@ void Cheat_applyCheat(const CheatDescription* const cheat) {
 			for (u32 i = 0; i < count; i++) {
 				u8 byte = Cheat_getNextTypeE(cheat);
 				if (!skipExecution) {
-					Cheat_write8(beginOffset + i, byte);
+					if (!Cheat_write8(beginOffset + i, byte)) return 0;
 				}
 			}
 			cheat_state.index = cheat_state.typeELine;
 		}
 			break;
 		default:
-			goto end_main_loop;
+			return 0;
 		}
 		cheat_state.index++;
 	}
-	end_main_loop: ;
+	return 1;
 }
 
 Result Cheat_mapMemoryAndApplyCheat(u32 pid, CheatDescription* const cheat) {
@@ -664,9 +691,7 @@ Result Cheat_mapMemoryAndApplyCheat(u32 pid, CheatDescription* const cheat) {
 	res = svcOpenProcess(&processHandle, pid);
 	if (R_SUCCEEDED(res)) {
 
-		u32 codeStartAddress, heapStartAddress;
 		u32 codeDestAddress, heapDestAddress;
-		u32 codeTotalSize, heapTotalSize;
 
 		s64 textStartAddress, textTotalRoundedSize, rodataTotalRoundedSize,
 				dataTotalRoundedSize;
@@ -694,7 +719,7 @@ Result Cheat_mapMemoryAndApplyCheat(u32 pid, CheatDescription* const cheat) {
 				heapStartAddress, heapTotalSize);
 
 		if (R_SUCCEEDED(codeRes | heapRes)) {
-			Cheat_applyCheat(cheat);
+			cheat->valid = Cheat_applyCheat(cheat);
 
 			if (R_SUCCEEDED(codeRes))
 				svcUnmapProcessMemoryEx(processHandle, codeDestAddress,
@@ -742,6 +767,7 @@ CheatDescription* Cheat_allocCheat() {
 				+ sizeof(u64) * (prev->codesCount));
 	}
 	cheat->active = 0;
+	cheat->valid = 1;
 	cheat->codesCount = 0;
 	cheat->keyActivated = 0;
 	cheat->keyCombo = 0;
@@ -919,53 +945,6 @@ void Cheat_loadCheatsIntoMemory(u64 titleId) {
 	}
 }
 
-void loadCheatsIntoMemoryBin(u64 titleId) {
-	cheatCount = 0;
-	cheatTitleInfo = titleId;
-	hasKeyActivated = 0;
-
-	char path[] = "/luma/titles/0000000000000000/cheats.bin";
-	Cheat_progIdToStr(path + 28, titleId);
-
-	IFile file;
-
-	if (!Cheat_openLumaFile(&file, path))
-		return;
-
-	u8 buffer[8];
-	u64 total;
-
-	IFile_Read(&file, &total, buffer, 1);
-	u8 cc = buffer[0];
-	for (u8 i = 0; i < cc; i++) {
-		CheatDescription* cheat = Cheat_allocCheat();
-		cheat->active = 0;
-		IFile_Read(&file, &total, buffer, 1);
-		u8 nameLen = buffer[0];
-		IFile_Read(&file, &total, cheat->name, nameLen);
-		cheat->name[nameLen] = '\0';
-		IFile_Read(&file, &total, buffer, 1);
-		u8 codeCount = buffer[0];
-		cheat->codesCount = 0;
-		cheat->keyActivated = 0;
-		cheat->keyCombo = 0;
-		for (u8 j = 0; j < codeCount; j++) {
-			IFile_Read(&file, &total, buffer, 8);
-			u64 tmp = buffer[0];
-			for (u8 k = 1; k < 8; k++) {
-				tmp = (tmp << 8) + buffer[k];
-			}
-			Cheat_addCode(cheat, tmp);
-			if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000) {
-				cheat->keyCombo |= (tmp & 0xFFF);
-				cheat->keyActivated = 1;
-			}
-		}
-	}
-
-	IFile_Close(&file);
-}
-
 u32 Cheat_GetCurrentPID(u64* titleId) {
 	s32 processAmount = Cheats_FetchProcessInfo();
 
@@ -1071,7 +1050,7 @@ void RosalinaMenu_Cheats(void) {
 				const char * keyAct = (cheats[j]->keyActivated ? "*" : " ");
 				sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[j]->name);
 
-				Draw_DrawString(30, 30 + i * SPACING_Y, COLOR_WHITE, buf);
+				Draw_DrawString(30, 30 + i * SPACING_Y, cheats[j]->valid ? COLOR_WHITE : COLOR_RED, buf);
 				Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE,
 						j == selected ?	'>' : ' ');
 			}
