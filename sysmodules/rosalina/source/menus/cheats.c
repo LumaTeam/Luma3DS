@@ -149,14 +149,26 @@ bool Cheat_write32(u32 offset, u32 value) {
 	return false;
 }
 
-u8 Cheat_read8(u32 offset) {
-	return *((u8*) (cheat_state.offset + offset));
+bool Cheat_read8(u32 offset, u8* retValue) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+		*retValue = *((u8*) (cheat_state.offset + offset));
+		return true;
+	}
+	return false;
 }
-u16 Cheat_read16(u32 offset) {
-	return *((u16*) (cheat_state.offset + offset));
+bool Cheat_read16(u32 offset, u16* retValue) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+		*retValue = *((u16*) (cheat_state.offset + offset));
+		return true;
+	}
+	return false;
 }
-u32 Cheat_read32(u32 offset) {
-	return *((u32*) (cheat_state.offset + offset));
+bool Cheat_read32(u32 offset, u32* retValue) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+		*retValue = *((u32*) (cheat_state.offset + offset));
+		return true;
+	}
+	return false;
 }
 
 u8 typeEMapping[] = { 4 << 3, 5 << 3, 6 << 3, 7 << 3, 0 << 3, 1 << 3, 2 << 3, 3
@@ -231,7 +243,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Example: 323D6B28 10000000
 		{
 			u32 newSkip;
-			if (Cheat_read32(arg0 & 0x0FFFFFFF) < arg1) {
+			u32 value = 0;
+			if (!Cheat_read32(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if (value < arg1) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -250,7 +264,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Example: 423D6B28 10000000
 		{
 			u32 newSkip;
-			if (Cheat_read32(arg0 & 0x0FFFFFFF) > arg1) {
+			u32 value = 0;
+			if (!Cheat_read32(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if (value > arg1) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -269,7 +285,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Example: 523D6B28 10000000
 		{
 			u32 newSkip;
-			if (Cheat_read32(arg0 & 0x0FFFFFFF) == arg1) {
+			u32 value = 0;
+			if (!Cheat_read32(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if (value == arg1) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -288,7 +306,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			// Example: 623D6B28 10000000
 		{
 			u32 newSkip;
-			if (Cheat_read32(arg0 & 0x0FFFFFFF) != arg1) {
+			u32 value = 0;
+			if (!Cheat_read32(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if (value != arg1) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -311,7 +331,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			if (mask == 0) {
 				mask = 0xFFFF;
 			}
-			if ((Cheat_read16(arg0 & 0x0FFFFFFF) & mask) < (arg1 & 0xFFFF)) {
+			u16 value = 0;
+			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if ((value & mask) < (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -334,7 +356,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			if (mask == 0) {
 				mask = 0xFFFF;
 			}
-			if ((Cheat_read16(arg0 & 0x0FFFFFFF) & mask) > (arg1 & 0xFFFF)) {
+			u16 value = 0;
+			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if ((value & mask) > (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -357,7 +381,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			if (mask == 0) {
 				mask = 0xFFFF;
 			}
-			if ((Cheat_read16(arg0 & 0x0FFFFFFF) & mask) == (arg1 & 0xFFFF)) {
+			u16 value = 0;
+			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if ((value & mask) == (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -380,7 +406,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 			if (mask == 0) {
 				mask = 0xFFFF;
 			}
-			if ((Cheat_read16(arg0 & 0x0FFFFFFF) & mask) != (arg1 & 0xFFFF)) {
+			u16 value = 0;
+			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
+			if ((value & mask) != (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -600,7 +628,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 				// Note: used with the D5 and D6 types.
 				// Example: D9000000 023D6B28
 				if (!skipExecution) {
-					cheat_state.data = Cheat_read32(arg1);
+					u32 value = 0;
+					if (!Cheat_read32(arg1, &value)) return 0;
+					cheat_state.data = value;
 				}
 				break;
 			case 0x0A:
@@ -611,7 +641,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 				// Note: used with the D5 and D7 types.
 				// Example: DA000000 023D6B28
 				if (!skipExecution) {
-					cheat_state.data = Cheat_read16(arg1);
+					u16 value = 0;
+					if (!Cheat_read16(arg1, &value)) return 0;
+					cheat_state.data = value;
 				}
 				break;
 			case 0x0B:
@@ -622,7 +654,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 				// Note: used with the D5 and D8 types.
 				// Example: DB000000 023D6B28
 				if (!skipExecution) {
-					cheat_state.data = Cheat_read8(arg1);
+					u8 value = 0;
+					if (!Cheat_read8(arg1, &value)) return 0;
+					cheat_state.data = value;
 				}
 				break;
 			case 0x0C:
@@ -640,7 +674,7 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 				// DD Type
 			{
 				u32 newSkip;
-				if ((HID_PAD & arg1) == arg1) {
+				if (arg1 == 0 || (HID_PAD & arg1) == arg1) {
 					newSkip = 0;
 				} else {
 					newSkip = 1;
@@ -715,24 +749,37 @@ Result Cheat_mapMemoryAndApplyCheat(u32 pid, CheatDescription* const cheat) {
 
 		Result codeRes = svcMapProcessMemoryEx(processHandle, codeDestAddress,
 				codeStartAddress, codeTotalSize);
+		if (R_FAILED(codeRes)) {
+			codeStartAddress = codeTotalSize = 0;
+		}
+
 		Result heapRes = svcMapProcessMemoryEx(processHandle, heapDestAddress,
 				heapStartAddress, heapTotalSize);
+		if (R_FAILED(heapRes)) {
+			heapStartAddress = heapTotalSize = 0;
+		}
 
-		if (R_SUCCEEDED(codeRes | heapRes)) {
+
+		if (R_SUCCEEDED(codeRes) || R_SUCCEEDED(heapRes)) {
 			cheat->valid = Cheat_applyCheat(cheat);
 
-			if (R_SUCCEEDED(codeRes))
+			if (R_SUCCEEDED(codeRes)) {
 				svcUnmapProcessMemoryEx(processHandle, codeDestAddress,
 						codeTotalSize);
-			if (R_SUCCEEDED(heapRes))
+			}
+			if (R_SUCCEEDED(heapRes)) {
 				svcUnmapProcessMemoryEx(processHandle, heapDestAddress,
 						heapTotalSize);
-
+			}
 			svcCloseHandle(processHandle);
 			cheat->active = 1;
 		} else {
 			svcCloseHandle(processHandle);
+			sprintf(failureReason, "Can not map any memory");
+			return codeRes;
 		}
+	} else {
+		sprintf(failureReason, "Open process failed");
 	}
 	return res;
 }
@@ -1033,28 +1080,33 @@ void RosalinaMenu_Cheats(void) {
 	} else {
 		s32 selected = 0, page = 0, pagePrev = 0;
 
+		Result r = 0;
 		do {
 			Draw_Lock();
-			if (page != pagePrev) {
+			if (page != pagePrev || R_FAILED(r)) {
 				Draw_ClearFramebuffer();
 			}
-			Draw_DrawFormattedString(10, 10, COLOR_TITLE, "Cheat list");
+			if (R_SUCCEEDED(r)) {
+				Draw_DrawFormattedString(10, 10, COLOR_TITLE, "Cheat list");
 
-			for (s32 i = 0;
-					i < CHEATS_PER_MENU_PAGE
-							&& page * CHEATS_PER_MENU_PAGE + i < cheatCount;
-					i++) {
-				char buf[65] = { 0 };
-				s32 j = page * CHEATS_PER_MENU_PAGE + i;
-				const char * checkbox = (cheats[j]->active ? "(x) " : "( ) ");
-				const char * keyAct = (cheats[j]->keyActivated ? "*" : " ");
-				sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[j]->name);
+				for (s32 i = 0;
+						i < CHEATS_PER_MENU_PAGE
+								&& page * CHEATS_PER_MENU_PAGE + i < cheatCount;
+						i++) {
+					char buf[65] = { 0 };
+					s32 j = page * CHEATS_PER_MENU_PAGE + i;
+					const char * checkbox = (cheats[j]->active ? "(x) " : "( ) ");
+					const char * keyAct = (cheats[j]->keyActivated ? "*" : " ");
+					sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[j]->name);
 
-				Draw_DrawString(30, 30 + i * SPACING_Y, cheats[j]->valid ? COLOR_WHITE : COLOR_RED, buf);
-				Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE,
-						j == selected ?	'>' : ' ');
+					Draw_DrawString(30, 30 + i * SPACING_Y, cheats[j]->valid ? COLOR_WHITE : COLOR_RED, buf);
+					Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE,
+							j == selected ?	'>' : ' ');
+				}
+			} else {
+				Draw_DrawFormattedString(10, 10, COLOR_TITLE, "ERROR: %08x", r);
+				Draw_DrawFormattedString(10, 30, COLOR_RED, failureReason);
 			}
-
 			Draw_FlushFramebuffer();
 			Draw_Unlock();
 
@@ -1070,11 +1122,11 @@ void RosalinaMenu_Cheats(void) {
 
 			if (pressed & BUTTON_B)
 				break;
-			else if (pressed & BUTTON_A) {
+			else if ((pressed & BUTTON_A) && R_SUCCEEDED(r)) {
 				if (cheats[selected]->active) {
 					cheats[selected]->active = 0;
 				} else {
-					Cheat_mapMemoryAndApplyCheat(pid, cheats[selected]);
+					r = Cheat_mapMemoryAndApplyCheat(pid, cheats[selected]);
 				}
 				hasKeyActivated = 0;
 				for (int i = 0; i < cheatCount; i++) {
