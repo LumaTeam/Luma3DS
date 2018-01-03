@@ -1053,7 +1053,7 @@ void RosalinaMenu_Cheats(void) {
 	u32 pid = Cheat_GetCurrentPID(&titleId);
 
 	if (titleId != 0) {
-		if (cheatTitleInfo != titleId) {
+		if (cheatTitleInfo != titleId || cheatCount == 0) {
 			Cheat_loadCheatsIntoMemory(titleId);
 		}
 	}
