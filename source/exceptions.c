@@ -37,7 +37,7 @@
 
 void installArm9Handlers(void)
 {
-    memcpy((void *)0x01FF8000, arm9_exceptions_bin + 32, arm9_exceptions_bin_size - 32);
+    memcpy((void *)0x01FF8000, arm9_exceptions_bin, arm9_exceptions_bin_size);
 
     /* IRQHandler is at 0x08000000, but we won't handle it for some reasons
        svcHandler is at 0x08000010, but we won't handle svc either */
@@ -47,8 +47,10 @@ void installArm9Handlers(void)
     for(u32 i = 0; i < 4; i++)
     {
         *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
-        *(vu32 *)(0x08000000 + offsets[i] + 4) = *((u32 *)arm9_exceptions_bin + 1 + i);
+        *(vu32 *)(0x08000000 + offsets[i] + 4) = *(vu32 *)(0x01FF8008 + 4 * i);
     }
+
+    *(vu32 *)0x01FF8004 = 0; //BreakPtr
 }
 
 void detectAndProcessExceptionDumps(void)

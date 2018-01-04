@@ -22,92 +22,131 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
-.macro GEN_HANDLER name
-    .global \name
-    .type   \name, %function
-    \name:
-        ldr sp, =#0x02000000    @ We make the (full descending) stack point to the end of ITCM for our exception handlers. 
-                                @ It doesn't matter if we're overwriting stuff here, since we're going to reboot.
+.macro GEN_USUAL_HANDLER name, index
+    \name\()Handler:
+        ldr sp, =_regs
+        stmia sp, {r0-r7}
 
-        stmfd sp!, {r0-r7}      @ FIQ has its own r8-r14 regs
-        ldr r1, =\@             @ macro expansion counter
+        mov r0, #\index
         b _commonHandler
-
-    .size   \name, . - \name
 .endm
 
 .text
 .arm
-.align 4
+.balign 4
 
 .global _commonHandler
 .type   _commonHandler, %function
 _commonHandler:
+    mov r1, r0
+    mov r0, sp
     mrs r2, spsr
-    mov r6, sp
     mrs r3, cpsr
+    add r6, r0, #(8 * 4)
 
-    orr r3, #0x1c0              @ disable Imprecise Aborts, IRQ and FIQ (equivalent to "cpsid aif" on arm11)
+    orr r3, #0xc0              @ mask interrupts
     msr cpsr_cx, r3
 
-    tst r2, #0x20
-    bne noSvcBreak
-    cmp r1, #2
-    bne noSvcBreak
-
-    sub r0, lr, #4              @ calling cannotAccessAddress cause more problems that it actually solves... (I've to save a lot of regs and that's a pain tbh)
-    lsr r0, #20                 @ we'll just do some address checks (to see if it's in ARM9 internal memory)
-    cmp r0, #0x80
-    bne noSvcBreak
-    ldr r4, [lr, #-4]
-    ldr r5, =#0xe12fff7f
-    cmp r4, r5
-    bne noSvcBreak
-    bic r5, r3, #0xf
-    orr r5, #0x3
-    msr cpsr_c, r5             @ switch to supervisor mode
-    ldmfd sp, {r8-r11}^
-    ldr r2, [sp, #0x1c]        @ implementation details of the official svc handler
-    ldr r4, [sp, #0x18]
-    msr cpsr_c, r3             @ restore processor mode
-    tst r2, #0x20
-    addne lr, r4, #2           @ adjust address for later
-    moveq lr, r4
-
-    noSvcBreak:
     ands r4, r2, #0xf          @ get the mode that triggered the exception
     moveq r4, #0xf             @ usr => sys
     bic r5, r3, #0xf
     orr r5, r4
     msr cpsr_c, r5             @ change processor mode
-    stmfd r6!, {r8-lr}
+    stmia r6!, {r8-lr}
     msr cpsr_c, r3             @ restore processor mode
-    mov sp, r6
 
-    stmfd sp!, {r2,lr}         @ it's a bit of a mess, but we will fix that later
-                               @ order of saved regs now: cpsr, pc + (2/4/8), r8-r14, r0-r7
+    str lr, [r6], #4
+    str r2, [r6]
 
-    mov r0, sp
-
+    msr cpsr_cxsf, #0xdf       @ finally, switch to system mode, mask interrupts and clear flags (in case of double faults)
+    ldr sp, =0x02000000
     b mainHandler
 
-GEN_HANDLER FIQHandler
-GEN_HANDLER undefinedInstructionHandler
-GEN_HANDLER prefetchAbortHandler
-GEN_HANDLER dataAbortHandler
 
-.global readMPUConfig
-.type   readMPUConfig, %function
-readMPUConfig:
-    stmfd sp!, {r4-r8, lr}
-    mrc p15,0,r1,c6,c0,0
-    mrc p15,0,r2,c6,c1,0
-    mrc p15,0,r3,c6,c2,0
-    mrc p15,0,r4,c6,c3,0
-    mrc p15,0,r5,c6,c4,0
-    mrc p15,0,r6,c6,c5,0
-    mrc p15,0,r7,c6,c6,0
-    mrc p15,0,r8,c6,c7,0
-    stmia r0, {r1-r8}
-    mrc p15,0,r0,c5,c0,2       @ read data access permission bits
-    ldmfd sp!, {r4-r8, pc}
+.global FIQHandler
+.type   FIQHandler, %function
+GEN_USUAL_HANDLER FIQ, 0
+
+.global undefinedInstructionHandler
+.type   undefinedInstructionHandler, %function
+GEN_USUAL_HANDLER undefinedInstruction, 1
+
+.global prefetchAbortHandler
+.type   prefetchAbortHandler, %function
+prefetchAbortHandler:
+    msr cpsr_cx, #0xd7                  @ mask interrupts (abort mode)
+    mrs sp, spsr
+    and sp, #0x3f
+    cmp sp, #0x13
+    bne _prefetchAbortNormalHandler
+
+    ldr sp, =BreakPtr
+    ldr sp, [sp]
+    cmp sp, #0
+    beq _prefetchAbortNormalHandler
+    add sp, #(1*4 + 4)
+    cmp lr, sp
+    bne _prefetchAbortNormalHandler
+
+    mov sp, r8
+    pop {r8-r11}
+    ldr lr, [sp, #8]!
+    ldr sp, [sp, #4]
+    msr spsr_cxsf, sp
+    tst sp, #0x20
+    addne lr, #2                        @ adjust address for later
+
+    GEN_USUAL_HANDLER _prefetchAbortNormal, 2
+
+.global dataAbortHandler
+.type   dataAbortHandler, %function
+dataAbortHandler:
+    msr cpsr_cx, #0xd7                  @ mask interrupts (abort mode)
+    mrs sp, spsr
+    and sp, #0x3f
+    cmp sp, #0x1f
+    bne _dataAbortNormalHandler
+
+    sub lr, #8
+    adr sp, safecpy
+    cmp lr, sp
+    blo _j_dataAbortNormalHandler
+    adr sp, _safecpy_end
+    cmp lr, sp
+    bhs _j_dataAbortNormalHandler
+
+    msr spsr_f, #(1 << 30)
+    mov r12, #0
+    adds pc, lr, #4
+
+    _j_dataAbortNormalHandler:
+    add lr, #8
+
+    GEN_USUAL_HANDLER _dataAbortNormal, 3
+
+
+.global safecpy
+.type   safecpy, %function
+safecpy:
+    push {r4, lr}
+    mov r3, #0
+    movs r12, #1
+
+    _safecpy_loop:
+        ldrb r4, [r1, r3]
+        cmp r12, #0
+        beq _safecpy_loop_end
+        strb r4, [r0, r3]
+        add r3, #1
+        cmp r3, r2
+        blo _safecpy_loop
+
+    _safecpy_loop_end:
+    mov r0, r3
+    pop {r4, pc}
+
+_safecpy_end:
+
+.bss
+.balign 4
+_regs: .skip (4 * 17)
