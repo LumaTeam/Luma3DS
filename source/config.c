@@ -27,6 +27,7 @@
 #include "config.h"
 #include "memory.h"
 #include "fs.h"
+#include "strings.h"
 #include "utils.h"
 #include "screen.h"
 #include "draw.h"
@@ -201,12 +202,12 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         u32 enabled;
         bool visible;
     } multiOptions[] = {
-        { .posXs = {19, 24, 29, 34}, .visible = isSdMode },
-        { .posXs = {21, 26, 31, 36}, .visible = true },
-        { .posXs = {12, 22, 31, 0}, .visible = true  },
-        { .posXs = {19, 24, 29, 34}, .visible = true },
-        { .posXs = {14, 19, 24, 29}, .visible = true },
-        { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
+        { .visible = isSdMode },
+        { .visible = true },
+        { .visible = true  },
+        { .visible = true },
+        { .visible = true },
+        { .visible = ISN3DS },
     };
 
     struct singleOption {
@@ -234,7 +235,15 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
     //Parse the existing options
     for(u32 i = 0; i < multiOptionsAmount; i++)
+    {
+        //Detect the positions where the "x" should go
+        u32 optionNum = 0;
+        for(u32 j = 0; optionNum < 4 && j < strlen(multiOptionsText[i]); j++)
+            if(multiOptionsText[i][j] == '(') multiOptions[i].posXs[optionNum++] = j + 1;
+        while(optionNum < 4) multiOptions[i].posXs[optionNum++] = 0;
+
         multiOptions[i].enabled = MULTICONFIG(i);
+    }
     for(u32 i = 0; i < singleOptionsAmount; i++)
         singleOptions[i].enabled = CONFIG(i);
 
