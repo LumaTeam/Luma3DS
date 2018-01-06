@@ -14,7 +14,7 @@ exceptions/arm11/build
 *.elf
 *.cxi
 .DS_Store
+*.dmp
 .project
 .cproject
 .settings
-

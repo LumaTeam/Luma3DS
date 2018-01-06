@@ -26,8 +26,12 @@
 .align 4
 .global _start
 _start:
-    add pc, r0, #(handlers - .) @ Dummy instruction to prevent compiler optimizations
+    add pc, r0, #(handlers - .) @ Dummy instruction
 
+.global BreakPtr
+BreakPtr: .word 0
+
+.global handlers
 handlers:
     .word FIQHandler
     .word undefinedInstructionHandler

@@ -203,7 +203,7 @@ static void menuDraw(Menu *menu, u32 selected)
 
     if(R_SUCCEEDED(mcuHwcInit()))
     {
-        if(R_FAILED(mcuHwcGetBatteryLevel(&batteryLevel)))
+        if(R_FAILED(MCUHWC_GetBatteryLevel(&batteryLevel)))
             batteryLevel = 255;
         mcuHwcExit();
     }
