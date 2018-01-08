@@ -169,7 +169,7 @@ Result SendSyncRequestHook(Handle handle)
 						hasRosalinaMenuStarted = false;
 						skip = true;
 					}
-					if(hasRosalinaMenuStarted) skip = true;
+					if(hasRosalinaMenuStarted && (cmdbuf[1] == 0x20D || cmdbuf[1] == 0x20E)) skip = true;
 				}
 				break;
 			}
