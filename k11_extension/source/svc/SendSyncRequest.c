@@ -153,27 +153,27 @@ Result SendSyncRequestHook(Handle handle)
                 }
                 break;
             }
-			
-		case 0xC0080:
-		{
-			SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-			if(info != NULL && strcmp(info->name, "srv:") == 0)
-			{
-				if(cmdbuf[1] == 0x400)
-				{
-					hasRosalinaMenuStarted = true;
-					skip = true;
-				}
-				else if(cmdbuf[1] == 0x401)
-				{
-					hasRosalinaMenuStarted = false;
-					skip = true;
-				}
-				if(hasRosalinaMenuStarted && (cmdbuf[1] == 0x20D || cmdbuf[1] == 0x20E)) skip = true;
-			}
-			break;
-		}
-			
+            
+           case 0xC0080:
+           {
+               SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
+               if(info != NULL && strcmp(info->name, "srv:") == 0)
+               {
+                   if(cmdbuf[1] == 0x400)
+                   {
+                    hasRosalinaMenuStarted = true;
+                    skip = true;
+                }
+                else if(cmdbuf[1] == 0x401)
+                {
+                    hasRosalinaMenuStarted = false;
+                    skip = true;
+                }
+                if(hasRosalinaMenuStarted && (cmdbuf[1] == 0x20D || cmdbuf[1] == 0x20E)) skip = true;
+            }
+            break;
+        }
+            
             case 0x4010042:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
