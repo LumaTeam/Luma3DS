@@ -113,36 +113,35 @@ CheatState cheat_state = { 0 };
 u8 cheatCount = 0;
 u8 hasKeyActivated = 0;
 u64 cheatTitleInfo = -1ULL;
-//CheatDescription cheatDescriptions[0x20] = { 0 };
 
 char failureReason[64];
 
-bool Cheat_isValidAddress(u32 address) {
-	if (codeStartAddress <= address && address <= codeStartAddress + codeTotalSize) {
+bool Cheat_isValidAddress(u32 address, u32 size) {
+	if (codeStartAddress <= address && address <= codeStartAddress + codeTotalSize - size) {
 		return true;
 	}
-	if (heapStartAddress <= address && address <= heapStartAddress + heapTotalSize) {
+	if (heapStartAddress <= address && address <= heapStartAddress + heapTotalSize - size) {
 		return true;
 	}
 	return false;
 }
 
 bool Cheat_write8(u32 offset, u8 value) {
-	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset, 1)) {
 		*((u8*) (cheat_state.offset + offset)) = value;
 		return true;
 	}
 	return false;
 }
 bool Cheat_write16(u32 offset, u16 value) {
-	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset, 2)) {
 		*((u16*) (cheat_state.offset + offset)) = value;
 		return true;
 	}
 	return false;
 }
 bool Cheat_write32(u32 offset, u32 value) {
-	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset, 4)) {
 		*((u32*) (cheat_state.offset + offset)) = value;
 		return true;
 	}
@@ -150,21 +149,21 @@ bool Cheat_write32(u32 offset, u32 value) {
 }
 
 bool Cheat_read8(u32 offset, u8* retValue) {
-	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset, 1)) {
 		*retValue = *((u8*) (cheat_state.offset + offset));
 		return true;
 	}
 	return false;
 }
 bool Cheat_read16(u32 offset, u16* retValue) {
-	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset, 2)) {
 		*retValue = *((u16*) (cheat_state.offset + offset));
 		return true;
 	}
 	return false;
 }
 bool Cheat_read32(u32 offset, u32* retValue) {
-	if (Cheat_isValidAddress(cheat_state.offset + offset)) {
+	if (Cheat_isValidAddress(cheat_state.offset + offset, 4)) {
 		*retValue = *((u32*) (cheat_state.offset + offset));
 		return true;
 	}
