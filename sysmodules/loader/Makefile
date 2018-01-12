@@ -20,7 +20,7 @@ LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
 ASFLAGS := -mcpu=mpcore -mfloat-abi=hard
-CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -O2 -flto -ffast-math $(INCLUDE) -DARM11 -D_3DS
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -O2 -ffast-math $(INCLUDE) -DARM11 -D_3DS
 LDFLAGS := -specs=3dsx.specs $(ASFLAGS) -Wl,--section-start,.text=0x14000000
 
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -51,7 +51,7 @@ $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
 $(dir_build)/%.bin: $(dir_patches)/%.s
-	@mkdir -p "$(@D)"	
+	@mkdir -p "$(@D)"
 	@armips $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3

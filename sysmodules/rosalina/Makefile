@@ -21,7 +21,7 @@ INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
 ARCH := -mcpu=mpcore -mfloat-abi=hard
 ASFLAGS := -g $(ARCH)
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -ffast-math -mword-relocations \
 		-fomit-frame-pointer -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
 LDFLAGS := -specs=3dsx.specs -g $(ARCH) -mtp=soft -Wl,--section-start,.text=0x14000000 -Wl,--gc-sections
 
