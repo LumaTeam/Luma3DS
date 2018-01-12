@@ -327,12 +327,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 		{
 			u32 newSkip;
 			u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
-			if (mask == 0) {
-				mask = 0xFFFF;
-			}
 			u16 value = 0;
 			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
-			if ((value & mask) < (arg1 & 0xFFFF)) {
+			if ((value & (~mask)) < (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -352,12 +349,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 		{
 			u32 newSkip;
 			u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
-			if (mask == 0) {
-				mask = 0xFFFF;
-			}
 			u16 value = 0;
 			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
-			if ((value & mask) > (arg1 & 0xFFFF)) {
+			if ((value & (~mask)) > (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -377,12 +371,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 		{
 			u32 newSkip;
 			u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
-			if (mask == 0) {
-				mask = 0xFFFF;
-			}
 			u16 value = 0;
 			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
-			if ((value & mask) == (arg1 & 0xFFFF)) {
+			if ((value & (~mask)) == (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
@@ -402,12 +393,9 @@ u32 Cheat_applyCheat(const CheatDescription* const cheat) {
 		{
 			u32 newSkip;
 			u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
-			if (mask == 0) {
-				mask = 0xFFFF;
-			}
 			u16 value = 0;
 			if (!Cheat_read16(arg0 & 0x0FFFFFFF, &value)) return 0;
-			if ((value & mask) != (arg1 & 0xFFFF)) {
+			if ((value & (~mask)) != (arg1 & 0xFFFF)) {
 				newSkip = 0;
 			} else {
 				newSkip = 1;
