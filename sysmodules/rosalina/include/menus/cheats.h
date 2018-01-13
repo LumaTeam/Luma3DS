@@ -33,4 +33,4 @@
 #define CHEATS_PER_MENU_PAGE 18
 
 void RosalinaMenu_Cheats(void);
-void Cheat_applyKeyCheats();
+void Cheat_ApplyKeyCheats();

@@ -161,7 +161,7 @@ void menuThreadMain(void)
         else
         {
         	if (HID_PAD & 0xFFF) {
-        		Cheat_applyKeyCheats();
+        		Cheat_ApplyKeyCheats();
         	}
         }
         svcSleepThread(50 * 1000 * 1000LL);
