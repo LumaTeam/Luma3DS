@@ -120,11 +120,11 @@ char failureReason[64];
 
 static bool Cheat_IsValidAddress(u32 address, u32 size)
 {
-    if (codeStartAddress <= address && address <= codeStartAddress + codeTotalSize - size)
+    if (codeStartAddress > 0 && codeStartAddress <= address && address <= codeStartAddress + codeTotalSize - size)
     {
         return true;
     }
-    if (heapStartAddress <= address && address <= heapStartAddress + heapTotalSize - size)
+    if (heapStartAddress > 0 && heapStartAddress <= address && address <= heapStartAddress + heapTotalSize - size)
     {
         return true;
     }
