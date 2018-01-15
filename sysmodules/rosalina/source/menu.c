@@ -193,13 +193,16 @@ static void menuDraw(Menu *menu, u32 selected)
     s64 out;
     u32 version, commitHash;
     bool isRelease;
+    bool isMcuHwcRegistered;
 
-    if(R_SUCCEEDED(mcuHwcInit()))
+    if(R_SUCCEEDED(srvIsServiceRegistered(&isMcuHwcRegistered, "mcu::HWC")) && isMcuHwcRegistered && R_SUCCEEDED(mcuHwcInit()))
     {
         if(R_FAILED(MCUHWC_GetBatteryLevel(&batteryLevel)))
             batteryLevel = 255;
         mcuHwcExit();
     }
+    else
+        batteryLevel = 255;
 
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;
