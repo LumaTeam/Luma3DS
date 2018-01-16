@@ -55,6 +55,9 @@ typedef struct CheatDescription
     u64 codes[0];
 } CheatDescription;
 
+u32 codeStartAddress, heapStartAddress;
+u32 codeTotalSize, heapTotalSize;
+
 CheatDescription* cheats[1024] = { 0 };
 u8 cheatFileBuffer[16384] = { 0 };
 u32 cheatFilePos = 0;
@@ -115,81 +118,75 @@ u64 cheatTitleInfo = -1ULL;
 
 char failureReason[64];
 
-static bool Cheat_IsValidAddress(const Handle processHandle, u32 address, u32 size)
+static bool Cheat_IsValidAddress(u32 address, u32 size)
 {
-    MemInfo info;
-    PageInfo out;
-
-    Result res = svcQueryDebugProcessMemory(&info, &out, processHandle, address);
-    if (R_SUCCEEDED(res) && info.state != MEMSTATE_FREE && info.base_addr > 0 && info.base_addr <= address && address <= info.base_addr + info.size - size) {
+    if (codeStartAddress > 0 && codeStartAddress <= address && address <= codeStartAddress + codeTotalSize - size)
+    {
+        return true;
+    }
+    if (heapStartAddress > 0 && heapStartAddress <= address && address <= heapStartAddress + heapTotalSize - size)
+    {
         return true;
     }
     return false;
 }
 
-static u32 ReadWriteBuffer32 = 0;
-static u16 ReadWriteBuffer16 = 0;
-static u8 ReadWriteBuffer8 = 0;
-
-static bool Cheat_Write8(const Handle processHandle, u32 offset, u8 value)
+static bool Cheat_Write8(u32 offset, u8 value)
 {
-    if (Cheat_IsValidAddress(processHandle, cheat_state.offset + offset, 1))
+    if (Cheat_IsValidAddress(cheat_state.offset + offset, 1))
     {
-        *((u8*) (&ReadWriteBuffer8)) = value;
-        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer8, cheat_state.offset + offset, 1));
+        *((u8*) (cheat_state.offset + offset)) = value;
+        return true;
     }
     return false;
 }
 
-static bool Cheat_Write16(const Handle processHandle, u32 offset, u16 value)
+static bool Cheat_Write16(u32 offset, u16 value)
 {
-    if (Cheat_IsValidAddress(processHandle, cheat_state.offset + offset, 2))
+    if (Cheat_IsValidAddress(cheat_state.offset + offset, 2))
     {
-        *((u16*) (&ReadWriteBuffer16)) = value;
-        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer16, cheat_state.offset + offset, 2));
+        *((u16*) (cheat_state.offset + offset)) = value;
+        return true;
     }
     return false;
 }
 
-static bool Cheat_Write32(const Handle processHandle, u32 offset, u32 value)
+static bool Cheat_Write32(u32 offset, u32 value)
 {
-    if (Cheat_IsValidAddress(processHandle, cheat_state.offset + offset, 4))
+    if (Cheat_IsValidAddress(cheat_state.offset + offset, 4))
     {
-        *((u32*) (&ReadWriteBuffer32)) = value;
-        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer32, cheat_state.offset + offset, 4));
+        *((u32*) (cheat_state.offset + offset)) = value;
+        return true;
     }
     return false;
 }
 
-static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
+static bool Cheat_Read8(u32 offset, u8* retValue)
 {
-    if (Cheat_IsValidAddress(processHandle, cheat_state.offset + offset, 1))
+    if (Cheat_IsValidAddress(cheat_state.offset + offset, 1))
     {
-        Result res = svcReadProcessMemory(&ReadWriteBuffer8, processHandle, cheat_state.offset + offset, 1);
-        *retValue = *((u8*) (&ReadWriteBuffer8));
-        return R_SUCCEEDED(res);
+        *retValue = *((u8*) (cheat_state.offset + offset));
+        return true;
     }
     return false;
 }
 
-static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
+static bool Cheat_Read16(u32 offset, u16* retValue)
 {
-    if (Cheat_IsValidAddress(processHandle, cheat_state.offset + offset, 2))
+    if (Cheat_IsValidAddress(cheat_state.offset + offset, 2))
     {
-        Result res = svcReadProcessMemory(&ReadWriteBuffer16, processHandle, cheat_state.offset + offset, 2);
-        *retValue = *((u16*) (&ReadWriteBuffer16));
-        return R_SUCCEEDED(res);
+        *retValue = *((u16*) (cheat_state.offset + offset));
+        return true;
     }
     return false;
 }
 
-static bool Cheat_Read32(const Handle processHandle, u32 offset, u32* retValue)
+static bool Cheat_Read32(u32 offset, u32* retValue)
 {
-    if (Cheat_IsValidAddress(processHandle, cheat_state.offset + offset, 4))
+    if (Cheat_IsValidAddress(cheat_state.offset + offset, 4))
     {
-        Result res = svcReadProcessMemory(&ReadWriteBuffer32, processHandle, cheat_state.offset + offset, 4);
-        *retValue = *((u32*) (&ReadWriteBuffer32));
-        return R_SUCCEEDED(res);
+        *retValue = *((u32*) (cheat_state.offset + offset));
+        return true;
     }
     return false;
 }
@@ -211,7 +208,7 @@ static u8 Cheat_GetNextTypeE(const CheatDescription* cheat)
     return (u8) ((cheat->codes[cheat_state.typeELine] >> (typeEMapping[cheat_state.typeEIdx])) & 0xFF);
 }
 
-static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* const cheat)
+static u32 Cheat_ApplyCheat(const CheatDescription* const cheat)
 {
     cheat_state.index = 0;
     cheat_state.offset = 0;
@@ -244,7 +241,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 // Description: 32bit write of YYYYYYYY to 0XXXXXXX.
                 if (!skipExecution)
                 {
-                    if (!Cheat_Write32(processHandle, (arg0 & 0x0FFFFFFF), arg1)) return 0;
+                    if (!Cheat_Write32((arg0 & 0x0FFFFFFF), arg1)) return 0;
                 }
                 break;
             case 0x1:
@@ -253,7 +250,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 // Description: 16bit write of YYYY to 0XXXXXXX.
                 if (!skipExecution)
                 {
-                    if (!Cheat_Write16(processHandle, (arg0 & 0x0FFFFFFF), (u16) (arg1 & 0xFFFF))) return 0;
+                    if (!Cheat_Write16((arg0 & 0x0FFFFFFF), (u16) (arg1 & 0xFFFF))) return 0;
                 }
                 break;
             case 0x2:
@@ -262,7 +259,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 // Description: 8bit write of YY to 0XXXXXXX.
                 if (!skipExecution)
                 {
-                    if (!Cheat_Write8(processHandle, (arg0 & 0x0FFFFFFF), (u8) (arg1 & 0xFF))) return 0;
+                    if (!Cheat_Write8((arg0 & 0x0FFFFFFF), (u8) (arg1 & 0xFF))) return 0;
                 }
                 break;
             case 0x3:
@@ -274,7 +271,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
             {
                 u32 newSkip;
                 u32 value = 0;
-                if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read32(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if (value < arg1)
                 {
                     newSkip = 0;
@@ -298,7 +295,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
             {
                 u32 newSkip;
                 u32 value = 0;
-                if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read32(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if (value > arg1)
                 {
                     newSkip = 0;
@@ -322,7 +319,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
             {
                 u32 newSkip;
                 u32 value = 0;
-                if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read32(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if (value == arg1)
                 {
                     newSkip = 0;
@@ -346,7 +343,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
             {
                 u32 newSkip;
                 u32 value = 0;
-                if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read32(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if (value != arg1)
                 {
                     newSkip = 0;
@@ -371,7 +368,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 u32 newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
-                if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read16(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if ((value & (~mask)) < (arg1 & 0xFFFF))
                 {
                     newSkip = 0;
@@ -396,7 +393,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 u32 newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
-                if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read16(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if ((value & (~mask)) > (arg1 & 0xFFFF))
                 {
                     newSkip = 0;
@@ -421,7 +418,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 u32 newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
-                if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read16(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if ((value & (~mask)) == (arg1 & 0xFFFF))
                 {
                     newSkip = 0;
@@ -446,7 +443,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 u32 newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
-                if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                if (!Cheat_Read16(arg0 & 0x0FFFFFFF, &value)) return 0;
                 if ((value & (~mask)) != (arg1 & 0xFFFF))
                 {
                     newSkip = 0;
@@ -662,7 +659,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                         // Example: D3000000 023D6B28
                         if (!skipExecution)
                         {
-                            if (!Cheat_Write32(processHandle, arg1, cheat_state.data)) return 0;
+                            if (!Cheat_Write32(arg1, cheat_state.data)) return 0;
                             cheat_state.offset += 4;
                         }
                         break;
@@ -675,7 +672,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                         // Example: D7000000 023D6B28
                         if (!skipExecution)
                         {
-                            if (!Cheat_Write16(processHandle, arg1, (u16) (cheat_state.data & 0xFFFF))) return 0;
+                            if (!Cheat_Write16(arg1, (u16) (cheat_state.data & 0xFFFF))) return 0;
                             cheat_state.offset += 2;
                         }
                         break;
@@ -688,7 +685,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                         // Example: D8000000 023D6B28
                         if (!skipExecution)
                         {
-                            if (!Cheat_Write8(processHandle, arg1, (u8) (cheat_state.data & 0xFF))) return 0;
+                            if (!Cheat_Write8(arg1, (u8) (cheat_state.data & 0xFF))) return 0;
                             cheat_state.offset += 1;
                         }
                         break;
@@ -702,7 +699,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                         if (!skipExecution)
                         {
                             u32 value = 0;
-                            if (!Cheat_Read32(processHandle, arg1, &value)) return 0;
+                            if (!Cheat_Read32(arg1, &value)) return 0;
                             cheat_state.data = value;
                         }
                         break;
@@ -716,7 +713,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                         if (!skipExecution)
                         {
                             u16 value = 0;
-                            if (!Cheat_Read16(processHandle, arg1, &value)) return 0;
+                            if (!Cheat_Read16(arg1, &value)) return 0;
                             cheat_state.data = value;
                         }
                         break;
@@ -730,7 +727,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                         if (!skipExecution)
                         {
                             u8 value = 0;
-                            if (!Cheat_Read8(processHandle, arg1, &value)) return 0;
+                            if (!Cheat_Read8(arg1, &value)) return 0;
                             cheat_state.data = value;
                         }
                         break;
@@ -786,7 +783,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                     u8 byte = Cheat_GetNextTypeE(cheat);
                     if (!skipExecution)
                     {
-                        if (!Cheat_Write8(processHandle, beginOffset + i, byte)) return 0;
+                        if (!Cheat_Write8(beginOffset + i, byte)) return 0;
                     }
                 }
                 cheat_state.index = cheat_state.typeELine;
@@ -800,45 +797,66 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
     return 1;
 }
 
-static void Cheat_EatEvents(Handle debug)
-{
-    DebugEventInfo info;
-    Result r;
-
-    while(true)
-    {
-        if((r = svcGetProcessDebugEvent(&info, debug)) != 0)
-        {
-            if(r == (s32)(0xd8402009))
-            {
-                break;
-            }
-        }
-        svcContinueDebugEvent(debug, 3);
-    }
-}
-
 static Result Cheat_MapMemoryAndApplyCheat(u32 pid, CheatDescription* const cheat)
 {
     Handle processHandle;
-    Handle debugHandle;
     Result res;
     res = svcOpenProcess(&processHandle, pid);
     if (R_SUCCEEDED(res))
     {
-        res = svcDebugActiveProcess(&debugHandle, pid);
-        if (R_SUCCEEDED(res))
-        {
-            Cheat_EatEvents(debugHandle);
-            cheat->valid = Cheat_ApplyCheat(debugHandle, cheat);
 
-            svcCloseHandle(debugHandle);
+        u32 codeDestAddress, heapDestAddress;
+
+        s64 textStartAddress, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
+
+        svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002);
+        svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
+        svcGetProcessInfo(&dataTotalRoundedSize, processHandle, 0x10004);
+
+        svcGetProcessInfo(&textStartAddress, processHandle, 0x10005);
+
+        codeTotalSize = (u32) (textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
+        codeDestAddress = codeStartAddress = (u32) textStartAddress; //should be 0x00100000
+
+        MemInfo info;
+        PageInfo out;
+
+        heapDestAddress = heapStartAddress = 0x08000000;
+        svcQueryProcessMemory(&info, &out, processHandle, heapStartAddress);
+        heapTotalSize = info.size;
+
+        Result codeRes = svcMapProcessMemoryEx(processHandle, codeDestAddress, codeStartAddress, codeTotalSize);
+        if (R_FAILED(codeRes))
+        {
+            codeStartAddress = codeTotalSize = 0;
+        }
+
+        Result heapRes = svcMapProcessMemoryEx(processHandle, heapDestAddress, heapStartAddress, heapTotalSize);
+        if (R_FAILED(heapRes))
+        {
+            heapStartAddress = heapTotalSize = 0;
+        }
+
+        if (R_SUCCEEDED(codeRes) || R_SUCCEEDED(heapRes))
+        {
+            cheat->valid = Cheat_ApplyCheat(cheat);
+
+            if (R_SUCCEEDED(codeRes))
+            {
+                svcUnmapProcessMemoryEx(processHandle, codeDestAddress, codeTotalSize);
+            }
+            if (R_SUCCEEDED(heapRes))
+            {
+                svcUnmapProcessMemoryEx(processHandle, heapDestAddress, heapTotalSize);
+            }
             svcCloseHandle(processHandle);
             cheat->active = 1;
         }
         else
         {
             svcCloseHandle(processHandle);
+            sprintf(failureReason, "Can not map any memory");
+            return codeRes;
         }
     }
     else
@@ -1055,12 +1073,8 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
                     Cheat_AddCode(cheat, tmp);
                     if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000)
                     {
-                        if (tmp & 0xFFFFFFFF)
-                        {
-                            // Not empty key code
-                            cheat->keyCombo |= (tmp & 0xFFF);
-                            cheat->keyActivated = 1;
-                        }
+                        cheat->keyCombo |= (tmp & 0xFFF);
+                        cheat->keyActivated = 1;
                     }
                 }
             }
