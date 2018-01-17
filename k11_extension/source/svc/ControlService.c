@@ -85,7 +85,7 @@ Result ControlService(ServiceOp op, u32 varg1, u32 varg2)
             info = SessionInfo_FindFirst(name);
 
             if(info == NULL)
-                return 0x9401BFE; // timeout (the wanted service is likely not initalized)
+                return 0xD9401BFE; // timeout (the wanted service is likely not initalized)
             else
             {
                 Handle out;
