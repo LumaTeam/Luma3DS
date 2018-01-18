@@ -135,33 +135,30 @@ void server_bind(struct sock_server *serv, u16 port)
         server_sockfd = socSocket(AF_INET, SOCK_STREAM, 0);
     }
 
-    if(server_sockfd != -1)
+    struct sockaddr_in saddr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(port);
+    saddr.sin_addr.s_addr = gethostid();
+
+    res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
+
+    if(res == 0)
     {
-        struct sockaddr_in saddr;
-        saddr.sin_family = AF_INET;
-        saddr.sin_port = htons(port);
-        saddr.sin_addr.s_addr = gethostid();
-
-        res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
-
+        res = socListen(server_sockfd, 2);
         if(res == 0)
         {
-            res = socListen(server_sockfd, 2);
-            if(res == 0)
-            {
-                int idx = serv->nfds;
-                serv->nfds++;
-                serv->poll_fds[idx].fd = server_sockfd;
-                serv->poll_fds[idx].events = POLLIN;
+            int idx = serv->nfds;
+            serv->nfds++;
+            serv->poll_fds[idx].fd = server_sockfd;
+            serv->poll_fds[idx].events = POLLIN;
 
-                struct sock_ctx *new_ctx = server_alloc_server_ctx(serv);
-                memcpy(&new_ctx->addr_in, &saddr, sizeof(struct sockaddr_in));
-                new_ctx->type = SOCK_SERVER;
-                new_ctx->sockfd = server_sockfd;
-                new_ctx->n = 0;
-                new_ctx->i = idx;
-                serv->ctx_ptrs[idx] = new_ctx;
-            }
+            struct sock_ctx *new_ctx = server_alloc_server_ctx(serv);
+            memcpy(&new_ctx->addr_in, &saddr, sizeof(struct sockaddr_in));
+            new_ctx->type = SOCK_SERVER;
+            new_ctx->sockfd = server_sockfd;
+            new_ctx->n = 0;
+            new_ctx->i = idx;
+            serv->ctx_ptrs[idx] = new_ctx;
         }
     }
 }
