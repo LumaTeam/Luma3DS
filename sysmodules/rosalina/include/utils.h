@@ -56,4 +56,5 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-Result OpenProcessByName(const char *name, Handle *h);
+Result  OpenProcessByName(const char *name, Handle *h);
+bool    Wifi_IsConnected(void);

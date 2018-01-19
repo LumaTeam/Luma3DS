@@ -36,11 +36,11 @@ bool inputRedirectionEnabled = false;
 Handle inputRedirectionThreadStartedEvent;
 
 static MyThread inputRedirectionThread;
-static u8 ALIGN(8) inputRedirectionThreadStack[0x4000];
+static u8 ALIGN(8) inputRedirectionThreadStack[THREAD_STACK_SIZE];
 
 MyThread *inputRedirectionCreateThread(void)
 {
-    if(R_FAILED(MyThread_Create(&inputRedirectionThread, inputRedirectionThreadMain, inputRedirectionThreadStack, 0x4000, 0x20, CORE_SYSTEM)))
+    if(R_FAILED(MyThread_Create(&inputRedirectionThread, inputRedirectionThreadMain, inputRedirectionThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM)))
         svcBreak(USERBREAK_PANIC);
     return &inputRedirectionThread;
 }
@@ -55,86 +55,121 @@ int inputRedirectionStartResult;
 void inputRedirectionThreadMain(void)
 {
     Result res = 0;
-    res = miniSocInit();
+
+    // Apply patchs
+    res = InputRedirection_DoOrUndoPatches();
+
     if(R_FAILED(res))
-        return;
+        goto exit;
 
-    int sock = socSocket(AF_INET, SOCK_DGRAM, 0);
-    while(sock == -1)
+    do
     {
-        svcSleepThread(1000 * 0000 * 0000LL);
-        sock = socSocket(AF_INET, SOCK_DGRAM, 0);
-    }
+        res = miniSocInit();
+        if(R_FAILED(res))
+            goto exit;
 
-    struct sockaddr_in saddr;
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(4950);
-    saddr.sin_addr.s_addr = gethostid();
-    res = socBind(sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
-    if(res != 0)
-    {
-        socClose(sock);
-        miniSocExit();
-        inputRedirectionStartResult = res;
-        return;
-    }
+        int sock = socSocket(AF_INET, SOCK_DGRAM, 0);
 
-    inputRedirectionEnabled = true;
-    svcSignalEvent(inputRedirectionThreadStartedEvent);
-
-    u32 *hidDataPhys = PA_FROM_VA_PTR(hidData);
-    hidDataPhys += 5; // skip to +20
-
-    u32 *irDataPhys = PA_FROM_VA_PTR(irData);
-
-    char buf[20];
-    u32 oldSpecialButtons = 0, specialButtons = 0;
-    while(inputRedirectionEnabled && !terminationRequest)
-    {
-        struct pollfd pfd;
-        pfd.fd = sock;
-        pfd.events = POLLIN;
-        pfd.revents = 0;
-
-        int pollres = socPoll(&pfd, 1, 10);
-        if(pollres > 0 && (pfd.revents & POLLIN))
+        while(sock == -1)
         {
-            int n = soc_recvfrom(sock, buf, 20, 0, NULL, 0);
-            if(n < 0)
-                break;
-            else if(n < 12)
-                continue;
+            svcSleepThread(1000 * 0000 * 0000LL);
+            sock = socSocket(AF_INET, SOCK_DGRAM, 0);
+        }
 
-            memcpy(hidDataPhys, buf, 12);
-            if(n >= 20)
+        struct sockaddr_in saddr;
+        saddr.sin_family = AF_INET;
+        saddr.sin_port = htons(4950);
+        saddr.sin_addr.s_addr = gethostid();
+
+        res = socBind(sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
+
+        if(res != 0)
+        {
+            socClose(sock);
+            miniSocExit();
+            goto exit;
+        }
+
+        inputRedirectionEnabled = true;
+        inputRedirectionStartResult = 0;
+        svcSignalEvent(inputRedirectionThreadStartedEvent);
+
+        u32 *hidDataPhys = PA_FROM_VA_PTR(hidData);
+        hidDataPhys += 5; // skip to +20
+
+        u32 *irDataPhys = PA_FROM_VA_PTR(irData);
+
+        char buf[20];
+        u32 oldSpecialButtons = 0, specialButtons = 0;
+
+        while(inputRedirectionEnabled && !terminationRequest 
+            && !isSleeping && *(vu8 *)0x1FF81066 > 0) ///< exit if the network is disconnected
+        {
+            struct pollfd pfd;
+            pfd.fd = sock;
+            pfd.events = POLLIN;
+            pfd.revents = 0;
+
+            int pollres = socPoll(&pfd, 1, 10);
+            if(pollres > 0 && (pfd.revents & POLLIN))
             {
-                memcpy(irDataPhys, buf + 12, 4);
+                int n = soc_recvfrom(sock, buf, 20, 0, NULL, 0);
+                if(n < 0)
+                    break;
+                else if(n < 12)
+                    continue;
 
-                oldSpecialButtons = specialButtons;
-                memcpy(&specialButtons, buf + 16, 4);
+                memcpy(hidDataPhys, buf, 12);
+                if(n >= 20)
+                {
+                    memcpy(irDataPhys, buf + 12, 4);
 
-                if(!(oldSpecialButtons & 1) && (specialButtons & 1)) // HOME button pressed
-                    srvPublishToSubscriber(0x204, 0);
-                else if((oldSpecialButtons & 1) && !(specialButtons & 1)) // HOME button released
-                    srvPublishToSubscriber(0x205, 0);
+                    oldSpecialButtons = specialButtons;
+                    memcpy(&specialButtons, buf + 16, 4);
 
-                if(!(oldSpecialButtons & 2) && (specialButtons & 2)) // POWER button pressed
-                    srvPublishToSubscriber(0x202, 0);
+                    if(!(oldSpecialButtons & 1) && (specialButtons & 1)) // HOME button pressed
+                        srvPublishToSubscriber(0x204, 0);
+                    else if((oldSpecialButtons & 1) && !(specialButtons & 1)) // HOME button released
+                        srvPublishToSubscriber(0x205, 0);
 
-                if(!(oldSpecialButtons & 4) && (specialButtons & 4)) // POWER button held long
-                    srvPublishToSubscriber(0x203, 0);
+                    if(!(oldSpecialButtons & 2) && (specialButtons & 2)) // POWER button pressed
+                        srvPublishToSubscriber(0x202, 0);
+
+                    if(!(oldSpecialButtons & 4) && (specialButtons & 4)) // POWER button held long
+                        srvPublishToSubscriber(0x203, 0);
+                }
             }
         }
+
+        struct linger linger;
+        linger.l_onoff = 1;
+        linger.l_linger = 0;
+
+        socSetsockopt(sock, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
+
+        socClose(sock);
+
+        miniSocExit();
+
+        if(isSleeping && inputRedirectionEnabled && !terminationRequest)
+            LightEvent_Wait(&onWakeUpEvent);
+
+        // Wait until the network is connected
+        while (!Wifi_IsConnected() && inputRedirectionEnabled && !terminationRequest)
+            svcSleepThread(5 * 1000 * 1000LL);
+
     }
+    while (inputRedirectionEnabled && !terminationRequest);
 
-    struct linger linger;
-    linger.l_onoff = 1;
-    linger.l_linger = 0;
+exit:
+    inputRedirectionEnabled = false;
+    inputRedirectionStartResult = res;
 
-    socSetsockopt(sock, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
+    // Undo patchs
+    InputRedirection_DoOrUndoPatches();
 
-    socClose(sock);
-    miniSocExit();
+    // Signal event for error in startup
+    svcSignalEvent(inputRedirectionThreadStartedEvent);
 }
 
 void hidCodePatchFunc(void);
@@ -142,6 +177,12 @@ void irCodePatchFunc(void);
 
 Result InputRedirection_DoOrUndoPatches(void)
 {
+    static struct
+    {
+        bool hid : 1;
+        bool irrst : 1;
+    }   patchApplied = { false, false };
+
     s64 startAddress, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
     u32 totalSize;
     Handle processHandle;
@@ -157,7 +198,7 @@ Result InputRedirection_DoOrUndoPatches(void)
         totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
         svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-        res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize);
+        res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32)startAddress, totalSize);
 
         if(R_SUCCEEDED(res))
         {
@@ -173,11 +214,13 @@ Result InputRedirection_DoOrUndoPatches(void)
             static u32 *hidRegPatchOffsets[2];
             static u32 *hidPatchJumpLoc;
 
-            if(inputRedirectionEnabled)
+            if(patchApplied.hid)
             {
                 memcpy(hidRegPatchOffsets[0], &hidOrigRegisterAndValue, sizeof(hidOrigRegisterAndValue));
                 memcpy(hidRegPatchOffsets[1], &hidOrigRegisterAndValue, sizeof(hidOrigRegisterAndValue));
                 memcpy(hidPatchJumpLoc, &hidOrigCode, sizeof(hidOrigCode));
+
+                patchApplied.hid = false;
             }
             else
             {
@@ -218,6 +261,8 @@ Result InputRedirection_DoOrUndoPatches(void)
 
                 *off = *off2 = hidDataPhys;
                 memcpy(off3, &hidHook, sizeof(hidHook));
+
+                patchApplied.hid = true;
             }
         }
 
@@ -264,7 +309,7 @@ Result InputRedirection_DoOrUndoPatches(void)
 
             static u32 *irHookLoc, *irWaitSyncLoc, *irCppFlagLoc;
 
-            if(inputRedirectionEnabled)
+            if(patchApplied.irrst)
             {
                 memcpy(irHookLoc, &irOrigReadingCode, sizeof(irOrigReadingCode));
                 if(useOldSyncCode)
@@ -272,6 +317,8 @@ Result InputRedirection_DoOrUndoPatches(void)
                 else
                     memcpy(irWaitSyncLoc, &irOrigWaitSyncCode, sizeof(irOrigWaitSyncCode));
                 memcpy(irCppFlagLoc, &irOrigCppFlagCode, sizeof(irOrigCppFlagCode));
+
+                patchApplied.irrst = false;
             }
             else
             {
@@ -331,6 +378,8 @@ Result InputRedirection_DoOrUndoPatches(void)
 
                 // This NOPs out a flag check in ir:user's CPP emulation
                 *irCppFlagLoc = 0xE3150000; // tst r5, #0
+
+                patchApplied.irrst = true;
             }
         }
 

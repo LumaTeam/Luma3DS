@@ -166,6 +166,10 @@ void menuThreadMain(void)
                 menuLeave();
             }
         }
+
+        if(isSleeping && !terminationRequest)
+            LightEvent_Wait(&onWakeUpEvent);
+
         svcSleepThread(50 * 1000 * 1000LL);
     }
 }
@@ -335,5 +339,5 @@ void menuShow(Menu *root)
         menuDraw(currentMenu, selectedItem);
         Draw_Unlock();
     }
-    while(!terminationRequest);
+    while(!terminationRequest && !isSleeping);
 }

@@ -237,6 +237,7 @@ void MiscellaneousMenu_SaveSettings(void)
 void MiscellaneousMenu_InputRedirection(void)
 {
     static MyThread *inputRedirectionThread = NULL;
+
     bool done = false;
 
     Result res;
@@ -246,7 +247,6 @@ void MiscellaneousMenu_InputRedirection(void)
 
     if(wasEnabled)
     {
-        res = InputRedirection_DoOrUndoPatches();
         inputRedirectionEnabled = false;
         res = MyThread_Join(inputRedirectionThread, 5 * 1000 * 1000 * 1000LL);
         svcCloseHandle(inputRedirectionThreadStartedEvent);
@@ -286,6 +286,8 @@ void MiscellaneousMenu_InputRedirection(void)
 
         if(!wasEnabled && cantStart)
             Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the input redirection before the system\nhas finished loading.");
+        else if(!wasEnabled && !Wifi_IsConnected())
+            Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the input redirection if the system\nis not connected to Internet.");
         else if(!wasEnabled)
         {
             Draw_DrawString(10, 30, COLOR_WHITE, "Starting InputRedirection...");
@@ -301,9 +303,6 @@ void MiscellaneousMenu_InputRedirection(void)
                         res = svcWaitSynchronization(inputRedirectionThreadStartedEvent, 10 * 1000 * 1000 * 1000LL);
                         if(res == 0)
                             res = (Result)inputRedirectionStartResult;
-
-                        if(res != 0)
-                            InputRedirection_DoOrUndoPatches();
                     }
                 }
 
@@ -332,4 +331,13 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_Unlock();
     }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+bool    Wifi_IsConnected(void)
+{
+    u32     status = 0;
+    u32     wifistatus = 0;
+
+    return R_SUCCEEDED(ACU_GetWifiStatus(&wifistatus)) && wifistatus > 0
+        && R_SUCCEEDED(ACU_GetStatus(&status)) && status != 1;
 }
