@@ -148,14 +148,23 @@ void menuThreadMain(void)
     else
         N3DSMenu_UpdateStatus();
 
+    bool isAcURegistered = false;
+
     while(!terminationRequest)
     {
         if((HID_PAD & menuCombo) == menuCombo)
         {
-            menuEnter();
-            if(isN3DS) N3DSMenu_UpdateStatus();
-            menuShow(&rosalinaMenu);
-            menuLeave();
+            if (!isAcURegistered)
+                isAcURegistered = R_SUCCEEDED(srvIsServiceRegistered(&isAcURegistered, "ac:u"))
+                    && isAcURegistered;
+
+            if (isAcURegistered)
+            {
+                menuEnter();
+                if(isN3DS) N3DSMenu_UpdateStatus();
+                menuShow(&rosalinaMenu);
+                menuLeave();
+            }
         }
         svcSleepThread(50 * 1000 * 1000LL);
     }
