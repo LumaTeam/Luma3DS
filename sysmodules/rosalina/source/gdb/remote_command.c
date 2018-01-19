@@ -39,6 +39,7 @@ struct
     { "syncrequestinfo"   , GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo) },
     { "translatehandle"   , GDB_REMOTE_COMMAND_HANDLER(TranslateHandle) },
     { "getmmuconfig"      , GDB_REMOTE_COMMAND_HANDLER(GetMmuConfig) },
+    { "getmemregions"     , GDB_REMOTE_COMMAND_HANDLER(GetMemRegions) },
     { "flushcaches"       , GDB_REMOTE_COMMAND_HANDLER(FlushCaches) },
     { "toggleextmemaccess", GDB_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess) },
 };
@@ -224,6 +225,84 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetMmuConfig)
     }
 
     return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
+static const char  *FormatMemPerm(u32 perm)
+{
+    if (perm == MEMPERM_DONTCARE)
+        return "???";
+
+    static char     buf[4] = {0};
+
+    buf[0] = perm & MEMPERM_READ ? 'r' : '-';
+    buf[1] = perm & MEMPERM_WRITE ? 'w' : '-';
+    buf[2] = perm & MEMPERM_EXECUTE ? 'x' : '-';
+
+    return buf;
+}
+
+static const char   *FormatMemState(u32 state)
+{
+    if (state > 11)
+        return "Unknown";
+
+    static const char *states[12] =
+    {
+        "Free",
+        "Reserved",
+        "IO",
+        "Static",
+        "Code",
+        "Private",
+        "Shared",
+        "Continuous",
+        "Aliased",
+        "Alias",
+        "AliasCode",
+        "Locked"
+    };
+
+    return states[state];
+}
+
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetMemRegions)
+{
+    u32         address = 0;
+    u32         posInBuffer = 0;
+    u32         maxPosInBuffer = GDB_BUF_LEN / 2 - 35; ///< 35 is the maximum length of a formatted region
+    Handle      handle;
+    MemInfo     memi;
+    PageInfo    pagei;
+    char        outbuf[GDB_BUF_LEN / 2 + 1];
+
+    if(R_FAILED(svcOpenProcess(&handle, ctx->pid)))
+    {
+        posInBuffer = sprintf(outbuf, "Invalid process (wtf?)\n");
+        goto end;
+    }
+
+    while (address < 0x40000000 ///< Limit to check for regions
+        && posInBuffer < maxPosInBuffer
+        && R_SUCCEEDED(svcQueryProcessMemory(&memi, &pagei, handle, address)))
+    {
+        // Update the address for next region
+        address = memi.base_addr + memi.size;
+
+        // If region isn't FREE then add it to the list
+        if (memi.state != MEMSTATE_FREE)
+        {
+            const char *perm = FormatMemPerm(memi.perm);
+            const char *state = FormatMemState(memi.state);
+
+            posInBuffer += sprintf(outbuf + posInBuffer, "%08X - %08X %s %s\n",
+                memi.base_addr, address, perm, state);
+        }
+    }
+
+    svcCloseHandle(handle);
+
+end:
+    return GDB_SendHexPacket(ctx, outbuf, posInBuffer);
 }
 
 GDB_DECLARE_REMOTE_COMMAND_HANDLER(FlushCaches)

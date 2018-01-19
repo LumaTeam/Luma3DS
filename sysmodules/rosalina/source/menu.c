@@ -149,14 +149,23 @@ void menuThreadMain(void)
     else
         N3DSMenu_UpdateStatus();
 
+    bool isAcURegistered = false;
+
     while(!terminationRequest)
     {
         if((HID_PAD & menuCombo) == menuCombo)
         {
-            menuEnter();
-            if(isN3DS) N3DSMenu_UpdateStatus();
-            menuShow(&rosalinaMenu);
-            menuLeave();
+            if (!isAcURegistered)
+                isAcURegistered = R_SUCCEEDED(srvIsServiceRegistered(&isAcURegistered, "ac:u"))
+                    && isAcURegistered;
+
+            if (isAcURegistered)
+            {
+                menuEnter();
+                if(isN3DS) N3DSMenu_UpdateStatus();
+                menuShow(&rosalinaMenu);
+                menuLeave();
+            }
         }
         else
         {
@@ -200,13 +209,16 @@ static void menuDraw(Menu *menu, u32 selected)
     s64 out;
     u32 version, commitHash;
     bool isRelease;
+    bool isMcuHwcRegistered;
 
-    if(R_SUCCEEDED(mcuHwcInit()))
+    if(R_SUCCEEDED(srvIsServiceRegistered(&isMcuHwcRegistered, "mcu::HWC")) && isMcuHwcRegistered && R_SUCCEEDED(mcuHwcInit()))
     {
         if(R_FAILED(MCUHWC_GetBatteryLevel(&batteryLevel)))
             batteryLevel = 255;
         mcuHwcExit();
     }
+    else
+        batteryLevel = 255;
 
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;

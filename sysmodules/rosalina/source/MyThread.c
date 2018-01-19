@@ -26,10 +26,22 @@
 
 #include "MyThread.h"
 #include "memory.h"
+#include <3ds/srv.h>
 
 static void _thread_begin(void* arg)
 {
     MyThread *t = (MyThread *)arg;
+
+    // ROSALINA HACKJOB BEGIN
+    // NORMAL APPS SHOULD NOT DO THIS, EVER
+    u32 *tls = (u32 *)getThreadLocalStorage();
+    memset(tls, 0, 0x80);
+    tls[0] = 0x21545624; 
+    // ROSALINA HACKJOB END
+
+    // Rosalina specific:
+    srvSetBlockingPolicy(true); // GetServiceHandle nonblocking if service port is full
+
     t->ep();
     MyThread_Exit();
 }
