@@ -150,21 +150,8 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
     return firmSize;
 }
 
-u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
+static void check1x2xFirm(FirmwareType *firmType, FirmwareSource nandType, bool isSafeMode)
 {
-    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
-
-    //Load FIRM from CTRNAND
-    u32 firmVersion = firmRead(firm, (u32)*firmType);
-
-    if(firmVersion == 0xFFFFFFFF) error("Failed to get the CTRNAND FIRM.");
-
-    u32 firmSize = decryptExeFs((Cxi *)firm);
-
-    if(!firmSize) error("Failed to decrypt the CTRNAND FIRM.");
-
-    if(!checkFirm(firmSize)) error("The CTRNAND FIRM is invalid or corrupted.");
-
     if(!ISN3DS && *firmType == NATIVE_FIRM && firm->section[0].address == (u8 *)0x1FF80000)
     {
         //We can't boot < 3.x EmuNANDs
@@ -174,18 +161,47 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
         *firmType = NATIVE_FIRM1X2X;
     }
+}
+
+u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
+{
+    u32 firmVersion,
+        firmSize;
+
+    bool ctrNandError = isSdMode && !mountFs(false, false);
+
+    if(!ctrNandError)
+    {
+        //Load FIRM from CTRNAND
+        firmVersion = firmRead(firm, (u32)*firmType);
+
+        if(firmVersion == 0xFFFFFFFF) ctrNandError = true;
+        else
+        {
+            firmSize = decryptExeFs((Cxi *)firm);
+
+            if(!firmSize) ctrNandError = true;
+            else
+            {
+                if(!checkFirm(firmSize)) ctrNandError = true;
+                else check1x2xFirm(firmType, nandType, isSafeMode);
+            }
+        }
+    }
 
     bool loadedFromStorage = false;
 
-    if(loadFromStorage)
+    if(loadFromStorage || ctrNandError)
     {
         u32 result = loadFirmFromStorage(*firmType);
 
         if(result != 0)
         {
+            if(ctrNandError) check1x2xFirm(firmType, nandType, isSafeMode);
             loadedFromStorage = true;
             firmSize = result;
         }
+        else if(ctrNandError) error("Unable to mount CTRNAND or load the CTRNAND FIRM.\nPlease use an external one.");
     }
 
     //Check that the FIRM is right for the console from the ARM9 section address
