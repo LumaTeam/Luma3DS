@@ -135,3 +135,4 @@ extern CfwInfo cfwInfo;
 
 extern vu32 rosalinaState;
 extern bool hasStartedRosalinaNetworkFuncsOnce;
+bool hasRosalinaMenuStarted;

@@ -179,6 +179,7 @@ void menuEnter(void)
         svcSleepThread(5 * 1000 * 100LL);
         Draw_SetupFramebuffer();
         Draw_ClearFramebuffer();
+        srvPublishToSubscriber(0x400, 0);
     }
 }
 
@@ -193,6 +194,7 @@ void menuLeave(void)
         Draw_RestoreFramebuffer();
         Draw_Unlock();
         svcKernelSetState(0x10000, 1);
+        srvPublishToSubscriber(0x401, 0);
     }
 }
 
