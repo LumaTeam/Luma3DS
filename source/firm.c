@@ -123,7 +123,7 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
         "cetk_sysupdater"
     };
 
-    u32 firmSize = fileRead(firm, firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)firmType], 0x400000 + sizeof(Cxi) + 0x200);
+    u32 firmSize = fileRead(firm, firmwareFiles[(u32)firmType], 0x400000 + sizeof(Cxi) + 0x200);
 
     if(!firmSize) return 0;
 
@@ -137,7 +137,7 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
 
         u8 cetk[0xA50];
 
-        if(fileRead(cetk, firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)firmType], sizeof(cetk)) != sizeof(cetk))
+        if(fileRead(cetk, cetkFiles[(u32)firmType], sizeof(cetk)) != sizeof(cetk))
             error("The cetk is missing or corrupted.");
 
         firmSize = decryptNusFirm((Ticket *)(cetk + 0x140), (Cxi *)firm, firmSize);
@@ -148,19 +148,6 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
     if(!checkFirm(firmSize)) error("The external FIRM is invalid or corrupted.");
 
     return firmSize;
-}
-
-static void check1x2xFirm(FirmwareType *firmType, FirmwareSource nandType, bool isSafeMode)
-{
-    if(!ISN3DS && *firmType == NATIVE_FIRM && firm->section[0].address == (u8 *)0x1FF80000)
-    {
-        //We can't boot < 3.x EmuNANDs
-        if(nandType != FIRMWARE_SYSNAND) error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
-
-        if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
-
-        *firmType = NATIVE_FIRM1X2X;
-    }
 }
 
 u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
@@ -180,12 +167,7 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
         {
             firmSize = decryptExeFs((Cxi *)firm);
 
-            if(!firmSize) ctrNandError = true;
-            else
-            {
-                if(!checkFirm(firmSize)) ctrNandError = true;
-                else check1x2xFirm(firmType, nandType, isSafeMode);
-            }
+            if(!firmSize || !checkFirm(firmSize)) ctrNandError = true;
         }
     }
 
@@ -197,7 +179,6 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
         if(result != 0)
         {
-            if(ctrNandError) check1x2xFirm(firmType, nandType, isSafeMode);
             loadedFromStorage = true;
             firmSize = result;
         }
@@ -207,6 +188,16 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
     //Check that the FIRM is right for the console from the ARM9 section address
     if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
         error("The %s FIRM is not for this console.", loadedFromStorage ? "external" : "CTRNAND");
+
+    if(!ISN3DS && *firmType == NATIVE_FIRM && firm->section[0].address == (u8 *)0x1FF80000)
+    {
+        //We can't boot < 3.x EmuNANDs
+        if(nandType != FIRMWARE_SYSNAND) error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
+
+        if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
+
+        *firmType = NATIVE_FIRM1X2X;
+    }
 
     if(loadedFromStorage || ISDEVUNIT)
     {
