@@ -146,6 +146,8 @@ bool verifyPin(u32 pinMode)
 
     initScreens();
 
+	swapFramebuffers(true);
+
     drawString(true, 10, 10, COLOR_TITLE, "Enter the PIN using ABXY and the DPad to proceed");
     drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press START to shutdown, SELECT to clear");
 
@@ -169,6 +171,7 @@ bool verifyPin(u32 pinMode)
             drawString(false, 10, 10, COLOR_WHITE, message);
         }
     }
+	swapFramebuffers(false);
 
     //Pad to AES block length with zeroes
     __attribute__((aligned(4))) u8 enteredPassword[AES_BLOCK_SIZE] = {0};
