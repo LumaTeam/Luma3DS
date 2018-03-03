@@ -151,15 +151,23 @@ bool verifyPin(u32 pinMode)
 
     drawFormattedString(true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE, "PIN (%u digits): ", lengthBlock[0]);
 
-    static const char *messageFile = "pinmessage.txt";
-    char message[801];
-
-    u32 messageSize = fileRead(message, messageFile, sizeof(message) - 1);
-
-    if(messageSize != 0)
+    bool isBottomSplashValid = getFileSize("splashpin.bin") == SCREEN_BOTTOM_FBSIZE;
+    if(isBottomSplashValid) 
     {
-        message[messageSize] = 0;
-        drawString(false, 10, 10, COLOR_WHITE, message);
+        isBottomSplashValid = fileRead(fbs[0].bottom, "splashpin.bin", SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
+    }
+    else
+    {
+        static const char *messageFile = "pinmessage.txt";
+        char message[801];
+
+        u32 messageSize = fileRead(message, messageFile, sizeof(message) - 1);
+
+        if(messageSize != 0)
+        {
+            message[messageSize] = 0;
+            drawString(false, 10, 10, COLOR_WHITE, message);
+        }
     }
 
     //Pad to AES block length with zeroes
