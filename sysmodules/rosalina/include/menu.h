@@ -71,7 +71,9 @@ typedef struct Menu {
 } Menu;
 
 extern bool terminationRequest;
+extern bool isSleeping;
 extern Handle terminationRequestEvent;
+extern LightEvent onWakeUpEvent;
 
 extern u32 menuCombo;
 

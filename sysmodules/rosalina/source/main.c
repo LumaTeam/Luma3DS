@@ -44,11 +44,13 @@ void __appInit()
     fsregInit();
 
     fsSysInit();
+    acInit();
 }
 
 // this is called after main exits
 void __appExit()
 {
+    acExit();
     fsExit();
     fsregExit();
     srvSysExit();
@@ -102,7 +104,9 @@ void initSystem()
 }
 
 bool terminationRequest = false;
+bool isSleeping = false;
 Handle terminationRequestEvent;
+LightEvent onWakeUpEvent;
 
 int main(void)
 {
@@ -116,6 +120,11 @@ int main(void)
 
     if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
+
+    LightEvent_Init(&onWakeUpEvent, RESET_STICKY);
+
+    srvSubscribe(0x214); ///< Sleep entry
+    srvSubscribe(0x213); ///< Sleep exit
 
     do
     {
@@ -134,6 +143,18 @@ int main(void)
             // Termination request
             terminationRequest = true;
             svcSignalEvent(terminationRequestEvent);
+        }
+
+        if(notifId == 0x214) ///< Sleep entry
+        {
+            LightEvent_Clear(&onWakeUpEvent);
+            isSleeping = true;
+        }
+
+        if(notifId == 0x213) ///< Sleep exit
+        {
+            isSleeping = false;
+            LightEvent_Signal(&onWakeUpEvent);
         }
     }
     while(!terminationRequest);

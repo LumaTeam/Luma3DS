@@ -88,6 +88,8 @@ void DebuggerMenu_EnableDebugger(void)
             Draw_DrawString(10, 30, COLOR_WHITE, "Already enabled!");
         else if(!isSocURegistered)
             Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger before the system has fi-\nnished loading.");
+        else if(!Wifi_IsConnected())
+            Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger if the system is not\nconnected to Internet.");
         else
         {
             Draw_DrawString(10, 30, COLOR_WHITE, "Starting debugger...");
