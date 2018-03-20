@@ -33,6 +33,7 @@
 #include "menus.h"
 #include "utils.h"
 #include "menus/n3ds.h"
+#include "menus/cheats.h"
 #include "minisoc.h"
 
 u32 waitInputWithTimeout(u32 msec)
@@ -165,6 +166,12 @@ void menuThreadMain(void)
                 menuShow(&rosalinaMenu);
                 menuLeave();
             }
+        }
+        else
+        {
+        	if (HID_PAD & 0xFFF) {
+        		Cheat_ApplyKeyCheats();
+        	}
         }
         svcSleepThread(50 * 1000 * 1000LL);
     }

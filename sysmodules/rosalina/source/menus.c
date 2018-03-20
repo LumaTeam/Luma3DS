@@ -41,8 +41,9 @@
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 9,
+    .nbItems = 10,
     {
+    	{ "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
