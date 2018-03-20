@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -38,6 +42,9 @@
 #define COLOR_BLACK  0x000000
 #define COLOR_YELLOW 0x00FFFF
 
+#define DRAW_MAX_FORMATTED_STRING_SIZE  512
+
 bool loadSplash(void);
-void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color);
-u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color);
+void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character);
+u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string);
+u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...);

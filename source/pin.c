@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -36,7 +40,7 @@
 
 static char pinKeyToLetter(u32 pressed)
 {
-    const char keys[] = "AB--RLUD--XY";
+    static const char *keys = "AB--RLUD--XY";
 
     u32 i;
     for(i = 31; pressed > 1; i--) pressed /= 2;
@@ -50,11 +54,10 @@ void newPin(bool allowSkipping, u32 pinMode)
 
     u8 length = 4 + 2 * (pinMode - 1);
 
-    drawString("Enter a new PIN using ABXY and the DPad", true, 10, 10, COLOR_TITLE);
-    drawString(allowSkipping ? "Press START to skip, SELECT to reset" : "Press SELECT to reset", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+    drawString(true, 10, 10, COLOR_TITLE, "Enter a new PIN using ABXY and the DPad");
+    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, allowSkipping ? "Press START to skip, SELECT to reset" : "Press SELECT to reset");
 
-    drawString("PIN (  digits): ", true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE);
-    drawCharacter('0' + length, true, 10 + 5 * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+    drawFormattedString(true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE, "PIN (%u digits): ", length);
 
     //Pad to AES block length with zeroes
     __attribute__((aligned(4))) u8 enteredPassword[AES_BLOCK_SIZE] = {0};
@@ -67,7 +70,7 @@ void newPin(bool allowSkipping, u32 pinMode)
         if(reset)
         {
             for(u32 i = 0; i < cnt; i++) 
-                drawCharacter((char)enteredPassword[i], true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK);
+                drawCharacter(true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK, (char)enteredPassword[i]);
 
             cnt = 0;
             reset = false;
@@ -97,7 +100,7 @@ void newPin(bool allowSkipping, u32 pinMode)
         enteredPassword[cnt] = (u8)pinKeyToLetter(pressed);
 
         //Visualize character on screen
-        drawCharacter(enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+        drawCharacter(true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE, enteredPassword[cnt]);
 
         cnt++;
     }
@@ -143,22 +146,32 @@ bool verifyPin(u32 pinMode)
 
     initScreens();
 
-    drawString("Enter the PIN using ABXY and the DPad to proceed", true, 10, 10, COLOR_TITLE);
-    drawString("Press START to shutdown, SELECT to clear", true, 10, 10 + SPACING_Y, COLOR_TITLE);
+    swapFramebuffers(true);
 
-    drawString("PIN (  digits): ", true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE);
-    drawCharacter('0' + lengthBlock[0], true, 10 + 5 * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+    drawString(true, 10, 10, COLOR_TITLE, "Enter the PIN using ABXY and the DPad to proceed");
+    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press START to shutdown, SELECT to clear");
 
-    const char *messageFile = "pinmessage.txt";
-    char message[801];
+    drawFormattedString(true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE, "PIN (%u digits): ", lengthBlock[0]);
 
-    u32 messageSize = fileRead(message, messageFile, sizeof(message) - 1);
-
-    if(messageSize != 0)
+    bool isBottomSplashValid = getFileSize("splashpin.bin") == SCREEN_BOTTOM_FBSIZE;
+    if(isBottomSplashValid) 
     {
-        message[messageSize] = 0;
-        drawString(message, false, 10, 10, COLOR_WHITE);
+        isBottomSplashValid = fileRead(fbs[0].bottom, "splashpin.bin", SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
     }
+    else
+    {
+        static const char *messageFile = "pinmessage.txt";
+        char message[801];
+
+        u32 messageSize = fileRead(message, messageFile, sizeof(message) - 1);
+
+        if(messageSize != 0)
+        {
+            message[messageSize] = 0;
+            drawString(false, 10, 10, COLOR_WHITE, message);
+        }
+    }
+    swapFramebuffers(false);
 
     //Pad to AES block length with zeroes
     __attribute__((aligned(4))) u8 enteredPassword[AES_BLOCK_SIZE] = {0};
@@ -172,7 +185,7 @@ bool verifyPin(u32 pinMode)
         if(reset)
         {
             for(u32 i = 0; i < cnt; i++) 
-                drawCharacter((char)enteredPassword[i], true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK);
+                drawCharacter(true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK, '*');
 
             cnt = 0;
             reset = false;
@@ -201,7 +214,7 @@ bool verifyPin(u32 pinMode)
         enteredPassword[cnt] = (u8)pinKeyToLetter(pressed);
 
         //Visualize character on screen
-        drawCharacter((char)enteredPassword[cnt], true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE);
+        drawCharacter(true, 10 + (16 + 2 * cnt) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_WHITE, '*');
 
         if(++cnt < lengthBlock[0]) continue;
 
@@ -212,7 +225,7 @@ bool verifyPin(u32 pinMode)
         {
             reset = true;
 
-            drawString("Wrong PIN, try again", true, 10, 10 + 5 * SPACING_Y, COLOR_RED); 
+            drawString(true, 10, 10 + 5 * SPACING_Y, COLOR_RED, "Wrong PIN, try again"); 
         }
     }
 

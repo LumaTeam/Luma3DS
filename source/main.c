@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "config.h"
@@ -30,75 +34,151 @@
 #include "strings.h"
 #include "buttons.h"
 #include "pin.h"
+#include "crypto.h"
+#include "memory.h"
+#include "screen.h"
+#include "fatfs/sdmmc/sdmmc.h"
 
 extern CfgData configData;
+extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
-void main(void)
+bool isSdMode;
+u16 launchedPath[41];
+BootType bootType;
+
+void main(int argc, char **argv, u32 magicWord)
 {
-    bool isA9lhInstalled,
-         isSafeMode = false;
-    u32 configTemp,
-        emuHeader;
+    bool isFirmProtEnabled,
+         isSafeMode = false,
+         isNoForceFlagSet = false,
+         isNtrBoot;
     FirmwareType firmType;
     FirmwareSource nandType;
-    ConfigurationStatus needConfig;
+    const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
+    const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
 
-    //Mount SD or CTRNAND
-    bool isSdMode;
-    if(mountFs(true, false)) isSdMode = true;
+    //Shell closed, no error booting NTRCARD, NAND paritions not even considered
+    isNtrBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
+ 
+    if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal (B9S) boot
+    {
+        bootType = isNtrBoot ? B9SNTR : B9S;
+
+        u32 i;
+        for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
+            launchedPath[i] = argv[0][i];
+        launchedPath[i] = 0;
+    }
+    else if(magicWord == 0xBABE && argc == 2) //Firmlaunch
+    {
+        bootType = FIRMLAUNCH;
+
+        u32 i;
+        u16 *p = (u16 *)argv[0];
+        for(i = 0; i < 40 && p[i] != 0; i++)
+            launchedPath[i] = p[i];
+        launchedPath[i] = 0;
+    }
+    else if(magicWord == 0xB002) //FIRM/NTRCARD boot
+    {
+        if(isNtrBoot) bootType = NTR;
+        else
+        {
+            const char *path;
+            if(!((vu8 *)bootPartitionsStatus)[2])
+            {
+                bootType = FIRM0;
+                path = "firm0:";
+            }
+            else
+            {
+                bootType = FIRM1;
+                path = "firm1:";
+            }
+
+            for(u32 i = 0; i < 7; i++) //Copy and convert the path to UTF-16
+                launchedPath[i] = path[i];
+        }
+
+        setupKeyslots();
+    }
+    else error("Launched using an unsupported loader.");
+
+    if(memcmp(launchedPath, u"sdmc", 8) == 0)
+    {
+        if(!mountFs(true, false)) error("Failed to mount SD.");
+        isSdMode = true;
+    }
+    else if(memcmp(launchedPath, u"nand", 8) == 0)
+    {
+        if(!mountFs(false, true)) error("Failed to mount CTRNAND.");
+        isSdMode = false;
+    }
+    else if(bootType == NTR || memcmp(launchedPath, u"firm", 8) == 0)
+    {
+        if(mountFs(true, false)) isSdMode = true;
+        else if(mountFs(false, true)) isSdMode = false;
+        else error("Failed to mount SD and CTRNAND.");
+
+        if(bootType == NTR)
+        {
+            while(HID_PAD & NTRBOOT_BUTTONS);
+            loadHomebrewFirm(0);
+            mcuPowerOff();
+        }
+    }
     else
     {
-        firmSource = FIRMWARE_SYSNAND;
-        if(!mountFs(false, true)) error("Failed to mount SD and CTRNAND.");
-        isSdMode = false;
+        char mountPoint[5];
+
+        u32 i;
+        for(i = 0; i < 4 && launchedPath[i] != u':'; i++)
+            mountPoint[i] = (char)launchedPath[i];
+        mountPoint[i] = 0;
+
+        error("Launched from an unsupported location: %s.", mountPoint);
     }
 
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
     //Determine if this is a firmlaunch boot
-    if(ISFIRMLAUNCH)
+    if(bootType == FIRMLAUNCH)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
-        switch(launchedFirmTidLow[7])
+        switch(argv[1][14])
         {
-            case u'2':
-                firmType = (FirmwareType)(launchedFirmTidLow[5] - u'0');
+            case '2':
+                firmType = (FirmwareType)(argv[1][10] - '0');
                 break;
-            case u'3':
+            case '3':
                 firmType = SAFE_FIRM;
                 break;
-            case u'1':
+            case '1':
                 firmType = SYSUPDATER_FIRM;
                 break;
         }
 
         nandType = (FirmwareSource)BOOTCFG_NAND;
         firmSource = (FirmwareSource)BOOTCFG_FIRM;
-        isA9lhInstalled = BOOTCFG_A9LH != 0;
+        isFirmProtEnabled = !BOOTCFG_NTRCARDBOOT;
 
         goto boot;
     }
 
-    if(ISA9LH)
-    {
-        detectAndProcessExceptionDumps();
-        installArm9Handlers();
-    }
+    detectAndProcessExceptionDumps();
+    installArm9Handlers();
 
     firmType = NATIVE_FIRM;
-    isA9lhInstalled = ISA9LH;
+    isFirmProtEnabled = bootType != NTR;
 
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
-    //Save old options and begin saving the new boot configuration
-    configTemp = (configData.config & 0xFFFFFF00) | ((u32)ISA9LH << 6);
-
     //If it's a MCU reboot, try to force boot options
-    if(ISA9LH && CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
+    if(CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
         //Always force a SysNAND boot when quitting AGB_FIRM
         if(CFG_BOOTENV == 7)
@@ -106,8 +186,8 @@ void main(void)
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
-            //Flag to prevent multiple boot options-forcing
-            configTemp |= 1 << 7;
+            //Prevent multiple boot options-forcing
+            if(nandType != BOOTCFG_NAND || firmSource != BOOTCFG_FIRM) isNoForceFlagSet = true;
 
             goto boot;
         }
@@ -126,18 +206,18 @@ void main(void)
     u32 pinMode = MULTICONFIG(PIN);
     bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
-    //If no configuration file exists or SELECT is held, load configuration menu
+    //If no configuration file exists or SELECT is held or if booted from NTRCARD, load configuration menu
     bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
 
     if(shouldLoadConfigMenu)
     {
-        configMenu(isSdMode, pinExists, pinMode);
+        configMenu(pinExists, pinMode);
 
         //Update pressed buttons
         pressed = HID_PAD;
     }
 
-    if(ISA9LH && !CFG_BOOTENV && pressed == SAFE_MODE)
+    if(!CFG_BOOTENV && pressed == SAFE_MODE)
     {
         nandType = FIRMWARE_SYSNAND;
         firmSource = FIRMWARE_SYSNAND;
@@ -158,13 +238,15 @@ void main(void)
 
     if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
+    bool autoBootEmu = CONFIG(AUTOBOOTEMU);
+
     if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
-        payloadMenu();
+        loadHomebrewFirm(0);
         pressed = HID_PAD;
     }
-    else if(((pressed & SINGLE_PAYLOAD_BUTTONS) && !(pressed & (BUTTON_L1 | BUTTON_R1 | BUTTON_A))) ||
-            ((pressed & L_PAYLOAD_BUTTONS) && (pressed & BUTTON_L1))) loadPayload(pressed, NULL);
+    else if((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
+            (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
     if(splashMode == 2) loadSplash();
 
@@ -174,21 +256,21 @@ void main(void)
     //If R is pressed, boot the non-updated NAND with the FIRM of the opposite one
     else if(pressed & BUTTON_R1)
     {
-        if(CONFIG(USESYSFIRM))
-        {
-            nandType = FIRMWARE_EMUNAND;
-            firmSource = FIRMWARE_SYSNAND;
-        }
-        else
+        if(CONFIG(USEEMUFIRM))
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = FIRMWARE_EMUNAND;
+        }
+        else
+        {
+            nandType = FIRMWARE_EMUNAND;
+            firmSource = FIRMWARE_SYSNAND;
         }
     }
 
     /* Else, boot the NAND the user set to autoboot or the opposite one, depending on L,
        with their own FIRM */
-    else firmSource = nandType = (CONFIG(AUTOBOOTSYS) == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_EMUNAND : FIRMWARE_SYSNAND;
+    else firmSource = nandType = (autoBootEmu == ((pressed & BUTTON_L1) == BUTTON_L1)) ? FIRMWARE_SYSNAND : FIRMWARE_EMUNAND;
 
     //If we're booting EmuNAND or using EmuNAND FIRM, determine which one from the directional pad buttons, or otherwise from the config
     if(nandType == FIRMWARE_EMUNAND || firmSource == FIRMWARE_EMUNAND)
@@ -222,52 +304,47 @@ boot:
     //If we need to boot EmuNAND, make sure it exists
     if(nandType != FIRMWARE_SYSNAND)
     {
-        locateEmuNand(&emuHeader, &nandType);
+        locateEmuNand(&nandType);
         if(nandType == FIRMWARE_SYSNAND) firmSource = FIRMWARE_SYSNAND;
+        else if((*(vu16 *)(SDMMC_BASE + REG_SDSTATUS0) & TMIO_STAT0_WRPROTECT) == 0) //Make sure the SD card isn't write protected
+            error("The SD card is locked, EmuNAND can not be used.\nPlease turn the write protection switch off.");
     }
 
     //Same if we're using EmuNAND as the FIRM source
     else if(firmSource != FIRMWARE_SYSNAND)
-        locateEmuNand(&emuHeader, &firmSource);
+        locateEmuNand(&firmSource);
 
-    if(!ISFIRMLAUNCH)
+    if(bootType != FIRMLAUNCH)
     {
-        configTemp |= (u32)nandType | ((u32)firmSource << 3);
-        writeConfig(needConfig, configTemp);
+        configData.bootConfig = ((bootType == NTR ? 1 : 0) << 7) | ((u32)isNoForceFlagSet << 6) | ((u32)firmSource << 3) | (u32)nandType;
+        writeConfig(false);
     }
 
-    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
-
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
-    u32 firmVersion = loadFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
+    u32 firmVersion = loadNintendoFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
-    u32 devMode = MULTICONFIG(DEVOPTIONS);
-
+    bool doUnitinfoPatch = CONFIG(PATCHUNITINFO);
     u32 res;
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, emuHeader, isA9lhInstalled, isSafeMode, devMode);
+            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isFirmProtEnabled, isSafeMode, doUnitinfoPatch);
             break;
         case TWL_FIRM:
-            res = patchTwlFirm(firmVersion, devMode);
+            res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;
         case AGB_FIRM:
-            res = patchAgbFirm(devMode);
+            res = patchAgbFirm(loadFromStorage, doUnitinfoPatch);
             break;
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = isA9lhInstalled ? patch1x2xNativeAndSafeFirm(devMode) : 0;
+            res = patch1x2xNativeAndSafeFirm();
             break;
     }
 
-    if(res != 0)
-    {
-        char patchesError[] = "Failed to apply    FIRM patch(es).";
-        decItoa(res, patchesError + 16, 2);
-        error(patchesError);
-    }
+    if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
-    launchFirm(firmType, loadFromStorage);
+    if(bootType != FIRMLAUNCH) deinitScreens();
+    launchFirm(0, NULL);
 }

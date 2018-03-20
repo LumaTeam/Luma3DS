@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #include "i2c.h"
@@ -28,48 +32,10 @@
 #define REG_DUMP_SIZE   4 * 17
 #define CODE_DUMP_SIZE  48
 
-bool cannotAccessAddress(const void *address)
-{
-    u32 regionSettings[8];
-    u32 addr = (u32)address;
-
-    u32 dataAccessPermissions = readMPUConfig(regionSettings);
-    for(u32 i = 0; i < 8; i++)
-    {
-        if((dataAccessPermissions & 0xF) == 0 || (regionSettings[i] & 1) == 0)
-            continue; //No access / region not enabled
-
-        u32 regionAddrBase = regionSettings[i] & ~0xFFF;
-        u32 regionSize = 1 << (((regionSettings[i] >> 1) & 0x1F) + 1);
-
-        if(addr >= regionAddrBase && addr < regionAddrBase + regionSize)
-            return false;
-
-        dataAccessPermissions >>= 4;
-    }
-
-    return true;
-}
-
-static u32 __attribute__((noinline)) copyMemory(void *dst, const void *src, u32 size, u32 alignment)
-{
-    u8 *out = (u8 *)dst;
-    const u8 *in = (const u8 *)src;
-
-    if(((u32)src & (alignment - 1)) != 0 || cannotAccessAddress(src) || (size != 0 && cannotAccessAddress((u8 *)src + size - 1)))
-        return 0;
-
-    for(u32 i = 0; i < size; i++)
-        *out++ = *in++;
-
-    return size;
-}
-
-void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type)
+void __attribute__((noreturn)) mainHandler(u32 *registerDump, u32 type)
 {
     ExceptionDumpHeader dumpHeader;
 
-    u32 registerDump[REG_DUMP_SIZE / 4];
     u8 codeDump[CODE_DUMP_SIZE];
 
     dumpHeader.magic[0] = 0xDEADC0DE;
@@ -85,34 +51,32 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type)
     dumpHeader.codeDumpSize = CODE_DUMP_SIZE;
     dumpHeader.additionalDataSize = 0;
 
-    //Dump registers
-    //Current order of saved regs: cpsr, pc, r8-r14, r0-r7
-    u32 cpsr = regs[0];
-    u32 pc   = regs[1] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
+    u32 cpsr = registerDump[16];
+    u32 pc   = registerDump[15] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
 
     registerDump[15] = pc;
-    registerDump[16] = cpsr;
-    for(u32 i = 0; i < 7; i++) registerDump[8 + i]  = regs[2 + i];
-    for(u32 i = 0; i < 8; i++) registerDump[i] = regs[9 + i]; 
 
     //Dump code
-    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
-    dumpHeader.codeDumpSize = copyMemory(codeDump, instr, dumpHeader.codeDumpSize, ((cpsr & 0x20) != 0) ? 2 : 4);
+    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+    dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 1 : 3)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
 
-    //Copy register dump and code dump 
+    //Copy register dump and code dump
     u8 *final = (u8 *)(FINAL_BUFFER + sizeof(ExceptionDumpHeader));
-    final += copyMemory(final, registerDump, dumpHeader.registerDumpSize, 1);
-    final += copyMemory(final, codeDump, dumpHeader.codeDumpSize, 1);
+    final += safecpy(final, registerDump, dumpHeader.registerDumpSize);
+    final += safecpy(final, codeDump, dumpHeader.codeDumpSize);
 
     //Dump stack in place
-    dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
+    dumpHeader.stackDumpSize = safecpy(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF));
 
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
 
     //Copy header (actually optimized by the compiler)
     *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
 
+    if(ARESCREENSINITIALIZED) i2cWriteRegister(I2C_DEV_MCU, 0x22, 1 << 0); //Shutdown LCD
+
     ((void (*)())0xFFFF0830)(); //Ensure that all memory transfers have completed and that the data cache has been flushed
+
     i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot
     while(true);
 }

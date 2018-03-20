@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -44,6 +48,8 @@
 #define REG_AESKEYXFIFO     ((vu32 *)0x10009104)
 #define REG_AESKEYYFIFO     ((vu32 *)0x10009108)
 
+#define REGs_AESTWLKEYS     (*((vu32 (*)[4][3][4])0x10009040))
+
 #define AES_CCM_DECRYPT_MODE    (0u << 27)
 #define AES_CCM_ENCRYPT_MODE    (1u << 27)
 #define AES_CTR_MODE            (2u << 27)
@@ -62,10 +68,12 @@
 #define AES_CNT_FLUSH_READ      0x00000800
 #define AES_CNT_FLUSH_WRITE     0x00000400
 
-#define AES_INPUT_BE        (AES_CNT_INPUT_ENDIAN)
-#define AES_INPUT_LE        0
-#define AES_INPUT_NORMAL    (AES_CNT_INPUT_ORDER)
-#define AES_INPUT_REVERSED  0
+#define AES_INPUT_BE            (AES_CNT_INPUT_ENDIAN)
+#define AES_INPUT_LE            0
+#define AES_INPUT_NORMAL        (AES_CNT_INPUT_ORDER)
+#define AES_INPUT_REVERSED      0
+#define AES_INPUT_TWLNORMAL     0
+#define AES_INPUT_TWLREVERSED   (AES_CNT_INPUT_ORDER)
 
 #define AES_BLOCK_SIZE      0x10
 
@@ -102,15 +110,15 @@
 #define SHA_224_HASH_SIZE   (224 / 8)
 #define SHA_1_HASH_SIZE     (160 / 8)
 
-extern u32 emuOffset;
 extern FirmwareSource firmSource;
 
-void ctrNandInit(void);
+void sha(void *res, const void *src, u32 size, u32 mode);
+
+int ctrNandInit(void);
 int ctrNandRead(u32 sector, u32 sectorCount, u8 *outbuf);
 int ctrNandWrite(u32 sector, u32 sectorCount, const u8 *inbuf);
-void set6x7xKeys(void);
-bool decryptExeFs(Cxi *cxi);
-bool decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
+u32 decryptExeFs(Cxi *cxi);
+u32 decryptNusFirm(const Ticket *ticket, Cxi *cxi, u32 ncchSize);
+void setupKeyslots(void);
 void kernel9Loader(Arm9Bin *arm9Section);
 void computePinHash(u8 *outbuf, const u8 *inbuf);
-void backupAndRestoreShaHash(bool isRestore);

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -30,9 +34,16 @@
 #include "screen.h"
 #include "draw.h"
 #include "cache.h"
+#include "fmt.h"
+#include "strings.h"
+#include "fs.h"
 
 static void startChrono(void)
 {
+    static bool isChronoStarted = false;
+
+    if(isChronoStarted) return;
+
     REG_TIMER_CNT(0) = 0; //67MHz
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 4; //Count-up
 
@@ -40,6 +51,8 @@ static void startChrono(void)
 
     REG_TIMER_CNT(0) = 0x80; //67MHz; enabled
     for(u32 i = 1; i < 4; i++) REG_TIMER_CNT(i) = 0x84; //Count-up; enabled
+
+    isChronoStarted = true;
 }
 
 static u64 chrono(void)
@@ -55,13 +68,16 @@ static u64 chrono(void)
 u32 waitInput(bool isMenu)
 {
     static u64 dPadDelay = 0ULL;
+    u64 initialValue = 0ULL;
     u32 key,
         oldKey = HID_PAD;
+    bool shouldShellShutdown = bootType != B9SNTR && bootType != NTR;
 
     if(isMenu)
     {
         dPadDelay = dPadDelay > 0ULL ? 87ULL : 143ULL;
         startChrono();
+        initialValue = chrono();
     }
 
     while(true)
@@ -70,13 +86,14 @@ u32 waitInput(bool isMenu)
 
         if(!key)
         {
-            if(i2cReadRegister(I2C_DEV_MCU, 0x10) == 1) mcuPowerOff();
+        	if((!(i2cReadRegister(I2C_DEV_MCU, 0xF) & 2) && shouldShellShutdown) || 
+        	   (i2cReadRegister(I2C_DEV_MCU, 0x10) & 1) == 1) mcuPowerOff();
             oldKey = 0;
             dPadDelay = 0;
             continue;
         }
 
-        if(key == oldKey && (!isMenu || (!(key & DPAD_BUTTONS) || chrono() < dPadDelay))) continue;
+        if(key == oldKey && (!isMenu || (!(key & DPAD_BUTTONS) || chrono() - initialValue < dPadDelay))) continue;
 
         //Make sure the key is pressed
         u32 i;
@@ -89,7 +106,10 @@ u32 waitInput(bool isMenu)
 
 void mcuPowerOff(void)
 {
-    if(!ISFIRMLAUNCH && ARESCREENSINITED) clearScreens(false);
+    if(bootType != FIRMLAUNCH && ARESCREENSINITIALIZED) clearScreens(false);
+
+    //Shutdown LCD
+    if(ARESCREENSINITIALIZED) i2cWriteRegister(I2C_DEV_MCU, 0x22, 1 << 0);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
@@ -101,21 +121,32 @@ void mcuPowerOff(void)
 void wait(u64 amount)
 {
     startChrono();
-    while(chrono() < amount);
+
+    u64 initialValue = chrono();
+
+    while(chrono() - initialValue < amount);
 }
 
-void error(const char *message)
+void error(const char *fmt, ...)
 {
-    if(!ISFIRMLAUNCH)
+    char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
+
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+
+    if(bootType != FIRMLAUNCH)
     {
         initScreens();
 
-        drawString("An error has occurred:", true, 10, 10, COLOR_RED);
-        u32 posY = drawString(message, true, 10, 30, COLOR_WHITE);
-        drawString("Press any button to shutdown", true, 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+        drawString(true, 10, 10, COLOR_RED, "An error has occurred:");
+        u32 posY = drawString(true, 10, 30, COLOR_WHITE, buf);
+        drawString(true, 10, posY + 2 * SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
 
         waitInput(false);
     }
+    else fileWrite(buf, "firmlauncherror.txt", strlen(buf));
 
     mcuPowerOff();
 }

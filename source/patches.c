@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,49 +15,31 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
 *   Signature patches by an unknown author
+*   Signature patches for old FIRMs by SciresM
 *   firmlaunches patching code originally by delebile
 *   FIRM partition writes patches by delebile
-*   ARM11 modules patching code originally by Subv
 *   Idea for svcBreak patches from yellows8 and others on #3dsdev
+*   TWL_FIRM patches by Steveice10 and others
 */
 
 #include "patches.h"
 #include "fs.h"
+#include "exceptions.h"
 #include "memory.h"
 #include "config.h"
 #include "utils.h"
 #include "../build/bundled.h"
-
-static inline void pathChanger(u8 *pos)
-{
-    const char *pathFile = "path.txt";
-    u8 path[57];
-
-    u32 pathSize = fileRead(path, pathFile, sizeof(path));
-
-    if(pathSize < 6) return;
-
-    if(path[pathSize - 1] == 0xA) pathSize--;
-    if(path[pathSize - 1] == 0xD) pathSize--;
-
-    if(pathSize < 6 || pathSize > 55 || path[0] != '/' || memcmp(path + pathSize - 4, ".bin", 4) != 0) return;
-
-    u16 finalPath[56];
-    for(u32 i = 0; i < pathSize; i++)
-        finalPath[i] = (u16)path[i];
-
-    finalPath[pathSize] = 0;
-
-    u8 *posPath = memsearch(pos, u"sd", reboot_bin_size, 4) + 0xA;
-    memcpy(posPath, finalPath, (pathSize + 1) * 2);
-}
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -73,38 +55,216 @@ u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return (u8 *)off + (off->ncch.exeFsOffset + 1) * 0x200;
 }
 
-u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11DAbtHandler, u32 **arm11ExceptionsPage)
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
-    const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5},
-             pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
+    static const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
     *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
-    *freeK11Space = memsearch(pos, pattern2, size, sizeof(pattern2));
 
-    if(*arm11ExceptionsPage == NULL || *freeK11Space == NULL) error("Failed to get Kernel11 data.");
+    if(*arm11ExceptionsPage == NULL) error("Failed to get Kernel11 data.");
 
     u32 *arm11SvcTable;
 
     *arm11ExceptionsPage -= 0xB;
     u32 svcOffset = (-(((*arm11ExceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-    u32 dabtOffset = (-(((*arm11ExceptionsPage)[4] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
     u32 pointedInstructionVA = 0xFFFF0008 - svcOffset;
     *baseK11VA = pointedInstructionVA & 0xFFFF0000; //This assumes that the pointed instruction has an offset < 0x10000, iirc that's always the case
     arm11SvcTable = *arm11SvcHandler = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA); //SVC handler address
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
 
-    pointedInstructionVA = 0xFFFF0010 - dabtOffset;
-    *arm11DAbtHandler = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA);
-    (*freeK11Space)++;
+    u32 *freeSpace;
+    for(freeSpace = *arm11ExceptionsPage; freeSpace < *arm11ExceptionsPage + 0x400 && *freeSpace != 0xFFFFFFFF; freeSpace++);
+    *freeK11Space = (u8 *) freeSpace;
 
     return arm11SvcTable;
+}
+
+// For ARM prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
+static inline u32 computeARMFrameSize(const u32 *prolog)
+{
+    const u32 *off;
+
+    for(off = prolog; (*off >> 16) != 0xE92D; off++); // look for stmfd sp! = push
+    u32 nbPushedRegs = 0;
+    for(u32 val = *off & 0xFFFF; val != 0; val >>= 1) // 1 bit = 1 pushed register
+        nbPushedRegs += val & 1;
+    for(; (*off >> 8) != 0xE24DD0; off++); // look for sub sp, #offset
+    u32 localVariablesSpaceSize = *off & 0xFF;
+
+    return 4 * nbPushedRegs + localVariablesSpaceSize;
+}
+
+static inline u32 *getKernel11HandlerVAPos(u8 *pos, u32 *arm11ExceptionsPage, u32 baseK11VA, u32 id)
+{
+    u32 off = ((-((arm11ExceptionsPage[id] & 0xFFFFFF) << 2)) & (0xFFFFFF << 2)) - 8;
+    u32 pointedInstructionVA = 0xFFFF0000 + 4 * id - off;
+    return (u32 *)(pos + pointedInstructionVA - baseK11VA + 8);
+}
+
+u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+{
+    //The parameters to be passed on to the kernel ext
+    //Please keep that in sync with the definition in k11_extension/source/main.c
+    struct KExtParameters
+    {
+        u32 __attribute__((aligned(0x400))) L2MMUTableFor0x40000000[256];
+        u32 basePA;
+        void *originalHandlers[4];
+        u32 L1MMUTableAddrs[4];
+
+        struct CfwInfo
+        {
+            char magic[4];
+
+            u8 versionMajor;
+            u8 versionMinor;
+            u8 versionBuild;
+            u8 flags;
+
+            u32 commitHash;
+
+            u16 configFormatVersionMajor, configFormatVersionMinor;
+            u32 config, multiConfig, bootConfig;
+            u64 hbldr3dsxTitleId;
+            u32 rosalinaMenuCombo;
+        } info;
+    };
+
+    static const u8 patternHook1[] = {0x02, 0xC2, 0xA0, 0xE3, 0xFF}; //MMU setup hook
+    static const u8 patternHook2[] = {0x08, 0x00, 0xA4, 0xE5, 0x02, 0x10, 0x80, 0xE0, 0x08, 0x10, 0x84, 0xE5}; //FCRAM layout setup hook
+    static const u8 patternHook3_4[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA}; //SGI0 setup code, etc.
+
+    //Our kernel11 extension is initially loaded in VRAM
+    u32 kextTotalSize = *(u32 *)0x18000020 - 0x40000000;
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
+
+    u32 *hookVeneers = (u32 *)*freeK11Space;
+    u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
+
+    hookVeneers[0] = 0xE51FF004; //ldr pc, [pc, #-8+4]
+    hookVeneers[1] = 0x18000004;
+    hookVeneers[2] = 0xE51FF004;
+    hookVeneers[3] = 0x40000000;
+    hookVeneers[4] = 0xE51FF004;
+    hookVeneers[5] = 0x40000008;
+    hookVeneers[6] = 0xE51FF004;
+    hookVeneers[7] = 0x4000000C;
+
+    (*freeK11Space) += 32;
+
+    //MMU setup hook
+    u32 *off = (u32 *)memsearch(pos, patternHook1, size, sizeof(patternHook1));
+    if(off == NULL) return 1;
+    *off = MAKE_BRANCH_LINK(off, hookVeneers);
+
+    //Most important hook: FCRAM layout setup hook
+    off = (u32 *)memsearch(pos, patternHook2, size, sizeof(patternHook2));
+    if(off == NULL) return 1;
+    off += 2;
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 8);
+
+    //Bind SGI0 hook
+    //Look for cpsie i and place our hook in the nop 2 instructions before
+    off = (u32 *)memsearch(pos, patternHook3_4, size, 12);
+    if(off == NULL) return 1;
+    for(; *off != 0xF1080080; off--);
+    off -= 2;
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 16);
+
+    //Config hook (after the configuration memory fields have been filled)
+    for(; *off != 0xE1A00000; off++);
+    off += 4;
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 24);
+
+    struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - 0x40000000 + 0x18000000);
+    p->basePA = dstKextPA;
+
+    for(u32 i = 0; i < 4; i++)
+    {
+        u32 *handlerPos = getKernel11HandlerVAPos(pos, arm11ExceptionsPage, baseK11VA, 1 + i);
+        p->originalHandlers[i] = (void *)*handlerPos;
+        *handlerPos = 0x40000010 + 4 * i;
+    }
+
+    struct CfwInfo *info = &p->info;
+    memcpy(&info->magic, "LUMA", 4);
+    info->commitHash = COMMIT_HASH;
+    info->configFormatVersionMajor = configData.formatVersionMajor;
+    info->configFormatVersionMinor = configData.formatVersionMinor;
+    info->config = configData.config;
+    info->multiConfig = configData.multiConfig;
+    info->bootConfig = configData.bootConfig;
+    info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
+    info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
+    info->versionMajor = VERSION_MAJOR;
+    info->versionMinor = VERSION_MINOR;
+    info->versionBuild = VERSION_BUILD;
+
+    if(ISRELEASE) info->flags = 1;
+    if(ISN3DS) info->flags |= 1 << 4;
+    if(isSafeMode) info->flags |= 1 << 5;
+    if(isSdMode) info->flags |= 1 << 6;
+
+    return 0;
+}
+
+u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage)
+{
+    static const u8 patternKPanic[] = {0x02, 0x0B, 0x44, 0xE2};
+    static const u8 patternKThreadDebugReschedule[] = {0x34, 0x20, 0xD4, 0xE5, 0x00, 0x00, 0x55, 0xE3, 0x80, 0x00, 0xA0, 0x13};
+
+    //Assumption: ControlMemory, DebugActiveProcess and KernelSetState are in the first 0x20000 bytes
+    //Patch ControlMemory
+    u8 *instrPos = pos + (arm11SvcTable[1] + 20 - baseK11VA);
+    s32 displ = (*(u32 *)instrPos & 0xFFFFFF) << 2;
+    displ = (displ << 6) >> 6; // sign extend
+
+    u8 *ControlMemoryPos = instrPos + 8 + displ;
+    u32 *off;
+
+    /*
+        Here we replace currentProcess->processID == 1 by additionnalParameter == 1.
+        This patch should be generic enough to work even on firmware version 5.0.
+
+        It effectively changes the prototype of the ControlMemory function which
+        only caller is the svc 0x01 handler on OFW.
+    */
+    for(off = (u32 *)ControlMemoryPos; (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
+    off -= 2;
+    *off = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)ControlMemoryPos)); // ldr r0, [sp, #(frameSize + 8)]
+
+    //Patch DebugActiveProcess
+    for(off = (u32 *)(pos + (arm11SvcTable[0x60] - baseK11VA)); *off != 0xE3110001; off++);
+    *off = 0xE3B01001; // tst r1, #1 -> movs r1, #1
+
+    for(off = (u32 *)(pos + (arm11SvcTable[0x7C] - baseK11VA)); off[0] != 0xE5D00001 || off[1] != 0xE3500000; off++);
+    off[2] = 0xE1A00000; // in case 6: beq -> nop
+
+    //Patch kernelpanic
+    off = (u32 *)memsearch(pos, patternKPanic, size, sizeof(patternKPanic));
+    if(off == NULL)
+        return 1;
+
+    off[-6] = 0xE12FFF7E;
+
+    //Redirect enableUserExceptionHandlersForCPUExc (= true)
+    for(off = arm11ExceptionsPage; *off != 0x96007F9; off++);
+    off[1] = 0x40000028;
+
+    off = (u32 *)memsearch(pos, patternKThreadDebugReschedule, size, sizeof(patternKThreadDebugReschedule));
+    if(off == NULL)
+        return 1;
+
+    off[-5] = 0xE51FF004;
+    off[-4] = 0x4000002C;
+
+    return 0;
 }
 
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
     //Look for signature checks
-    const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
-             pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
+    static const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
+                    pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
@@ -121,19 +281,15 @@ u32 patchSignatureChecks(u8 *pos, u32 size)
 u32 patchOldSignatureChecks(u8 *pos, u32 size)
 {
     // Look for signature checks
-    // Pattern 2 works for 1.x, 2.x + factory FIRM.
-    // For patchSignatureChecks-style (temp - 1 instead of temp - 3):
-    // 1.x+2.x: pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
-    // factory: pattern2[] = {0xB5, 0x16, 0x4E, 0x0C};
-    const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
-             pattern2[] = {0x4E, 0x0C, 0x00, 0x71, 0x68};
+    static const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
+                    pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
 
     if(off == NULL || temp == NULL) return 1;
 
-    u16 *off2 = (u16 *)(temp - 3);
+    u16 *off2 = (u16 *)(temp - 1);
     *off = off2[0] = 0x2000;
     off2[1] = 0x4770;
 
@@ -143,7 +299,12 @@ u32 patchOldSignatureChecks(u8 *pos, u32 size)
 u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 {
     //Look for firmlaunch code
-    const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
+    static const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
+
+    u32 pathLen;
+    for(pathLen = 0; pathLen < 41 && launchedPath[pathLen] != 0; pathLen++);
+
+    if(launchedPath[pathLen] != 0) return 1;
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -161,7 +322,8 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_bin_size, 4);
     *pos_fopen = fOpenOffset;
 
-    if(CONFIG(USECUSTOMPATH)) pathChanger(off);
+    u16 *fname = (u16 *)memsearch(off, "FILE", reboot_bin_size, 8);
+    memcpy(fname, launchedPath, 2 * (1 + pathLen));
 
     return 0;
 }
@@ -173,7 +335,7 @@ u32 patchFirmWrites(u8 *pos, u32 size)
 
     if(off == NULL) return 1;
 
-    const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
+    static const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
     u16 *off2 = (u16 *)memsearch(off - 0x100, pattern, 0x100, sizeof(pattern));
 
@@ -188,7 +350,7 @@ u32 patchFirmWrites(u8 *pos, u32 size)
 u32 patchOldFirmWrites(u8 *pos, u32 size)
 {
     //Look for FIRM writing code
-    const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
+    static const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -202,7 +364,7 @@ u32 patchOldFirmWrites(u8 *pos, u32 size)
 
 u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
 {
-    const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
+    static const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -218,7 +380,7 @@ u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
 
 u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x28, 0x2A, 0xD0, 0x08};
+    static const u8 pattern[] = {0x28, 0x2A, 0xD0, 0x08};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -232,7 +394,7 @@ u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size)
 
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x07, 0xD1, 0x28, 0x7A};
+    static const u8 pattern[] = {0x07, 0xD1, 0x28, 0x7A};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -246,7 +408,7 @@ u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size)
 
 u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x03, 0x7C, 0x28, 0x00};
+    static const u8 pattern[] = {0x03, 0x7C, 0x28, 0x00};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -257,87 +419,44 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
     return 0;
 }
 
-u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
+u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
 {
-    if(arm11SvcTable[0x7B] != 0) return 0;
+    static const u8 moduleLoadingPattern[]  = {0xE2, 0x05, 0x00, 0x57},
+                    modulePidPattern[] = {0x06, 0xA0, 0xE1, 0xF2}; //GetSystemInfo
 
-    //Official implementation of svcBackdoor
-    const u8 svcBackdoor[] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
-                              0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
-                              0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
-                              0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
-                              0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
-                              0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
-                              0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
-                              0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
-                              0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
-                              0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
+    u8 *off = memsearch(pos, moduleLoadingPattern, size, 4);
 
-    if(*(u32 *)(*freeK11Space + sizeof(svcBackdoor) - 4) != 0xFFFFFFFF) return 1;
+    if(off == NULL) return 1;
 
-    memcpy(*freeK11Space, svcBackdoor, sizeof(svcBackdoor));
+    off[1]++;
 
-    arm11SvcTable[0x7B] = baseK11VA + *freeK11Space - pos;
-    *freeK11Space += sizeof(svcBackdoor);
+    u32 *off32;
+    for(off32 = (u32 *)(off - 3); *off32 != 0xE59F0000; off32++);
+    off32 += 2;
+    off32[1] = off32[0] + modulesSize;
+    for(; *off32 != section0size; off32++);
+    *off32 += ((modulesSize + 0x1FF) >> 9) << 9;
 
-    return 0;
-}
+    off = memsearch(pos, modulePidPattern, size, 4);
 
-u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode)
-{
-    if(*(u32 *)(*freeK11Space + svcGetCFWInfo_bin_size - 4) != 0xFFFFFFFF) return 1;
+    if(off == NULL) return 1;
 
-    memcpy(*freeK11Space, svcGetCFWInfo_bin, svcGetCFWInfo_bin_size);
-
-    struct CfwInfo
-    {
-        char magic[4];
-
-        u8 versionMajor;
-        u8 versionMinor;
-        u8 versionBuild;
-        u8 flags;
-
-        u32 commitHash;
-
-        u32 config;
-    } __attribute__((packed)) *info = (struct CfwInfo *)memsearch(*freeK11Space, "LUMA", svcGetCFWInfo_bin_size, 4);
-
-    const char *rev = REVISION;
-
-    info->commitHash = COMMIT_HASH;
-    info->config = configData.config;
-    info->versionMajor = (u8)(rev[1] - '0');
-    info->versionMinor = (u8)(rev[3] - '0');
-
-    bool isRelease;
-
-    if(rev[4] == '.')
-    {
-        info->versionBuild = (u8)(rev[5] - '0');
-        isRelease = rev[6] == 0;
-    }
-    else isRelease = rev[4] == 0;
-
-    if(isRelease) info->flags = 1;
-    if(ISN3DS) info->flags |= 1 << 4;
-    if(isSafeMode) info->flags |= 1 << 5;
-
-    arm11SvcTable[0x2E] = baseK11VA + *freeK11Space - pos; //Stubbed svc
-    *freeK11Space += svcGetCFWInfo_bin_size;
+    off[0xB] = 6;
 
     return 0;
 }
 
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x80, 0xE5, 0x40, 0x1C};
+    static const u8 pattern[] = {0x80, 0xE5, 0x40, 0x1C};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
     if(temp == NULL) return 1;
 
-    u32 *off = (u32 *)(temp - 0xA);
+    u32 *off;
+
+    for(off = (u32 *)(temp - 2); *off != 0xE5801000; off--); //Until str r1, [r0]
 
     for(u32 r0 = 0x08000000; *off != 0xE3A01040; off++) //Until mov r1, #0x40
     {
@@ -360,28 +479,12 @@ u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
     return 0;
 }
 
-u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
-{
-    const u8 pattern[] = {0x1B, 0x50, 0xA0, 0xE3}, //Get TitleID from CodeSet
-             pattern2[] = {0xE8, 0x13, 0x00, 0x02}; //Call exception dispatcher
-
-    u32 *loadCodeSet = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
-    u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
-
-    if(loadCodeSet == NULL || temp == NULL) error("Failed to get ARM11 exception handlers data.");
-
-    loadCodeSet -= 2;
-    *codeSetOffset = *loadCodeSet & 0xFFF;
-
-    return *(u32 *)(temp + 9);
-}
-
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 {
     //Stub svcBreak with "bkpt 65535" so we can debug the panic
 
     //Look for the svc handler
-    const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
+    static const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
 
     u32 *arm9SvcTable = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -390,21 +493,22 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     while(*arm9SvcTable != 0) arm9SvcTable++; //Look for SVC0 (NULL)
 
     u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
-    *addr = 0xE12FFF7F;
+
+    /*
+        mov r8, sp
+        bkpt 0xffff
+    */
+    addr[0] = 0xE1A0800D;
+    addr[1] = 0xE12FFF7F;
+
+    *(vu32 *)0x01FF8004 = arm9SvcTable[0x3C]; //BreakPtr
 
     return 0;
 }
 
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
-{
-    //Same as above, for NATIVE_FIRM ARM11
-    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
-    *addr = 0xE12FFF7F;
-}
-
 u32 patchKernel9Panic(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
+    static const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -416,22 +520,9 @@ u32 patchKernel9Panic(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchKernel11Panic(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {0x02, 0x0B, 0x44, 0xE2};
-
-    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
-
-    if(off == NULL) return 1;
-
-    *off = 0xE12FFF7E;
-
-    return 0;
-}
-
 u32 patchP9AccessChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x00, 0x08, 0x49, 0x68};
+    static const u8 pattern[] = {0x00, 0x08, 0x49, 0x68};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -444,49 +535,10 @@ u32 patchP9AccessChecks(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchArm11SvcAccessChecks(u32 *arm11SvcHandler, u32 *endPos)
-{
-    while(*arm11SvcHandler != 0xE11A0E1B && arm11SvcHandler < endPos) arm11SvcHandler++; //TST R10, R11,LSL LR
-
-    if(arm11SvcHandler == endPos) return 1;
-
-    *arm11SvcHandler = 0xE3B0A001; //MOVS R10, #1
-
-    return 0;
-}
-
-u32 patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space, bool patchGames)
-{
-    /* We have to detour a function in the ARM11 kernel because builtin modules
-       are compressed in memory and are only decompressed at runtime */
-
-    //Check that we have enough free space
-    if(*(u32 *)(*freeK11Space + k11modules_bin_size - 4) != 0xFFFFFFFF) return patchGames ? 1 : 0;
-
-    //Look for the code that decompresses the .code section of the builtin modules
-    const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};
-
-    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
-
-    if(temp == NULL) return 1;
-
-    //Inject our code into the free space
-    memcpy(*freeK11Space, k11modules_bin, k11modules_bin_size);
-
-    u32 *off = (u32 *)(temp - 0xB);
-
-    //Inject a jump (BL) instruction to our code at the offset we found
-    *off = 0xEB000000 | (((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF);
-
-    *freeK11Space += k11modules_bin_size;
-
-    return 0;
-}
-
 u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 {
     //Look for UNITINFO value being set during kernel sync
-    const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
+    static const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -500,7 +552,7 @@ u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 
 u32 patchLgySignatureChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
+    static const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -516,7 +568,7 @@ u32 patchLgySignatureChecks(u8 *pos, u32 size)
 
 u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x20, 0xF6, 0xE7, 0x7F};
+    static const u8 pattern[] = {0x20, 0xF6, 0xE7, 0x7F};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -530,7 +582,7 @@ u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
 
 u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
+    static const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -544,7 +596,7 @@ u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
 
 u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
+    static const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -558,7 +610,7 @@ u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
 
 u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 {
-    const u8 pattern[] = {0x25, 0x20, 0x00, 0x0E};
+    static const u8 pattern[] = {0x25, 0x20, 0x00, 0x0E};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -578,7 +630,7 @@ u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 
 u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x06, 0xF0, 0xA0, 0xFD};
+    static const u8 pattern[] = {0x06, 0xF0, 0xA0, 0xFD};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -592,7 +644,7 @@ u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
 
 u32 patchTwlShaHashChecks(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x10, 0xB5, 0x14, 0x22};
+    static const u8 pattern[] = {0x10, 0xB5, 0x14, 0x22};
 
     u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
@@ -606,7 +658,7 @@ u32 patchTwlShaHashChecks(u8 *pos, u32 size)
 
 u32 patchAgbBootSplash(u8 *pos, u32 size)
 {
-    const u8 pattern[] = {0x00, 0x00, 0x01, 0xEF};
+    static const u8 pattern[] = {0x00, 0x00, 0x01, 0xEF};
 
     u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 

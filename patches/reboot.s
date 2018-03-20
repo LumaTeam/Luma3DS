@@ -2,18 +2,27 @@
 
 .arm.little
 
-payload_addr equ 0x23F00000   ; Brahma payload address
-payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeBrah supports)
+copy_launch_stub_stack_top      equ 0x01FFB800
+copy_launch_stub_stack_bottom   equ 0x01FFA800
+copy_launch_stub_addr           equ 0x01FF9000
+
+argv_addr                       equ (copy_launch_stub_stack_bottom - 0x100)
+fname_addr                      equ (copy_launch_stub_stack_bottom - 0x200)
+low_tid_addr                    equ (copy_launch_stub_stack_bottom - 0x300)
+
+firm_addr                       equ 0x20001000
+firm_maxsize                    equ 0x07FFF000
 
 .create "build/reboot.bin", 0
 .arm
     ; Interesting registers and locations to keep in mind, set just before this code is ran:
     ; - r1: FIRM path in exefs.
-    ; - r7: pointer to file object
+    ; - r7 (or r8): pointer to file object
     ;   - *r7: vtable
-    ;       - *(vtable + 0x28): fread function 
+    ;       - *(vtable + 0x28): fread function
     ;   - *(r7 + 8): file handle
 
+    sub r7, r0, #8
     mov r8, r1
 
     pxi_wait_recv:
@@ -27,41 +36,41 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
         cmp r0, r2
         bne pxi_wait_recv
 
-    mov r4, #2
+    ; Open file
+    add r0, r7, #8
+    adr r1, fname
+    mov r2, #1
+    ldr r6, [fopen]
+    orr r6, 1
+    blx r6
+    cmp r0, #0
+    bne panic
 
-    open_payload:
-        ; Open file
-        add r0, r7, #8
-        adr r1, fname
-        mov r2, #1
-        ldr r6, [fopen]
-        orr r6, 1
-        blx r6
-        cmp r0, #0
-        beq read_payload
-        subs r4, r4, #1
-        beq panic
-        adr r0, fname
-        adr r1, nand_mount
-        mov r2, #8
-        bl memcpy16
-        b open_payload
+    ; Read file
+    mov r0, r7
+    adr r1, bytes_read
+    ldr r2, =firm_addr
+    ldr r3, =firm_maxsize
+    ldr r6, [r7]
+    ldr r6, [r6, #0x28]
+    blx r6
 
-    read_payload:
-        ; Read file
-        mov r0, r7
-        adr r1, bytes_read
-        ldr r2, =payload_addr
-        ldr r3, =payload_maxsize
-        ldr r6, [r7]
-        ldr r6, [r6, #0x28]
-        blx r6
-
-    ; Copy the low TID (in UTF-16) of the wanted firm to the 5th byte of the payload
-    ldr r0, =payload_addr + 4
+    ; Copy the low TID (in UTF-16) of the wanted firm
+    ldr r0, =low_tid_addr
     add r1, r8, #0x1A
     mov r2, #0x10
     bl memcpy16
+
+    ; Copy argv[0]
+    ldr r0, =fname_addr
+    adr r1, fname
+    mov r2, #82
+    bl memcpy16
+
+    ldr r0, =argv_addr
+    ldr r1, =fname_addr
+    ldr r2, =low_tid_addr
+    stmia r0, {r1, r2}
 
     ; Set kernel state
     mov r0, #0
@@ -80,12 +89,14 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
         b die
 
     memcpy16:
+        cmp r2, #0
+        bxeq lr
         add r2, r0, r2
-        copy_loop:
+        copy_loop16:
             ldrh r3, [r1], #2
             strh r3, [r0], #2
             cmp r0, r2
-            blo copy_loop
+            blo copy_loop16
         bx lr
 
     panic:
@@ -97,17 +108,77 @@ payload_maxsize equ 0x100000  ; Maximum size for the payload (maximum that CakeB
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-fname: .dcw "sdmc:/arm9loaderhax.bin"
-       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-.pool
-nand_mount: .dcw "nand"
+
+.area 82, 0
+fname: .ascii "FILE"
+.endarea
 
 .align 4
     kernelcode_start:
 
+    msr cpsr_cxsf, #0xD3  ; disable interrupts and clear flags
+
+    ldr sp, =copy_launch_stub_stack_top
+
+    ldr r0, =copy_launch_stub_addr
+    adr r1, copy_launch_stub
+    mov r2, #(copy_launch_stub_end - copy_launch_stub)
+    bl memcpy32
+
     ; Disable MPU
     ldr r0, =0x42078 ; alt vector select, enable itcm
     mcr p15, 0, r0, c1, c0, 0
+
+    bl flushCaches
+
+    ldr r0, =copy_launch_stub_addr
+    bx r0
+
+    copy_launch_stub:
+
+    ldr r4, =firm_addr
+
+    mov r5, #0
+    load_section_loop:
+        ; Such checks. Very ghetto. Wow.
+        add r3, r4, #0x40
+        add r3, r5,lsl #5
+        add r3, r5,lsl #4
+        ldmia r3, {r6-r8}
+        cmp r8, #0
+        movne r0, r7
+        addne r1, r4, r6
+        movne r2, r8
+        blne memcpy32
+        add r5, #1
+        cmp r5, #4
+        blo load_section_loop
+
+    mov r0, #2 ; argc
+    ldr r1, =argv_addr ; argv
+    ldr r2, =0xBABE    ; magic word
+
+    mov r5, #0x20000000
+    ldr r6, [r4, #0x08]
+    str r6, [r5, #-4]   ; store arm11 entrypoint
+
+    ldr lr, [r4, #0x0c]
+    bx lr
+
+    memcpy32:
+    add r2, r0, r2
+    copy_loop32:
+        ldr r3, [r1], #4
+        str r3, [r0], #4
+        cmp r0, r2
+        blo copy_loop32
+    bx lr
+
+    .pool
+
+    copy_launch_stub_end:
+
+    flushCaches:
 
     ; Clean and flush data cache
     mov r1, #0 ; segment counter
@@ -131,9 +202,6 @@ nand_mount: .dcw "nand"
     ; Flush instruction cache
     mcr p15, 0, r1, c7, c5, 0
 
-    ; Jump to payload
-    ldr r0, =payload_addr
-    bx r0
+    bx lr
 
-.pool
 .close

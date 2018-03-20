@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,48 +15,52 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #pragma once
 
 #include "types.h"
 
-#define CONFIG(a)        (((configData.config >> (a + 20)) & 1) != 0)
-#define MULTICONFIG(a)   ((configData.config >> (a * 2 + 8)) & 3)
-#define BOOTCONFIG(a, b) ((configData.config >> a) & b)
+#define CONFIG(a)        (((configData.config >> (a)) & 1) != 0)
+#define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
+#define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
 #define CONFIG_FILE         "config.bin"
-#define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 7
+#define CONFIG_VERSIONMAJOR 2
+#define CONFIG_VERSIONMINOR 3
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
-#define BOOTCFG_A9LH         BOOTCONFIG(6, 1)
-#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(7, 1)
+#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(6, 1)
+#define BOOTCFG_NTRCARDBOOT  BOOTCONFIG(7, 1)
 
 enum multiOptions
 {
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
+    SPLASH_DURATION,
     PIN,
-    NEWCPU,
-    DEVOPTIONS
+    NEWCPU
 };
 
 enum singleOptions
 {
-    AUTOBOOTSYS = 0,
-    USESYSFIRM,
+    AUTOBOOTEMU = 0,
+    USEEMUFIRM,
     LOADEXTFIRMSANDMODULES,
-    USECUSTOMPATH,
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHUNITINFO,
+    DISABLEARM11EXCHANDLERS
 };
 
 typedef enum ConfigurationStatus
@@ -66,6 +70,8 @@ typedef enum ConfigurationStatus
     CREATE_CONFIGURATION
 } ConfigurationStatus;
 
+extern CfgData configData;
+
 bool readConfig(void);
-void writeConfig(ConfigurationStatus needConfig, u32 configTemp);
-void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode);
+void writeConfig(bool isConfigOptions);
+void configMenu(bool oldPinStatus, u32 oldPinMode);

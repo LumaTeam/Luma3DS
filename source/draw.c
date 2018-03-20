@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,13 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*   Additional Terms 7.b of GPLv3 applies to this file: Requiring preservation of specified
-*   reasonable legal notices or author attributions in that material or in the Appropriate Legal
-*   Notices displayed by works containing it.
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 /*
@@ -30,12 +34,14 @@
 #include "screen.h"
 #include "utils.h"
 #include "fs.h"
+#include "fmt.h"
 #include "font.h"
+#include "config.h"
 
 bool loadSplash(void)
 {
-    const char *topSplashFile = "splash.bin",
-               *bottomSplashFile = "splashbottom.bin";
+    static const char *topSplashFile = "splash.bin",
+                      *bottomSplashFile = "splashbottom.bin";
 
     bool isTopSplashValid = getFileSize(topSplashFile) == SCREEN_TOP_FBSIZE,
          isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE;
@@ -44,7 +50,6 @@ bool loadSplash(void)
     if(!isTopSplashValid && !isBottomSplashValid) return false;
 
     initScreens();
-    clearScreens(true);
 
     if(isTopSplashValid) isTopSplashValid = fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE) == SCREEN_TOP_FBSIZE;
     if(isBottomSplashValid) isBottomSplashValid = fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
@@ -52,12 +57,14 @@ bool loadSplash(void)
     if(!isTopSplashValid && !isBottomSplashValid) return false;
 
     swapFramebuffers(true);
-    wait(3000ULL);
+
+    u32 durationIndex = MULTICONFIG(SPLASH_DURATION);
+    wait(1000ULL + (durationIndex * 2000ULL));
 
     return true;
 }
 
-void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 color)
+void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character)
 {
     u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
 
@@ -77,7 +84,7 @@ void drawCharacter(char character, bool isTopScreen, u32 posX, u32 posY, u32 col
     }
 }
 
-u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 color)
+u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string)
 {
     for(u32 i = 0, line_i = 0; i < strlen(string); i++)
         switch(string[i])
@@ -100,11 +107,22 @@ u32 drawString(const char *string, bool isTopScreen, u32 posX, u32 posY, u32 col
                     if(string[i] == ' ') break; //Spaces at the start look weird
                 }
 
-                drawCharacter(string[i], isTopScreen, posX + line_i * SPACING_X, posY, color);
+                drawCharacter(isTopScreen, posX + line_i * SPACING_X, posY, color, string[i]);
 
                 line_i++;
                 break;
         }
 
     return posY;
+}
+
+u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...)
+{
+    char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+
+    return drawString(isTopScreen, posX, posY, color, buf);
 }

@@ -37,23 +37,12 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-        DSTATUS ret;
         static u32 sdmmcInitResult = 4;
 
         if(sdmmcInitResult == 4) sdmmcInitResult = sdmmc_sdcard_init();
 
-        if(pdrv == CTRNAND)
-        {
-            if(!(sdmmcInitResult & 1))
-            {
-                ctrNandInit();
-                ret = 0;
-            }
-            else ret = STA_NOINIT;
-        }
-        else ret = (!(sdmmcInitResult & 2)) ? 0 : STA_NOINIT;
-
-	return ret;
+    return ((pdrv == SDCARD && !(sdmmcInitResult & 2)) ||
+            (pdrv == CTRNAND && !(sdmmcInitResult & 1) && !ctrNandInit())) ? 0 : STA_NOINIT;
 }
 
 
@@ -69,8 +58,8 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-        return ((pdrv == SDCARD && !sdmmc_sdcard_readsectors(sector, count, buff)) ||
-                (pdrv == CTRNAND && !ctrNandRead(sector, count, buff))) ? RES_OK : RES_PARERR;
+    return ((pdrv == SDCARD && !sdmmc_sdcard_readsectors(sector, count, buff)) ||
+            (pdrv == CTRNAND && !ctrNandRead(sector, count, buff))) ? RES_OK : RES_PARERR;
 }
 
 
@@ -87,8 +76,8 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-        return ((pdrv == SDCARD && !sdmmc_sdcard_writesectors(sector, count, buff)) ||
-                (pdrv == CTRNAND && !ctrNandWrite(sector, count, buff))) ? RES_OK : RES_PARERR;
+    return ((pdrv == SDCARD && (*(vu16 *)(SDMMC_BASE + REG_SDSTATUS0) & TMIO_STAT0_WRPROTECT) != 0 && !sdmmc_sdcard_writesectors(sector, count, buff)) ||
+            (pdrv == CTRNAND && !ctrNandWrite(sector, count, buff))) ? RES_OK : RES_PARERR;
 }
 #endif
 
@@ -102,12 +91,11 @@ DRESULT disk_write (
 DRESULT disk_ioctl (
 	__attribute__((unused))
 	BYTE pdrv,		/* Physical drive nmuber (0..) */
-	__attribute__((unused))
 	BYTE cmd,		/* Control code */
 	__attribute__((unused))
 	void *buff		/* Buffer to send/receive control data */
 )
 {
-	return RES_PARERR;
+    return cmd == CTRL_SYNC ? RES_OK : RES_PARERR;
 }
 #endif
