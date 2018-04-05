@@ -43,10 +43,10 @@ Menu rosalinaMenu = {
     "Rosalina menu",
     .nbItems = 10,
     {
-    	{ "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
+        { "New 3DS menu...", MENU, .menu = &N3DSMenu },
+        { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
-        { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
@@ -68,7 +68,7 @@ void RosalinaMenu_ShowCredits(void)
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS credits");
 
-        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Luma3DS (c) 2016-2017 AuroraWright, TuxSH") + SPACING_Y;
+        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Luma3DS (c) 2016-2018 AuroraWright, TuxSH") + SPACING_Y;
 
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "3DSX loading code by fincs");
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Networking code & basic GDB functionality by Stary");
