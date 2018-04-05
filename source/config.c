@@ -81,9 +81,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 {
     static const char *multiOptionsText[]  = { "Default EmuNAND: 1( ) 2( ) 3( ) 4( )",
                                                "Screen brightness: 4( ) 3( ) 2( ) 1( )",
-                                               "Splash: Off( ) Before( ) After( ) payloads",
-                                               "Splash duration: 1( ) 3( ) 5( ) 7( ) seconds",
-                                               "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
+                                               "Splash: Off( ) Before payloads( ) After payloads( )",
+                                               "Splash duration (in seconds): 1( ) 3( ) 5( ) 7( )",
+                                               "PIN lock: Off( ) 4 digits( ) 6 digits( ) 8 digits( )",
                                                "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                              };
 
@@ -94,7 +94,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
                                                "( ) Set developer UNITINFO",
-                                               "( ) Disable ARM11 exception handlers",
+                                               "( ) Disable ARM11 exception handlers (not recommended)",
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
