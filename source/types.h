@@ -129,4 +129,4 @@ extern bool isSdMode;
 extern BootType bootType;
 
 extern u16 launchedFirmTidLow[8];
-extern u16 launchedPath[41];
+extern u16 launchedPath[80+1];

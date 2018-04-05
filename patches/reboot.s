@@ -109,7 +109,7 @@ bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
 
-.area 82, 0
+.area 2*(80+1), 0
 fname: .ascii "FILE"
 .endarea
 

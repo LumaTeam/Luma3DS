@@ -302,7 +302,7 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     static const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
     u32 pathLen;
-    for(pathLen = 0; pathLen < 41 && launchedPath[pathLen] != 0; pathLen++);
+    for(pathLen = 0; pathLen < sizeof(launchedPath)/2 && launchedPath[pathLen] != 0; pathLen++);
 
     if(launchedPath[pathLen] != 0) return 1;
 
