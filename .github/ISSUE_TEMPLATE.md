@@ -6,7 +6,7 @@
 --
 -- Also check the Wiki (https://github.com/AuroraWright/Luma3DS/wiki) before making an issue.
 --
--- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: https://3ds.guide/troubleshooting
+-- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: https://3ds.hacks.guide/troubleshooting
 -- If you're using an emu/redNAND try installing anything on it to sysNAND.
 -- Please make sure to read "Enable game patching" https://github.com/AuroraWright/Luma3DS/wiki/Options-and-usage before posting any issues about the "Enable game patching" option(s).
 --
