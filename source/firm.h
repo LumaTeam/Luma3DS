@@ -1,47 +1,38 @@
 /*
-*   firm.h
+*   This file is part of Luma3DS
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
 */
 
 #pragma once
 
 #include "types.h"
+#include "3dsheaders.h"
 
-#define PDN_MPCORE_CFG (*(vu32 *)0x10140FFC)
-#define PDN_SPI_CNT    (*(vu32 *)0x101401C0)
-
-//FIRM Header layout
-typedef struct firmSectionHeader {
-    u32 offset;
-    u8 *address;
-    u32 size;
-    u32 procType;
-    u8 hash[0x20];
-} firmSectionHeader;
-
-typedef struct firmHeader {
-    u32 magic;
-    u32 reserved1;
-    u8 *arm11Entry;
-    u8 *arm9Entry;
-    u8 reserved2[0x30];
-    firmSectionHeader section[4];
-} firmHeader;
-
-typedef struct patchData {
-    u32 offset[2];
-    union {
-        u8 type0[8];
-        u16 type1;
-    } patch;
-    u32 type;
-} patchData;
-
-static inline void loadFirm(u32 firmType, u32 externalFirm);
-static inline void patchNativeFirm(u32 nandType, u32 emuHeader, u32 a9lhMode);
-static inline void patchEmuNAND(u8 *arm9Section, u8 *proc9Offset, u32 emuHeader);
-static inline void patchReboots(u8 *arm9Section, u8 *proc9Offset);
-static inline void injectLoader(void);
-static inline void patchLegacyFirm(u32 firmType);
-static inline void patchSafeFirm(void);
-static void patchFirmWrites(u8 *arm9Section, u32 mode);
-static inline void launchFirm(u32 bootType);
+u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode);
+void loadHomebrewFirm(u32 pressed);
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isFirmProtEnabled, bool isSafeMode, bool doUnitinfoPatch);
+u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
+u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
+u32 patch1x2xNativeAndSafeFirm(void);
+void launchFirm(int argc, char **argv);

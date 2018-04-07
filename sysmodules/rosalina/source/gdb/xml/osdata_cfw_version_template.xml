@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE target SYSTEM "osdata.dtd">
+<osdata type="cfwversion">
+  <item>
+    <column name="Version">%s</column>
+    <column name="Commit hash">%08x</column>
+    <column name="Release">%s</column>
+  </item>
+</osdata>

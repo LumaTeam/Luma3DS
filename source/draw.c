@@ -1,62 +1,81 @@
 /*
-*   draw.c
+*   This file is part of Luma3DS
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
 *
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+*       * Requiring preservation of specified reasonable legal notices or
+*         author attributions in that material or in the Appropriate Legal
+*         Notices displayed by works containing it.
+*       * Prohibiting misrepresentation of the origin of that material,
+*         or requiring that modified versions of such material be marked in
+*         reasonable ways as different from the original version.
+*/
+
+/*
 *   Code to print to the screen by mid-kid @CakesFW
+*   https://github.com/mid-kid/CakesForeveryWan
 */
 
 #include "draw.h"
-#include "screeninit.h"
+#include "strings.h"
+#include "screen.h"
+#include "utils.h"
 #include "fs.h"
-#include "memory.h"
+#include "fmt.h"
 #include "font.h"
+#include "config.h"
 
-static const struct fb {
-    u8 *top_left;
-    u8 *top_right;
-    u8 *bottom;
-} *const fb = (struct fb *)0x23FFFE00;
-
-static inline int strlen(const char *string)
+bool loadSplash(void)
 {
-    char *stringEnd = (char *)string;
+    static const char *topSplashFile = "splash.bin",
+                      *bottomSplashFile = "splashbottom.bin";
 
-    while(*stringEnd) stringEnd++;
+    bool isTopSplashValid = getFileSize(topSplashFile) == SCREEN_TOP_FBSIZE,
+         isBottomSplashValid = getFileSize(bottomSplashFile) == SCREEN_BOTTOM_FBSIZE;
 
-    return stringEnd - string;
-}
+    //Don't delay boot nor init the screens if no splash images or invalid splash images are on the SD
+    if(!isTopSplashValid && !isBottomSplashValid) return false;
 
-void clearScreens(void)
-{
-    memset32(fb->top_left, 0, 0x46500);
-    memset32(fb->top_right, 0, 0x46500);
-    memset32(fb->bottom, 0, 0x38400);
-}
-
-void loadSplash(void)
-{
     initScreens();
 
-    //Don't delay boot if no splash image is on the SD
-    if(!(fileRead(fb->top_left, "/luma/splash.bin", 0x46500) +
-       fileRead(fb->bottom, "/luma/splashbottom.bin", 0x38400)))
-    {
-        u64 i = 0x1400000;
-        while(i--) __asm("mov r0, r0"); //Less Ghetto sleep func
-    }
+    if(isTopSplashValid) isTopSplashValid = fileRead(fbs[1].top_left, topSplashFile, SCREEN_TOP_FBSIZE) == SCREEN_TOP_FBSIZE;
+    if(isBottomSplashValid) isBottomSplashValid = fileRead(fbs[1].bottom, bottomSplashFile, SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
+
+    if(!isTopSplashValid && !isBottomSplashValid) return false;
+
+    swapFramebuffers(true);
+
+    u32 durationIndex = MULTICONFIG(SPLASH_DURATION);
+    wait(1000ULL + (durationIndex * 2000ULL));
+
+    return true;
 }
 
-void drawCharacter(char character, int posX, int posY, u32 color)
+void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character)
 {
-    u8 *const select = fb->top_left;
+    u8 *select = isTopScreen ? fbs[0].top_left : fbs[0].bottom;
 
-    for(int y = 0; y < 8; y++)
+    for(u32 y = 0; y < 8; y++)
     {
         char charPos = font[character * 8 + y];
 
-        for(int x = 7; x >= 0; x--)
-            if ((charPos >> x) & 1)
+        for(u32 x = 0; x < 8; x++)
+            if(((charPos >> (7 - x)) & 1) == 1)
             {
-                int screenPos = (posX * SCREEN_TOP_HEIGHT * 3 + (SCREEN_TOP_HEIGHT - y - posY - 1) * 3) + (7 - x) * 3 * SCREEN_TOP_HEIGHT;
+                u32 screenPos = (posX * SCREEN_HEIGHT * 3 + (SCREEN_HEIGHT - y - posY - 1) * 3) + x * 3 * SCREEN_HEIGHT;
 
                 select[screenPos] = color >> 16;
                 select[screenPos + 1] = color >> 8;
@@ -65,26 +84,45 @@ void drawCharacter(char character, int posX, int posY, u32 color)
     }
 }
 
-int drawString(const char *string, int posX, int posY, u32 color)
+u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string)
 {
-    for(int i = 0, line_i = 0; i < strlen(string); i++, line_i++)
-    {
-        if(string[i] == '\n')
+    for(u32 i = 0, line_i = 0; i < strlen(string); i++)
+        switch(string[i])
         {
-            posY += SPACING_Y;
-            line_i = 0;
-            i++;
-        }
-        else if(line_i >= (SCREEN_TOP_WIDTH - posX) / SPACING_X)
-        {
-            // Make sure we never get out of the screen.
-            posY += SPACING_Y;
-            line_i = 2; //Little offset so we know the same string continues.
-            if(string[i] == ' ') i++; //Spaces at the start look weird
-        }
+            case '\n':
+                posY += SPACING_Y;
+                line_i = 0;
+                break;
 
-        drawCharacter(string[i], posX + line_i * SPACING_X, posY, color);
-    }
+            case '\t':
+                line_i += 2;
+                break;
+
+            default:
+                //Make sure we never get out of the screen
+                if(line_i >= ((isTopScreen ? SCREEN_TOP_WIDTH : SCREEN_BOTTOM_WIDTH) - posX) / SPACING_X)
+                {
+                    posY += SPACING_Y;
+                    line_i = 1; //Little offset so we know the same string continues
+                    if(string[i] == ' ') break; //Spaces at the start look weird
+                }
+
+                drawCharacter(isTopScreen, posX + line_i * SPACING_X, posY, color, string[i]);
+
+                line_i++;
+                break;
+        }
 
     return posY;
+}
+
+u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...)
+{
+    char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+
+    return drawString(isTopScreen, posX, posY, color, buf);
 }

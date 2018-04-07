@@ -1,14 +1,29 @@
+; Code originally from delebile and mid-kid
+
 .arm.little
 
-payload_addr equ 0x23F00000   ; Brahma payload address.
-payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
+copy_launch_stub_stack_top      equ 0x01FFB800
+copy_launch_stub_stack_bottom   equ 0x01FFA800
+copy_launch_stub_addr           equ 0x01FF9000
 
-.create "reboot.bin", 0
+argv_addr                       equ (copy_launch_stub_stack_bottom - 0x100)
+fname_addr                      equ (copy_launch_stub_stack_bottom - 0x200)
+low_tid_addr                    equ (copy_launch_stub_stack_bottom - 0x300)
+
+firm_addr                       equ 0x20001000
+firm_maxsize                    equ 0x07FFF000
+
+.create "build/reboot.bin", 0
 .arm
-    ; Interesting registers and locations to keep in mind, set before this code is ran:
-    ; - sp + 0x3A8 - 0x70: FIRM path in exefs.
-    ; - r7 (which is sp + 0x3A8 - 0x198): Reserved space for file handle
-    ; - *(sp + 0x3A8 - 0x198) + 0x28: fread function.
+    ; Interesting registers and locations to keep in mind, set just before this code is ran:
+    ; - r1: FIRM path in exefs.
+    ; - r7 (or r8): pointer to file object
+    ;   - *r7: vtable
+    ;       - *(vtable + 0x28): fread function
+    ;   - *(r7 + 8): file handle
+
+    sub r7, r0, #8
+    mov r8, r1
 
     pxi_wait_recv:
         ldr r2, =0x44846
@@ -21,46 +36,41 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
         cmp r0, r2
         bne pxi_wait_recv
 
-        mov r4, #0
-        adr r1, bin_fname
-        b open_payload
+    ; Open file
+    add r0, r7, #8
+    adr r1, fname
+    mov r2, #1
+    ldr r6, [fopen]
+    orr r6, 1
+    blx r6
+    cmp r0, #0
+    bne panic
 
-    fallback:
-        mov r4, #1
-        adr r1, dat_fname
+    ; Read file
+    mov r0, r7
+    adr r1, bytes_read
+    ldr r2, =firm_addr
+    ldr r3, =firm_maxsize
+    ldr r6, [r7]
+    ldr r6, [r6, #0x28]
+    blx r6
 
-    open_payload:
-        ; Open file
-        add r0, r7, #8
-        mov r2, #1
-        ldr r6, [fopen]
-        orr r6, 1
-        blx r6
-        cmp r0, #0
-        bne fallback ; If the .bin is not found, try the .dat.
+    ; Copy the low TID (in UTF-16) of the wanted firm
+    ldr r0, =low_tid_addr
+    add r1, r8, #0x1A
+    mov r2, #0x10
+    bl memcpy16
 
-    read_payload:
-        ; Read file
-	mov r0, r7
-        adr r1, bytes_read
-        ldr r2, =payload_addr
-        cmp r4, #0
-        movne r3, #0x12000 ; Skip the first 0x12000 bytes.
-        moveq r3, payload_maxsize
-	ldr r6, [sp, #0x3A8-0x198]
-	ldr r6, [r6, #0x28]
-	blx r6
-        cmp r4, #0
-        movne r4, #0
-        bne read_payload ; Go read the real payload.
+    ; Copy argv[0]
+    ldr r0, =fname_addr
+    adr r1, fname
+    mov r2, #82
+    bl memcpy16
 
-    ; Copy the last digits of the wanted firm to the 5th byte of the payload
-    add r2, sp, #0x3A8 - 0x70
-    ldr r0, [r2, #0x27]
-    ldr r1, =payload_addr + 4
-    str r0, [r1]
-    ldr r0, [r2, #0x2B]
-    str r0, [r1, #4]
+    ldr r0, =argv_addr
+    ldr r1, =fname_addr
+    ldr r2, =low_tid_addr
+    stmia r0, {r1, r2}
 
     ; Set kernel state
     mov r0, #0
@@ -72,80 +82,126 @@ payload_maxsize equ 0x20000   ; Maximum size for the payload (200 KB will do).
     goto_reboot:
         ; Jump to reboot code
         ldr r0, =(kernelcode_start - goto_reboot - 12)
-        add r0, pc
+        add r0, pc ; pc is two instructions ahead of the instruction being executed (12 = 2*4 + 4)
         swi 0x7B
 
     die:
         b die
 
+    memcpy16:
+        cmp r2, #0
+        bxeq lr
+        add r2, r0, r2
+        copy_loop16:
+            ldrh r3, [r1], #2
+            strh r3, [r0], #2
+            cmp r0, r2
+            blo copy_loop16
+        bx lr
+
+    panic:
+        mov r1, r0 ; unused register
+        mov r0, #0
+        swi 0x3C ; svcBreak(USERBREAK_PANIC)
+        b die
+
 bytes_read: .word 0
 fopen: .ascii "OPEN"
 .pool
-bin_fname:     .dcw "sdmc:/arm9loaderhax.bin"
-	       .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dat_fname:     .dcw "sdmc:/Luma3DS.dat"
-	       .word 0
+
+.area 2*(80+1), 0
+fname: .ascii "FILE"
+.endarea
 
 .align 4
     kernelcode_start:
-        ; Set MPU settings
-        mrc p15, 0, r0, c2, c0, 0  ; dcacheable
-        mrc p15, 0, r12, c2, c0, 1  ; icacheable
-        mrc p15, 0, r1, c3, c0, 0  ; write bufferable
-        mrc p15, 0, r2, c5, c0, 2  ; daccess
-        mrc p15, 0, r3, c5, c0, 3  ; iaccess
-        ldr r4, =0x18000035  ; 0x18000000 128M
-        bic r2, r2, #0xF0000  ; unprotect region 4
-        bic r3, r3, #0xF0000  ; unprotect region 4
-        orr r0, r0, #0x10  ; dcacheable region 4
-        orr r2, r2, #0x30000  ; region 4 r/w
-        orr r3, r3, #0x30000  ; region 4 r/w
-        orr r12, r12, #0x10  ; icacheable region 4
-        orr r1, r1, #0x10  ; write bufferable region 4
-        mcr p15, 0, r0, c2, c0, 0
-        mcr p15, 0, r12, c2, c0, 1
-        mcr p15, 0, r1, c3, c0, 0  ; write bufferable
-        mcr p15, 0, r2, c5, c0, 2  ; daccess
-        mcr p15, 0, r3, c5, c0, 3  ; iaccess
-        mcr p15, 0, r4, c6, c4, 0  ; region 4 (hmmm)
 
-        mrc p15, 0, r0, c2, c0, 0  ; dcacheable
-        mrc p15, 0, r1, c2, c0, 1  ; icacheable
-        mrc p15, 0, r2, c3, c0, 0  ; write bufferable
-        orr r0, r0, #0x20  ; dcacheable region 5
-        orr r1, r1, #0x20  ; icacheable region 5
-        orr r2, r2, #0x20  ; write bufferable region 5
-        mcr p15, 0, r0, c2, c0, 0  ; dcacheable
-        mcr p15, 0, r1, c2, c0, 1  ; icacheable
-        mcr p15, 0, r2, c3, c0, 0  ; write bufferable
+    msr cpsr_cxsf, #0xD3  ; disable interrupts and clear flags
 
-    ; Flush cache
-    mov r2, #0
-    mov r1, r2
-    flush_cache:
-        mov r0, #0
-        mov r3, r2, lsl #30
-        flush_cache_inner_loop:
-            orr r12, r3, r0, lsl#5
-            mcr p15, 0, r1, c7, c10, 4  ; drain write buffer
-            mcr p15, 0, r12, c7, c14, 2  ; clean and flush dcache entry (index and segment)
-            add r0, #1
-            cmp r0, #0x20
-            bcc flush_cache_inner_loop
-        add r2, #1
-        cmp r2, #4
-        bcc flush_cache
+    ldr sp, =copy_launch_stub_stack_top
 
-    ; Enable MPU
-    ldr r0, =0x42078  ; alt vector select, enable itcm
+    ldr r0, =copy_launch_stub_addr
+    adr r1, copy_launch_stub
+    mov r2, #(copy_launch_stub_end - copy_launch_stub)
+    bl memcpy32
+
+    ; Disable MPU
+    ldr r0, =0x42078 ; alt vector select, enable itcm
     mcr p15, 0, r0, c1, c0, 0
-    mcr p15, 0, r1, c7, c5, 0  ; flush dcache
-    mcr p15, 0, r1, c7, c6, 0  ; flush icache
-    mcr p15, 0, r1, c7, c10, 4  ; drain write buffer
 
-    ; Jump to payload
-    ldr r0, =payload_addr
+    bl flushCaches
+
+    ldr r0, =copy_launch_stub_addr
     bx r0
 
-.pool
+    copy_launch_stub:
+
+    ldr r4, =firm_addr
+
+    mov r5, #0
+    load_section_loop:
+        ; Such checks. Very ghetto. Wow.
+        add r3, r4, #0x40
+        add r3, r5,lsl #5
+        add r3, r5,lsl #4
+        ldmia r3, {r6-r8}
+        cmp r8, #0
+        movne r0, r7
+        addne r1, r4, r6
+        movne r2, r8
+        blne memcpy32
+        add r5, #1
+        cmp r5, #4
+        blo load_section_loop
+
+    mov r0, #2 ; argc
+    ldr r1, =argv_addr ; argv
+    ldr r2, =0xBABE    ; magic word
+
+    mov r5, #0x20000000
+    ldr r6, [r4, #0x08]
+    str r6, [r5, #-4]   ; store arm11 entrypoint
+
+    ldr lr, [r4, #0x0c]
+    bx lr
+
+    memcpy32:
+    add r2, r0, r2
+    copy_loop32:
+        ldr r3, [r1], #4
+        str r3, [r0], #4
+        cmp r0, r2
+        blo copy_loop32
+    bx lr
+
+    .pool
+
+    copy_launch_stub_end:
+
+    flushCaches:
+
+    ; Clean and flush data cache
+    mov r1, #0 ; segment counter
+    outer_loop:
+        mov r0, #0 ; line counter
+
+        inner_loop:
+            orr r2, r1, r0 ; generate segment and line address
+            mcr p15, 0, r2, c7, c14, 2 ; clean and flush the line
+            add r0, #0x20 ; increment to next line
+            cmp r0, #0x400
+            bne inner_loop
+
+        add r1, #0x40000000
+        cmp r1, #0
+        bne outer_loop
+
+    ; Drain write buffer
+    mcr p15, 0, r1, c7, c10, 4
+
+    ; Flush instruction cache
+    mcr p15, 0, r1, c7, c5, 0
+
+    bx lr
+
 .close

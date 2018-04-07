@@ -4,111 +4,174 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-include $(DEVKITARM)/3ds_rules
+ifneq ($(strip $(shell firmtool -v 2>&1 | grep usage)),)
+$(error "Please install firmtool v1.1 or greater")
+endif
 
-CC := arm-none-eabi-gcc
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-OC := arm-none-eabi-objcopy
+include $(DEVKITARM)/base_tools
 
 name := Luma3DS
-version := $(shell git describe --abbrev=0 --tags)
+revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/')
+version_major := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f1 -d.)
+version_minor := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f2 -d.)
+version_build := $(shell git describe --tags --match v[0-9]* | cut -c2- | cut -f1 -d- | cut -f3 -d.)
+commit := $(shell git rev-parse --short=8 HEAD)
+is_release := 0
+
+ifeq ($(strip $(revision)),)
+	revision := v0.0.0-0
+	version_major := 0
+	version_minor := 0
+	version_build := 0
+endif
+
+ifeq ($(strip $(commit)),)
+	commit := 0
+endif
+
+ifeq ($(strip $(version_build)),)
+	version_build := 0
+endif
+
+ifeq ($(strip $(shell git describe --tags --match v[0-9]* | grep -)),)
+	is_release := 1
+endif
 
 dir_source := source
 dir_patches := patches
-dir_loader := loader
-dir_screeninit := screeninit
-dir_injector := injector
-dir_mset := CakeHax
-dir_ninjhax := CakeBrah
+dir_arm11 := arm11
+dir_chainloader := chainloader
+dir_exceptions := exceptions
+dir_arm9_exceptions := $(dir_exceptions)/arm9
+dir_k11_extension := k11_extension
+dir_sysmodules := sysmodules
+dir_loader := $(dir_sysmodules)/loader
+dir_rosalina := $(dir_sysmodules)/rosalina
+dir_sm := $(dir_sysmodules)/sm
+dir_pxi := $(dir_sysmodules)/pxi
 dir_build := build
 dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -flto -ffast-math
-LDFLAGS := -nostartfiles
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Aurora Wright" --no-print-directory
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
+LDFLAGS := -nostartfiles -Wl,--nmagic
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/patches.h $(dir_build)/loader.h $(dir_build)/screeninit.h
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o
+
+modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi $(dir_build)/sm.cxi $(dir_build)/pxi.cxi
+
+define bin2o
+	bin2s $< | $(AS) -o $(@)
+endef
 
 .PHONY: all
-all: launcher a9lh ninjhax
-
-.PHONY: launcher
-launcher: $(dir_out)/$(name).dat
-
-.PHONY: a9lh
-a9lh: $(dir_out)/arm9loaderhax.bin
-
-.PHONY: ninjhax
-ninjhax: $(dir_out)/3ds/$(name)
+all: firm
 
 .PHONY: release
-release: $(dir_out)/$(name)$(version).7z
+release: $(dir_out)/$(name)$(revision).7z
+
+.PHONY: firm
+firm: $(dir_out)/boot.firm
 
 .PHONY: clean
 clean:
-	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
+	@$(MAKE) -C $(dir_arm11) clean
+	@$(MAKE) -C $(dir_chainloader) clean
+	@$(MAKE) -C $(dir_arm9_exceptions) clean
+	@$(MAKE) -C $(dir_k11_extension) clean
 	@$(MAKE) -C $(dir_loader) clean
-	@$(MAKE) -C $(dir_screeninit) clean
-	@$(MAKE) -C $(dir_injector) clean
+	@$(MAKE) -C $(dir_rosalina) clean
+	@$(MAKE) -C $(dir_sm) clean
+	@$(MAKE) -C $(dir_pxi) clean
 	@rm -rf $(dir_out) $(dir_build)
 
-$(dir_out):
-	@mkdir -p "$(dir_out)/luma/payloads"
+.PRECIOUS: $(dir_build)/%.bin
 
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
-	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
-	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
+.PHONY: $(dir_arm11)
+.PHONY: $(dir_chainloader)
+.PHONY: $(dir_arm9_exceptions)
+.PHONY: $(dir_k11_extension)
+.PHONY: $(dir_loader)
+.PHONY: $(dir_rosalina)
+.PHONY: $(dir_sm)
+.PHONY: $(dir_pxi)
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
-	@cp -a $(dir_build)/main.bin $@
 
-$(dir_out)/3ds/$(name): $(dir_out)
-	@mkdir -p "$@"
-	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
-	@mv $(dir_out)/$(name).3dsx $(dir_out)/$(name).smdh $@
+$(dir_out)/$(name)$(revision).7z: all
+	@mkdir -p "$(@D)"
+	@[ -f "$@" ] || 7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser -xr!.DS_Store
 
-$(dir_out)/$(name)$(version).7z: launcher a9lh ninjhax
-	@7z a -mx $@ ./$(@D)/*
+$(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf $(dir_build)/k11_extension.bin
+	@mkdir -p "$(@D)"
+	@firmtool build $@ -D $^ -A 0x18180000 0x18000000 -C XDMA XDMA NDMA XDMA
 
-$(dir_build)/main.bin: $(dir_build)/main.elf
-	$(OC) -S -O binary $< $@
+$(dir_build)/modules.bin: $(modules)
+	@mkdir -p "$(@D)"
+	cat $^ > $@
 
-$(dir_build)/main.elf: $(objects)
+$(dir_build)/arm11.elf: $(dir_arm11)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/main.elf: $(bundled) $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_injector)/Makefile
+$(dir_build)/k11_extension.bin: $(dir_k11_extension)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/loader.cxi: $(dir_loader)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/rosalina.cxi: $(dir_rosalina)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/sm.cxi: $(dir_sm)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/pxi.cxi: $(dir_pxi)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/%.bin.o: $(dir_build)/%.bin
+	@$(bin2o)
+
+$(dir_build)/chainloader.bin: $(dir_chainloader)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/%.bin: $(dir_patches)/%.s
 	@mkdir -p "$(@D)"
 	@armips $<
-	@armips $(word 2,$^)
-	@$(MAKE) -C $(dir_injector)
-	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(@D)
-	@bin2c -o $@ -n emunand $(@D)/emunand.bin -n reboot $(@D)/reboot.bin -n injector $(@D)/injector.cxi
 
-$(dir_build)/loader.h: $(dir_loader)/Makefile
-	@$(MAKE) -C $(dir_loader)
-	@mv $(dir_loader)/loader.bin $(@D)
-	@bin2c -o $@ -n loader $(@D)/loader.bin
+$(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
+$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
+$(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_MINOR="$(version_minor)"\
+						-DVERSION_BUILD="$(version_build)" -DISRELEASE="$(is_release)" -DCOMMIT_HASH="0x$(commit)"
+$(dir_build)/firm.o: $(dir_build)/modules.bin
+$(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell wc -c $(dir_build)/modules.bin | tr -d [:space:][:alpha:][:punct:])"
 
-$(dir_build)/screeninit.h: $(dir_screeninit)/Makefile
-	@$(MAKE) -C $(dir_screeninit)
-	@mv $(dir_screeninit)/screeninit.bin $(@D)
-	@bin2c -o $@ -n screeninit $(@D)/screeninit.bin
+$(dir_build)/bundled.h: $(bundled)
+	@$(foreach f, $(bundled),\
+	echo "extern const u8" `(echo $(basename $(notdir $(f))) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
+	echo "extern const u32" `(echo $(basename $(notdir $(f)))| sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
+	)
 
-$(dir_build)/memory.o: CFLAGS += -O3
-$(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
-
-$(dir_build)/%.o: $(dir_source)/%.c $(bundled)
+$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/bundled.h
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
-include $(call rwildcard, $(dir_build), *.d)

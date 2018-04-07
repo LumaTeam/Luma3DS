@@ -1,0 +1,65 @@
+BasicInfo:
+  Title                   : rosalina
+  CompanyCode             : "00"
+  ProductCode             : lennybuilder
+  ContentType             : Application
+  Logo                    : None
+
+TitleInfo:
+  UniqueId                : 0x69
+  Category                : Base
+  Version                 : 2
+
+Option:
+  UseOnSD                 : false
+  FreeProductCode         : true # Removes limitations on ProductCode
+  MediaFootPadding        : false # If true CCI files are created with padding
+  EnableCrypt             : false # Enables encryption for NCCH and CIA
+  EnableCompress          : true # Compresses exefs code
+
+AccessControlInfo:
+  IdealProcessor                : 1
+  AffinityMask                  : 3
+
+  Priority                      : 20
+
+  DisableDebug                  : false
+  EnableForceDebug              : true
+  CanWriteSharedPage            : true
+  CanUsePrivilegedPriority      : true
+  CanUseNonAlphabetAndNumber    : false
+  PermitMainFunctionArgument    : false
+  CanShareDeviceMemory          : false
+  RunnableOnSleep               : true
+  SpecialMemoryArrange          : true
+  ResourceLimitCategory         : Other
+
+  CoreVersion                   : 2
+  DescVersion                   : 2
+
+  MemoryType                    : System      # Application / System / Base
+  HandleTableSize: 150
+
+  MemoryMapping:
+    - 0x1F000000 - 0x1F5FFFFF                 # VRAM (cached)
+
+  IORegisterMapping:
+    # We're using the global custom bit31 mapping
+
+  SystemCallAccess:
+  # The kernel extension removes svc perms checks, so below is just to avoid a makerom error
+    Backdoor: 123
+    KernelSetState: 124
+
+  InterruptNumbers:
+  ServiceAccessControl:
+    - fs:USER # Not strictly needed as rosalina has access to everything, it's rather to avoid a makerom warning
+  FileSystemAccess:
+    - DirectSdmc
+    - CtrNandRw
+    - CategorySystemApplication
+
+SystemControlInfo:
+  SaveDataSize: 0KB # It doesn't use any save data.
+  RemasterVersion: 0
+  StackSize: 0x1000

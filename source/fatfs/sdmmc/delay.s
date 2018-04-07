@@ -1,17 +1,16 @@
-// Copyright 2014 Normmatt
-// Licensed under GPLv2 or any later version
-// Refer to the license.txt file included.
-
+.text
 .arm
-.global ioDelay
-.type   ioDelay STT_FUNC
+.align 4
 
-@ioDelay ( u32 us )
-ioDelay:
-	ldr r1, =0x18000000  @ VRAM
-1:
-	@ Loop doing uncached reads from VRAM to make loop timing more reliable
-	ldr r2, [r1]
-	subs r0, #1
-	bgt 1b
-	bx lr
+.global waitcycles
+.type waitcycles, %function
+waitcycles:
+    push {r0-r2, lr}
+    str r0, [sp, #4]
+    waitcycles_loop:
+        ldr r3, [sp, #4]
+        subs r2, r3, #1
+        str r2, [sp, #4]
+        cmp r3, #0
+        bne waitcycles_loop
+    pop {r0-r2, pc}
