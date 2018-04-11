@@ -488,15 +488,68 @@ exit:
 
 static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
-    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
-       If it exists it should be a folder containing ROMFS files */
-
-    char path[] = "/luma/titles/0000000000000000/romfs";
-    progIdToStr(path + 28, progId);
-
+    char fileRedirect[] = "/luma/titles/0000000000000000/layeredfs.txt";
+    progIdToStr(fileRedirect + 28, progId);
+  
+    IFile file;
+    u64 pathSize = 36;
+    // Check for the existence of a layeredfs text file. If it doesn't exist or
+    // cannot be opened, we will default to the romfs/ directory within the
+    // game's luma directory.
+    bool hasFileRedirect = openLumaFile(&file, fileRedirect);
+    if(hasFileRedirect)
+    {
+        if(R_FAILED(IFile_GetSize(&file, &pathSize)))
+        {
+            IFile_Close(&file);
+            hasFileRedirect = false;
+            pathSize = 36;
+        }
+    }
+    char path[36 > pathSize ? 36 : pathSize];
+    // If the file exists, we'll try to read it. If we can't, we'll fall back
+    // to the default.
+    if(hasFileRedirect)
+    {
+        u64 total;
+        if(R_FAILED(IFile_Read(&file, &total, path, --pathSize)))
+        {
+            hasFileRedirect = false;
+            pathSize = 36;
+            memcpy(path, "/luma/titles/0000000000000000/romfs", pathSize);
+            progIdToStr(path + 28, progId);
+        }
+        else
+        {
+            path[pathSize++] = 0;
+        }
+        IFile_Close(&file);
+    }
+    else
+    {
+        memcpy(path, "/luma/titles/0000000000000000/romfs", pathSize);
+        progIdToStr(path + 28, progId);
+    }
+    
     u32 archiveId = checkLumaDir(path);
 
-    if(!archiveId) return true;
+    if(!archiveId)
+    {
+        // If we failed to find the redirect path, we'll fall back to the
+        // default and try again.
+        if(hasFileRedirect)
+        {
+            pathSize = 36;
+            memcpy(path, "/luma/titles/0000000000000000/romfs", pathSize);
+            progIdToStr(path + 28, progId);
+            archiveId = checkLumaDir(path);
+            if (!(archiveId = checkLumaDir(path))) return true;
+        }
+        else
+        {
+          return true;
+        }
+    }
 
     u32 fsMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
@@ -567,7 +620,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     }
 
     memcpy(code + pathOffset, "lf:", 3);
-    memcpy(code + pathOffset + 3, path, sizeof(path));
+    memcpy(code + pathOffset + 3, path, pathSize);
 
     //Place the hooks
     *(u32 *)(code + fsOpenFileDirectly) = MAKE_BRANCH(fsOpenFileDirectly, payloadOffset);
