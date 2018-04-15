@@ -50,8 +50,6 @@ AccessControlInfo:
   # The kernel extension removes svc perms checks, so below is just to avoid a makerom error
     Backdoor: 123
     KernelSetState: 124
-    BindInterrupt: 80
-    UnbindInterrupt: 81
 
   InterruptNumbers:
     - 0x60 # Shell opened
