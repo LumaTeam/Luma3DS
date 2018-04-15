@@ -35,19 +35,21 @@
 #include "menus/debugger.h"
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
+#include "menus/screen_filters.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 9,
+    .nbItems = 10,
     {
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
+        { "Screen filters...", MENU, .menu = &screenFiltersMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
