@@ -34,6 +34,8 @@
 
 #define TEMP_DEFAULT NEUTRAL_TEMP
 
+int screenFiltersCurrentTemperature = TEMP_DEFAULT;
+
 void writeLut(u32* lut)
 {
     u8 idx = 0;
@@ -101,32 +103,38 @@ Menu screenFiltersMenu = {
 
 void screenFiltersSetDisabled(void)
 {
-    screenFiltersSetTemperature(TEMP_DEFAULT);
+    screenFiltersCurrentTemperature = TEMP_DEFAULT;
+    screenFiltersSetTemperature(screenFiltersCurrentTemperature);
 }
 
 void screenFiltersReduceBlueLevel1(void)
 {
-    screenFiltersSetTemperature(4300);
+    screenFiltersCurrentTemperature = 4300;
+    screenFiltersSetTemperature(screenFiltersCurrentTemperature);
 }
 
 void screenFiltersReduceBlueLevel2(void)
 {
-    screenFiltersSetTemperature(3200);
+    screenFiltersCurrentTemperature = 3200;
+    screenFiltersSetTemperature(screenFiltersCurrentTemperature);
 }
 
 void screenFiltersReduceBlueLevel3(void)
 {
-    screenFiltersSetTemperature(2100);
+    screenFiltersCurrentTemperature = 2100;
+    screenFiltersSetTemperature(screenFiltersCurrentTemperature);
 }
 
 void screenFiltersReduceBlueLevel4(void)
 {
-    screenFiltersSetTemperature(1550);
+    screenFiltersCurrentTemperature = 1550;
+    screenFiltersSetTemperature(screenFiltersCurrentTemperature);
 }
 
 void screenFiltersReduceBlueLevel5(void)
 {
-    screenFiltersSetTemperature(1000);
+    screenFiltersCurrentTemperature = 1000;
+    screenFiltersSetTemperature(screenFiltersCurrentTemperature);
 }
 
 void screenFiltersSetTemperature(int temperature)

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2017 Aurora Wright, TuxSH, panicbit
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -24,18 +24,7 @@
 *         reasonable ways as different from the original version.
 */
 
-#pragma once
+#include <MyThread.h>
 
-#include "menu.h"
-
-extern Menu screenFiltersMenu;
-
-int screenFiltersCurrentTemperature;
-
-void screenFiltersSetDisabled(void);
-void screenFiltersReduceBlueLevel1(void);
-void screenFiltersReduceBlueLevel2(void);
-void screenFiltersReduceBlueLevel3(void);
-void screenFiltersReduceBlueLevel4(void);
-void screenFiltersReduceBlueLevel5(void);
-void screenFiltersSetTemperature(int temperature);
+MyThread *shellOpenCreateThread(void);
+void shellOpenThreadMain(void);
