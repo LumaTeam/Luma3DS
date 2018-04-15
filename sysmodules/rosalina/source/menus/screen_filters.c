@@ -38,17 +38,14 @@ int screenFiltersCurrentTemperature = TEMP_DEFAULT;
 
 void writeLut(u32* lut)
 {
-    u8 idx = 0;
-    do {
-        u32 pos = idx & 0xFF;
+    GPU_FB_TOP_COL_LUT_INDEX = 0;
+    GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
 
-        GPU_FB_TOP_COL_LUT_INDEX = pos;
+    for (int i = 0; i <= 255; i++) {
         GPU_FB_TOP_COL_LUT_ELEM = *lut;
-        GPU_FB_BOTTOM_COL_LUT_INDEX = pos;
         GPU_FB_BOTTOM_COL_LUT_ELEM = *lut;
-
         lut++;
-    } while(++idx);
+    }
 }
 
 typedef struct {
