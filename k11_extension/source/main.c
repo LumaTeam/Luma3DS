@@ -148,7 +148,7 @@ static void findUsefulSymbols(void)
     threadList = *(KObjectList **)(off + 1);
 
     off = (u32 *)decodeARMBranch((u32 *)officialSVCs[0x37] + 3) + 5; /* GetThreadId */
-    KProcessHandleTable__ToKThread = (KThread * (*)(KProcessHandleTable *, Handle))decodeARMBranch((*off >> 16) == 0xEB00 ? off : off + 2);
+   KProcessHandleTable__ToKThread = (KThread * (*)(KProcessHandleTable *, Handle))decodeARMBranch((*off >> 16) == 0xEB00 ? off : off + 2);
 
     for(off = (u32 *)officialSVCs[0x50]; off[0] != 0xE1A05000 || off[1] != 0xE2100102 || off[2] != 0x5A00000B; off++);
     InterruptManager__MapInterrupt = (Result (*)(InterruptManager *, KBaseInterruptEvent *, u32, u32, u32, bool, bool))decodeARMBranch(--off);

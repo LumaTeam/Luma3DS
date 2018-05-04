@@ -258,12 +258,13 @@ void MiscellaneousMenu_InputRedirection(void)
     }
     else
     {
-        s64     dummyInfo;
+       s64     dummyInfo;
         bool    isN3DS = svcGetSystemInfo(&dummyInfo, 0x10001, 0) == 0;
         bool    isSocURegistered;
 
         res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
         cantStart = R_FAILED(res) || !isSocURegistered;
+        svcCloseHandle(dummy);
 
         if(!cantStart && isN3DS)
         {
@@ -271,7 +272,6 @@ void MiscellaneousMenu_InputRedirection(void)
 
             res = srvIsServiceRegistered(&isIrRstRegistered, "ir:rst");
             cantStart = R_FAILED(res) || !isIrRstRegistered;
-        }
     }
 
     Draw_Lock();
@@ -282,10 +282,10 @@ void MiscellaneousMenu_InputRedirection(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the input redirection before the system\nhas finished loading.");
 
         if(!wasEnabled && cantStart)
-            Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the input redirection before the system\nhas finished loading.");
+            Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger before the system has fi-\nnished loading.");
         else if(!wasEnabled)
         {
             Draw_DrawString(10, 30, COLOR_WHITE, "Starting InputRedirection...");

@@ -134,20 +134,24 @@ void server_bind(struct sock_server *serv, u16 port)
 
         server_sockfd = socSocket(AF_INET, SOCK_STREAM, 0);
     }
-
-    struct sockaddr_in saddr;
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(port);
-    saddr.sin_addr.s_addr = gethostid();
-
-    res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
-
-    if(res == 0)
+        struct sockaddr_in saddr;
+        saddr.sin_family = AF_INET;
+        saddr.sin_port = htons(port);
+        saddr.sin_addr.s_addr = gethostid();
+    if(server_sockfd != -1)
     {
-        res = socListen(server_sockfd, 2);
+        struct sockaddr_in saddr;
+        saddr.sin_family = AF_INET;
+        saddr.sin_port = htons(port);
+        saddr.sin_addr.s_addr = gethostid();
+
+       res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
         if(res == 0)
         {
-            int idx = serv->nfds;
+            res = socListen(server_sockfd, 2);
+            if(res == 0)
+            {
+               int idx = serv->nfds;
             serv->nfds++;
             serv->poll_fds[idx].fd = server_sockfd;
             serv->poll_fds[idx].events = POLLIN;
@@ -159,6 +163,7 @@ void server_bind(struct sock_server *serv, u16 port)
             new_ctx->n = 0;
             new_ctx->i = idx;
             serv->ctx_ptrs[idx] = new_ctx;
+            }
         }
     }
 }

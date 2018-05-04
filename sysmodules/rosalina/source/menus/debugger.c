@@ -70,9 +70,11 @@ void DebuggerMenu_EnableDebugger(void)
     Result res = 0;
     char buf[65];
     bool isSocURegistered;
+    bool cantStart;
+    Handle dummy;
 
     res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
-    isSocURegistered = R_SUCCEEDED(res) && isSocURegistered;
+-    isSocURegistered = R_SUCCEEDED(res) && isSocURegistered;
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -87,6 +89,7 @@ void DebuggerMenu_EnableDebugger(void)
         if(alreadyEnabled)
             Draw_DrawString(10, 30, COLOR_WHITE, "Already enabled!");
         else if(!isSocURegistered)
+        else if(cantStart)
             Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger before the system has fi-\nnished loading.");
         else
         {

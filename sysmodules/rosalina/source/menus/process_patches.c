@@ -33,6 +33,44 @@
 #include "fmt.h"
 #include "utils.h"
 
+Menu processPatchesMenu = {
+    "Process patches menu",
+    .nbItems = 2,
+    {
+        { "Patch SM for the service checks", METHOD, .method = &ProcessPatchesMenu_PatchUnpatchSM },
+        { "Patch FS for the archive checks", METHOD, .method = &ProcessPatchesMenu_PatchUnpatchFS },
+    }
+};
+
+static Result ProcessPatchesMenu_DoPatchUnpatchSM(u32 textTotalRoundedSize)
+{
+    static bool patched = false;
+    static u32 *off;
+    static u32 origData;
+
+    if(patched)
+    {
+        *off = origData;
+        patched = false;
+    }
+    else
+    {
+        for(off = (u32 *)0x00100000; off < (u32 *)(0x00100000 + textTotalRoundedSize) - 3 &&
+            (off[0] != 0xE1A01006 || (off[1] & 0xFFFF) != 5);
+            off++);
+
+        if(off >= (u32 *)(0x00100000 + textTotalRoundedSize) - 3)
+            return -1;
+
+        off += 2;
+        *off = 0xE3A00001; // mov r0, #1
+        patched = true;
+    }
+
+    processPatchesMenu.items[0].title = patched ? "Unpatch SM for the service checks" : "Patch SM for the service checks";
+    return 0;
+}
+
 static Result ProcessPatchesMenu_DoPatchUnpatchFS(u32 textTotalRoundedSize)
 {
     static bool patched = false;
@@ -63,7 +101,7 @@ static Result ProcessPatchesMenu_DoPatchUnpatchFS(u32 textTotalRoundedSize)
         patched = true;
     }
 
-    //processPatchesMenu.items[1].title = patched ? "Unpatch FS for the archive checks" : "Patch FS for the archive checks";
+    processPatchesMenu.items[1].title = patched ? "Unpatch FS for the archive checks" : "Patch FS for the archive checks";
     return 0;
 }
 
@@ -114,7 +152,35 @@ static u32 ProcessPatchesMenu_PatchUnpatchProcessByName(const char *name, Result
     return res;
 }
 
-void ProcessPatchesMenu_PatchUnpatchFSDirectly(void)
+static void ProcessPatchesMenu_PatchUnpatchProcess(const char *processName, Result (*func)(u32 size))
 {
-    ProcessPatchesMenu_PatchUnpatchProcessByName("fs", &ProcessPatchesMenu_DoPatchUnpatchFS);
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    Result res = ProcessPatchesMenu_PatchUnpatchProcessByName(processName, func);
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Process patches menu");
+        if(R_SUCCEEDED(res))
+            Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
+        else
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08x).", res);
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void ProcessPatchesMenu_PatchUnpatchSM(void)
+{
+    ProcessPatchesMenu_PatchUnpatchProcess("sm", &ProcessPatchesMenu_DoPatchUnpatchSM);
+}
+
+void ProcessPatchesMenu_PatchUnpatchFS(void)
+{
+    ProcessPatchesMenu_PatchUnpatchProcess("fs", &ProcessPatchesMenu_DoPatchUnpatchFS);
 }

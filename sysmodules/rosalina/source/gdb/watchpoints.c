@@ -55,6 +55,92 @@ typedef struct WatchpointManager
 
 static WatchpointManager manager;
 
+static void K_EnableMonitorModeDebugging(void)
+{
+    __asm__ __volatile__("cpsid aif");
+
+    u32 DSCR;
+    __asm__ __volatile__("mrc p14, 0, %[val], c0, c1, 0" : [val] "=r" (DSCR));
+    DSCR |= 0x8000;
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c1, 0" :: [val] "r" (DSCR));
+}
+
+static void K_DisableWatchpoint(u32 id)
+{
+    u32 control;
+
+    __asm__ __volatile__("cpsid aif");
+
+    if(id == 0)
+    {
+        // WCR0
+        __asm__ __volatile__("mrc p14, 0, %[val], c0, c0, 7" : [val] "=r" (control));
+        control &= ~1;
+        __asm__ __volatile__("mcr p14, 0, %[val], c0, c0, 7" :: [val] "r" (control));
+
+        // BCR4
+        __asm__ __volatile__("mrc p14, 0, %[val], c0, c4, 5" : [val] "=r" (control));
+        control &= ~1;
+        __asm__ __volatile__("mcr p14, 0, %[val], c0, c4, 5" :: [val] "r" (control));
+    }
+    else if(id == 1)
+    {
+        // WCR1
+        __asm__ __volatile__("mrc p14, 0, %[val], c0, c1, 7" : [val] "=r" (control));
+        control &= ~1;
+        __asm__ __volatile__("mcr p14, 0, %[val], c0, c1, 7" :: [val] "r" (control));
+
+        // BCR5
+        __asm__ __volatile__("mrc p14, 0, %[val], c0, c5, 5" : [val] "=r" (control));
+        control &= ~1;
+        __asm__ __volatile__("mcr p14, 0, %[val], c0, c5, 5" :: [val] "r" (control));
+    }
+}
+
+static void K_SetWatchpoint0WithContextId(u32 DVA, u32 WCR, u32 contextId)
+{
+    // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0360f/CEGCFFDF.html
+    u32 BCR =
+            (1   << 21) | /* compare with context ID */
+            (1   << 20) | /* linked (with a WRP in our case) */
+            (0xf <<  5) | /* byte address select, +0 to +3 as mandated when linking with a WRP */
+            (3   <<  1) | /* either privileged modes or user mode, as mandated when linking with a WRP */
+            (1   <<  0) ; /* enabled */
+
+    __asm__ __volatile__("cpsid aif");
+
+    K_DisableWatchpoint(0);
+
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c0, 6" :: [val] "r" (DVA));
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c4, 4" :: [val] "r" (contextId));
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c0, 7" :: [val] "r" (WCR));
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c4, 5" :: [val] "r" (BCR));
+
+    __asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 5" :: [val] "r" (0) : "memory"); // DMB
+}
+
+static void K_SetWatchpoint1WithContextId(u32 DVA, u32 WCR, u32 contextId)
+{
+    // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0360f/CEGCFFDF.html
+    u32 BCR =
+            (1   << 21) | /* compare with context ID */
+            (1   << 20) | /* linked (with a WRP in our case) */
+            (0xf <<  5) | /* byte address select, +0 to +3 as mandated when linking with a WRP */
+            (3   <<  1) | /* either privileged modes or user mode, as mandated when linking with a WRP */
+            (1   <<  0) ; /* enabled */
+
+    __asm__ __volatile__("cpsid aif");
+
+    K_DisableWatchpoint(1);
+
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c1, 6" :: [val] "r" (DVA));
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c5, 4" :: [val] "r" (contextId));
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c1, 7" :: [val] "r" (WCR));
+    __asm__ __volatile__("mcr p14, 0, %[val], c0, c5, 5" :: [val] "r" (BCR));
+
+    __asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 5" :: [val] "r" (0) : "memory"); // DMB
+}
+
 void GDB_ResetWatchpoints(void)
 {
     static bool lockInitialized = false;
@@ -65,9 +151,9 @@ void GDB_ResetWatchpoints(void)
     }
     RecursiveLock_Lock(&watchpointManagerLock);
 
-    svcKernelSetState(0x10003); // enable monitor mode debugging
-    svcKernelSetState(0x10004, 0); // disable watchpoint 0
-    svcKernelSetState(0x10004, 1); // disable watchpoint 1
+    svcCustomBackdoor(K_EnableMonitorModeDebugging);
+    svcCustomBackdoor(K_DisableWatchpoint, 0);
+    svcCustomBackdoor(K_DisableWatchpoint, 1);
 
     memset(&manager, 0, sizeof(WatchpointManager));
 
@@ -106,7 +192,7 @@ int GDB_AddWatchpoint(GDBContext *ctx, u32 address, u32 size, WatchpointKind kin
 
     if(R_SUCCEEDED(r))
     {
-        svcKernelSetState(id == 0 ? 0x10005 : 0x10006, address, WCR, (u32)out); // set watchpoint
+        svcCustomBackdoor(id == 0 ? K_SetWatchpoint0WithContextId : K_SetWatchpoint1WithContextId, address, WCR, (u32)out);
         Watchpoint *watchpoint = &manager.watchpoints[id];
         manager.total++;
         watchpoint->address = address;
@@ -138,7 +224,7 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
     }
     else
     {
-        svcKernelSetState(0x10004, id); // disable watchpoint
+        svcCustomBackdoor(K_DisableWatchpoint, id);
 
         memset(&manager.watchpoints[id], 0, sizeof(Watchpoint));
         manager.total--;
@@ -164,7 +250,7 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
 WatchpointKind GDB_GetWatchpointKind(GDBContext *ctx, u32 address)
 {
     u32 id;
-    for(id = 0; id < 2 && (manager.watchpoints[id].address != address || manager.watchpoints[id].debug != ctx->debug); id++);
+    for(id = 0; id < 2 && manager.watchpoints[id].address != address && manager.watchpoints[id].debug != ctx->debug; id++);
 
     return id == 2 ? WATCHPOINT_DISABLED : manager.watchpoints[id].kind;
 }

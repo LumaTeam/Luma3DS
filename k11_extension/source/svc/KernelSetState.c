@@ -143,6 +143,7 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             res = SetSyscallDebugEventMask(varg1, (bool)varg2, (const u32 *)varg3);
             break;
         }
+ }
         case 0x10003:
         {
             executeFunctionOnCores(enableMonitorModeDebugging, 0xF, 0);
@@ -178,6 +179,7 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             KRecursiveLock__Unlock(&dbgParamsLock);
             break;
         }
+
         default:
         {
             res = KernelSetState(type, varg1, varg2, varg3);

@@ -14,7 +14,7 @@ dir_out := ../../$(dir_build)
 
 ASFLAGS := -mcpu=arm946e-s
 CFLAGS := -Wall -Wextra -marm $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -Os -ffast-math
-LDFLAGS := -nostartfiles -Wl,--nmagic
+-LDFLAGS := -nostartfiles -Wl,--nmagic, nostdlib
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \

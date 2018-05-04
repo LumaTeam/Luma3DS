@@ -33,8 +33,9 @@
 #include "menus.h"
 #include "utils.h"
 #include "menus/n3ds.h"
-#include "menus/cheats.h"
+#include "menus/tools.h"
 #include "minisoc.h"
+#include "menus/cheats.h"
 
 u32 waitInputWithTimeout(u32 msec)
 {
@@ -143,39 +144,60 @@ void menuThreadMain(void)
     if(!isN3DS)
     {
         rosalinaMenu.nbItems--;
-        for(u32 i = 0; i <= rosalinaMenu.nbItems; i++)
+        for(u32 i = 3; i <= rosalinaMenu.nbItems; i++)
             rosalinaMenu.items[i] = rosalinaMenu.items[i+1];
     }
     else
         N3DSMenu_UpdateStatus();
 
-    bool isAcURegistered = false;
-
     while(!terminationRequest)
     {
         if((HID_PAD & menuCombo) == menuCombo)
         {
-            if (!isAcURegistered)
-                isAcURegistered = R_SUCCEEDED(srvIsServiceRegistered(&isAcURegistered, "ac:u"))
-                    && isAcURegistered;
-
-            if (isAcURegistered)
-            {
-                menuEnter();
-                if(isN3DS) N3DSMenu_UpdateStatus();
-                menuShow(&rosalinaMenu);
-                menuLeave();
-            }
+            menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&rosalinaMenu);
+            menuLeave();
         }
-        else
+		if((HID_PAD & MENU_TOOLS_COMBO) == MENU_TOOLS_COMBO)
         {
+	    menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&MenuOptions);
+            menuLeave();
+        }
+	    if((HID_PAD & menuCombo) == menuCombo)
+         {
+-            if (!isAcURegistered)
+-                isAcURegistered = R_SUCCEEDED(srvIsServiceRegistered(&isAcURegistered, "ac:u"))
+-                    && isAcURegistered;
+-
+-            if (isAcURegistered)
+-            {
+-                menuEnter();
+-                if(isN3DS) N3DSMenu_UpdateStatus();
+-                menuShow(&rosalinaMenu);
+-                menuLeave();
+-            }
+		if((HID_PAD & DESACTIVE_ROSALINA_COMBO) == DESACTIVE_ROSALINA_COMBO)
+        {
+			return;
+        }
+	         }
+        else
+		if((HID_PAD & MENU_TOOLS_COMBO) == MENU_TOOLS_COMBO)
+         {
         	if (HID_PAD & 0xFFF) {
         		Cheat_ApplyKeyCheats();
         	}
-        }
-        svcSleepThread(50 * 1000 * 1000LL);
-    }
-}
+			menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&MenuOptions);
+            menuLeave();
+			
+         svcSleepThread(50 * 1000 * 1000LL);
+     }
+ }
 
 static s32 menuRefCount = 0;
 void menuEnter(void)
@@ -213,13 +235,14 @@ static void menuDraw(Menu *menu, u32 selected)
 
     if(R_SUCCEEDED(srvIsServiceRegistered(&isMcuHwcRegistered, "mcu::HWC")) && isMcuHwcRegistered && R_SUCCEEDED(mcuHwcInit()))
     {
-        if(R_FAILED(MCUHWC_GetBatteryLevel(&batteryLevel)))
+        if(R_FAILED(mcuHwcGetBatteryLevel(&batteryLevel)))
             batteryLevel = 255;
         mcuHwcExit();
     }
-    else
-        batteryLevel = 255;
-
+ else
+	 batteryLevel = 255;
+	
+	
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;
 
@@ -261,7 +284,7 @@ static void menuDraw(Menu *menu, u32 selected)
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
 
     if(isRelease)
-        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);
+        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-Rosalina Mod by Kasai07", versionString);
     else
         Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-%08x", versionString, commitHash);
 

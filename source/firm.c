@@ -123,7 +123,7 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
         "cetk_sysupdater"
     };
 
-    u32 firmSize = fileRead(firm, firmwareFiles[(u32)firmType], 0x400000 + sizeof(Cxi) + 0x200);
+    u32 firmSize = fileRead(firm, firmType == NATIVE_FIRM1X2X ? firmwareFiles[0] : firmwareFiles[(u32)firmType], 0x400000 + sizeof(Cxi) + 0x200);
 
     if(!firmSize) return 0;
 
@@ -137,7 +137,7 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
 
         u8 cetk[0xA50];
 
-        if(fileRead(cetk, cetkFiles[(u32)firmType], sizeof(cetk)) != sizeof(cetk))
+        if(fileRead(cetk, firmType == NATIVE_FIRM1X2X ? cetkFiles[0] : cetkFiles[(u32)firmType], sizeof(cetk)) != sizeof(cetk))
             error("The cetk is missing or corrupted.");
 
         firmSize = decryptNusFirm((Ticket *)(cetk + 0x140), (Cxi *)firm, firmSize);
@@ -152,42 +152,18 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
 
 u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
-    u32 firmVersion,
-        firmSize;
+    if(isSdMode && !mountFs(false, false)) error("Failed to mount CTRNAND.");
 
-    bool ctrNandError = isSdMode && !mountFs(false, false);
+    //Load FIRM from CTRNAND
+    u32 firmVersion = firmRead(firm, (u32)*firmType);
 
-    if(!ctrNandError)
-    {
-        //Load FIRM from CTRNAND
-        firmVersion = firmRead(firm, (u32)*firmType);
+    if(firmVersion == 0xFFFFFFFF) error("Failed to get the CTRNAND FIRM.");
 
-        if(firmVersion == 0xFFFFFFFF) ctrNandError = true;
-        else
-        {
-            firmSize = decryptExeFs((Cxi *)firm);
+    u32 firmSize = decryptExeFs((Cxi *)firm);
 
-            if(!firmSize || !checkFirm(firmSize)) ctrNandError = true;
-        }
-    }
+    if(!firmSize) error("Failed to decrypt the CTRNAND FIRM.");
 
-    bool loadedFromStorage = false;
-
-    if(loadFromStorage || ctrNandError)
-    {
-        u32 result = loadFirmFromStorage(*firmType);
-
-        if(result != 0)
-        {
-            loadedFromStorage = true;
-            firmSize = result;
-        }
-        else if(ctrNandError) error("Unable to mount CTRNAND or load the CTRNAND FIRM.\nPlease use an external one.");
-    }
-
-    //Check that the FIRM is right for the console from the ARM9 section address
-    if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
-        error("The %s FIRM is not for this console.", loadedFromStorage ? "external" : "CTRNAND");
+    if(!checkFirm(firmSize)) error("The CTRNAND FIRM is invalid or corrupted.");
 
     if(!ISN3DS && *firmType == NATIVE_FIRM && firm->section[0].address == (u8 *)0x1FF80000)
     {
@@ -198,6 +174,23 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
         *firmType = NATIVE_FIRM1X2X;
     }
+
+    bool loadedFromStorage = false;
+
+    if(loadFromStorage)
+    {
+        u32 result = loadFirmFromStorage(*firmType);
+
+        if(result != 0)
+        {
+            loadedFromStorage = true;
+            firmSize = result;
+        }
+    }
+
+    //Check that the FIRM is right for the console from the ARM9 section address
+    if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
+        error("The %s FIRM is not for this console.", loadedFromStorage ? "external" : "CTRNAND");
 
     if(loadedFromStorage || ISDEVUNIT)
     {
@@ -233,6 +226,30 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
     }
 
     return firmVersion;
+}
+
+void bootonce(const char *path)
+{
+	u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm),
+        payloadSize = fileRead(firm, path, maxPayloadSize);
+		
+	
+	if(payloadSize <= 0x200 || !checkFirm(payloadSize)){
+		fileDelete(path);
+		return;
+	}
+	
+	char path_bootonce[24 + 255];
+	sprintf(path_bootonce, "sdmc:%s", path);
+	char *argv[2] = {path_bootonce, (char *)fbs};
+	
+	fileDelete(path);
+	
+	initScreens();
+	
+	launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
+	
+	
 }
 
 void loadHomebrewFirm(u32 pressed)
@@ -412,7 +429,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
     ret += patchKernel9Panic(arm9Section, kernel9Size);
 
-    ret += patchP9AccessChecks(process9Offset, process9Size);
+    if(CONFIG(PATCHACCESS)) ret += patchP9AccessChecks(process9Offset, process9Size);
 
     mergeSection0(NATIVE_FIRM, firmVersion, loadFromStorage);
     firm->section[0].size = 0;

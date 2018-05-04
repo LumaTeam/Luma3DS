@@ -27,7 +27,9 @@
 .global _start
 _start:
     @ Disable interrupts and switch to supervisor mode (also clear flags)
-    msr cpsr_cxsf, #0xD3
+    mov r4, #0x13
+    orr r4, #0x1C0
+    msr cpsr_cxsf, r4
 
     @ Check if r0-r2 are 0 (r0-sp are supposed to be 0), and for regions 0, 5 and 7 of the MPU config
     @ This is not foolproof but should work well enough

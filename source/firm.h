@@ -36,3 +36,4 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
 u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
 u32 patch1x2xNativeAndSafeFirm(void);
 void launchFirm(int argc, char **argv);
+void bootonce(const char *path);

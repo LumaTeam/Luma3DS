@@ -68,6 +68,9 @@ void SysConfigMenu_ToggleLEDs(void)
             u8 result;
             MCUHWC_ReadRegister(0x28, &result, 1);
             result = ~result;
+            mcuHwcReadRegister(0x28, &result, 1);
+            result = ~result;
+            mcuHwcWriteRegister(40, &result, 1);
             MCUHWC_WriteRegister(0x28, &result, 1);
             mcuHwcExit();
         }

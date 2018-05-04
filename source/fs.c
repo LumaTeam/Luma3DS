@@ -204,9 +204,9 @@ bool payloadMenu(char *path)
         {
             do
             {
-                pressed = waitInput(true) & MENU_BUTTONS;
+                pressed = waitInput(true);
             }
-            while(!pressed);
+            while(!(pressed & MENU_BUTTONS));
 
             u32 oldSelectedPayload = selectedPayload;
 

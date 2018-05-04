@@ -37,7 +37,7 @@ bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 {
     if(CONFIG(DISABLEARM11EXCHANDLERS)) return false;
 
-    if((spsr & 0x1F) != 0x10) return true;
+    if((spsr & 0x1f) != 0x10) return true;
 
     KThread *thread = currentCoreContext->objectContext.currentThread;
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
@@ -65,7 +65,8 @@ bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 extern u32 safecpy_sz;
 bool isDataAbortExceptionRangeControlled(u32 spsr, u32 addr)
 {
-    return (!(spsr & 0x20) && (spsr & 0x1F) != 0x10) && (
+     return (!(spsr & 0x20) && (spsr & 0x1F) != 0x10) && (
+         
                 ((u32)kernelUsrCopyFuncsStart <= addr && addr < (u32)kernelUsrCopyFuncsEnd) ||
                 ((u32)safecpy <= addr && addr < (u32)safecpy + safecpy_sz)
             );
@@ -96,7 +97,7 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     registerDump[15] = pc;
 
     //Dump code
-    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
     dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 1 : 3)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
 
     //Copy register dump and code dump

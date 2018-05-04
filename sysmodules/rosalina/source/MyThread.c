@@ -28,10 +28,10 @@
 #include "memory.h"
 #include <3ds/srv.h>
 
+
 static void _thread_begin(void* arg)
 {
     MyThread *t = (MyThread *)arg;
-
     // ROSALINA HACKJOB BEGIN
     // NORMAL APPS SHOULD NOT DO THIS, EVER
     u32 *tls = (u32 *)getThreadLocalStorage();
