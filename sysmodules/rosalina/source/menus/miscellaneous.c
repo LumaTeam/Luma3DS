@@ -258,20 +258,20 @@ void MiscellaneousMenu_InputRedirection(void)
     }
     else
     {
-        Handle dummy;
-        s64 dummyInfo;
-        bool isN3DS = svcGetSystemInfo(&dummyInfo, 0x10001, 0) == 0;
+       s64     dummyInfo;
+        bool    isN3DS = svcGetSystemInfo(&dummyInfo, 0x10001, 0) == 0;
+        bool    isSocURegistered;
 
-        res = OpenProcessByName("socket", &dummy);
-        cantStart = R_FAILED(res);
+        res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
+        cantStart = R_FAILED(res) || !isSocURegistered;
         svcCloseHandle(dummy);
 
         if(!cantStart && isN3DS)
         {
-            res = OpenProcessByName("ir", &dummy);
-            cantStart = R_FAILED(res);
-            svcCloseHandle(dummy);
-        }
+            bool    isIrRstRegistered;
+
+            res = srvIsServiceRegistered(&isIrRstRegistered, "ir:rst");
+            cantStart = R_FAILED(res) || !isIrRstRegistered;
     }
 
     Draw_Lock();
@@ -282,7 +282,7 @@ void MiscellaneousMenu_InputRedirection(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the input redirection before the system\nhas finished loading.");
 
         if(!wasEnabled && cantStart)
             Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger before the system has fi-\nnished loading.");
