@@ -51,11 +51,15 @@
 .global _commonHandler
 .type   _commonHandler, %function
 _commonHandler:
+    mov r1, r0
+    mov r0, sp
     mrs r2, spsr
     mov r6, sp
     mrs r3, cpsr
-
-    orr r3, #0x1c0              @ disable Imprecise Aborts, IRQ and FIQ (equivalent to "cpsid aif" on arm11)
+    add r6, r0, #(8 * 4)
+    orr r3, #0xc0              @ mask interrupts
+    orr r3, #0x1c0             @ disable Imprecise Aborts, IRQ and FIQ (equivalent to "cpsid aif" on arm11)
+    orr r3, #0xc0              @ mask interrupts again just in case
     msr cpsr_cx, r3
 
     tst r2, #0x20
