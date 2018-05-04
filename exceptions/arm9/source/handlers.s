@@ -190,7 +190,12 @@ safecpy:
 
     mov r0, sp
 
+    _safecpy_end:
     b mainHandler
+    
+.bss
+.balign 4
+_regs: .skip (4 * 17)
 
 GEN_HANDLER FIQHandler
 GEN_HANDLER undefinedInstructionHandler
