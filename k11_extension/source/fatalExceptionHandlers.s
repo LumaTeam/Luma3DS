@@ -159,7 +159,7 @@ _commonHandler:
 
     _no_L2C:
 
-    msr cpsr_cxsf, #0xdf         @ finally, switch to system mode, mask interrupts and clear flags (in case of double faults)
+    cps #0x1F
     ldr sp, =exceptionStackTop
     ldr sp, [sp]
     sub sp, #0x100
@@ -221,8 +221,7 @@ prefetchAbortHandler:
     pop {r8-r11}
     ldr lr, [sp, #8]!
     ldr sp, [sp, #4]
-    msr spsr_cxsf, sp
-    tst sp, #0x20
+    msr spsr, sp
     addne lr, #2                        @ adjust address for later
 
     GEN_USUAL_HANDLER _prefetchAbortNormal, 2, 12
