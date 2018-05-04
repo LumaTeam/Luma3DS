@@ -62,7 +62,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 
 bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o
 
-modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi
+modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi$(dir_build)/sm.cxi $(dir_build)/pxi.cxi
 
 define bin2o
 	bin2s $< | $(AS) -o $(@)
