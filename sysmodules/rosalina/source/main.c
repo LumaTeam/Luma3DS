@@ -85,20 +85,8 @@ void initSystem()
 
     miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
                                                                                   "Switch the hb. title to hblauncher_loader";
-
-    ProcessPatchesMenu_PatchUnpatchFSDirectly();
     __sync_init();
     __appInit();
-
-    // ROSALINA HACKJOB BEGIN
-    // NORMAL APPS SHOULD NOT DO THIS, EVER
-    u32 *tls = (u32 *)getThreadLocalStorage();
-    memset(tls, 0, 0x80);
-    tls[0] = 0x21545624; 
-    // ROSALINA HACKJOB END
-
-    // Rosalina specific:
-    srvSetBlockingPolicy(true); // GetServiceHandle nonblocking if service port is full
 }
 
 bool terminationRequest = false;
