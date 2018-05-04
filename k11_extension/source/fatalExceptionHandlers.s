@@ -222,6 +222,8 @@ prefetchAbortHandler:
     ldr lr, [sp, #8]!
     ldr sp, [sp, #4]
     msr spsr, sp
+    msr spsr_cxsf, sp
+    tst sp, #0x20
     addne lr, #2                        @ adjust address for later
 
     GEN_USUAL_HANDLER _prefetchAbortNormal, 2, 12
