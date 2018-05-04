@@ -34,6 +34,13 @@
         b _commonHandler
 
     .size   \name, . - \name
+
+.macro GEN_USUAL_HANDLER name, index
+-    \name\()Handler:
+-        ldr sp, =_regs
+-        stmia sp, {r0-r7}
+-
+-        mov r0, #\index
 .endm
 
 .text
