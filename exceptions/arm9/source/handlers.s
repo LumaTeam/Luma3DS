@@ -46,7 +46,8 @@
 .text
 .arm
 .align 4
-
+.balign 4
+.align 4
 .global _commonHandler
 .type   _commonHandler, %function
 _commonHandler:
