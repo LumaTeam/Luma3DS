@@ -80,7 +80,18 @@ Result miniSocInit()
 
     u32 tmp = 0;
     Result ret = 0;
-
+     bool isSocURegistered;
+-
+-    ret = srvIsServiceRegistered(&isSocURegistered, "soc:U");
+-    if(ret != 0) goto cleanup;
+-    if(!isSocURegistered)
+-    {
+-        ret = -1;
+-        goto cleanup;
+-    }
+-
+-   ret = srvGetServiceHandle(&SOCU_handle, "soc:U");
+-   if(ret != 0) goto cleanup;
     ret = svcControlMemory(&tmp, socContextAddr, 0, socContextSize, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
     if(ret != 0) goto cleanup;
 
