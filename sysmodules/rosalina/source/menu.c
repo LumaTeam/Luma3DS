@@ -35,6 +35,7 @@
 #include "menus/n3ds.h"
 #include "menus/tools.h"
 #include "minisoc.h"
+#include "menus/cheats.h"
 
 u32 waitInputWithTimeout(u32 msec)
 {
@@ -160,20 +161,43 @@ void menuThreadMain(void)
         }
 		if((HID_PAD & MENU_TOOLS_COMBO) == MENU_TOOLS_COMBO)
         {
+	    menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&MenuOptions);
+            menuLeave();
+        }
+	    if((HID_PAD & menuCombo) == menuCombo)
+         {
+-            if (!isAcURegistered)
+-                isAcURegistered = R_SUCCEEDED(srvIsServiceRegistered(&isAcURegistered, "ac:u"))
+-                    && isAcURegistered;
+-
+-            if (isAcURegistered)
+-            {
+-                menuEnter();
+-                if(isN3DS) N3DSMenu_UpdateStatus();
+-                menuShow(&rosalinaMenu);
+-                menuLeave();
+-            }
+		if((HID_PAD & DESACTIVE_ROSALINA_COMBO) == DESACTIVE_ROSALINA_COMBO)
+        {
+			return;
+        }
+	         }
+        else
+		if((HID_PAD & MENU_TOOLS_COMBO) == MENU_TOOLS_COMBO)
+         {
+        	if (HID_PAD & 0xFFF) {
+        		Cheat_ApplyKeyCheats();
+        	}
 			menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
             menuShow(&MenuOptions);
             menuLeave();
 			
-        }
-		if((HID_PAD & DESACTIVE_ROSALINA_COMBO) == DESACTIVE_ROSALINA_COMBO)
-        {
-			return;
-        }
-		
-        svcSleepThread(50 * 1000 * 1000LL);
-    }
-}
+         svcSleepThread(50 * 1000 * 1000LL);
+     }
+ }
 
 static s32 menuRefCount = 0;
 void menuEnter(void)
@@ -207,14 +231,18 @@ static void menuDraw(Menu *menu, u32 selected)
     s64 out;
     u32 version, commitHash;
     bool isRelease;
+    bool isMcuHwcRegistered;
 
-    if(R_SUCCEEDED(mcuHwcInit()))
+    if(R_SUCCEEDED(srvIsServiceRegistered(&isMcuHwcRegistered, "mcu::HWC")) && isMcuHwcRegistered && R_SUCCEEDED(mcuHwcInit()))
     {
         if(R_FAILED(mcuHwcGetBatteryLevel(&batteryLevel)))
             batteryLevel = 255;
         mcuHwcExit();
     }
-
+ else
+	 batteryLevel = 255;
+	
+	
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;
 
