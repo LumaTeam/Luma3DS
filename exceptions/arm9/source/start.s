@@ -28,6 +28,10 @@
 _start:
     add pc, r0, #(handlers - .) @ Dummy instruction to prevent compiler optimizations
 
+.global BreakPtr
+BreakPtr: .word 0
+
+.global handlers
 handlers:
     .word FIQHandler
     .word undefinedInstructionHandler
