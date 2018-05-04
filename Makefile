@@ -95,6 +95,8 @@ clean:
 .PHONY: $(dir_k11_extension)
 .PHONY: $(dir_loader)
 .PHONY: $(dir_rosalina)
+.PHONY: $(dir_sm)
+.PHONY: $(dir_pxi)
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
@@ -141,6 +143,14 @@ $(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
 $(dir_build)/%.bin: $(dir_patches)/%.s
 	@mkdir -p "$(@D)"
 	@armips $<
+
+$(dir_build)/sm.cxi: $(dir_sm)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
+$(dir_build)/pxi.cxi: $(dir_pxi)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
 
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
