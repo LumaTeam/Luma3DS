@@ -36,7 +36,6 @@
 #include "fs.h"
 #include "fmt.h"
 #include "font.h"
-#include "config.h"
 
 bool loadSplash(void)
 {
@@ -57,9 +56,7 @@ bool loadSplash(void)
     if(!isTopSplashValid && !isBottomSplashValid) return false;
 
     swapFramebuffers(true);
-
-    u32 durationIndex = MULTICONFIG(SPLASH_DURATION);
-    wait(1000ULL + (durationIndex * 2000ULL));
+    wait(3000ULL);
 
     return true;
 }

@@ -44,7 +44,7 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 bool isSdMode;
-u16 launchedPath[80+1];
+u16 launchedPath[41];
 BootType bootType;
 
 void main(int argc, char **argv, u32 magicWord)
@@ -66,7 +66,7 @@ void main(int argc, char **argv, u32 magicWord)
         bootType = isNtrBoot ? B9SNTR : B9S;
 
         u32 i;
-        for(i = 0; i < sizeof(launchedPath)/2 - 1 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
+        for(i = 0; i < 40 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
             launchedPath[i] = argv[0][i];
         launchedPath[i] = 0;
     }
@@ -76,7 +76,7 @@ void main(int argc, char **argv, u32 magicWord)
 
         u32 i;
         u16 *p = (u16 *)argv[0];
-        for(i = 0; i < sizeof(launchedPath)/2 - 1 && p[i] != 0; i++)
+        for(i = 0; i < 40 && p[i] != 0; i++)
             launchedPath[i] = p[i];
         launchedPath[i] = 0;
     }
@@ -239,7 +239,9 @@ void main(int argc, char **argv, u32 magicWord)
     if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
 
     bool autoBootEmu = CONFIG(AUTOBOOTEMU);
-
+	
+	bootonce("/bootonce.firm");
+	
     if((pressed & (BUTTON_START | BUTTON_L1)) == BUTTON_START)
     {
         loadHomebrewFirm(0);

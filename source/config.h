@@ -34,7 +34,7 @@
 
 #define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 2
-#define CONFIG_VERSIONMINOR 3
+#define CONFIG_VERSIONMINOR 1
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -46,7 +46,6 @@ enum multiOptions
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
-    SPLASH_DURATION,
     PIN,
     NEWCPU
 };
@@ -59,6 +58,7 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
+    PATCHACCESS,
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS
 };
