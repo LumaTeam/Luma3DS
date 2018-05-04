@@ -69,10 +69,12 @@ void DebuggerMenu_EnableDebugger(void)
     bool done = false, alreadyEnabled = gdbServer.super.running;
     Result res = 0;
     char buf[65];
-    bool isSocURegistered;
+    bool cantStart;
+    Handle dummy;
 
-    res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
-    isSocURegistered = R_SUCCEEDED(res) && isSocURegistered;
+    res = OpenProcessByName("socket", &dummy);
+    cantStart = R_FAILED(res);
+    svcCloseHandle(dummy);
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -86,7 +88,7 @@ void DebuggerMenu_EnableDebugger(void)
 
         if(alreadyEnabled)
             Draw_DrawString(10, 30, COLOR_WHITE, "Already enabled!");
-        else if(!isSocURegistered)
+        else if(cantStart)
             Draw_DrawString(10, 30, COLOR_WHITE, "Can't start the debugger before the system has fi-\nnished loading.");
         else
         {
