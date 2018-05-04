@@ -92,12 +92,101 @@ _commonHandler:
     bic r5, r3, #0xf
     orr r5, r4
     msr cpsr_c, r5             @ change processor mode
+    stmia r6!, {r8-lr}
     stmfd r6!, {r8-lr}
+    stmia r6!, {r8-lr}
     msr cpsr_c, r3             @ restore processor mode
     mov sp, r6
+    str lr, [r6], #4
+    str r2, [r6]
 
+    msr cpsr_cxsf, #0xdf       @ finally, switch to system mode, mask interrupts and clear flags (in case of double faults)
+    ldr sp, =0x02000000
+    b mainHandler
+
+
+.global FIQHandler
+.type   FIQHandler, %function
+GEN_USUAL_HANDLER FIQ, 0
+
+.global undefinedInstructionHandler
+.type   undefinedInstructionHandler, %function
+GEN_USUAL_HANDLER undefinedInstruction, 1
+
+.global prefetchAbortHandler
+.type   prefetchAbortHandler, %function
+prefetchAbortHandler:
+    msr cpsr_cx, #0xd7                  @ mask interrupts (abort mode)
+    mrs sp, spsr
+    and sp, #0x3f
+    cmp sp, #0x13
+    bne _prefetchAbortNormalHandler
+
+    ldr sp, =BreakPtr
+    ldr sp, [sp]
+    cmp sp, #0
+    beq _prefetchAbortNormalHandler
+    add sp, #(1*4 + 4)
+    cmp lr, sp
+    bne _prefetchAbortNormalHandler
     stmfd sp!, {r2,lr}         @ it's a bit of a mess, but we will fix that later
                                @ order of saved regs now: cpsr, pc + (2/4/8), r8-r14, r0-r7
+    mov sp, r8
+    pop {r8-r11}
+    ldr lr, [sp, #8]!
+    ldr sp, [sp, #4]
+    msr spsr_cxsf, sp
+    tst sp, #0x20
+    addne lr, #2                        @ adjust address for later
+
+    GEN_USUAL_HANDLER _prefetchAbortNormal, 2
+
+.global dataAbortHandler
+.type   dataAbortHandler, %function
+dataAbortHandler:
+    msr cpsr_cx, #0xd7                  @ mask interrupts (abort mode)
+    mrs sp, spsr
+    and sp, #0x3f
+    cmp sp, #0x1f
+    bne _dataAbortNormalHandler
+
+    sub lr, #8
+    adr sp, safecpy
+    cmp lr, sp
+    blo _j_dataAbortNormalHandler
+    adr sp, _safecpy_end
+    cmp lr, sp
+    bhs _j_dataAbortNormalHandler
+
+    msr spsr_f, #(1 << 30)
+    mov r12, #0
+    adds pc, lr, #4
+
+    _j_dataAbortNormalHandler:
+    add lr, #8
+
+    GEN_USUAL_HANDLER _dataAbortNormal, 3
+
+
+.global safecpy
+.type   safecpy, %function
+safecpy:
+    push {r4, lr}
+    mov r3, #0
+    movs r12, #1
+
+    _safecpy_loop:
+        ldrb r4, [r1, r3]
+        cmp r12, #0
+        beq _safecpy_loop_end
+        strb r4, [r0, r3]
+        add r3, #1
+        cmp r3, r2
+        blo _safecpy_loop
+
+    _safecpy_loop_end:
+    mov r0, r3
+    pop {r4, pc}
 
     mov r0, sp
 
