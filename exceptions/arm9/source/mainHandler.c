@@ -32,6 +32,7 @@
 #define REG_DUMP_SIZE   4 * 17
 #define CODE_DUMP_SIZE  48
 
+void __attribute__((noreturn)) mainHandler(u32 *registerDump, u32 type)
 bool cannotAccessAddress(const void *address)
 {
     u32 regionSettings[8];
@@ -89,6 +90,8 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type)
     dumpHeader.codeDumpSize = CODE_DUMP_SIZE;
     dumpHeader.additionalDataSize = 0;
 
+    u32 cpsr = registerDump[16];
+    u32 pc   = registerDump[15] - (type < 3 ? (((cpsr & 0x20) != 0 && type == 1) ? 2 : 4) : 8);
     //Dump registers
     //Current order of saved regs: cpsr, pc, r8-r14, r0-r7
     u32 cpsr = regs[0];
@@ -100,6 +103,8 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type)
     for(u32 i = 0; i < 8; i++) registerDump[i] = regs[9 + i]; 
 
     //Dump code
+    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+    dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 1 : 3)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
     dumpHeader.codeDumpSize = copyMemory(codeDump, instr, dumpHeader.codeDumpSize, ((cpsr & 0x20) != 0) ? 2 : 4);
 
@@ -109,7 +114,9 @@ void __attribute__((noreturn)) mainHandler(u32 *regs, u32 type)
     final += copyMemory(final, codeDump, dumpHeader.codeDumpSize, 1);
 
     //Dump stack in place
+    dumpHeader.stackDumpSize = safecpy(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF));
     dumpHeader.stackDumpSize = copyMemory(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
+    dumpHeader.stackDumpSize = safecpy(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF));
 
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
 
