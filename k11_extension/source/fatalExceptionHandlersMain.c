@@ -66,6 +66,7 @@ extern u32 safecpy_sz;
 bool isDataAbortExceptionRangeControlled(u32 spsr, u32 addr)
 {
      return (!(spsr & 0x20) && (spsr & 0x1F) != 0x10) && (
+         
                 ((u32)kernelUsrCopyFuncsStart <= addr && addr < (u32)kernelUsrCopyFuncsEnd) ||
                 ((u32)safecpy <= addr && addr < (u32)safecpy + safecpy_sz)
             );
