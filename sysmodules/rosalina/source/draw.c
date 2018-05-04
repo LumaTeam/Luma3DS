@@ -250,9 +250,9 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
             green = (px >> 8) & 0xF;
             red = (px >> 12) & 0xF;
 
-            dst[0] = (blue  << 4) | (blue  >> 4);
-            dst[1] = (green << 4) | (green >> 4);
-            dst[2] = (red   << 4) | (red   >> 4);
+            dst[0] = (blue  << 4) | (blue  >> 0);
+            dst[1] = (green << 4) | (green >> 0);
+            dst[2] = (red   << 4) | (red   >> 0);
 
             break;
         }
