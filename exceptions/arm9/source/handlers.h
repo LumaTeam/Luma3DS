@@ -48,3 +48,4 @@ void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void dataAbortHandler(void);
 void prefetchAbortHandler(void);
+u32 safecpy(void *dst, const void *src, u32 len);
