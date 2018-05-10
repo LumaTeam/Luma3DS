@@ -32,9 +32,9 @@
 
 #include "types.h"
 
-#define PIN_FILE         "pin.bin"
+#define PIN_FILE         "pin.dat"
 #define PIN_VERSIONMAJOR 1
-#define PIN_VERSIONMINOR 3
+#define PIN_VERSIONMINOR 4
 
 void newPin(bool allowSkipping, u32 pinMode);
 bool verifyPin(u32 pinMode);
