@@ -37,4 +37,4 @@ You can find a copy of the license in the LICENSE.txt file.
 
 ## Are we partners with the Luma3DS Team
 
-No, and we never will be. Even though this is a fork of their project, we are completely seperate.
+No, and we never will be. Even though this is a fork of their project, we are completely seperate. They know absolutely nothing about teamwork :P
