@@ -323,6 +323,47 @@ exit:
     return ret;
 }
 
+void freeCXI(Cxi **in)
+{
+    if (in && *in)
+    {
+        svcControlMemory((u32*)in, 0x08000000, 0x0, 0x0, MEMOP_FREE, 0x0);
+    }
+}
+
+bool loadCXI(u64 progId, Cxi **out)
+{
+    Result result;
+    IFile file;
+    u64 total;
+    u64 cxiSize;
+    char path[] = "/luma/sysmodules/0000000000000000.cxi";
+    bool ret = true;
+
+    progIdToStr(path + 32, progId);
+    if(!openLumaFile(&file, path))
+        return true;
+
+    if (R_SUCCEEDED(IFile_GetSize(&file, &cxiSize)))
+    {
+        if (R_FAILED(svcControlMemory((u32*)out, 0x08000000, 0x0, (cxiSize + 4095) & ~4095, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE)))
+        {
+            return true;
+        }
+        result = IFile_Read(&file, &total, *out, cxiSize);
+        ret = R_FAILED(result) || total != cxiSize;
+    }
+
+    IFile_Close(&file);
+
+    if (!ret && memcmp((*out)->ncch.magic, "NCCH", 4))
+    {
+        freeCXI(out);
+        ret = true;
+    }
+    return ret;
+}
+
 bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.bin"
