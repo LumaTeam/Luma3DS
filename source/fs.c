@@ -234,6 +234,39 @@ bool payloadMenu(char *path)
             drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED, payloadList[selectedPayload]);
         }
     }
+  
+  static void aes_batch(void *dst, const void *src, u32 blockCount)
+{
+    *REG_AESBLKCNT = blockCount << 16;
+    *REG_AESCNT |=  AES_CNT_START;
+
+    const u32 *src32    = (const u32 *)src;
+    u32 *dst32          = (u32 *)dst;
+
+    u32 wbc = blockCount;
+    u32 rbc = blockCount;
+
+    while(rbc)
+    {
+        if(wbc && ((*REG_AESCNT & 0x1F) <= 0xC)) //There's space for at least 4 ints
+        {
+            *REG_AESWRFIFO = *src32++;
+            *REG_AESWRFIFO = *src32++;
+            *REG_AESWRFIFO = *src32++;
+            *REG_AESWRFIFO = *src32++;
+            wbc--;
+        }
+
+        if(rbc && ((*REG_AESCNT & (0x1F << 0x5)) >= (0x4 << 0x5))) //At least 4 ints available for read
+        {
+            *dst32++ = *REG_AESRDFIFO;
+            *dst32++ = *REG_AESRDFIFO;
+            *dst32++ = *REG_AESRDFIFO;
+            *dst32++ = *REG_AESRDFIFO;
+            rbc--;
+        }
+    }
+}
 
     if(pressed != BUTTON_START)
     {
