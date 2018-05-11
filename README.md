@@ -3,7 +3,13 @@
 
 ## What it is
 
+<<<<<<< HEAD
 Comet3DS was created by the main devs with one thing in mind -- being more acceptive in PRs. Luma3DS had terrible and cruel staff, but the main devs were kinder, with a more cheerful dispostion. We take about 95% of PRs, so fire away :)
+=======
+**Luma3DS** is a program to patch the system software of (New) Nintendo 3DS handheld consoles "on the fly", adding features (such as per-game language settings and debugging capabilities for developers) and removing restrictions enforced by Nintendo (such as the region lock).
+
+This is a fork of Aurora Wright's and TuxSH's Luma3DS software. My main goal with this fork is to develop more options for Rosalina loader, and experiment a bit.
+>>>>>>> pr/6
 
 ---
 
