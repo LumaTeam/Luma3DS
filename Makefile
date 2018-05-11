@@ -53,7 +53,7 @@ dir_build := build
 dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O6 -flto -ffast-math
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c2a -Wno-main -Ofast -flto -funroll-all-loops -pipe -finline-functions
 LDFLAGS := -nostartfiles -Wl,--nmagic
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -155,7 +155,7 @@ $(dir_build)/%.bin: $(dir_patches)/%.s
 	@mkdir -p "$(@D)"
 	@armips $<
 
-$(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O8
+$(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -Ofast
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_MINOR="$(version_minor)"\
 						-DVERSION_BUILD="$(version_build)" -DISRELEASE="$(is_release)" -DCOMMIT_HASH="0x$(commit)"
