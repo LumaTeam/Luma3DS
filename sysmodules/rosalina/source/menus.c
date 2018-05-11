@@ -41,7 +41,11 @@
 
 Menu rosalinaMenu = {
     "Rosalina menu",
+<<<<<<< HEAD
     .nbItems = 10,
+=======
+    .nbItems = 8,
+>>>>>>> pr/6
     {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
@@ -50,9 +54,14 @@ Menu rosalinaMenu = {
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
+<<<<<<< HEAD
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+=======
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+		{ "Ignore This", METHOD, .method = &RosalinaMenu_DoThing }
+>>>>>>> pr/6
     }
 };
 
@@ -293,4 +302,9 @@ end:
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 
 #undef TRY
+}
+void RosalinaMenu_DoThing(void) {
+	Draw_DrawString(10,10, COLOR_TITLE, "ignore this please");
+	while(!(waitInput() & BUTTON_B) && !terminationRequest);
+
 }
