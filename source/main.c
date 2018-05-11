@@ -53,10 +53,19 @@ void main(int argc, char **argv, u32 magicWord)
          isSafeMode = false,
          isNoForceFlagSet = false,
          isNtrBoot = true;
-    FirmwareType firmType;
+    FirmwareType firmType,
+                 nativeFirm = NATIVE_FIRM;
     FirmwareSource nandType;
     const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
     const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
+
+    // set firmType to not be uninitialized memory
+    memset(&firmType, 0, sizeof(FirmwareType));
+    // if firmType matches nativeFirm return, it may be a bad thing
+    if (!memcmp(&firmType, &nativeFirm, sizeof(FirmwareType)))
+    {
+        return;
+    }
 
     //Shell closed, no error booting NTRCARD, NAND paritions not even considered
     isNtrBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
