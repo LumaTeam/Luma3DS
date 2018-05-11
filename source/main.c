@@ -52,7 +52,7 @@ void main(int argc, char **argv, u32 magicWord)
     bool isFirmProtEnabled,
          isSafeMode = false,
          isNoForceFlagSet = false,
-         isNtrBoot;
+         isNtrBoot = true;
     FirmwareType firmType;
     FirmwareSource nandType;
     const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
@@ -71,15 +71,7 @@ void main(int argc, char **argv, u32 magicWord)
         launchedPath[i] = 0;
     }
     else if(magicWord == 0xBABE && argc == 2) //Firmlaunch
-    {
-        bootType = FIRMLAUNCH;
 
-        u32 i;
-        u16 *p = (u16 *)argv[0];
-        for(i = 0; i < sizeof(launchedPath)/2 - 1 && p[i] != 0; i++)
-            launchedPath[i] = p[i];
-        launchedPath[i] = 0;
-    }
     else if(magicWord == 0xB002) //FIRM/NTRCARD boot
     {
         if(isNtrBoot) bootType = NTR;
@@ -143,7 +135,7 @@ void main(int argc, char **argv, u32 magicWord)
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
-    //Determine if this is a firmlaunch boot
+    //Determine if this is a firmlaunch boot which is is becuase I know it is
     if(bootType == FIRMLAUNCH)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
@@ -222,7 +214,7 @@ void main(int argc, char **argv, u32 magicWord)
         nandType = FIRMWARE_SYSNAND;
         firmSource = FIRMWARE_SYSNAND;
 
-        isSafeMode = true;
+        isSafeMode = false;
 
         //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
         if(pinExists && !shouldLoadConfigMenu)
@@ -232,6 +224,16 @@ void main(int argc, char **argv, u32 magicWord)
         }
 
         goto boot;
+    }
+    
+        {
+        bootType = FIRMLAUNCH;
+
+        u32 i;
+        u16 *p = (u16 *)argv[0];
+        for(i = 0; i < sizeof(launchedPath)/2 - 1 && p[i] != 0; i++)
+            launchedPath[i] = p[i];
+        launchedPath[i] = 0;
     }
 
     u32 splashMode = MULTICONFIG(SPLASH);
@@ -342,9 +344,3 @@ boot:
             res = patch1x2xNativeAndSafeFirm();
             break;
     }
-
-    if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
-
-    if(bootType != FIRMLAUNCH) deinitScreens();
-    launchFirm(0, NULL);
-}
