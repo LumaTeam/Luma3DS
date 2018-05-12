@@ -35,6 +35,10 @@ extern Menu rosalinaMenu;
 void RosalinaMenu_TakeScreenshot(void);
 void RosalinaMenu_ShowCredits(void);
 void RosalinaMenu_ProcessList(void);
+<<<<<<< HEAD
 void RosalinaMenu_PowerOff(void);
 void RosalinaMenu_Reboot(void);
 void RosalinaMenu_Cheats(void);
+=======
+void RosalinaMenu_DoThing(void);
+>>>>>>> pr/6
