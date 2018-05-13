@@ -45,7 +45,7 @@
 #define GPU_FB_BOTTOM_STRIDE        REG32(0x10400590)
 
 #define GPU_PSC0_CNT                REG32(0x1040001C)
-#define GPU_PSC1_CNT                REG32(0x1040001C)
+#define GPU_PSC1_CNT                REG32(0x1040002C)
 
 #define GPU_TRANSFER_CNT            REG32(0x10400C18)
 #define GPU_CMDLIST_CNT             REG32(0x104018F0)
