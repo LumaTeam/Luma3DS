@@ -37,6 +37,7 @@
 #include "crypto.h"
 #include "screen.h"
 #include "fmt.h"
+#include "chainloader.h"
 #include "../build/bundled.h"
 
 static Firm *firm = (Firm *)0x20001000;
@@ -528,12 +529,6 @@ u32 patch1x2xNativeAndSafeFirm(void)
 
 void launchFirm(int argc, char **argv)
 {
-    u32 *chainloaderAddress = (u32 *)0x01FF9000;
-
     prepareArm11ForFirmlaunch();
-
-    memcpy(chainloaderAddress, chainloader_bin, chainloader_bin_size);
-
-    // No need to flush caches here, the chainloader is in ITCM
-    ((void (*)(int, char **, Firm *))chainloaderAddress)(argc, argv, firm);
+    chainload(argc, argv, firm);
 }

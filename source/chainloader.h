@@ -24,35 +24,9 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "memory.h"
-#include "cache.h"
+#pragma once
+
+#include "types.h"
 #include "firm.h"
 
-void main(int argc, char **argv, Firm *firm)
-{
-    char *argvPassed[2],
-         absPath[24 + 255];
-    struct fb fbs[2];
-
-    if(argc > 0)
-    {
-        u32 i;
-        for(i = 0; i < sizeof(absPath) - 1 && argv[0][i] != 0; i++)
-            absPath[i] = argv[0][i];
-        absPath[i] = 0;
-
-        argvPassed[0] = (char *)absPath;
-    }
-
-    if(argc == 2)
-    {
-        struct fb *fbsrc = (struct fb *)argv[1];
-
-        fbs[0] = fbsrc[0];
-        fbs[1] = fbsrc[1];
-
-        argvPassed[1] = (char *)&fbs;
-    }
-
-    launchFirm(firm, argc, argvPassed);
-}
+void chainload(int argc, char **argv, Firm *firm);

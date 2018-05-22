@@ -109,13 +109,67 @@ _start:
     mcr p15, 0, r0, c1, c0, 0  @ write control register
 
     @ Clear BSS
-    ldr r0, =__bss_start
+    ldr r0, =__bss_start__
     mov r1, #0
-    ldr r2, =__bss_end
+    ldr r2, =__bss_end__
     sub r2, r0
     bl memset32
+
+    @ Set additional sections up
+    ldr r0, =__itcm_start__
+    ldr r1, =__itcm_lma__
+    ldr r2, =__itcm_bss_start__
+    sub r2, r0
+    bl  memcpy
+
+    ldr r0, =__itcm_bss_start__
+    mov r1, #0
+    ldr r2, =__itcm_end__
+    sub r2, r0
+    bl memset32
+
+    @ bl __libc_init_array
 
     mov r0, r9
     mov r1, r10
     mov r2, r11
     b main
+
+.section .chainloader.text.start, "ax", %progbits
+.align 4
+.global chainload
+.type   chainload, %function
+chainload:
+    ldr sp, =__itcm_stack_top__
+    b chainloader_main
+
+.global disableMpuAndJumpToEntrypoints
+.type   disableMpuAndJumpToEntrypoints, %function
+disableMpuAndJumpToEntrypoints:
+    mov r4, r0
+    mov r5, r1
+    mov r6, r2
+    mov r7, r3
+
+    @ Flush caches
+    ldr r12, =0xFFFF0830
+    blx r12
+    ldr r12, =0xFFFF0AB4
+    blx r12
+
+    @ Disable caches / MPU
+    mrc p15, 0, r0, c1, c0, 0  @ read control register
+    bic r0, #(1<<12)           @ - instruction cache disable
+    bic r0, #(1<<2)            @ - data cache disable
+    bic r0, #(1<<0)            @ - MPU disable
+    mcr p15, 0, r0, c1, c0, 0  @ write control register
+
+    @ Set the ARM11 entrypoint
+    mov r0, #0x20000000
+    str r7, [r0, #-4]
+
+    @ Jump to the ARM9 entrypoint
+    mov r0, r4
+    mov r1, r5
+    ldr r2, =0x3BEEF
+    bx r6

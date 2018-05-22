@@ -40,7 +40,6 @@ endif
 dir_source := source
 dir_patches := patches
 dir_arm11 := arm11
-dir_chainloader := chainloader
 dir_exceptions := exceptions
 dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_k11_extension := k11_extension
@@ -60,7 +59,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/chainloader.bin.o $(dir_build)/arm9_exceptions.bin.o
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/arm9_exceptions.bin.o
 
 modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi $(dir_build)/sm.cxi $(dir_build)/pxi.cxi
 
@@ -80,7 +79,6 @@ firm: $(dir_out)/boot.firm
 .PHONY: clean
 clean:
 	@$(MAKE) -C $(dir_arm11) clean
-	@$(MAKE) -C $(dir_chainloader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_k11_extension) clean
 	@$(MAKE) -C $(dir_loader) clean
@@ -92,7 +90,6 @@ clean:
 .PRECIOUS: $(dir_build)/%.bin
 
 .PHONY: $(dir_arm11)
-.PHONY: $(dir_chainloader)
 .PHONY: $(dir_arm9_exceptions)
 .PHONY: $(dir_k11_extension)
 .PHONY: $(dir_loader)
@@ -142,10 +139,6 @@ $(dir_build)/pxi.cxi: $(dir_pxi)
 
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
-
-$(dir_build)/chainloader.bin: $(dir_chainloader)
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $<
 
 $(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
 	@mkdir -p "$(@D)"
