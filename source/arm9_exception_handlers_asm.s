@@ -28,16 +28,16 @@
         stmia sp, {r0-r7}
 
         mov r0, #\index
-        b _commonHandler
+        b _arm9ExceptionHandlerCommon
 .endm
 
-.text
+.section .arm9_exception_handlers.text, "ax", %progbits
 .arm
-.balign 4
+.align 4
 
-.global _commonHandler
-.type   _commonHandler, %function
-_commonHandler:
+.global _arm9ExceptionHandlerCommon
+.type   _arm9ExceptionHandlerCommon, %function
+_arm9ExceptionHandlerCommon:
     mov r1, r0
     mov r0, sp
     mrs r2, spsr
@@ -60,7 +60,7 @@ _commonHandler:
 
     msr cpsr_cxsf, #0xdf       @ finally, switch to system mode, mask interrupts and clear flags (in case of double faults)
     ldr sp, =0x02000000
-    b mainHandler
+    b arm9ExceptionHandlerMain
 
 
 .global FIQHandler
@@ -80,7 +80,7 @@ prefetchAbortHandler:
     cmp sp, #0x13
     bne _prefetchAbortNormalHandler
 
-    ldr sp, =BreakPtr
+    ldr sp, =arm9ExceptionHandlerSvcBreakAddress
     ldr sp, [sp]
     cmp sp, #0
     beq _prefetchAbortNormalHandler
@@ -147,6 +147,22 @@ safecpy:
 
 _safecpy_end:
 
-.bss
-.balign 4
+.section .arm9_exception_handlers.rodata, "a", %progbits
+.align 4
+.global arm9ExceptionHandlerAddressTable
+arm9ExceptionHandlerAddressTable:
+    .word   0                               @ IRQ
+    .word   FIQHandler                      @ FIQ
+    .word   0                               @ SVC
+    .word   undefinedInstructionHandler     @ Undefined instruction
+    .word   prefetchAbortHandler            @ Prefetch abort
+    .word   dataAbortHandler                @ Data abort
+
+.section .arm9_exception_handlers.bss, "w", %nobits
+.align 4
+
+.global arm9ExceptionHandlerSvcBreakAddress
+arm9ExceptionHandlerSvcBreakAddress:
+    .word 0
+
 _regs: .skip (4 * 17)

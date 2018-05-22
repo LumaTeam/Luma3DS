@@ -90,6 +90,7 @@ bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const u8 *in, u32 size);
  */
 u8 I2C_readReg(I2cDevice devId, u8 regAddr);
 
+<<<<<<< HEAD
 /**
  * @brief      Writes a byte to a I2C register.
  *
@@ -100,3 +101,8 @@ u8 I2C_readReg(I2cDevice devId, u8 regAddr);
  * @return     Returns true on success and false on failure.
  */
 bool I2C_writeReg(I2cDevice devId, u8 regAddr, u8 data);
+=======
+u8 i2cReadRegister(u8 dev_id, u8 reg);
+bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data);
+bool i2cWriteRegisterNoWait(u8 dev_id, u8 reg, u8 data);
+>>>>>>> Do the same for arm9 exceptions

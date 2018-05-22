@@ -134,6 +134,7 @@ _start:
     mov r1, r10
     mov r2, r11
     b main
+.pool
 
 .section .chainloader.text.start, "ax", %progbits
 .align 4
@@ -142,6 +143,7 @@ _start:
 chainload:
     ldr sp, =__itcm_stack_top__
     b chainloader_main
+.pool
 
 .global disableMpuAndJumpToEntrypoints
 .type   disableMpuAndJumpToEntrypoints, %function
@@ -173,3 +175,5 @@ disableMpuAndJumpToEntrypoints:
     mov r1, r5
     ldr r2, =0x3BEEF
     bx r6
+
+.pool

@@ -39,6 +39,7 @@
 #include "memory.h"
 #include "config.h"
 #include "utils.h"
+#include "arm9_exception_handlers.h"
 #include "../build/bundled.h"
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
@@ -501,7 +502,7 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
     addr[0] = 0xE1A0800D;
     addr[1] = 0xE12FFF7F;
 
-    *(vu32 *)0x01FF8004 = arm9SvcTable[0x3C]; //BreakPtr
+    arm9ExceptionHandlerSvcBreakAddress = arm9SvcTable[0x3C]; //BreakPtr
 
     return 0;
 }

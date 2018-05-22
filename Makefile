@@ -40,8 +40,6 @@ endif
 dir_source := source
 dir_patches := patches
 dir_arm11 := arm11
-dir_exceptions := exceptions
-dir_arm9_exceptions := $(dir_exceptions)/arm9
 dir_k11_extension := k11_extension
 dir_sysmodules := sysmodules
 dir_loader := $(dir_sysmodules)/loader
@@ -52,14 +50,14 @@ dir_build := build
 dir_out := out
 
 ASFLAGS := -mcpu=arm946e-s
-CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -ffast-math
 LDFLAGS := -nostartfiles -Wl,--nmagic
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/arm9_exceptions.bin.o
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o
 
 modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi $(dir_build)/sm.cxi $(dir_build)/pxi.cxi
 
@@ -79,7 +77,6 @@ firm: $(dir_out)/boot.firm
 .PHONY: clean
 clean:
 	@$(MAKE) -C $(dir_arm11) clean
-	@$(MAKE) -C $(dir_arm9_exceptions) clean
 	@$(MAKE) -C $(dir_k11_extension) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_rosalina) clean
@@ -90,7 +87,6 @@ clean:
 .PRECIOUS: $(dir_build)/%.bin
 
 .PHONY: $(dir_arm11)
-.PHONY: $(dir_arm9_exceptions)
 .PHONY: $(dir_k11_extension)
 .PHONY: $(dir_loader)
 .PHONY: $(dir_rosalina)
@@ -100,7 +96,7 @@ clean:
 
 $(dir_out)/$(name)$(revision).7z: all
 	@mkdir -p "$(@D)"
-	@[ -f "$@" ] || 7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser -xr!.DS_Store
+	@[ -f "$@" ] || 7z a -mx $@ ./$(@D)/* ./exception_dump_parser -xr!.DS_Store
 
 $(dir_out)/boot.firm: $(dir_build)/modules.bin $(dir_build)/arm11.elf $(dir_build)/main.elf $(dir_build)/k11_extension.bin
 	@mkdir -p "$(@D)"
@@ -139,10 +135,6 @@ $(dir_build)/pxi.cxi: $(dir_pxi)
 
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
-
-$(dir_build)/arm9_exceptions.bin: $(dir_arm9_exceptions)
-	@mkdir -p "$(@D)"
-	@$(MAKE) -C $<
 
 $(dir_build)/%.bin: $(dir_patches)/%.s
 	@mkdir -p "$(@D)"

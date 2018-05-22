@@ -16,6 +16,9 @@ SECTIONS
     PROVIDE(__stack_top__       = 0x08100000);
     PROVIDE(__stack_bottom__    = 0x080F0000);
 
+    PROVIDE(__itcm_stack_top__    = 0x01FFB800);
+    PROVIDE(__itcm_stack_bottom__ = 0x01FFA800);
+
     . = __start__;
     . = ALIGN(32);
 
@@ -30,25 +33,31 @@ SECTIONS
     .itcm_loadable :
     {
         . = ALIGN(32);
-        PROVIDE (__itcm_start__  = .);
+        PROVIDE (__itcm_start__  = ABSOLUTE(.));
         PROVIDE (__itcm_lma__    = LOADADDR(.itcm_loadable));
-        PROVIDE(__itcm_stack_top__    = 0x01FFB800);
-        PROVIDE(__itcm_stack_bottom__ = 0x01FFA800);
 
+        KEEP(*(.arm9_exception_handlers.text))
+        *(.arm9_exception_handlers.text*)
         KEEP(*(.chainloader.text.start))
-        build/chainloader.o(.text*)
-        build/chainloader.o(.rodata*)
-        build/chainloader.o(.data*)
+        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.text*)
+
+        *(.arm9_exception_handlers.rodata*)
+        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.rodata*)
+
+        *(.arm9_exception_handlers.data*)
+        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.data*)
+
         . = ALIGN(8);
     } >itcm AT>main
 
     .itcm_bss :
     {
         . = ALIGN(8);
-        PROVIDE (__itcm_bss_start__ = .);
-        build/chainloader.o(.bss* COMMON)
+        PROVIDE (__itcm_bss_start__ = ABSOLUTE(.));
+        *(.arm9_exception_handlers.bss*)
+        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.bss* COMMON)
         . = ALIGN(8);
-        PROVIDE (__itcm_end__ = .);
+        PROVIDE (__itcm_end__ = ABSOLUTE(.));
     } >itcm AT>main
 
     .text :

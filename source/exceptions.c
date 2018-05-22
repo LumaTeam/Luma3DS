@@ -33,24 +33,20 @@
 #include "utils.h"
 #include "fmt.h"
 #include "buttons.h"
-#include "../build/bundled.h"
+#include "arm9_exception_handlers.h"
 
 void installArm9Handlers(void)
 {
-    memcpy((void *)0x01FF8000, arm9_exceptions_bin, arm9_exceptions_bin_size);
+    vu32 *dstVeneers = (vu32 *)0x08000000;
 
-    /* IRQHandler is at 0x08000000, but we won't handle it for some reasons
-       svcHandler is at 0x08000010, but we won't handle svc either */
-
-    static const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
-
-    for(u32 i = 0; i < 4; i++)
+    for(u32 i = 0; i < 6; i++)
     {
-        *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
-        *(vu32 *)(0x08000000 + offsets[i] + 4) = *(vu32 *)(0x01FF8008 + 4 * i);
+        if(arm9ExceptionHandlerAddressTable[i] != 0)
+        {
+            dstVeneers[2 * i] = 0xE51FF004;
+            dstVeneers[2 * i + 1] = arm9ExceptionHandlerAddressTable[i];
+        }
     }
-
-    *(vu32 *)0x01FF8004 = 0; //BreakPtr
 }
 
 void detectAndProcessExceptionDumps(void)
