@@ -33,7 +33,7 @@
 #include "memory.h"
 #include "utils.h"
 #include "fatfs/sdmmc/sdmmc.h"
-#include "../build/bundled.h"
+#include "large_patches.h"
 
 u32 emuOffset,
     emuHeader;
@@ -109,8 +109,8 @@ static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     //Looking for the last free space before Process9
     *freeK9Space = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(*freeK9Space == NULL || (u32)(pos + size - *freeK9Space) < 0x455 + emunand_bin_size ||
-       *(u32 *)(*freeK9Space + 0x455 + emunand_bin_size - 4) != 0xFFFFFFFF) return false;
+    if(*freeK9Space == NULL || (u32)(pos + size - *freeK9Space) < 0x455 + emunandPatchSize ||
+       *(u32 *)(*freeK9Space + 0x455 + emunandPatchSize - 4) != 0xFFFFFFFF) return false;
 
     *freeK9Space += 0x455;
 
@@ -195,20 +195,17 @@ u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 proce
 
     u32 ret = 0;
 
-    //Copy EmuNAND code
-    memcpy(freeK9Space, emunand_bin, emunand_bin_size);
-
     //Add the data of the found EmuNAND
-    u32 *posOffset = (u32 *)memsearch(freeK9Space, "NAND", emunand_bin_size, 4),
-        *posHeader = (u32 *)memsearch(freeK9Space, "NCSD", emunand_bin_size, 4);
-    *posOffset = emuOffset;
-    *posHeader = emuHeader;
+    emunandPatchNandOffset = emuOffset;
+    emunandPatchNcsdHeaderOffset = emuHeader;
 
     //Find and add the SDMMC struct
-    u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
     u32 sdmmc;
     ret += !ISN3DS && firmVersion < 0x25 ? getOldSdmmc(&sdmmc, firmVersion) : getSdmmc(process9Offset, process9Size, &sdmmc);
-    if(!ret) *posSdmmc = sdmmc;
+    if(!ret) emunandPatchSdmmcStructPtr = sdmmc;
+
+    //Copy EmuNAND code
+    memcpy(freeK9Space, emunandPatch, emunandPatchSize);
 
     //Add EmuNAND hooks
     u32 branchOffset = (u32)(freeK9Space - arm9Section + kernel9Address);

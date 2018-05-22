@@ -38,7 +38,6 @@ ifeq ($(strip $(shell git describe --tags --match v[0-9]* | grep -)),)
 endif
 
 dir_source := source
-dir_patches := patches
 dir_arm11 := arm11
 dir_k11_extension := k11_extension
 dir_sysmodules := sysmodules
@@ -56,8 +55,6 @@ LDFLAGS := -nostartfiles -Wl,--nmagic
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
-
-bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o
 
 modules = $(dir_build)/loader.cxi $(dir_build)/rosalina.cxi $(dir_build)/sm.cxi $(dir_build)/pxi.cxi
 
@@ -110,7 +107,7 @@ $(dir_build)/arm11.elf: $(dir_arm11)
 	@mkdir -p "$(@D)"
 	@$(MAKE) -C $<
 
-$(dir_build)/main.elf: $(bundled) $(objects)
+$(dir_build)/main.elf: $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
 
 $(dir_build)/k11_extension.bin: $(dir_k11_extension)
@@ -136,10 +133,6 @@ $(dir_build)/pxi.cxi: $(dir_pxi)
 $(dir_build)/%.bin.o: $(dir_build)/%.bin
 	@$(bin2o)
 
-$(dir_build)/%.bin: $(dir_patches)/%.s
-	@mkdir -p "$(@D)"
-	@armips $<
-
 $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_MINOR="$(version_minor)"\
@@ -147,13 +140,7 @@ $(dir_build)/patches.o: CFLAGS += -DVERSION_MAJOR="$(version_major)" -DVERSION_M
 $(dir_build)/firm.o: $(dir_build)/modules.bin
 $(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell wc -c $(dir_build)/modules.bin | tr -d [:space:][:alpha:][:punct:])"
 
-$(dir_build)/bundled.h: $(bundled)
-	@$(foreach f, $(bundled),\
-	echo "extern const u8" `(echo $(basename $(notdir $(f))) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
-	echo "extern const u32" `(echo $(basename $(notdir $(f)))| sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
-	)
-
-$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/bundled.h
+$(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 

@@ -38,7 +38,6 @@
 #include "screen.h"
 #include "fmt.h"
 #include "chainloader.h"
-#include "../build/bundled.h"
 
 static Firm *firm = (Firm *)0x20001000;
 

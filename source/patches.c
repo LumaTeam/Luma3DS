@@ -40,7 +40,7 @@
 #include "config.h"
 #include "utils.h"
 #include "arm9_exception_handlers.h"
-#include "../build/bundled.h"
+#include "large_patches.h"
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -316,15 +316,14 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
 
-    //Copy firmlaunch code
-    memcpy(off, reboot_bin, reboot_bin_size);
-
     //Put the fOpen offset in the right location
-    u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_bin_size, 4);
-    *pos_fopen = fOpenOffset;
+    rebootPatchFopenPtr = fOpenOffset;
 
-    u16 *fname = (u16 *)memsearch(off, "FILE", reboot_bin_size, 8);
-    memcpy(fname, launchedPath, 2 * (1 + pathLen));
+    //Copy the launched path
+    memcpy(rebootPatchFileName, launchedPath, 2 * (1 + pathLen));
+
+    //Copy firmlaunch code
+    memcpy(off, rebootPatch, rebootPatchSize);
 
     return 0;
 }

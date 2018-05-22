@@ -138,6 +138,7 @@ SECTIONS
     {
         *(.data)
         *(.data.*)
+        KEEP (*(.large_patch*))
         *(.gnu.linkonce.d*)
         CONSTRUCTORS
         . = ALIGN(4);

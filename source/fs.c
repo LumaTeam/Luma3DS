@@ -37,7 +37,6 @@
 #include "buttons.h"
 #include "firm.h"
 #include "crypto.h"
-#include "../build/bundled.h"
 
 static FATFS sdFs,
              nandFs;
