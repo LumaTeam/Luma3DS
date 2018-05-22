@@ -3,7 +3,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "fsldr.h"
-#include "../build/bundled.h"
+#include "romfsredir.h"
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
 {
@@ -204,7 +204,7 @@ static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u3
         roundedDataSize = ((dataSize + 4095) & 0xFFFFF000);
 
     //First check for sufficient padding at the end of the .text segment
-    if(roundedTextSize - size >= romfsredir_bin_size) *payloadOffset = size;
+    if(roundedTextSize - size >= romfsRedirPatchSize) *payloadOffset = size;
     else
     {
         //If there isn't enough padding look for the "throwFatalError" function to replace
@@ -528,43 +528,18 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
-    memcpy(payload, romfsredir_bin, romfsredir_bin_size);
 
-    //Insert symbols in the payload
-    u32 *payload32 = (u32 *)payload;
-    for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
-    {
-        switch(payload32[i])
-        {
-            case 0xdead0000:
-                payload32[i] = *(u32 *)(code + fsOpenFileDirectly);
-                break;
-            case 0xdead0001:
-                payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsOpenFileDirectly + 4);
-                break;
-            case 0xdead0002:
-                payload32[i] = *(u32 *)(code + fsTryOpenFile);
-                break;
-            case 0xdead0003:
-                payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
-                break;
-            case 0xdead0004:
-                payload32[i] = pathAddress;
-                break;
-            case 0xdead0005:
-                payload32[i] = 0x100000 + fsMountArchive;
-                break;
-            case 0xdead0006:
-                payload32[i] = 0x100000 + fsRegisterArchive;
-                break;
-            case 0xdead0007:
-                payload32[i] = archiveId;
-                break;
-            case 0xdead0008:
-                memcpy(payload32 + i, updateRomFsMounts[updateRomFsIndex], 4);
-                break;
-        }
-    }
+    romfsRedirPatchSubstituted1 = *(u32 *)(code + fsOpenFileDirectly);
+    romfsRedirPatchHook1 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook1 - (u32)romfsRedirPatch, fsOpenFileDirectly + 4);
+    romfsRedirPatchSubstituted1 = *(u32 *)(code + fsTryOpenFile);
+    romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
+    romfsRedirPatchCustomPath = pathAddress;
+    romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
+    romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
+    romfsRedirPatchArchiveId = archiveId;
+    memcpy(&romfsRedirPatchRomFsMount, updateRomFsMounts[updateRomFsIndex], 4);
+
+    memcpy(payload, romfsRedirPatch, romfsRedirPatchSize);
 
     memcpy(code + pathOffset, "lf:", 3);
     memcpy(code + pathOffset + 3, path, sizeof(path));
