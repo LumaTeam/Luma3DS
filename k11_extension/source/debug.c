@@ -24,8 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
+#include <string.h>
 #include "debug.h"
-#include "memory.h"
 #include "synchronization.h"
 
 KRecursiveLock dbgParamsLock = { NULL };

@@ -127,7 +127,7 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(SyncRequestInfo)
     if(R_FAILED(r))
         name[0] = 0;
 
-    n = sprintf(outbuf, "%s 0x%x, 0x%08x\n", name, cmdId, ctx->threadInfos[id].tls + 0x80);
+    n = sprintf(outbuf, "%s 0x%lx, 0x%08lx\n", name, cmdId, ctx->threadInfos[id].tls + 0x80);
 
 end:
     svcCloseHandle(handle);
@@ -181,9 +181,9 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
     svcControlService(SERVICEOP_GET_NAME, serviceBuf, handle);
     refcount = (u32)(refcountRaw - 1);
     if(serviceBuf[0] != 0)
-        n = sprintf(outbuf, "(%s *)0x%08x /* %s handle, %u %s */\n", classBuf, kernelAddr, serviceBuf, refcount, refcount == 1 ? "reference" : "references");
+        n = sprintf(outbuf, "(%s *)0x%08lx /* %s handle, %lu %s */\n", classBuf, kernelAddr, serviceBuf, refcount, refcount == 1 ? "reference" : "references");
     else
-        n = sprintf(outbuf, "(%s *)0x%08x /* %u %s */\n", classBuf, kernelAddr, refcount, refcount == 1 ? "reference" : "references");
+        n = sprintf(outbuf, "(%s *)0x%08lx /* %lu %s */\n", classBuf, kernelAddr, refcount, refcount == 1 ? "reference" : "references");
 
 end:
     svcCloseHandle(handle);
@@ -210,16 +210,16 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetMmuConfig)
         s64 TTBCR, TTBR0;
         svcGetSystemInfo(&TTBCR, 0x10002, 0);
         svcGetProcessInfo(&TTBR0, process, 0x10008);
-        n = sprintf(outbuf, "TTBCR = %u\nTTBR0 = 0x%08x\nTTBR1 =", (u32)TTBCR, (u32)TTBR0);
+        n = sprintf(outbuf, "TTBCR = %lu\nTTBR0 = 0x%08lx\nTTBR1 =", (u32)TTBCR, (u32)TTBR0);
         for(u32 i = 0; i < (isN3DS ? 4 : 2); i++)
         {
             s64 TTBR1;
             svcGetSystemInfo(&TTBR1, 0x10002, 1 + i);
 
             if(i == (isN3DS ? 3 : 1))
-                n += sprintf(outbuf + n, " 0x%08x\n", (u32)TTBR1);
+                n += sprintf(outbuf + n, " 0x%08lx\n", (u32)TTBR1);
             else
-                n += sprintf(outbuf + n, " 0x%08x /", (u32)TTBR1);
+                n += sprintf(outbuf + n, " 0x%08lx /", (u32)TTBR1);
         }
         svcCloseHandle(process);
     }
@@ -294,7 +294,7 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetMemRegions)
             const char *perm = FormatMemPerm(memi.perm);
             const char *state = FormatMemState(memi.state);
 
-            posInBuffer += sprintf(outbuf + posInBuffer, "%08X - %08X %s %s\n",
+            posInBuffer += sprintf(outbuf + posInBuffer, "%08lx - %08lx %s %s\n",
                 memi.base_addr, address, perm, state);
         }
     }

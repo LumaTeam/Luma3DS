@@ -1080,7 +1080,8 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
                         cheat = Cheat_AllocCheat();
                     }
                 }
-                strncpy(cheat->name, line, 39);
+                strncpy(cheat->name, line, 38);
+                cheat->name[38] = '\0';
             }
         }
     } while (R_SUCCEEDED(res));
@@ -1225,7 +1226,7 @@ void RosalinaMenu_Cheats(void)
             }
             else
             {
-                Draw_DrawFormattedString(10, 10, COLOR_TITLE, "ERROR: %08x", r);
+                Draw_DrawFormattedString(10, 10, COLOR_TITLE, "ERROR: %08lx", r);
                 Draw_DrawFormattedString(10, 30, COLOR_RED, failureReason);
             }
             Draw_FlushFramebuffer();

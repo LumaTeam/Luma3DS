@@ -78,7 +78,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
             miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else if(R_FAILED(res))
-            sprintf(failureReason, "%08x", (u32)res);
+            sprintf(failureReason, "%08lx", (u32)res);
         else
         {
             res = -1;
@@ -175,7 +175,7 @@ void MiscellaneousMenu_SaveSettings(void)
     IFile file;
     u64 total;
 
-    struct PACKED
+    struct PACKED ALIGN(4)
     {
         char magic[4];
         u16 formatVersionMajor, formatVersionMinor;
@@ -227,7 +227,7 @@ void MiscellaneousMenu_SaveSettings(void)
         if(R_SUCCEEDED(res))
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
         else
-            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08x).", res);
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08lx).", res);
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
@@ -252,7 +252,7 @@ void MiscellaneousMenu_InputRedirection(void)
         svcCloseHandle(inputRedirectionThreadStartedEvent);
 
         if(res != 0)
-            sprintf(buf, "Failed to stop InputRedirection (0x%08x).", (u32)res);
+            sprintf(buf, "Failed to stop InputRedirection (0x%08lx).", (u32)res);
         else
             miscellaneousMenu.items[2].title = "Start InputRedirection";
     }
@@ -308,7 +308,7 @@ void MiscellaneousMenu_InputRedirection(void)
                 }
 
                 if(res != 0)
-                    sprintf(buf, "Starting InputRedirection... failed (0x%08x).", (u32)res);
+                    sprintf(buf, "Starting InputRedirection... failed (0x%08lx).", (u32)res);
                 else
                     miscellaneousMenu.items[2].title = "Stop InputRedirection";
 

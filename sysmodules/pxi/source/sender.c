@@ -7,9 +7,10 @@ sender.c
 This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE for details).
 */
 
+#include <string.h>
+
 #include "sender.h"
 #include "PXI.h"
-#include "memory.h"
 
 Result sendPXICmdbuf(Handle *additionalHandle, u32 serviceId, u32 *buffer)
 {

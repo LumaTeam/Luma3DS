@@ -31,7 +31,6 @@
 #include "utils.h"
 #include "exceptions.h"
 #include "draw.h"
-#include "strings.h"
 #include "buttons.h"
 #include "pin.h"
 #include "crypto.h"
@@ -336,7 +335,7 @@ boot:
     u32 firmVersion = loadNintendoFirm(&firmType, firmSource, loadFromStorage, isSafeMode);
 
     bool doUnitinfoPatch = CONFIG(PATCHUNITINFO);
-    u32 res;
+    u32 res = 0;
     switch(firmType)
     {
         case NATIVE_FIRM:

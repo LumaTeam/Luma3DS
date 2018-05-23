@@ -1,7 +1,6 @@
 #include <3ds.h>
 #include "memory.h"
 #include "patcher.h"
-#include "exheader.h"
 #include "ifile.h"
 #include "fsldr.h"
 #include "fsreg.h"
@@ -30,7 +29,7 @@ typedef struct
 static Handle g_handles[MAX_SESSIONS+2];
 static int g_active_handles;
 static u64 g_cached_prog_handle;
-static exheader_header g_exheader;
+static ExHeader g_exheader;
 static char g_ret_buf[1024];
 
 static inline void loadCFWInfo(void)
@@ -184,10 +183,12 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
     }
   }
 
-  u16 progver = g_exheader.codesetinfo.flags.remasterversion[0] | (g_exheader.codesetinfo.flags.remasterversion[1] << 8);
+  ExHeader_CodeSetInfo *csi = &g_exheader.info.sci.codeset_info;
+  u16 progver = csi->flags.remaster_version;
 
   // patch
-  patchCode(progid, progver, (u8 *)shared->text_addr, shared->total_size << 12, g_exheader.codesetinfo.text.codesize, g_exheader.codesetinfo.ro.codesize, g_exheader.codesetinfo.data.codesize, g_exheader.codesetinfo.ro.address, g_exheader.codesetinfo.data.address);
+  patchCode(progid, progver, (u8 *)shared->text_addr, shared->total_size << 12,
+  csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
 
   return 0;
 }
@@ -207,7 +208,7 @@ static Result HBLDR_Init(Handle *session)
   return res;
 }
 
-static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
+static Result loader_GetProgramInfo(ExHeader *exheader, u64 prog_handle)
 {
   Result res;
 
@@ -236,13 +237,13 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
     svcGetSystemInfo(&nbSection0Modules, 26, 0);
 
     // Force always having sdmc:/ and nand:/rw permission
-    exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
-    exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x480;
+    exheader->info.aci.local_caps.storage_info.fs_access_info |= FSACCESS_SDMC_RW | FSACCESS_NANDRW;
+    exheader->access_descriptor.acli.local_caps.storage_info.fs_access_info |= FSACCESS_SDMC_RW | FSACCESS_NANDRW;;
 
     // Tweak 3dsx placeholder title exheader
     if (nbSection0Modules == 6)
     {
-      if(exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+      if(exheader->info.aci.local_caps.title_id == HBLDR_3DSX_TID)
       {
       	Handle hbldr = 0;
       	res = HBLDR_Init(&hbldr);
@@ -260,11 +261,11 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
       	}
       }
 
-      u64 originalProgId = exheader->arm11systemlocalcaps.programid;
-      if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->arm11systemlocalcaps.programid, exheader))
+      u64 originalProgId = exheader->info.aci.local_caps.title_id;
+      if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->info.aci.local_caps.title_id, exheader))
       {
-        exheader->arm11systemlocalcaps.programid = originalProgId;
-        exheader->accessdesc.arm11systemlocalcaps.programid = originalProgId;
+        exheader->info.aci.local_caps.title_id = originalProgId;
+        exheader->access_descriptor.acli.local_caps.title_id = originalProgId;
       }
     }
   }
@@ -287,7 +288,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   u64 progid;
 
   // make sure the cached info corrosponds to the current prog_handle
-  if (g_cached_prog_handle != prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+  if (g_cached_prog_handle != prog_handle || g_exheader.info.aci.local_caps.title_id == HBLDR_3DSX_TID)
   {
     res = loader_GetProgramInfo(&g_exheader, prog_handle);
     g_cached_prog_handle = prog_handle;
@@ -302,7 +303,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   flags = 0;
   for (count = 0; count < 28; count++)
   {
-    desc = g_exheader.arm11kernelcaps.descriptors[count];
+    desc = g_exheader.info.aci.kernel_caps.descriptors[count];
     if (0x1FE == desc >> 23)
     {
       flags = desc & 0xF00;
@@ -314,7 +315,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   }
 
   // check for 3dsx process
-  progid = g_exheader.arm11systemlocalcaps.programid;
+  progid = g_exheader.info.aci.local_caps.title_id;
   if (progid == HBLDR_3DSX_TID)
   {
     Handle hbldr = 0;
@@ -326,11 +327,11 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     }
     u32* cmdbuf = getThreadCommandBuffer();
     cmdbuf[0] = IPC_MakeHeader(1,6,0);
-    cmdbuf[1] = g_exheader.codesetinfo.text.address;
+    cmdbuf[1] = g_exheader.info.sci.codeset_info.text.address;
     cmdbuf[2] = flags & 0xF00;
     cmdbuf[3] = progid;
     cmdbuf[4] = progid>>32;
-    memcpy(&cmdbuf[5], g_exheader.codesetinfo.name, 8);
+    memcpy(&cmdbuf[5], g_exheader.info.sci.codeset_info.name, 8);
     res = svcSendSyncRequest(hbldr);
     svcCloseHandle(hbldr);
     if (R_SUCCEEDED(res))
@@ -343,19 +344,20 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
       return res;
     }
     codeset = (Handle)cmdbuf[3];
-    res = svcCreateProcess(process, codeset, g_exheader.arm11kernelcaps.descriptors, count);
+    res = svcCreateProcess(process, codeset, g_exheader.info.aci.kernel_caps.descriptors, count);
     svcCloseHandle(codeset);
     return res;
   }
 
   // allocate process memory
-  vaddr.text_addr = g_exheader.codesetinfo.text.address;
-  vaddr.text_size = (g_exheader.codesetinfo.text.codesize + 4095) >> 12;
-  vaddr.ro_addr = g_exheader.codesetinfo.ro.address;
-  vaddr.ro_size = (g_exheader.codesetinfo.ro.codesize + 4095) >> 12;
-  vaddr.data_addr = g_exheader.codesetinfo.data.address;
-  vaddr.data_size = (g_exheader.codesetinfo.data.codesize + 4095) >> 12;
-  data_mem_size = (g_exheader.codesetinfo.data.codesize + g_exheader.codesetinfo.bsssize + 4095) >> 12;
+  ExHeader_CodeSetInfo *csi = &g_exheader.info.sci.codeset_info;
+  vaddr.text_addr = csi->text.address;
+  vaddr.text_size = (csi->text.size + 4095) >> 12;
+  vaddr.ro_addr = csi->rodata.address;
+  vaddr.ro_size = (csi->rodata.size + 4095) >> 12;
+  vaddr.data_addr = csi->data.address;
+  vaddr.data_size = (csi->data.size + 4095) >> 12;
+  data_mem_size = (csi->data.size + csi->bss_size + 4095) >> 12;
   vaddr.total_size = vaddr.text_size + vaddr.ro_size + vaddr.data_size;
   if ((res = allocate_shared_mem(&shared_addr, &vaddr, flags)) < 0)
   {
@@ -363,9 +365,9 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   }
 
   // load code
-  if ((res = load_code(progid, &shared_addr, prog_handle, g_exheader.codesetinfo.flags.flag & 1)) >= 0)
+  if ((res = load_code(progid, &shared_addr, prog_handle, csi->flags.compress_exefs_code)) >= 0)
   {
-    memcpy(&codesetinfo.name, g_exheader.codesetinfo.name, 8);
+    memcpy(&codesetinfo.name, csi->name, 8);
     codesetinfo.program_id = progid;
     codesetinfo.text_addr = vaddr.text_addr;
     codesetinfo.text_size = vaddr.text_size;
@@ -379,7 +381,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)shared_addr.text_addr, (void *)shared_addr.ro_addr, (void *)shared_addr.data_addr);
     if (res >= 0)
     {
-      res = svcCreateProcess(process, codeset, g_exheader.arm11kernelcaps.descriptors, count);
+      res = svcCreateProcess(process, codeset, g_exheader.info.aci.kernel_caps.descriptors, count);
       svcCloseHandle(codeset);
       if (res >= 0)
       {
@@ -515,7 +517,7 @@ static void handle_commands(void)
     case 4: // GetProgramInfo
     {
       prog_handle = *(u64 *)&cmdbuf[1];
-      if (prog_handle != g_cached_prog_handle || g_exheader.arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+      if (prog_handle != g_cached_prog_handle || g_exheader.info.aci.local_caps.title_id == HBLDR_3DSX_TID)
       {
         res = loader_GetProgramInfo(&g_exheader, prog_handle);
         if (res >= 0)
@@ -582,7 +584,7 @@ void __appExit()
 void __sync_init();
 void __sync_fini();
 void __system_initSyscalls();
- 
+
 void __ctru_exit()
 {
   void __libc_fini_array(void);
@@ -669,7 +671,7 @@ int main()
         g_active_handles--;
         reply_target = 0;
       }
-      else 
+      else
       {
         svcBreak(USERBREAK_ASSERT);
       }

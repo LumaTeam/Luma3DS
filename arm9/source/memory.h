@@ -26,15 +26,11 @@
 
 /*
 *   Boyer-Moore Horspool algorithm adapted from http://www-igm.univ-mlv.fr/~lecroq/string/node18.html#SECTION00180
-*   memcpy, memset32 and memcmp adapted from https://github.com/mid-kid/CakesForeveryWan/blob/557a8e8605ab3ee173af6497486e8f22c261d0e2/source/memfuncs.c
 */
 
 #pragma once
 
+#include <string.h>
 #include "types.h"
 
-void memcpy(void *dest, const void *src, u32 size);
-void memset(void *dest, u32 filler, u32 size) __attribute__((used));
-void memset32(void *dest, u32 filler, u32 size);
-int memcmp(const void *buf1, const void *buf2, u32 size);
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);

@@ -23,9 +23,9 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
+#include <string.h>
 
 #include "ipc.h"
-#include "memory.h"
 
 static SessionInfo sessionInfos[MAX_SESSION] = { {NULL} };
 static u32 nbActiveSessions = 0;

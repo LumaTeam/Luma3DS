@@ -52,12 +52,12 @@ MyThread *errDispCreateThread(void)
 
 static inline u32 ERRF_DisplayRegisterValue(u32 posX, u32 posY, const char *name, u32 value)
 {
-    return Draw_DrawFormattedString(posX, posY, COLOR_WHITE, "%-9s %08x", name, value);
+    return Draw_DrawFormattedString(posX, posY, COLOR_WHITE, "%-9s %08lx", name, value);
 }
 
 static inline int ERRF_FormatRegisterValue(char *out, const char *name, u32 value)
 {
-    return sprintf(out, "%-9s %08x", name, value);
+    return sprintf(out, "%-9s %08lx", name, value);
 }
 
 static int ERRF_FormatError(char *out, ERRF_FatalErrInfo *info)
@@ -88,7 +88,7 @@ static int ERRF_FormatError(char *out, ERRF_FatalErrInfo *info)
         Handle processHandle;
         Result res;
 
-        out += sprintf(out, "\nProcess ID:       %u\n", info->procId);
+        out += sprintf(out, "\nProcess ID:       %lu\n", info->procId);
 
         res = svcOpenProcess(&processHandle, info->procId);
         if(R_SUCCEEDED(res))
@@ -149,9 +149,9 @@ static int ERRF_FormatError(char *out, ERRF_FatalErrInfo *info)
     else if(info->type != ERRF_ERRTYPE_CARD_REMOVED)
     {
         if(info->type != ERRF_ERRTYPE_FAILURE)
-            out += sprintf(out, "Address:          0x%08x\n", info->pcAddr);
+            out += sprintf(out, "Address:          0x%08lx\n", info->pcAddr);
 
-        out += sprintf(out, "Error code:       0x%08x\n", info->resCode);
+        out += sprintf(out, "Error code:       0x%08lx\n", info->resCode);
     }
 
     const char *desc;

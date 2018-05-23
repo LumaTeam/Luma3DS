@@ -26,7 +26,6 @@
 
 #include "exceptions.h"
 #include "fs.h"
-#include "strings.h"
 #include "memory.h"
 #include "screen.h"
 #include "draw.h"
@@ -134,16 +133,16 @@ void detectAndProcessExceptionDumps(void)
 
     for(u32 i = 0; i < 17; i += 2)
     {
-        posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08X", registerNames[i], regs[i]);
+        posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08lx", registerNames[i], regs[i]);
 
         if(i != 16)
-            posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08X", registerNames[i + 1], regs[i + 1]);
+            posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08lx", registerNames[i + 1], regs[i + 1]);
         else if(dumpHeader->processor == 11)
-            posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08X", registerNames[i + 1], regs[20]);
+            posY = drawFormattedString(true, 10 + 22 * SPACING_X, posY, COLOR_WHITE, "%-7s%08lx", registerNames[i + 1], regs[20]);
     }
 
     if(dumpHeader->processor == 11 && dumpHeader->type == 3)
-        posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08X       Access type: %s", "FAR", regs[19], regs[17] & (1u << 11) ? "Write" : "Read");
+        posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE, "%-7s%08lx       Access type: %s", "FAR", regs[19], regs[17] & (1u << 11) ? "Write" : "Read");
 
     posY += SPACING_Y;
 
@@ -155,7 +154,7 @@ void detectAndProcessExceptionDumps(void)
 
     for(u32 line = 0; line < 19 && stackDump < additionalData; line++)
     {
-        posYBottom = drawFormattedString(false, 10, posYBottom + SPACING_Y, COLOR_WHITE, "%08X:", regs[13] + 8 * line);
+        posYBottom = drawFormattedString(false, 10, posYBottom + SPACING_Y, COLOR_WHITE, "%08lx:", regs[13] + 8 * line);
 
         for(u32 i = 0; i < 8 && stackDump < additionalData; i++, stackDump++)
             drawFormattedString(false, 10 + 10 * SPACING_X + 3 * i * SPACING_X, posYBottom, COLOR_WHITE, "%02X", *stackDump);
@@ -171,9 +170,9 @@ void detectAndProcessExceptionDumps(void)
     drawString(true, 10, posY + SPACING_Y, COLOR_BLACK, choiceMessage[0]);
     drawString(true, 10, posY + SPACING_Y + SPACING_Y , COLOR_BLACK, choiceMessage[1]);
 
-    char folderPath[12],
-         path[36],
-         fileName[24];
+    char folderPath[32],
+         path[128],
+         fileName[32];
 
     sprintf(folderPath, "dumps/arm%u", dumpHeader->processor);
     findDumpFile(folderPath, fileName);
@@ -191,6 +190,6 @@ void detectAndProcessExceptionDumps(void)
     waitInput(false);
 
 exit:
-    memset32((void *)dumpHeader, 0, dumpHeader->totalSize);
+    memset((void *)dumpHeader, 0, dumpHeader->totalSize);
     mcuPowerOff();
 }

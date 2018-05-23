@@ -25,7 +25,7 @@
 */
 
 #include "svc/GetProcessInfo.h"
-#include "memory.h"
+#include <string.h>
 
 Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
 {

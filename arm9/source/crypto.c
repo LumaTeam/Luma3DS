@@ -34,7 +34,6 @@
 #include "crypto.h"
 #include "memory.h"
 #include "emunand.h"
-#include "strings.h"
 #include "utils.h"
 #include "alignedseqmemcpy.h"
 #include "fatfs/sdmmc/sdmmc.h"
@@ -581,6 +580,11 @@ void kernel9Loader(Arm9Bin *arm9Section)
 
     u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
 
+    // Get size
+    u32 arm9SectionSize = 0;
+    for(u32 i = 0; i < 8; i++)
+        arm9SectionSize = (arm9Section->size[i] - '0') + 10*arm9SectionSize;
+
     //Set keyX
     __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
     aes_use_keyslot(0x11);
@@ -598,7 +602,7 @@ void kernel9Loader(Arm9Bin *arm9Section)
 
     //Decrypt ARM9 binary
     aes_use_keyslot(arm9BinSlot);
-    aes(startOfArm9Bin, startOfArm9Bin, decAtoi(arm9Section->size, sizeof(arm9Section->size)) / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(startOfArm9Bin, startOfArm9Bin, arm9SectionSize / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
     if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
 }

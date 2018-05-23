@@ -36,7 +36,7 @@ void undefinedInstructionHandler(void);
 void prefetchAbortHandler(void);
 void dataAbortHandler(void);
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u32 magic[2];
     u16 versionMinor, versionMajor;

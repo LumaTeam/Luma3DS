@@ -61,7 +61,7 @@ typedef volatile s64 vs64;
 #define ISN3DS       (CFG11_SOCINFO & 2)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 
-typedef struct __attribute__((packed))
+typedef struct __attribute__((packed, aligned(4)))
 {
     char magic[4];
     u16 formatVersionMajor, formatVersionMinor;
@@ -71,7 +71,7 @@ typedef struct __attribute__((packed))
     u32 rosalinaMenuCombo;
 } CfgData;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     char magic[4];
     u16 formatVersionMajor, formatVersionMinor;
@@ -80,7 +80,7 @@ typedef struct __attribute__((packed))
     u8 hash[32];
 } PinData;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u32 magic[2];
     u16 versionMinor, versionMajor;

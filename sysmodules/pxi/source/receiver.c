@@ -6,9 +6,10 @@ receiver.c:
 This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE for details).
 */
 
+#include <string.h>
+
 #include "receiver.h"
 #include "PXI.h"
-#include "memory.h"
 
 static inline void receiveFromArm9(void)
 {

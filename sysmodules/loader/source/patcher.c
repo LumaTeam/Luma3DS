@@ -356,7 +356,7 @@ error:
     while(true);
 }
 
-bool loadTitleExheader(u64 progId, exheader_header *exheader)
+bool loadTitleExheader(u64 progId, ExHeader *exheader)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/exheader.bin"
        If it exists it should be a decrypted exheader */
@@ -370,7 +370,7 @@ bool loadTitleExheader(u64 progId, exheader_header *exheader)
 
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(exheader_header)) goto error;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(ExHeader)) goto error;
     else
     {
         u64 total;
@@ -715,7 +715,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 //Patch N3DS CPU Clock and L2 cache setting
                 *(off - 4) = *(off - 3);
                 *(off - 3) = *(off - 1);
-                memcpy(off - 1, off, 16);
+                memmove(off - 1, off, 16);
                 *(off + 3) = 0xE3800000 | cpuSetting;
             }
         }
@@ -736,7 +736,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             for(end = start + 8; *(u32 *)end != 0xCC010000; end += 8)
                 if(end >= roStart + roSize - 12) goto error;
 
-            memset32(start, 0, end - start);
+            memset(start, 0, end - start);
         }
 
         s64 nbSection0Modules;

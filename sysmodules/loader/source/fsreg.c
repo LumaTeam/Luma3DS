@@ -54,7 +54,7 @@ Result FSREG_LoadProgram(u64 *prog_handle, FS_ProgramInfo *title)
   return cmdbuf[1];
 }
 
-Result FSREG_GetProgramInfo(exheader_header *exheader, u32 entry_count, u64 prog_handle)
+Result FSREG_GetProgramInfo(ExHeader *exheader, u32 entry_count, u64 prog_handle)
 {
   u32 *cmdbuf = getThreadCommandBuffer();
 

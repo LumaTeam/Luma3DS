@@ -59,7 +59,7 @@ This code is based on a file that contains the following:
 
 //TuxSH's changes: add support for 64-bit numbers, remove floating-point code
 
-#include "strings.h"
+#include "memory.h"
 #include "fmt.h"
 
 #define ZEROPAD   (1<<0) //Pad with zero
@@ -148,7 +148,7 @@ static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precisi
     return str;
 }
 
-u32 vsprintf(char *buf, const char *fmt, va_list args)
+int vsprintf(char *buf, const char *fmt, va_list args)
 {
     char *str;
 
@@ -306,14 +306,14 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
     }
 
     *str = 0;
-    return str - buf;
+    return (int)(str - buf);
 }
 
-u32 sprintf(char *buf, const char *fmt, ...)
+int sprintf(char *buf, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    u32 res = vsprintf(buf, fmt, args);
+    int res = vsprintf(buf, fmt, args);
     va_end(args);
     return res;
 }

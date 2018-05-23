@@ -32,7 +32,6 @@
 #include "menu.h"
 #include "csvc.h"
 #include "memory.h"
-#include "exheader.h"
 
 #define MAP_BASE 0x10000000
 
@@ -254,45 +253,66 @@ static void HBLDR_HandleCommands(void)
         }
         case 4:
         {
-            if (cmdbuf[0] != IPC_MakeHeader(4, 0, 2) || cmdbuf[1] != IPC_Desc_Buffer(sizeof(exheader_header), IPC_BUFFER_RW))
+            if (cmdbuf[0] != IPC_MakeHeader(4, 0, 2) || cmdbuf[1] != IPC_Desc_Buffer(sizeof(ExHeader), IPC_BUFFER_RW))
             {
                 error(cmdbuf, 0xD9001830);
                 break;
             }
 
             // Perform ExHeader patches
-            exheader_header* exh = (exheader_header*)cmdbuf[2];
-            u32 stacksize = 4096; // 3dsx/libctru don't require anymore than this
-            memcpy(exh->codesetinfo.name, "3dsx_app", 8);
-            memcpy(exh->codesetinfo.stacksize, &stacksize, 4);
-            memset(&exh->deplist, 0, sizeof(exh->deplist));
-            memcpy(exh->deplist.programid, dependencyList, sizeof(dependencyList));
+            ExHeader* exh = (ExHeader*)cmdbuf[2];
+            memcpy(exh->info.sci.codeset_info.name, "3dsx_app", 8);
+            exh->info.sci.codeset_info.stack_size = 0x1000; // 3dsx/libctru don't require anymore than this 
+            memset(&exh->info.sci.dependencies, 0, sizeof(exh->info.sci.dependencies));
+            memcpy(exh->info.sci.dependencies, dependencyList, sizeof(dependencyList));
 
-            exheader_arm11systemlocalcaps* localcaps0 = &exh->arm11systemlocalcaps;
-            exheader_arm11systemlocalcaps* localcaps1 = &exh->accessdesc.arm11systemlocalcaps;
-            localcaps0->flags[0] = 0x00;
-            localcaps1->flags[0] = 0x00;
-            localcaps0->flags[1] = 0x01;
-            localcaps1->flags[1] = 0x01;
-            localcaps0->flags[2] = 0x04;
-            localcaps1->flags[2] = 0x05;
-            localcaps0->priority = 0x30;
-            localcaps1->priority = 0;
-            memset(localcaps0->resourcelimitdescriptor, 0, 0x10);
-            memset(localcaps1->resourcelimitdescriptor, 0, 0x10);
-            localcaps0->resourcelimitdescriptor[0] = 0x9E;
-            localcaps0->resourcelimitdescriptor[1] = 0x9E;
-            memset(localcaps0->storageinfo.accessinfo, 0xFF, 7);
-            memset(localcaps1->storageinfo.accessinfo, 0xFF, 7);
-            memcpy(localcaps0->serviceaccesscontrol, serviceList, sizeof(serviceList));
-            memcpy(localcaps1->serviceaccesscontrol, serviceList, sizeof(serviceList));
-            memset(localcaps0->serviceaccesscontrol+0x20, 0, 2);
-            memset(localcaps1->serviceaccesscontrol+0x20, 0, 2);
-            localcaps0->resourcelimitcategory = 0;
-            localcaps1->resourcelimitcategory = 0;
+            ExHeader_Arm11SystemLocalCapabilities* localcaps0 = &exh->info.aci.local_caps;
+            ExHeader_Arm11SystemLocalCapabilities* localcaps1 = &exh->access_descriptor.acli.local_caps;
 
-            exheader_arm11kernelcapabilities* kcaps0 = &exh->arm11kernelcaps;
-            exheader_arm11kernelcapabilities* kcaps1 = &exh->accessdesc.arm11kernelcaps;
+            localcaps0->core_info.core_version = 2;
+            localcaps0->core_info.use_cpu_clockrate_804MHz = false;
+            localcaps0->core_info.enable_l2c = false;
+            localcaps0->core_info.n3ds_system_mode = SYSMODE_N3DS_PROD;
+            localcaps0->core_info.ideal_processor = 0;
+            localcaps0->core_info.affinity_mask = BIT(0);
+            localcaps0->core_info.o3ds_system_mode = SYSMODE_O3DS_PROD;
+            localcaps0->core_info.priority = 0x30;
+
+            localcaps1->core_info.core_version = 2;
+            localcaps1->core_info.use_cpu_clockrate_804MHz = false;
+            localcaps1->core_info.enable_l2c = false;
+            localcaps1->core_info.n3ds_system_mode = SYSMODE_N3DS_PROD;
+            localcaps1->core_info.ideal_processor = BIT(0); // Intended, this is an oddity of the ExHeader
+            localcaps1->core_info.affinity_mask = BIT(0);
+            localcaps1->core_info.o3ds_system_mode = SYSMODE_O3DS_PROD;
+            localcaps1->core_info.priority = 0; // Intended
+
+            memset(localcaps0->reslimits, 0, sizeof(localcaps0->reslimits));
+            memset(localcaps1->reslimits, 0, sizeof(localcaps0->reslimits));
+
+            localcaps0->reslimits[0] = 0x9E; // Stuff needed to run stuff on core1
+            localcaps1->reslimits[1] = 0x9E;
+
+            localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
+            localcaps0->storage_info.no_romfs = true;
+            localcaps0->storage_info.use_extended_savedata_access = true; // Whatever
+            
+            localcaps1->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
+            localcaps0->storage_info.no_romfs = true;
+            localcaps0->storage_info.use_extended_savedata_access = true; // Whatever
+
+            /* We have a patched SM, so whatever... */
+            memset(localcaps0->service_access, 0, sizeof(localcaps0->service_access));
+            memcpy(localcaps0->service_access, serviceList, sizeof(serviceList));
+
+            memset(localcaps1->service_access, 0, sizeof(localcaps0->service_access));
+            memcpy(localcaps1->service_access, serviceList, sizeof(serviceList));
+
+            localcaps0->reslimit_category = RESLIMIT_CATEGORY_APPLICATION;
+            localcaps1->reslimit_category = RESLIMIT_CATEGORY_APPLICATION;
+
+            ExHeader_Arm11KernelCapabilities* kcaps0 = &exh->info.aci.kernel_caps;
+            ExHeader_Arm11KernelCapabilities* kcaps1 = &exh->access_descriptor.acli.kernel_caps;
             memset(kcaps0->descriptors, 0xFF, sizeof(kcaps0->descriptors));
             memset(kcaps1->descriptors, 0xFF, sizeof(kcaps1->descriptors));
             memcpy(kcaps0->descriptors, kernelCaps, sizeof(kernelCaps));
@@ -301,22 +321,22 @@ static void HBLDR_HandleCommands(void)
             u64 lastdep = sizeof(dependencyList)/8;
             if (osGetFirmVersion() >= SYSTEM_VERSION(2,50,0)) // 9.6+ FIRM
             {
-                exh->deplist.programid[lastdep++] = 0x0004013000004002ULL; // nfc
-                strncpy((char*)&localcaps0->serviceaccesscontrol[0x20], "nfc:u", 8);
-                strncpy((char*)&localcaps1->serviceaccesscontrol[0x20], "nfc:u", 8);
+                exh->info.sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
+                strncpy((char*)&localcaps0->service_access[0x20], "nfc:u", 8);
+                strncpy((char*)&localcaps1->service_access[0x20], "nfc:u", 8);
                 s64 dummy = 0;
                 bool isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
                 if (isN3DS)
                 {
-                    exh->deplist.programid[lastdep++] = 0x0004013020004102ULL; // mvd
-                    strncpy((char*)&localcaps0->serviceaccesscontrol[0x21], "mvd:STD", 8);
-                    strncpy((char*)&localcaps1->serviceaccesscontrol[0x21], "mvd:STD", 8);
+                    exh->info.sci.dependencies[lastdep++] = 0x0004013020004102ULL; // mvd
+                    strncpy((char*)&localcaps0->service_access[0x21], "mvd:STD", 8);
+                    strncpy((char*)&localcaps1->service_access[0x21], "mvd:STD", 8);
                 }
             }
 
             cmdbuf[0] = IPC_MakeHeader(4, 1, 2);
             cmdbuf[1] = 0;
-            cmdbuf[2] = IPC_Desc_Buffer(sizeof(exheader_header), IPC_BUFFER_RW);
+            cmdbuf[2] = IPC_Desc_Buffer(sizeof(ExHeader), IPC_BUFFER_RW);
             cmdbuf[3] = (u32)exh;
             break;
         }

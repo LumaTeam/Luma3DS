@@ -23,12 +23,12 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
+#include <string.h>
 
 #include "svc/KernelSetState.h"
 #include "synchronization.h"
 #include "ipc.h"
 #include "debug.h"
-#include "memory.h"
 
 #define MAX_DEBUG 3
 

@@ -69,14 +69,16 @@ Result fsregSetupPermissions(void)
     u32 pid;
     Result res;
     FS_ProgramInfo info;
-    u32 storage[8] = {0};
+    ExHeader_Arm11StorageInfo storage = {0};
 
-    storage[6] = 0x800 | 0x400 | 0x80 | 0x1; // SDMC access and NAND access flags
+    // SDMC access and NAND access flags
+    storage.fs_access_info =    FSACCESS_NANDRW | FSACCESS_NANDRO_RW |
+                                FSACCESS_SDMC_RW | FSACCESS_CATEGORY_SYSTEM_APPLICATION;
     info.programId = 0x0004013000006902LL; // Rosalina TID
     info.mediaType = MEDIATYPE_NAND;
 
-    if(R_SUCCEEDED(res = svcGetProcessId(&pid, 0xFFFF8001))) // 0xFFFF8001 is an handle to the active process
-        res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, (u8*)storage);
+    if(R_SUCCEEDED(res = svcGetProcessId(&pid, CUR_PROCESS_HANDLE))) // 0xFFFF8001 is an handle to the active process
+        res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storage);
 
     return res;
 }
@@ -113,7 +115,7 @@ Result FSREG_LoadProgram(u64 *prog_handle, FS_ProgramInfo *title)
     return cmdbuf[1];
 }
 
-Result FSREG_GetProgramInfo(exheader_header *exheader, u32 entry_count, u64 prog_handle)
+Result FSREG_GetProgramInfo(ExHeader *exheader, u32 entry_count, u64 prog_handle)
 {
     u32 *cmdbuf = getThreadCommandBuffer();
 

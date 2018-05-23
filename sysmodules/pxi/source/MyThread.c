@@ -7,7 +7,6 @@ This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE fo
 */
 
 #include "MyThread.h"
-#include "memory.h"
 
 static void _thread_begin(void* arg)
 {

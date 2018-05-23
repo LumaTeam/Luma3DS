@@ -5,9 +5,9 @@ services.c
 This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for details).
 */
 
+#include "common.h"
 #include "services.h"
 #include "processes.h"
-#include "memory.h"
 #include "list.h"
 
 ServiceInfo servicesInfo[0xA0] = { 0 };
@@ -17,7 +17,7 @@ static Result checkServiceName(const char *name, s32 nameSize)
 {
     if(nameSize <= 0 || nameSize > 8)
         return 0xD9006405;
-    else if(strnlen(name, nameSize) < nameSize)
+    else if(strnlen(name, nameSize) < (size_t)nameSize)
         return 0xD9006407;
     else
         return 0;

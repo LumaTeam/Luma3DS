@@ -373,7 +373,7 @@ u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
     off++;
 
     //Zero out the first TitleID in the list
-    memset32(off, 0, 8);
+    memset(off, 0, 8);
 
     return 0;
 }

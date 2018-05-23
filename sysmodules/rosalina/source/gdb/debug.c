@@ -163,7 +163,7 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     s64 dummy;
     u32 core;
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, threadId, THREADCONTEXT_CONTROL_ALL);
-    int n = sprintf(out, "T%02xthread:%x;", sig, threadId);
+    int n = sprintf(out, "T%02xthread:%lx;", sig, threadId);
 
     if(R_FAILED(r))
         return n;
@@ -171,12 +171,12 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     r = svcGetDebugThreadParam(&dummy, &core, ctx->debug, ctx->currentThreadId, DBGTHREAD_PARAMETER_CPU_CREATOR); // Creator = "first ran, and running the thread"
 
     if(R_SUCCEEDED(r))
-        n += sprintf(out + n, "core:%x;", core);
+        n += sprintf(out + n, "core:%lx;", core);
 
     for(u32 i = 0; i <= 12; i++)
-        n += sprintf(out + n, "%x:%08x;", i, __builtin_bswap32(regs.cpu_registers.r[i]));
+        n += sprintf(out + n, "%lx:%08lx;", i, __builtin_bswap32(regs.cpu_registers.r[i]));
 
-    n += sprintf(out + n, "d:%08x;e:%08x;f:%08x;19:%08x;",
+    n += sprintf(out + n, "d:%08lx;e:%08lx;f:%08lx;19:%08lx;",
         __builtin_bswap32(regs.cpu_registers.sp), __builtin_bswap32(regs.cpu_registers.lr), __builtin_bswap32(regs.cpu_registers.pc),
         __builtin_bswap32(regs.cpu_registers.cpsr));
 
@@ -184,10 +184,10 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     {
         u64 val;
         memcpy(&val, &regs.fpu_registers.d[i], 8);
-        n += sprintf(out + n, "%x:%016llx;", 26 + i, __builtin_bswap64(val));
+        n += sprintf(out + n, "%lx:%016llx;", 26 + i, __builtin_bswap64(val));
     }
 
-    n += sprintf(out + n, "2a:%08x;2b:%08x;", __builtin_bswap32(regs.fpu_registers.fpscr), __builtin_bswap32(regs.fpu_registers.fpexc));
+    n += sprintf(out + n, "2a:%08lx;2b:%08lx;", __builtin_bswap32(regs.fpu_registers.fpscr), __builtin_bswap32(regs.fpu_registers.fpexc));
 
     return n;
 }
@@ -301,7 +301,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
             {
                 // no signal, SIGTERM, SIGQUIT (process exited), SIGTERM (process terminated)
                 static int threadExitRepliesSigs[] = { 0, SIGTERM, SIGQUIT, SIGTERM };
-                return GDB_SendFormattedPacket(ctx, "w%02x;%x", threadExitRepliesSigs[(u32)info->exit_thread.reason], info->thread_id);
+                return GDB_SendFormattedPacket(ctx, "w%02x;%lx", threadExitRepliesSigs[(u32)info->exit_thread.reason], info->thread_id);
             }
             break;
         }
@@ -365,7 +365,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                                 GDB_SendDebugString(ctx, "Warning: unknown watchpoint encountered!\n");
 
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%s%swatch:%08x;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
+                            return GDB_SendFormattedPacket(ctx, "%s%swatch:%08lx;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
                             break;
                         }
 

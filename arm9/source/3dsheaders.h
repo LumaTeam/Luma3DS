@@ -30,21 +30,21 @@
 
 #pragma once
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u32 address;
     u32 phyRegionSize;
     u32 size;
 } CodeSetInfo;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u32 saveDataSize[2];
     u32 jumpID[2];
     u8 reserved[0x30];
 } SystemInfo;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     char appTitle[8];
     u8 reserved1[5];
@@ -60,7 +60,7 @@ typedef struct __attribute__((packed))
     SystemInfo systemInfo;
 } SystemControlInfo;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     SystemControlInfo systemControlInfo;
     u8 aci[0x200];
@@ -69,7 +69,7 @@ typedef struct __attribute__((packed))
     u8 aciLim[0x200];
 } ExHeader;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u8 sig[0x100]; //RSA-2048 signature of the NCCH header, using SHA-256
     char magic[4]; //NCCH
@@ -102,13 +102,13 @@ typedef struct __attribute__((packed))
     u8 romFsHash[0x20]; //RomFS superblock SHA-256 hash
 } Ncch;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     Ncch ncch;
     ExHeader exHeader;
 } Cxi;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     char sigIssuer[0x40];
     u8 eccPubKey[0x3C];
@@ -134,7 +134,7 @@ typedef struct __attribute__((packed))
     u8 contentIndex[0xAC];
 } Ticket;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u32 offset;
     u8 *address;
@@ -143,7 +143,7 @@ typedef struct __attribute__((packed))
     u8 hash[0x20];
 } FirmSection;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     char magic[4];
     u32 reserved1;
@@ -153,7 +153,7 @@ typedef struct __attribute__((packed))
     FirmSection section[4];
 } Firm;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u8 keyX[0x10];
     u8 keyY[0x10];

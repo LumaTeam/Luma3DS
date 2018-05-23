@@ -8,7 +8,7 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 #pragma once
 
 #include <3ds.h>
-#include "memory.h"
+#include <string.h>
 
 #define IS_PRE_7X (osGetFirmVersion() < SYSTEM_VERSION(2, 39, 4))
 #define IS_PRE_93 (osGetFirmVersion() < SYSTEM_VERSION(2, 48, 3))

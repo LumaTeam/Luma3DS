@@ -54,9 +54,9 @@ INCLUDES	:=	include
 ARCH	:=	-marm -march=armv5te -mtune=arm946e-s
 DEFINES :=	-DARM9 -D_3DS
 
-CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -O2 -mword-relocations \
+CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Werror -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections -fdata-sections \
-			-Wno-main -fno-builtin $(ARCH) $(DEFINES)
+			-Wno-main $(ARCH) $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE)
 

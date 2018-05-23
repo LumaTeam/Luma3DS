@@ -31,7 +31,6 @@
 #include "exceptions.h"
 #include "patches.h"
 #include "memory.h"
-#include "strings.h"
 #include "cache.h"
 #include "emunand.h"
 #include "crypto.h"

@@ -58,7 +58,7 @@ start:
     mov r1, #0
     ldr r2, =__bss_end__
     sub r2, r0
-    bl memset32
+    bl memset
 
     @ Call the init array
     bl __libc_init_array

@@ -73,11 +73,11 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
         else
         {
             checkbox = "(W) ";
-            sprintf(commentBuf, "Port: %d", GDB_PORT_BASE + id);
+            sprintf(commentBuf, "Port: %ld", GDB_PORT_BASE + id);
         }
     }
 
-    return sprintf(out, "%s%-4u    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
+    return sprintf(out, "%s%-4lu    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
 }
 
 static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)

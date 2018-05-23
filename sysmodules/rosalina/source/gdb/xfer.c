@@ -87,9 +87,9 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(CfwVersion)
         isRelease = (bool)out;
 
         if(GET_VERSION_REVISION(version) == 0)
-            sprintf(versionString, "v%u.%u", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version));
+            sprintf(versionString, "v%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version));
         else
-            sprintf(versionString, "v%u.%u.%u", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
+            sprintf(versionString, "v%lu.%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
 
         sz = (u32)sprintf(buf, (const char *)osdata_cfw_version_template_xml, versionString, commitHash, isRelease ? "Yes" : "No");
 
@@ -150,7 +150,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Processes)
 
             static const char item[] =
             "  <item>\n"
-            "    <column name=\"pid\">%u</column>\n"
+            "    <column name=\"pid\">%lu</column>\n"
             "    <column name=\"command\">%s</column>\n"
             "  </item>\n";
 

@@ -23,7 +23,7 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
-
+#include <string.h>
 #include "utils.h"
 #include "globals.h"
 #include "synchronization.h"
@@ -31,7 +31,6 @@
 #include "svc.h"
 #include "svc/ConnectToPort.h"
 #include "svcHandler.h"
-#include "memory.h"
 
 struct KExtParameters
 {
@@ -53,7 +52,7 @@ void relocateAndSetupMMU(u32 coreId, u32 *L1Table)
         // Relocate ourselves, and clear BSS
         // This is only OK because the jumps will be relative...
         memcpy((void *)p0->basePA, (const void *)0x18000000, __bss_start__ - __start__);
-        memset32((u32 *)(p0->basePA + (__bss_start__ - __start__)), 0, __bss_end__ - __bss_start__);
+        memset((u32 *)(p0->basePA + (__bss_start__ - __start__)), 0, __bss_end__ - __bss_start__);
 
         // Map the kernel ext to 0x40000000
         // 4KB extended small pages: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]

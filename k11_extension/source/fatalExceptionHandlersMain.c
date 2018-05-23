@@ -23,11 +23,11 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
+#include <string.h>
 
 #include "fatalExceptionHandlers.h"
 #include "utils.h"
 #include "kernel.h"
-#include "memory.h"
 #include "globals.h"
 
 #define REG_DUMP_SIZE   4 * 23

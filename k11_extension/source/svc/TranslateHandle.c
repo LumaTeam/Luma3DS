@@ -25,7 +25,7 @@
 */
 
 #include "svc/TranslateHandle.h"
-#include "memory.h"
+#include <string.h>
 
 Result TranslateHandle(u32 *outKAddr, char *outClassName, Handle handle)
 {

@@ -224,7 +224,7 @@ void RosalinaMenu_TakeScreenshot(void)
     days++;
     month++;
 
-    sprintf(filename, "/luma/screenshots/%04u-%02u-%02u_%02u-%02u-%02u.%03u_top.bmp", year, month, days, hours, minutes, seconds, milliseconds);
+    sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top.bmp", year, month, days, hours, minutes, seconds, milliseconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     Draw_CreateBitmapHeader(framebufferCache, 400, 240);
 
@@ -239,7 +239,7 @@ void RosalinaMenu_TakeScreenshot(void)
     TRY(IFile_Write(&file, &total, framebufferCache, 3 * 400 * 120, 0));
     TRY(IFile_Close(&file));
 
-    sprintf(filename, "/luma/screenshots/%04u-%02u-%02u_%02u-%02u-%02u.%03u_bot.bmp", year, month, days, hours, minutes, seconds, milliseconds);
+    sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_bot.bmp", year, month, days, hours, minutes, seconds, milliseconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     Draw_CreateBitmapHeader(framebufferCache, 320, 240);
 
@@ -256,7 +256,7 @@ void RosalinaMenu_TakeScreenshot(void)
 
     if((GPU_FB_TOP_FMT & 0x20) && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
     {
-        sprintf(filename, "/luma/screenshots/%04u-%02u-%02u_%02u-%02u-%02u.%03u_top_right.bmp", year, month, days, hours, minutes, seconds, milliseconds);
+        sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top_right.bmp", year, month, days, hours, minutes, seconds, milliseconds);
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
         Draw_CreateBitmapHeader(framebufferCache, 400, 240);
 
@@ -285,7 +285,7 @@ end:
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Screenshot");
         if(R_FAILED(res))
-            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08x).", (u32)res);
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08lx).", (u32)res);
         else
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
 

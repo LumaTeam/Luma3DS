@@ -114,7 +114,7 @@ u32 Draw_DrawFormattedString(u32 posX, u32 posY, u32 color, const char *fmt, ...
 
 void Draw_FillFramebuffer(u32 value)
 {
-    memset32(FB_BOTTOM_VRAM_ADDR, value, FB_BOTTOM_SIZE);
+    memset(FB_BOTTOM_VRAM_ADDR, value, FB_BOTTOM_SIZE);
 }
 
 void Draw_ClearFramebuffer(void)

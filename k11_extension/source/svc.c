@@ -24,7 +24,7 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "memory.h"
+#include <string.h>
 #include "synchronization.h"
 #include "svc.h"
 #include "svc/ControlMemory.h"

@@ -23,9 +23,9 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
+#include <string.h>
 
 #include "svc/ControlService.h"
-#include "memory.h"
 #include "ipc.h"
 
 Result ControlService(ServiceOp op, u32 varg1, u32 varg2)

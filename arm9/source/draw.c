@@ -30,7 +30,7 @@
 */
 
 #include "draw.h"
-#include "strings.h"
+#include "memory.h"
 #include "screen.h"
 #include "utils.h"
 #include "fs.h"

@@ -35,7 +35,7 @@
 #include "draw.h"
 #include "cache.h"
 #include "fmt.h"
-#include "strings.h"
+#include "memory.h"
 #include "fs.h"
 
 static void startChrono(void)
@@ -86,8 +86,8 @@ u32 waitInput(bool isMenu)
 
         if(!key)
         {
-        	if((!(I2C_readReg(I2C_DEV_MCU, 0xF) & 2) && shouldShellShutdown) ||
-        	   (I2C_readReg(I2C_DEV_MCU, 0x10) & 1) == 1) mcuPowerOff();
+            if((!(I2C_readReg(I2C_DEV_MCU, 0xF) & 2) && shouldShellShutdown) ||
+            (I2C_readReg(I2C_DEV_MCU, 0x10) & 1) == 1) mcuPowerOff();
             oldKey = 0;
             dPadDelay = 0;
             continue;

@@ -43,7 +43,7 @@ Result PXIPM_RegisterProgram(u64 *prog_handle, FS_ProgramInfo *title, FS_Program
   return cmdbuf[1];
 }
 
-Result PXIPM_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
+Result PXIPM_GetProgramInfo(ExHeader *exheader, u64 prog_handle)
 {
   u32 *cmdbuf = getThreadCommandBuffer();
 

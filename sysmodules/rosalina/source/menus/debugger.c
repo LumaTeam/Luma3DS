@@ -103,7 +103,7 @@ void DebuggerMenu_EnableDebugger(void)
                 }
 
                 if(res != 0)
-                    sprintf(buf, "Starting debugger... failed (0x%08x).", (u32)res);
+                    sprintf(buf, "Starting debugger... failed (0x%08lx).", (u32)res);
 
                 done = true;
             }
@@ -135,7 +135,7 @@ void DebuggerMenu_DisableDebugger(void)
     }
 
     if(res != 0)
-        sprintf(buf, "Failed to disable debugger (0x%08x).", (u32)res);
+        sprintf(buf, "Failed to disable debugger (0x%08lx).", (u32)res);
 
     do
     {

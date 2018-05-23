@@ -26,7 +26,6 @@
 
 #include "fs.h"
 #include "memory.h"
-#include "strings.h"
 #include "fmt.h"
 #include "crypto.h"
 #include "cache.h"
@@ -87,7 +86,7 @@ u32 getFileSize(const char *path)
 bool fileWrite(const void *buffer, const char *path, u32 size)
 {
     FIL file;
-    FRESULT result;
+    FRESULT result = FR_OK;
 
     switch(f_open(&file, path, FA_WRITE | FA_OPEN_ALWAYS))
     {
@@ -273,7 +272,10 @@ u32 firmRead(void *dest, u32 firmType)
         //Not a cxi
         if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
 
-        u32 tempVersion = hexAtoi(info.altname, 8);
+        u32 tempVersion = 0;
+        char *tmp = info.fname;
+        for(u32 i = 0; i < 8 && *tmp != 0; tmp++, i++)
+            tempVersion = (*tmp > '9' ? (*tmp >= 'A' ? *tmp - 'A' : *tmp - 'a') + 10 : *tmp - '0') + (tempVersion << 4);
 
         //Found an older cxi
         if(tempVersion < firmVersion) firmVersion = tempVersion;
@@ -282,7 +284,7 @@ u32 firmRead(void *dest, u32 firmType)
     if(f_closedir(&dir) != FR_OK || firmVersion == 0xFFFFFFFF) goto exit;
 
     //Complete the string with the .app name
-    sprintf(path, "%s/%08x.app", folderPath, firmVersion);
+    sprintf(path, "%s/%08lx.app", folderPath, firmVersion);
 
     if(fileRead(dest, path, 0x400000 + sizeof(Cxi) + 0x200) <= sizeof(Cxi) + 0x400) firmVersion = 0xFFFFFFFF;
 
@@ -299,7 +301,7 @@ void findDumpFile(const char *folderPath, char *fileName)
     {
         FILINFO info;
 
-        sprintf(fileName, "crash_dump_%08u.dmp", n);
+        sprintf(fileName, "crash_dump_%08lu.dmp", n);
         result = f_findfirst(&dir, &info, folderPath, fileName);
 
         if(result != FR_OK || !info.fname[0]) break;

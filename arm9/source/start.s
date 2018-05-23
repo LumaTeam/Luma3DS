@@ -113,7 +113,7 @@ _start:
     mov r1, #0
     ldr r2, =__bss_end__
     sub r2, r0
-    bl memset32
+    bl memset
 
     @ Set additional sections up
     ldr r0, =__itcm_start__
@@ -126,9 +126,9 @@ _start:
     mov r1, #0
     ldr r2, =__itcm_end__
     sub r2, r0
-    bl memset32
+    bl memset
 
-    @ bl __libc_init_array
+    bl __libc_init_array
 
     mov r0, r9
     mov r1, r10

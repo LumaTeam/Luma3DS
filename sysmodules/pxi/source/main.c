@@ -6,12 +6,13 @@ main.c
 This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE for details).
 */
 
+#include <string.h>
+
 #include "PXI.h"
 #include "common.h"
 #include "MyThread.h"
 #include "receiver.h"
 #include "sender.h"
-#include "memory.h"
 
 Handle PXISyncInterrupt = 0, PXITransferMutex = 0;
 Handle terminationRequestedEvent = 0;

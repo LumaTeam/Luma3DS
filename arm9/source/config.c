@@ -27,7 +27,6 @@
 #include "config.h"
 #include "memory.h"
 #include "fs.h"
-#include "strings.h"
 #include "utils.h"
 #include "screen.h"
 #include "draw.h"
@@ -237,8 +236,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     u32 multiOptionsAmount = sizeof(multiOptions) / sizeof(struct multiOption),
         singleOptionsAmount = sizeof(singleOptions) / sizeof(struct singleOption),
         totalIndexes = multiOptionsAmount + singleOptionsAmount - 1,
-        selectedOption,
-        singleSelected;
+        selectedOption = 0,
+        singleSelected = 0;
     bool isMultiOption = false;
 
     //Parse the existing options
