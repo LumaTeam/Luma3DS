@@ -251,4 +251,4 @@ dataAbortHandler:
 .bss
 .balign 4
 _regs: .skip (4 * 23)
-_fatalExceptionOccured: .word 0
+_fatalExceptionOccured: .skip 4

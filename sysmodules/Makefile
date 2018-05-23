@@ -6,7 +6,7 @@ CXIS		:=	$(foreach dir, $(SUBFOLDERS), $(dir)/$(dir).cxi)
 all:	sysmodules.bin
 
 clean:
-	@$(foreach dir, $(SUBFOLDERS), make -C $(dir) clean &&) true
+	@$(foreach dir, $(SUBFOLDERS), $(MAKE) -C $(dir) clean &&) true
 	@rm -rf sysmodules.bin
 
 sysmodules.bin:	$(SUBFOLDERS)

@@ -158,11 +158,11 @@ arm9ExceptionHandlerAddressTable:
     .word   prefetchAbortHandler            @ Prefetch abort
     .word   dataAbortHandler                @ Data abort
 
-.section .arm9_exception_handlers.bss, "w", %nobits
+.section .arm9_exception_handlers.bss, "aw", %nobits
 .align 4
 
 .global arm9ExceptionHandlerSvcBreakAddress
 arm9ExceptionHandlerSvcBreakAddress:
-    .word 0
+    .skip 4
 
 _regs: .skip (4 * 17)
