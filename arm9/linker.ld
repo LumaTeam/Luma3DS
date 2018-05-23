@@ -2,6 +2,13 @@ OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_start)
 
+PHDRS
+{
+	crt0 PT_LOAD;
+	itcm PT_LOAD;
+	main PT_LOAD;
+}
+
 /* Mostly copied from https://github.com/devkitPro/buildscripts/blob/master/dkarm-eabi/crtls/3dsx.ld */
 MEMORY
 {
@@ -20,19 +27,16 @@ SECTIONS
     PROVIDE(__itcm_stack_bottom__ = 0x01FFA800);
 
     . = __start__;
-    . = ALIGN(32);
 
     .crt0 :
     {
-        . = ALIGN(32);
         KEEP( *(.text.start) )
         KEEP( *(.init) )
-        . = ALIGN(4);
-    } >main
+        . = ALIGN(32);
+    } >main :crt0
 
     .itcm_loadable :
     {
-        . = ALIGN(32);
         PROVIDE (__itcm_start__  = ABSOLUTE(.));
         PROVIDE (__itcm_lma__    = LOADADDR(.itcm_loadable));
 
@@ -54,25 +58,22 @@ SECTIONS
         i2c.o(.data*)
         arm9_exception_handlers.o(.data*)
 
-        . = ALIGN(8);
-    } >itcm AT>main
-
-    .itcm_bss :
-    {
-        . = ALIGN(8);
+        . = ALIGN(32);
         PROVIDE (__itcm_bss_start__ = ABSOLUTE(.));
+    } >itcm AT>main :itcm
+
+    .itcm_bss __itcm_bss_start__ (NOLOAD) :
+    {
         *(.arm9_exception_handlers.bss*)
         chainloader.o(.bss* COMMON)
         i2c.o(.bss* COMMON)
         arm9_exception_handlers.o(.bss* COMMON)
         . = ALIGN(8);
-        PROVIDE (__itcm_end__ = ABSOLUTE(.));
-    } >itcm AT>main
+        PROVIDE (__itcm_end__ = .);
+    } >itcm :NONE
 
     .text :
     {
-        . = ALIGN(4);
-
         /* .text */
         *(.text)
         *(.text.*)
@@ -86,7 +87,7 @@ SECTIONS
         /* .fini */
         KEEP( *(.fini) )
         . = ALIGN(4);
-    } >main
+    } >main :main
 
     .rodata :
     {
@@ -153,7 +154,7 @@ SECTIONS
         . = ALIGN(4);
     } >main
 
-    .bss :
+    .bss (NOLOAD) :
     {
         . = ALIGN(32);
         PROVIDE (__bss_start__ = ABSOLUTE(.));
@@ -164,7 +165,7 @@ SECTIONS
         *(COMMON)
         . = ALIGN(8);
         PROVIDE (__bss_end__ = ABSOLUTE(.));
-    } >main
+    } >main :NONE
     __end__ = ABSOLUTE(.) ;
 
     /* ==================
