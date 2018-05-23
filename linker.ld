@@ -146,14 +146,15 @@ SECTIONS
 
     .bss :
     {
-        __bss_start__ = ALIGN(32);
+        . = ALIGN(32);
+        PROVIDE (__bss_start__ = ABSOLUTE(.));
         *(.dynbss)
         *(.bss)
         *(.bss.*)
         *(.gnu.linkonce.b*)
         *(COMMON)
         . = ALIGN(8);
-        __bss_end__ = .;
+        PROVIDE (__bss_end__ = ABSOLUTE(.));
     } >main
     __end__ = ABSOLUTE(.) ;
 

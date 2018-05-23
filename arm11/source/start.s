@@ -21,8 +21,8 @@
 @       * Prohibiting misrepresentation of the origin of that material,
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
-
-.section .text.start
+ 
+.section .text.start, "ax", %progbits
 .align 4
 .global _start
 .type   _start, %function
@@ -54,13 +54,17 @@ start:
     mcr p15, 0, r0, c7, c10, 4
 
     @ Clear BSS
-    ldr r0, =__bss_start
+    ldr r0, =__bss_start__
     mov r1, #0
-    ldr r2, =__bss_end
+    ldr r2, =__bss_end__
     sub r2, r0
     bl memset32
 
+    @ Call the init array
+    bl __libc_init_array
+
     ldr sp, =__stack_top__
+    mov fp, #0
     b main
 
 .global prepareForFirmlaunch

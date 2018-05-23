@@ -24,11 +24,16 @@
 *         reasonable ways as different from the original version.
 */
 
+#include <3ds/os.h>
+
 #include "gdb/xfer.h"
 #include "gdb/net.h"
-#include "../../build/xml_data.h"
-#include <3ds/os.h>
 #include "fmt.h"
+
+#include "osdata_cfw_version_template_xml.h"
+#include "osdata_memory_template_xml.h"
+#include "osdata_xml.h"
+#include "target_xml.h"
 
 struct
 {
@@ -45,7 +50,7 @@ GDB_DECLARE_XFER_HANDLER(Features)
     if(strcmp(annex, "target.xml") != 0 || write)
         return GDB_ReplyEmpty(ctx);
     else
-        return GDB_SendStreamData(ctx, target_xml, offset, length, sizeof(target_xml) - 1, false);
+        return GDB_SendStreamData(ctx, (const char *)target_xml, offset, length, target_xml_size, false);
 }
 
 struct
@@ -65,7 +70,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(CfwVersion)
         return GDB_HandleUnsupported(ctx);
     else
     {
-        char buf[sizeof(osdata_cfw_version_template_xml) + 64];
+        char buf[512]; // Make sure this doesn't overflow
         char versionString[16];
         s64 out;
         u32 version, commitHash;
@@ -86,7 +91,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(CfwVersion)
         else
             sprintf(versionString, "v%u.%u.%u", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
 
-        sz = (u32)sprintf(buf, osdata_cfw_version_template_xml, versionString, commitHash, isRelease ? "Yes" : "No");
+        sz = (u32)sprintf(buf, (const char *)osdata_cfw_version_template_xml, versionString, commitHash, isRelease ? "Yes" : "No");
 
         return GDB_SendStreamData(ctx, buf, offset, length, sz, false);
     }
@@ -113,7 +118,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Memory)
             svcGetSystemInfo(&out, 0, 3);
             baseUsed = (u32)out;
 
-            sprintf(ctx->memoryOsInfoXmlData, osdata_memory_template_xml,
+            sprintf(ctx->memoryOsInfoXmlData, (const char *)osdata_memory_template_xml,
                 applicationUsed, applicationTotal - applicationUsed, applicationTotal, (u32)((5ULL + ((1000ULL * applicationUsed) / applicationTotal)) / 10ULL),
                 systemUsed, systemTotal - systemUsed, systemTotal, (u32)((5ULL + ((1000ULL * systemUsed) / systemTotal)) / 10ULL),
                 baseUsed, baseTotal - baseUsed, baseTotal, (u32)((5ULL + ((1000ULL * baseUsed) / baseTotal)) / 10ULL)
@@ -196,7 +201,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Processes)
 GDB_DECLARE_XFER_HANDLER(OsData)
 {
     if(strcmp(annex, "") == 0 && !write)
-        return GDB_SendStreamData(ctx, osdata_xml, offset, length, sizeof(osdata_xml) - 1, false);
+        return GDB_SendStreamData(ctx, (const char *)osdata_xml, offset, length, osdata_xml_size, false);
     else
     {
         for(u32 i = 0; i < sizeof(xferOsDataCommandHandlers) / sizeof(xferOsDataCommandHandlers[0]); i++)

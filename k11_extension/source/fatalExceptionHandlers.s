@@ -22,6 +22,8 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
+.fpu vfp
+
 .macro TEST_IF_MODE_AND_ARM_INST_OR_JUMP lbl, mode
     cpsid aif
     mrs sp, spsr

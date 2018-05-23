@@ -50,6 +50,8 @@ start:
 
     push {r0-r12, lr}
 
+    bl __libc_init_array
+
     sub r0, r4, #8
     sub r1, r8, #0x8000
     bl main

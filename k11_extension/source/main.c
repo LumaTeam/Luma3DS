@@ -51,6 +51,7 @@ void relocateAndSetupMMU(u32 coreId, u32 *L1Table)
     if(coreId == 0)
     {
         // Relocate ourselves, and clear BSS
+        // This is only OK because the jumps will be relative...
         memcpy((void *)p0->basePA, (const void *)0x18000000, __bss_start__ - __start__);
         memset32((u32 *)(p0->basePA + (__bss_start__ - __start__)), 0, __bss_end__ - __bss_start__);
 

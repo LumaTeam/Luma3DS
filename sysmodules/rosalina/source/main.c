@@ -64,9 +64,9 @@ void __libc_fini_array(void);
 
 void __ctru_exit()
 {
+    __libc_fini_array();
     __appExit();
     __sync_fini();
-    __libc_fini_array();
     for(;;) svcSleepThread(0); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
     svcExitProcess();
 }
@@ -74,8 +74,6 @@ void __ctru_exit()
 
 void initSystem()
 {
-    __libc_init_array();
-
     s64 out;
     isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
 
@@ -91,6 +89,7 @@ void initSystem()
     ProcessPatchesMenu_PatchUnpatchFSDirectly();
     __sync_init();
     __appInit();
+    __libc_init_array();
 
     // ROSALINA HACKJOB BEGIN
     // NORMAL APPS SHOULD NOT DO THIS, EVER

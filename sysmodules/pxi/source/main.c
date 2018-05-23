@@ -140,16 +140,22 @@ Result __sync_fini(void);
 
 void __ctru_exit()
 {
-  __appExit();
-  __sync_fini();
-  svcExitProcess();
+    void __libc_fini_array(void);
+
+    __libc_fini_array();
+    __appExit();
+    __sync_fini();
+    svcExitProcess();
 }
 
 void initSystem()
 {
-  __sync_init();
-  __system_initSyscalls();
-  __appInit();
+    void __libc_init_array(void);
+
+    __sync_init();
+    __system_initSyscalls();
+    __appInit();
+    __libc_init_array();
 }
 
 int main(void)

@@ -56,9 +56,11 @@ void __ctru_exit(void){}
 
 void initSystem(void)
 {
+    void __libc_init_array(void);
     __sync_init();
     __system_allocateHeaps();
     __appInit();
+    __libc_init_array();
 }
 
 int main(void)
