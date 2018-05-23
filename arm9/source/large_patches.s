@@ -70,16 +70,16 @@ emunandPatchSize:
 .arm
 .align 4
 
-.set copy_launch_stub_stack_top, 0x01FFB800
-.set copy_launch_stub_stack_bottom, 0x01FFA800
-.set copy_launch_stub_addr, 0x01FF9000
+#define copy_launch_stub_stack_top      0x01FFB800
+#define copy_launch_stub_stack_bottom   0x01FFA800
+#define copy_launch_stub_addr           0x01FF9000
 
-.set argv_addr, (copy_launch_stub_stack_bottom - 0x100)
-.set fname_addr, (copy_launch_stub_stack_bottom - 0x200)
-.set low_tid_addr, (copy_launch_stub_stack_bottom - 0x300)
+#define argv_addr       (copy_launch_stub_stack_bottom - 0x100)
+#define fname_addr      (copy_launch_stub_stack_bottom - 0x200)
+#define low_tid_addr    (copy_launch_stub_stack_bottom - 0x300)
 
-.set firm_addr, 0x20001000
-.set firm_maxsize, 0x07FFF000
+#define firm_addr       0x20001000
+#define firm_maxsize    0x07FFF000
 
 .global rebootPatch
 rebootPatch:

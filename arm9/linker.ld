@@ -7,7 +7,7 @@ MEMORY
 {
     NULL                : ORIGIN = 0x00000000, LENGTH = 0x1000
     main                : ORIGIN = 0x08006000, LENGTH = 0x080F0000 - 0x08006000
-    itcm                : ORIGIN = 0x01FF8000, LENGTH = 0x01FFB800 - 0x01FF8000 /* Unused ITCM slice. */
+    itcm                : ORIGIN = 0x01FF8000, LENGTH = 1M
 }
 
 SECTIONS
@@ -39,13 +39,13 @@ SECTIONS
         KEEP(*(.arm9_exception_handlers.text))
         *(.arm9_exception_handlers.text*)
         KEEP(*(.chainloader.text.start))
-        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.text*)
+        chainloader.o i2c.o arm9_exception_handlers.o(.text*)
 
         *(.arm9_exception_handlers.rodata*)
-        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.rodata*)
+        chainloader.o i2c.o arm9_exception_handlers.o(.rodata*)
 
         *(.arm9_exception_handlers.data*)
-        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.data*)
+        chainloader.o i2c.o arm9_exception_handlers.o(.data*)
 
         . = ALIGN(8);
     } >itcm AT>main
@@ -55,7 +55,7 @@ SECTIONS
         . = ALIGN(8);
         PROVIDE (__itcm_bss_start__ = ABSOLUTE(.));
         *(.arm9_exception_handlers.bss*)
-        build/chainloader.o build/i2c.o build/arm9_exception_handlers.o(.bss* COMMON)
+        chainloader.o i2c.o arm9_exception_handlers.o(.bss* COMMON)
         . = ALIGN(8);
         PROVIDE (__itcm_end__ = ABSOLUTE(.));
     } >itcm AT>main
