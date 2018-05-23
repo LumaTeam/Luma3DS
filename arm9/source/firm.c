@@ -282,7 +282,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
     if(firmType == NATIVE_FIRM && (ISN3DS || firmVersion >= 0x1D))
     {
         //2) Merge that info with our own modules'
-        for(u8 *src = (u8 *)0x18180000; src < (u8 *)(0x18180000 + /*LUMA_SECTION0_SIZE*/0); src += srcModuleSize)
+        for(u8 *src = (u8 *)0x18180000; memcmp(((Cxi *)src)->ncch.magic, "NCCH", 4) == 0; src += srcModuleSize)
         {
             const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
 
