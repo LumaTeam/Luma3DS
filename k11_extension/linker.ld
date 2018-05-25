@@ -2,26 +2,26 @@ OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_start)
 
-/* Mostly copied from https://github.com/devkitPro/buildscripts/blob/master/dkarm-eabi/crtls/3dsx.ld */
+MEMORY
+{
+    vram                : ORIGIN = 0x18000000, LENGTH = 0x18180000 - 0x18000000 /* Up to the kernel builtins. */
+    main                : ORIGIN = 0x40000000, LENGTH = 1M
+}
+
+PHDRS
+{
+    main PT_LOAD;
+}
 
 SECTIONS
 {
     PROVIDE(__start__ = 0x40000000);
-
-    . = __start__;
-    . = ALIGN(32);
-
-    .crt0 :
-    {
-        . = ALIGN(32);
-        KEEP( *(.text.start) )
-        KEEP( *(.init) )
-        . = ALIGN(4);
-    }
+    . = ABSOLUTE(__start__);
 
     .text :
     {
-        . = ALIGN(4);
+        KEEP( *(.text.start) )
+        KEEP( *(.init) )
 
         /* .text */
         *(.text)
@@ -31,12 +31,11 @@ SECTIONS
         *(.stub)
         *(.gnu.warning)
         *(.gnu.linkonce.t*)
-        . = ALIGN(4);
 
         /* .fini */
         KEEP( *(.fini) )
-        . = ALIGN(4);
-    }
+        . = ALIGN(32);
+    } >main AT>vram :main
 
     .rodata :
     {
@@ -46,64 +45,63 @@ SECTIONS
         *all.rodata*(*)
         *(.gnu.linkonce.r*)
         SORT(CONSTRUCTORS)
-        . = ALIGN(4);
-    }
+        . = ALIGN(8);
+    } >main AT>vram
 
-    .preinit_array ALIGN(4) :
+    .preinit_array :
     {
         PROVIDE (__preinit_array_start = .);
         KEEP (*(.preinit_array))
         PROVIDE (__preinit_array_end = .);
-    }
+    } >main AT>vram
 
-    .init_array ALIGN(4) :
+    .init_array :
     {
         PROVIDE (__init_array_start = .);
         KEEP (*(SORT(.init_array.*)))
         KEEP (*(.init_array))
         PROVIDE (__init_array_end = .);
-    }
+    } >main AT>vram
 
-    .fini_array ALIGN(4) :
+    .fini_array :
     {
         PROVIDE (__fini_array_start = .);
         KEEP (*(.fini_array))
         KEEP (*(SORT(.fini_array.*)))
         PROVIDE (__fini_array_end = .);
-    }
+    } >main AT>vram
 
-    .ctors ALIGN(4) :
+    .ctors :
     {
         KEEP (*crtbegin.o(.ctors)) /* MUST be first -- GCC requires it */
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*(.ctors))
-    }
+        . = ALIGN(4);   /* REQUIRED. LD is flaky without it. */
+    } >main AT>vram
 
-    .dtors ALIGN(4) :
+    .dtors :
     {
         KEEP (*crtbegin.o(.dtors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
         KEEP (*(SORT(.dtors.*)))
         KEEP (*(.dtors))
-    }
+        . = ALIGN(4);   /* REQUIRED. LD is flaky without it. */
+    } >main AT>vram
 
-    .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) }
-    __exidx_start = .;
-    ARM.exidx : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) }
-    __exidx_end = .;
+    .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) __exidx_start = ABSOLUTE(.);} >main AT>vram
+    ARM.exidx : { *(.ARM.exidx* .gnu.linkonce.armexidx.*)  __exidx_end = ABSOLUTE(.);} >main AT>vram
 
     .data :
     {
         *(.data)
         *(.data.*)
-        KEEP (*(.large_patch*))
         *(.gnu.linkonce.d*)
         CONSTRUCTORS
-        . = ALIGN(4);
-    }
+        . = ALIGN(32);
+    } >main AT>vram
 
-    .bss :
+    .bss (NOLOAD) :
     {
         . = ALIGN(32);
         PROVIDE (__bss_start__ = ABSOLUTE(.));
@@ -114,8 +112,8 @@ SECTIONS
         *(COMMON)
         . = ALIGN(8);
         PROVIDE (__bss_end__ = ABSOLUTE(.));
-    }
-    PROVIDE (__end__ = ABSOLUTE(.));
+        PROVIDE (__end__ = ABSOLUTE(.));
+    } >main :NONE
 
     /* ==================
        ==== Metadata ====

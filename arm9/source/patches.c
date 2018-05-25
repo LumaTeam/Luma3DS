@@ -107,7 +107,6 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     //Please keep that in sync with the definition in k11_extension/source/main.c
     struct KExtParameters
     {
-        u32 __attribute__((aligned(0x400))) L2MMUTableFor0x40000000[256];
         u32 basePA;
         void *originalHandlers[4];
         u32 L1MMUTableAddrs[4];
@@ -136,7 +135,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
     //Our kernel11 extension is initially loaded in VRAM
     u32 kextTotalSize = *(u32 *)0x18000020 - 0x40000000;
-    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - (0x1000 + kextTotalSize);
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
@@ -177,7 +176,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 24);
 
     struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - 0x40000000 + 0x18000000);
-    p->basePA = dstKextPA;
+    p->basePA = dstKextPA + 0x1000;
 
     for(u32 i = 0; i < 4; i++)
     {

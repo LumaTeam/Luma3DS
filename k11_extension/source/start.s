@@ -23,7 +23,7 @@
 @         reasonable ways as different from the original version.
 
 .section .text.start, "ax", %progbits
-.balign 32
+.balign 4
 .global _start
 _start:
     b start
