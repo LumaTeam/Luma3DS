@@ -4,15 +4,14 @@ ENTRY(_start)
 
 PHDRS
 {
-	crt0 PT_LOAD;
-	itcm PT_LOAD;
-	main PT_LOAD;
+    crt0 PT_LOAD;
+    itcm PT_LOAD;
+    main PT_LOAD;
 }
 
 /* Mostly copied from https://github.com/devkitPro/buildscripts/blob/master/dkarm-eabi/crtls/3dsx.ld */
 MEMORY
 {
-    NULL                : ORIGIN = 0x00000000, LENGTH = 0x1000
     main                : ORIGIN = 0x08006000, LENGTH = 0x080F0000 - 0x08006000
     itcm                : ORIGIN = 0x01FF8000, LENGTH = 0x01FFB800 - 0x01FF8000 /* Unused ITCM slice. */
 }
@@ -57,19 +56,20 @@ SECTIONS
         chainloader.o(.data*)
         i2c.o(.data*)
         arm9_exception_handlers.o(.data*)
-
         . = ALIGN(32);
-        PROVIDE (__itcm_bss_start__ = ABSOLUTE(.));
     } >itcm AT>main :itcm
 
-    .itcm_bss __itcm_bss_start__ (NOLOAD) :
+    .itcm_bss (NOLOAD) :
     {
+        . = ALIGN(32);
+        PROVIDE (__itcm_bss_start__ = ABSOLUTE(.));
+
         *(.arm9_exception_handlers.bss*)
         chainloader.o(.bss* COMMON)
         i2c.o(.bss* COMMON)
         arm9_exception_handlers.o(.bss* COMMON)
-        . = ALIGN(8);
-        PROVIDE (__itcm_end__ = .);
+        . = ALIGN(32);
+        PROVIDE (__itcm_end__ = ABSOLUTE(.));
     } >itcm :NONE
 
     .text :
@@ -82,11 +82,10 @@ SECTIONS
         *(.stub)
         *(.gnu.warning)
         *(.gnu.linkonce.t*)
-        . = ALIGN(4);
 
         /* .fini */
         KEEP( *(.fini) )
-        . = ALIGN(4);
+        . = ALIGN(8);
     } >main :main
 
     .rodata :
@@ -97,10 +96,10 @@ SECTIONS
         *all.rodata*(*)
         *(.gnu.linkonce.r*)
         SORT(CONSTRUCTORS)
-        . = ALIGN(4);
+        . = ALIGN(8);
     } >main
 
-    .preinit_array ALIGN(4) :
+    .preinit_array :
     {
         PROVIDE (__preinit_array_start = .);
         KEEP (*(.preinit_array))
@@ -129,6 +128,7 @@ SECTIONS
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*(.ctors))
+        . = ALIGN(4);   /* REQUIRED. LD is flaky without it. */
     } >main
 
     .dtors ALIGN(4) :
@@ -137,12 +137,11 @@ SECTIONS
         KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
         KEEP (*(SORT(.dtors.*)))
         KEEP (*(.dtors))
+        . = ALIGN(4);   /* REQUIRED. LD is flaky without it. */
     } >main
 
-    .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >main
-    __exidx_start = .;
-    ARM.exidx : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) } >main
-    __exidx_end = .;
+    .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) __exidx_start = ABSOLUTE(.);} >main
+    ARM.exidx : { *(.ARM.exidx* .gnu.linkonce.armexidx.*)  __exidx_end = ABSOLUTE(.);} >main
 
     .data :
     {
@@ -151,7 +150,7 @@ SECTIONS
         KEEP (*(.large_patch*))
         *(.gnu.linkonce.d*)
         CONSTRUCTORS
-        . = ALIGN(4);
+        . = ALIGN(32);
     } >main
 
     .bss (NOLOAD) :
