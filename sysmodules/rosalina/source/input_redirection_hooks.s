@@ -24,7 +24,7 @@
 
 @ Hooks mainly written by Stary (PoC originally by Shiny Quagsire)
 
-.section .rodata
+.section .rodata.input_redirection_hook, "a", %progbits
 .balign 4
 .arm
 

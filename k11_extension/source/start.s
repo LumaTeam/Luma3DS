@@ -22,8 +22,8 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
-.section .text.start
-.balign 4
+.section .text.start, "ax", %progbits
+.balign 32
 .global _start
 _start:
     b start
