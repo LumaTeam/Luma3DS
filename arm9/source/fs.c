@@ -36,6 +36,7 @@
 #include "buttons.h"
 #include "firm.h"
 #include "crypto.h"
+#include "strings.h"
 
 static FATFS sdFs,
              nandFs;
@@ -272,10 +273,7 @@ u32 firmRead(void *dest, u32 firmType)
         //Not a cxi
         if(info.fname[9] != 'a' || strlen(info.fname) != 12) continue;
 
-        u32 tempVersion = 0;
-        char *tmp = info.fname;
-        for(u32 i = 0; i < 8 && *tmp != 0; tmp++, i++)
-            tempVersion = (*tmp > '9' ? (*tmp >= 'A' ? *tmp - 'A' : *tmp - 'a') + 10 : *tmp - '0') + (tempVersion << 4);
+        u32 tempVersion = hexAtoi(info.altname, 8);
 
         //Found an older cxi
         if(tempVersion < firmVersion) firmVersion = tempVersion;

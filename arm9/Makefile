@@ -89,9 +89,7 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
-ifeq ($(strip $(APP_TITLE)),)
-	APP_TITLE	:=	$(notdir $(OUTPUT))
-endif
+export APP_TITLE	:=	$(notdir $(TOPDIR)/..)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))

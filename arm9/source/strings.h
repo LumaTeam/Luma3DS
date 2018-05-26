@@ -28,7 +28,5 @@
 
 #include "types.h"
 
-u32 strlen(const char *string);
-u32 strnlen(const char *string, u32 maxlen);
 u32 hexAtoi(const char *in, u32 digits);
 u32 decAtoi(const char *in, u32 digits);

@@ -110,7 +110,7 @@ SECTIONS
         *(.bss.*)
         *(.gnu.linkonce.b*)
         *(COMMON)
-        . = ALIGN(8);
+        . = ALIGN(0x1000);
         PROVIDE (__bss_end__ = ABSOLUTE(.));
         PROVIDE (__end__ = ABSOLUTE(.));
     } >main :NONE

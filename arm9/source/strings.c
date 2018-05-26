@@ -25,25 +25,6 @@
 */
 
 #include "strings.h"
-#include "memory.h"
-
-u32 strlen(const char *string)
-{
-    char *stringEnd = (char *)string;
-
-    while(*stringEnd != 0) stringEnd++;
-
-    return stringEnd - string;
-}
-
-u32 strnlen(const char *string, u32 maxlen)
-{
-    u32 size;
-
-    for(size = 0; size < maxlen && *string; string++, size++);
-
-    return size;
-}
 
 u32 hexAtoi(const char *in, u32 digits)
 {

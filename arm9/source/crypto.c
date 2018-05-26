@@ -36,6 +36,7 @@
 #include "emunand.h"
 #include "utils.h"
 #include "alignedseqmemcpy.h"
+#include "strings.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 /****************************************************************
@@ -581,9 +582,7 @@ void kernel9Loader(Arm9Bin *arm9Section)
     u8 arm9BinSlot = k9lVersion == 0 ? 0x15 : 0x16;
 
     // Get size
-    u32 arm9SectionSize = 0;
-    for(u32 i = 0; i < 8; i++)
-        arm9SectionSize = (arm9Section->size[i] - '0') + 10*arm9SectionSize;
+    u32 arm9SectionSize = decAtoi(arm9Section->size, 8);
 
     //Set keyX
     __attribute__((aligned(4))) u8 keyX[AES_BLOCK_SIZE];
