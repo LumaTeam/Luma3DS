@@ -135,7 +135,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
     //Our kernel11 extension is initially loaded in VRAM
     u32 kextTotalSize = *(u32 *)0x18000020 - 0x40000000;
-    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - (0x1000 + kextTotalSize);
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
@@ -176,7 +176,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 24);
 
     struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - 0x40000000 + 0x18000000);
-    p->basePA = dstKextPA + 0x1000;
+    p->basePA = dstKextPA;
 
     for(u32 i = 0; i < 4; i++)
     {

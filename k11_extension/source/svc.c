@@ -100,7 +100,7 @@ void *svcHook(u8 *pageEnd)
         case 0x17:
             if(strcmp(codeSetOfProcess(currentProcess)->processName, "pm") == 0) // only called twice in pm, by the same function
             {
-                *(vu32 *)(configPage + 0x44) += 0x1000 + __end__ - __start__;
+                *(vu32 *)(configPage + 0x44) += __end__ - __start__;
                 doingVeryShittyPmResLimitWorkaround = true;
             }
             return officialSVCs[0x17];
@@ -127,7 +127,7 @@ void *svcHook(u8 *pageEnd)
         case 0x79:
             if(doingVeryShittyPmResLimitWorkaround)
             {
-                *(vu32 *)(configPage + 0x44) -= 0x1000 + __end__ - __start__;
+                *(vu32 *)(configPage + 0x44) -= __end__ - __start__;
                 doingVeryShittyPmResLimitWorkaround = false;
             }
             return officialSVCs[0x79];

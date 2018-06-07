@@ -41,11 +41,13 @@ struct KExtParameters
     CfwInfo cfwInfo;
 } kExtParameters = { .basePA = 0x12345678 }; // place this in .data
 
+static ALIGN(1024) u32 L2TableFor0x40000000[256] = {0};
+
 void relocateAndSetupMMU(u32 coreId, u32 *L1Table)
 {
     struct KExtParameters *p0 = (struct KExtParameters *)((u32)&kExtParameters - 0x40000000 + 0x18000000);
     struct KExtParameters *p = (struct KExtParameters *)((u32)&kExtParameters - 0x40000000 + p0->basePA);
-    u32 *L2Table = (u32 *)(p0->basePA - 0x1000);
+    u32 *L2Table = (u32 *)((u32)L2TableFor0x40000000 - 0x40000000 + p0->basePA);
 
     if(coreId == 0)
     {
@@ -56,7 +58,6 @@ void relocateAndSetupMMU(u32 coreId, u32 *L1Table)
 
         // Map the kernel ext to 0x40000000
         // 4KB extended small pages: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]
-        memset(L2Table, 0, 4 * 256);
         for(u32 offset = 0; offset < (u32)(__end__ - __start__); offset += 0x1000)
             L2Table[offset >> 12] = (p0->basePA + offset) | 0x516;
 
@@ -258,7 +259,7 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     u32 TTBCR_;
     s64 nb;
 
-    layout->systemSize -= 0x1000 + __end__ - __start__;
+    layout->systemSize -= __end__ - __start__;
     fcramLayout = *layout;
     coreCtxs = ctxs;
 
