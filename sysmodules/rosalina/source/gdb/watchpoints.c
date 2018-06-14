@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ int GDB_AddWatchpoint(GDBContext *ctx, u32 address, u32 size, WatchpointKind kin
               ((u32)kind  <<  3) | /* kind */
               (2          <<  1) | /* user mode only */
               (1          <<  0) ; /* enabled */
-    
+
     s64 out;
 
     Result r = svcGetHandleInfo(&out, ctx->debug, 0x10000); // context ID

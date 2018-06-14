@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -218,7 +218,7 @@ u32 vsprintf(char *buf, const char *fmt, va_list args)
                 fmt++;
                 integerType = 1;
             }
-            
+
         }
         else if(*fmt == 'h')
         {

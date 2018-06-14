@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 @       * Prohibiting misrepresentation of the origin of that material,
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
- 
+
 .section .text.start
 .align 4
 .global _start

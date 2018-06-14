@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -30,11 +30,11 @@
 .type flushCaches, %function
 flushCaches:
     @ Clean and flush both the data cache and instruction caches
-    
+
     @ Adpated from http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0155a/ch03s03s05.html ,
     @ and https://github.com/gemarcano/libctr9_io/blob/master/src/ctr_system_ARM.c#L39 as well
     @ Note: ARM's example is actually for a 8KB DCache (which is what the 3DS has)
-    
+
     @ Implemented in bootROM at addresses 0xffff0830 (DCache) and 0xffff0ab4 (ICache)
 
     mov r1, #0                          @ segment counter

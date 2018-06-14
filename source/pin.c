@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ void newPin(bool allowSkipping, u32 pinMode)
     {
         if(reset)
         {
-            for(u32 i = 0; i < cnt; i++) 
+            for(u32 i = 0; i < cnt; i++)
                 drawCharacter(true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK, (char)enteredPassword[i]);
 
             cnt = 0;
@@ -154,7 +154,7 @@ bool verifyPin(u32 pinMode)
     drawFormattedString(true, 10, 10 + 3 * SPACING_Y, COLOR_WHITE, "PIN (%u digits): ", lengthBlock[0]);
 
     bool isBottomSplashValid = getFileSize("splashpin.bin") == SCREEN_BOTTOM_FBSIZE;
-    if(isBottomSplashValid) 
+    if(isBottomSplashValid)
     {
         isBottomSplashValid = fileRead(fbs[0].bottom, "splashpin.bin", SCREEN_BOTTOM_FBSIZE) == SCREEN_BOTTOM_FBSIZE;
     }
@@ -184,7 +184,7 @@ bool verifyPin(u32 pinMode)
     {
         if(reset)
         {
-            for(u32 i = 0; i < cnt; i++) 
+            for(u32 i = 0; i < cnt; i++)
                 drawCharacter(true, 10 + (16 + 2 * i) * SPACING_X, 10 + 3 * SPACING_Y, COLOR_BLACK, '*');
 
             cnt = 0;
@@ -225,7 +225,7 @@ bool verifyPin(u32 pinMode)
         {
             reset = true;
 
-            drawString(true, 10, 10 + 5 * SPACING_Y, COLOR_RED, "Wrong PIN, try again"); 
+            drawString(true, 10, 10 + 5 * SPACING_Y, COLOR_RED, "Wrong PIN, try again");
         }
     }
 

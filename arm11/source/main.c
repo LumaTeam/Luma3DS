@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -196,7 +196,7 @@ void main(void)
                 break;
             case UPDATE_BRIGHTNESS:
                 updateBrightness(*(vu32 *)ARM11_PARAMETERS_ADDRESS);
-                break; 
+                break;
             case DEINIT_SCREENS:
                 deinitScreens();
                 break;

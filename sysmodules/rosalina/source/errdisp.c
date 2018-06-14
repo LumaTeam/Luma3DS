@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -185,7 +185,7 @@ static void ERRF_DisplayError(ERRF_FatalErrInfo *info)
 
     u32 posY = Draw_DrawString(10, 10, COLOR_RED, userString[0] == 0 ? "An error occurred (ErrDisp)" : userString);
     char buf[0x400];
-    
+
     ERRF_FormatError(buf, info);
     posY = posY < 30 ? 30 : posY;
 
@@ -216,10 +216,10 @@ static Result ERRF_SaveErrorToFile(ERRF_FatalErrInfo *info)
 
     archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
     res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/errdisp.txt"), FS_OPEN_WRITE | FS_OPEN_CREATE);
-    
+
     if(R_FAILED(res))
         return res;
-    
+
     res = IFile_GetSize(&file, &size);
     if(R_FAILED(res))
     {

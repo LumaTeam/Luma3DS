@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2017 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ SessionInfo *SessionInfo_Lookup(KSession *session)
         ret = NULL;
     else
         ret = (void **)(sessionInfos[id].session->autoObject.vtable) == customSessionVtable ? &sessionInfos[id] : NULL;
-    
+
     KRecursiveLock__Unlock(&sessionInfosLock);
     KRecursiveLock__Unlock(criticalSectionLock);
 
@@ -242,7 +242,7 @@ Result doPublishToProcessHook(Handle handle, u32 *cmdbuf)
     bool terminateRosalina = cmdbuf[1] == 0x100 && cmdbuf[2] == 0; // cmdbuf[2] to check for well-formed requests
     u32 savedCmdbuf[4];
     memcpy(savedCmdbuf, cmdbuf, 16);
-    
+
     if(!terminateRosalina || GetProcessId(&pid, cmdbuf[3]) != 0)
         terminateRosalina = false;
     else
@@ -256,7 +256,7 @@ Result doPublishToProcessHook(Handle handle, u32 *cmdbuf)
             terminateRosalina = false;
         ((KAutoObject *)process)->vtable->DecrementReferenceCount((KAutoObject *)process);
     }
-    
+
     if(terminateRosalina && nbSection0Modules == 6)
     {
         Handle rosalinaProcessHandle;
@@ -300,7 +300,7 @@ bool doErrfThrowHook(u32 *cmdbuf)
         */
         //{ "qtm", (Result)0xF96183FE },
 
-        { "", 0 }, // impossible case to ensure the array has at least 1 element 
+        { "", 0 }, // impossible case to ensure the array has at least 1 element
     };
 
     for(u32 i = 0; i < sizeof(errorCodesToIgnore) / sizeof(errorCodesToIgnore[0]); i++)
