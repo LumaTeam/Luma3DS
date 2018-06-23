@@ -32,6 +32,7 @@
 #include "errdisp.h"
 #include "hbloader.h"
 #include "utils.h"
+#include "sleep.h"
 #include "MyThread.h"
 #include "menus/process_patches.h"
 #include "menus/miscellaneous.h"
@@ -49,6 +50,7 @@ void __appInit()
 // this is called after main exits
 void __appExit()
 {
+    acExit();
     fsExit();
     fsregExit();
     srvSysExit();
@@ -117,6 +119,8 @@ int main(void)
     if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
 
+    Sleep__Init();
+
     do
     {
         res = svcWaitSynchronization(notificationHandle, -1LL);
@@ -135,6 +139,8 @@ int main(void)
             terminationRequest = true;
             svcSignalEvent(terminationRequestEvent);
         }
+
+        Sleep__HandleNotification(notifId);
     }
     while(!terminationRequest);
 

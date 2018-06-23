@@ -89,7 +89,8 @@ typedef struct sock_server
     Handle shall_terminate_event;
 } sock_server;
 
-Result server_init(struct sock_server *serv);
-void server_bind(struct sock_server *serv, u16 port);
-void server_run(struct sock_server *serv);
-void server_finalize(struct sock_server *serv);
+Result  server_init(struct sock_server *serv);
+void    server_bind(struct sock_server *serv, u16 port);
+void    server_run(struct sock_server *serv);
+void    server_finalize(struct sock_server *serv);
+bool    Wifi__IsConnected(void);

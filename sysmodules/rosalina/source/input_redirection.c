@@ -31,6 +31,8 @@
 #include "input_redirection.h"
 #include "menus.h"
 #include "memory.h"
+#include "sleep.h"
+#include "sock_util.h"
 
 bool inputRedirectionEnabled = false;
 Handle inputRedirectionThreadStartedEvent;
@@ -95,6 +97,13 @@ void inputRedirectionThreadMain(void)
         pfd.fd = sock;
         pfd.events = POLLIN;
         pfd.revents = 0;
+
+        if (Sleep__Status())
+        {
+            while (!Wifi__IsConnected()
+                    && inputRedirectionEnabled && !terminationRequest)
+                svcSleepThread(1000000000ULL);
+        }
 
         int pollres = socPoll(&pfd, 1, 10);
         if(pollres > 0 && (pfd.revents & POLLIN))
