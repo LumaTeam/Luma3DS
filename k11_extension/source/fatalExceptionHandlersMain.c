@@ -31,7 +31,7 @@
 #include "globals.h"
 
 #define REG_DUMP_SIZE   4 * 23
-#define CODE_DUMP_SIZE  48
+#define CODE_DUMP_SIZE  96
 
 bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 {
@@ -96,7 +96,7 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     registerDump[15] = pc;
 
     //Dump code
-    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - (dumpHeader.codeDumpSize >> 1) ; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
     dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 1 : 3)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
 
     //Copy register dump and code dump

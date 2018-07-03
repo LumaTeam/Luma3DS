@@ -159,7 +159,7 @@ def main(args=None):
         print("{0:<15}{1:<20}Access type: {2}".format("FAR", "{0:08x}".format(registers[19]), "Write" if registers[17] & (1 << 11) != 0 else "Read"))
 
     thumb = registers[16] & 0x20 != 0
-    addr = registers[15] - codeDumpSize + (2 if thumb else 4)
+    addr = registers[15] - codeDumpSize / 2 + (2 if thumb else 4)
 
     print("\nCode dump:\n")
 
@@ -167,8 +167,9 @@ def main(args=None):
     try:
         path = os.path.join(os.environ["DEVKITARM"], "bin", "arm-none-eabi-objdump")
 
+
         if os.name == "nt" and path[0] == '/':
-            path = ''.join((path[1], ':', path[2:]))
+            path = ''.join(('c:', path[0], path[5:]))
 
         objdump_res = subprocess.check_output((
                                                     path, "-marm", "-b", "binary",
@@ -176,6 +177,7 @@ def main(args=None):
                                                      "--stop-address="+hex(addr + codeDumpSize), "-D", "-z", "-M",
                                                      "reg-names-std" + (",force-thumb" if thumb else ""), args.filename
                                              )).decode("utf-8")
+
         objdump_res = '\n'.join(objdump_res[objdump_res.find('<.data+'):].split('\n')[1:])
     except: objdump_res = ""
 
