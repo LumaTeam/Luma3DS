@@ -314,7 +314,7 @@ int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
     if(ret == 0)
         ret = _net_convert_error(cmdbuf[2]);
 
-    if(ret < 0)
+    // if(ret < 0)
         //errno = -ret;
 
     if(ret >= 0 && addr != NULL)
