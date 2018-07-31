@@ -508,13 +508,13 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 
 u32 patchKernel9Panic(u8 *pos, u32 size)
 {
-    static const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
+    static const u8 pattern[] = {0x00, 0x20, 0x92, 0x15};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
     if(temp == NULL) return 1;
 
-    u32 *off = (u32 *)(temp - 0x12);
+    u32 *off = (u32 *)(temp - 0x34);
     *off = 0xE12FFF7E;
 
     return 0;
