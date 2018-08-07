@@ -468,7 +468,9 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
                 // Description: Loads offset register.
                 if (!skipExecution)
                 {
-                    cheat_state.offset = (arg0 & 0x0FFFFFFF);
+                    u32 value;
+                    if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                    cheat_state.offset = value;
                 }
                 break;
             case 0xC:
