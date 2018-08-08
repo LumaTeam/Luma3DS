@@ -1120,13 +1120,9 @@ static u32 Cheat_GetCurrentPID(u64* titleId)
     }
 }
 
-void Cheat_ApplyKeyCheats(void)
+void Cheat_ApplyCheats(void)
 {
     if (!cheatCount)
-    {
-        return;
-    }
-    if (!hasKeyActivated)
     {
         return;
     }
@@ -1151,9 +1147,13 @@ void Cheat_ApplyKeyCheats(void)
     u32 keys = HID_PAD & 0xFFF;
     for (int i = 0; i < cheatCount; i++)
     {
-        if (cheats[i]->active && cheats[i]->keyActivated && (cheats[i]->keyCombo & keys) == keys)
+        if (cheats[i]->active && !(cheats[i]->keyActivated))
         {
             Cheat_MapMemoryAndApplyCheat(pid, cheats[i]);
+        } 
+        else if (cheats[i]->active && cheats[i]->keyActivated && (cheats[i]->keyCombo & keys) == keys)
+        {
+            Cheat_MapMemoryAndApplyCheat(pid, cheats[i]);    
         }
     }
 }
