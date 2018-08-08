@@ -465,7 +465,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
             case 0xB:
                 // B Type
                 // Format: BXXXXXXX 00000000
-                // Description: Loads offset register.
+                // Description: Loads offset register with value at given XXXXXXX
                 if (!skipExecution)
                 {
                     u32 value;
