@@ -169,7 +169,7 @@ void menuThreadMain(void)
         }
         else
         {
-        	Cheat_ApplyCheats();
+            Cheat_ApplyCheats();
         }
         svcSleepThread(50 * 1000 * 1000LL);
     }
