@@ -31,6 +31,7 @@
 #include "utils.h"
 #include "screen.h"
 #include "draw.h"
+#include "emunand.h"
 #include "buttons.h"
 #include "pin.h"
 
@@ -195,6 +196,13 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "issues or bug reports to the Luma3DS\n"
                                                  "GitHub repository!"
                                                };
+
+    FirmwareSource nandType = FIRMWARE_SYSNAND;
+    if(isSdMode)
+    {
+        nandType = FIRMWARE_EMUNAND;
+        locateEmuNand(&nandType);
+    }
 
     struct multiOption {
         u32 posXs[4];
