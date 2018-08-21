@@ -39,7 +39,7 @@
 
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
-u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space);
+u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space);
 u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage);
 u32 patchSignatureChecks(u8 *pos, u32 size);
 u32 patchOldSignatureChecks(u8 *pos, u32 size);

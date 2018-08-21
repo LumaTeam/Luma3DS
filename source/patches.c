@@ -100,7 +100,7 @@ static inline u32 *getKernel11HandlerVAPos(u8 *pos, u32 *arm11ExceptionsPage, u3
     return (u32 *)(pos + pointedInstructionVA - baseK11VA + 8);
 }
 
-u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space)
 {
     //The parameters to be passed on to the kernel ext
     //Please keep that in sync with the definition in k11_extension/source/main.c
@@ -201,7 +201,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 
     if(ISRELEASE) info->flags = 1;
     if(ISN3DS) info->flags |= 1 << 4;
-    if(isSafeMode) info->flags |= 1 << 5;
+    if(needToInitSd) info->flags |= 1 << 5;
     if(isSdMode) info->flags |= 1 << 6;
 
     return 0;

@@ -344,7 +344,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
     }
 }
 
-u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isFirmProtEnabled, bool isSafeMode, bool doUnitinfoPatch)
+u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isFirmProtEnabled, bool needToInitSd, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
        *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -374,7 +374,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     //Skip on FIRMs < 4.0
     if(ISN3DS || firmVersion >= 0x1D)
     {
-        ret += installK11Extension(arm11Section1, firm->section[1].size, isSafeMode, baseK11VA, arm11ExceptionsPage, &freeK11Space);
+        ret += installK11Extension(arm11Section1, firm->section[1].size, needToInitSd, baseK11VA, arm11ExceptionsPage, &freeK11Space);
         ret += patchKernel11(arm11Section1, firm->section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage);
     }
 
