@@ -119,7 +119,7 @@ void *svcHook(u8 *pageEnd)
         case 0x32:
             return SendSyncRequestHook;
         case 0x3C:
-            return (debugOfProcess(currentProcess) != NULL) ? officialSVCs[0x3C] : (void *)Break;
+            return (!strcmp(codeSetOfProcess(currentProcess)->processName, "home") || debugOfProcess(currentProcess) != NULL) ? officialSVCs[0x3C] : (void *)Break;
         case 0x59:
             return SetGpuProt;
         case 0x5A:
