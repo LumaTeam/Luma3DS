@@ -400,6 +400,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     //Apply anti-anti-DG patches on 11.0+
     if(firmVersion >= (ISN3DS ? 0x21 : 0x52)) ret += patchTitleInstallMinVersionChecks(process9Offset, process9Size, firmVersion);
 
+    //patch P9 AM ticket wrapper on 11.8+ to use 0 Key and IV, only on UNITINFO patch to prevent NIM from actually send any
+    if(doUnitinfoPatch && firmVersion >= (ISN3DS ? 0x35 : 0x64)) ret += patchP9AMTicketWrapperZeroKeyIV(process9Offset, process9Size);
+
     //Apply UNITINFO patches
     if(doUnitinfoPatch)
     {
