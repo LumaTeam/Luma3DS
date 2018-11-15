@@ -31,6 +31,7 @@
 #include "utils.h"
 #include "screen.h"
 #include "draw.h"
+#include "emunand.h"
 #include "buttons.h"
 #include "pin.h"
 
@@ -196,13 +197,20 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "GitHub repository!"
                                                };
 
+    FirmwareSource nandType = FIRMWARE_SYSNAND;
+    if(isSdMode)
+    {
+        nandType = FIRMWARE_EMUNAND;
+        locateEmuNand(&nandType);
+    }
+
     struct multiOption {
         u32 posXs[4];
         u32 posY;
         u32 enabled;
         bool visible;
     } multiOptions[] = {
-        { .visible = isSdMode },
+        { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = true },
         { .visible = true  },
         { .visible = true },
@@ -215,8 +223,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         bool enabled;
         bool visible;
     } singleOptions[] = {
-        { .visible = isSdMode },
-        { .visible = isSdMode },
+        { .visible = nandType == FIRMWARE_EMUNAND },
+        { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = true },
         { .visible = true },
         { .visible = true },

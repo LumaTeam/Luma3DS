@@ -175,9 +175,7 @@ void    menuThreadMain(void)
         }
         else
         {
-        	if (HID_PAD & 0xFFF) {
-        		Cheat_ApplyKeyCheats();
-        	}
+            Cheat_ApplyCheats();
         }
 
         // Check for home button on O3DS Mode3 with plugin loaded

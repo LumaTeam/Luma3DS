@@ -51,6 +51,7 @@ void main(int argc, char **argv, u32 magicWord)
 {
     bool isFirmProtEnabled,
          isSafeMode = false,
+         needToInitSd = false,
          isNoForceFlagSet = false,
          isNtrBoot;
     FirmwareType firmType;
@@ -192,9 +193,16 @@ void main(int argc, char **argv, u32 magicWord)
             goto boot;
         }
 
-        /* Else, force the last used boot options unless a button is pressed
+        //Account for DSiWare soft resets if exiting TWL_FIRM
+        if(CFG_BOOTENV == 3)
+        {
+            static const u8 TLNC[] = {0x54, 0x4C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x43};
+            if(memcmp((void *)0x20000C00, TLNC, 10) == 0) needToInitSd = true;
+        }
+
+        /* Force the last used boot options if autobooting a TWL title, or unless a button is pressed
            or the no-forcing flag is set */
-        if(!pressed && !BOOTCFG_NOFORCEFLAG)
+        if(needToInitSd || memcmp((void *)0x20000300, "TLNC", 4) == 0 || (!pressed && !BOOTCFG_NOFORCEFLAG))
         {
             nandType = (FirmwareSource)BOOTCFG_NAND;
             firmSource = (FirmwareSource)BOOTCFG_FIRM;
@@ -223,6 +231,7 @@ void main(int argc, char **argv, u32 magicWord)
         firmSource = FIRMWARE_SYSNAND;
 
         isSafeMode = true;
+        needToInitSd = true;
 
         //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
         if(pinExists && !shouldLoadConfigMenu)
@@ -328,7 +337,7 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
-            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isFirmProtEnabled, isSafeMode, doUnitinfoPatch);
+            res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isFirmProtEnabled, needToInitSd, doUnitinfoPatch);
             break;
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);

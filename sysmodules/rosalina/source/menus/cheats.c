@@ -465,10 +465,12 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, const CheatDescription* 
             case 0xB:
                 // B Type
                 // Format: BXXXXXXX 00000000
-                // Description: Loads offset register.
+                // Description: Loads offset register with value at given XXXXXXX
                 if (!skipExecution)
                 {
-                    cheat_state.offset = (arg0 & 0x0FFFFFFF);
+                    u32 value;
+                    if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                    cheat_state.offset = value;
                 }
                 break;
             case 0xC:
@@ -1118,13 +1120,9 @@ static u32 Cheat_GetCurrentPID(u64* titleId)
     }
 }
 
-void Cheat_ApplyKeyCheats(void)
+void Cheat_ApplyCheats(void)
 {
     if (!cheatCount)
-    {
-        return;
-    }
-    if (!hasKeyActivated)
     {
         return;
     }
@@ -1149,9 +1147,13 @@ void Cheat_ApplyKeyCheats(void)
     u32 keys = HID_PAD & 0xFFF;
     for (int i = 0; i < cheatCount; i++)
     {
-        if (cheats[i]->active && cheats[i]->keyActivated && (cheats[i]->keyCombo & keys) == keys)
+        if (cheats[i]->active && !(cheats[i]->keyActivated))
         {
             Cheat_MapMemoryAndApplyCheat(pid, cheats[i]);
+        } 
+        else if (cheats[i]->active && cheats[i]->keyActivated && (cheats[i]->keyCombo & keys) == keys)
+        {
+            Cheat_MapMemoryAndApplyCheat(pid, cheats[i]);    
         }
     }
 }

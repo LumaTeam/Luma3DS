@@ -100,7 +100,7 @@ static inline u32 *getKernel11HandlerVAPos(u8 *pos, u32 *arm11ExceptionsPage, u3
     return (u32 *)(pos + pointedInstructionVA - baseK11VA + 8);
 }
 
-u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32 *arm11ExceptionsPage, u8 **freeK11Space)
 {
     //The parameters to be passed on to the kernel ext
     //Please keep that in sync with the definition in k11_extension/source/main.c
@@ -203,7 +203,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 
     if(ISRELEASE) info->flags = 1;
     if(ISN3DS) info->flags |= 1 << 4;
-    if(isSafeMode) info->flags |= 1 << 5;
+    if(needToInitSd) info->flags |= 1 << 5;
     if(isSdMode) info->flags |= 1 << 6;
 
     return 0;
@@ -671,6 +671,28 @@ u32 patchAgbBootSplash(u8 *pos, u32 size)
     if(off == NULL) return 1;
 
     off[2] = 0x26;
+
+    return 0;
+}
+
+u32 patchP9AMTicketWrapperZeroKeyIV(u8* pos, u32 size)
+{
+    static const u8 __rt_memclr_pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x04, 0x00, 0x51, 0xE3, 0x07, 0x00, 0x00, 0x3A};
+    static const u8 pattern[] = {0x20, 0x21, 0xA6, 0xA8};
+
+    u32 function = (u32)memsearch(pos, __rt_memclr_pattern, size, sizeof(__rt_memclr_pattern));
+    u32 *off = (u32*)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(function == 0 || off == NULL) return 1;
+
+    s32 opjumpdistance = (s32)(function - ((u32)&off[2])) / 2;
+
+    //beyond limit
+    if(opjumpdistance < -0x1fffff || opjumpdistance > 0x1fffff) return 1;
+
+    //r0 and r1 for old call are already correctly for this one 
+    //BLX __rt_memclr
+    off[1] = 0xE800F000U | (((u32)opjumpdistance & 0x7FF) << 16) | (((u32)opjumpdistance >> 11) & 0x3FF) | (((u32)opjumpdistance >> 21) & 0x400);
 
     return 0;
 }

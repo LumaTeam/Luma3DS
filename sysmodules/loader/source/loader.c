@@ -12,7 +12,7 @@
 #define HBLDR_3DSX_TID  (*(vu64 *)0x1FF81100)
 
 u32 config, multiConfig, bootConfig;
-bool isN3DS, isSafeMode, isSdMode;
+bool isN3DS, needToInitSd, isSdMode;
 
 const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
 
@@ -47,12 +47,12 @@ static inline void loadCFWInfo(void)
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x201))) svcBreak(USERBREAK_ASSERT);
     isN3DS = (bool)out;
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x202))) svcBreak(USERBREAK_ASSERT);
-    isSafeMode = (bool)out;
+    needToInitSd = (bool)out;
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
     isSdMode = (bool)out;
 
     IFile file;
-    if(isSafeMode) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
+    if(needToInitSd) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 }
 
 static int lzss_decompress(u8 *end)
