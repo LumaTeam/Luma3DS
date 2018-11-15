@@ -45,6 +45,7 @@ struct
     { "getmemregions"     , GDB_REMOTE_COMMAND_HANDLER(GetMemRegions) },
     { "flushcaches"       , GDB_REMOTE_COMMAND_HANDLER(FlushCaches) },
     { "toggleextmemaccess", GDB_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess) },
+    { "catchsvc"          , GDB_REMOTE_COMMAND_HANDLER(CatchSvc) },
 };
 
 static const char *GDB_SkipSpaces(const char *pos)
@@ -476,6 +477,41 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess)
     n = sprintf(outbuf, "External memory access %s successfully.\n", ctx->enableExternalMemoryAccess ? "enabled" : "disabled");
 
     return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(CatchSvc)
+{
+    if(ctx->commandData[0] == '0')
+    {
+        memset(ctx->svcMask, 0, 32);
+        return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, false)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
+    }
+    else if(ctx->commandData[0] == '1')
+    {
+        if(ctx->commandData[1] == ';')
+        {
+            u32 id;
+            const char *pos = ctx->commandData + 1;
+            memset(ctx->svcMask, 0, 32);
+
+            do
+            {
+                pos = GDB_ParseHexIntegerList(&id, pos + 1, 1, ';');
+                if(pos == NULL)
+                    return GDB_ReplyErrno(ctx, EILSEQ);
+
+                if(id < 0xFE)
+                    ctx->svcMask[id / 32] |= 1 << (31 - (id % 32));
+            }
+            while(*pos != 0);
+        }
+        else
+            memset(ctx->svcMask, 0xFF, 32);
+
+        return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, true, ctx->svcMask)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
+    }
+    else
+        return GDB_ReplyErrno(ctx, EILSEQ);
 }
 
 GDB_DECLARE_QUERY_HANDLER(Rcmd)
