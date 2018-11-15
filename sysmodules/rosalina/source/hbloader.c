@@ -117,12 +117,6 @@ static const u32 kernelCaps[] =
     0xFE000200, // Handle table size: 0x200
 };
 
-static inline void assertSuccess(Result res)
-{
-    if(R_FAILED(res))
-        svcBreak(USERBREAK_PANIC);
-}
-
 static MyThread hbldrThread;
 static u8 ALIGN(8) hbldrThreadStack[THREAD_STACK_SIZE];
 static u16 hbldrTarget[PATH_MAX+1];
@@ -131,12 +125,6 @@ MyThread *hbldrCreateThread(void)
 {
     assertSuccess(MyThread_Create(&hbldrThread, hbldrThreadMain, hbldrThreadStack, THREAD_STACK_SIZE, 0x18, CORE_SYSTEM));
     return &hbldrThread;
-}
-
-static inline void error(u32* cmdbuf, Result rc)
-{
-    cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
-    cmdbuf[1] = rc;
 }
 
 static u16 *u16_strncpy(u16 *dest, const u16 *src, u32 size)

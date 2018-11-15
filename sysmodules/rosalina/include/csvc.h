@@ -71,18 +71,20 @@ void svcInvalidateEntireInstructionCache(void);
 ///@{
 /**
  * @brief Maps a block of process memory.
- * @param process Handle of the process.
+ * @param dstProcessHandle Handle of the process to map the memory in (destination)
  * @param destAddress Address of the mapped block in the current process.
+ * @param srcProcessHandle Handle of the process to map the memory from (source)
  * @param srcAddress Address of the mapped block in the source process.
  * @param size Size of the block of the memory to map (truncated to a multiple of 0x1000 bytes).
 */
-Result svcMapProcessMemoryEx(Handle process, u32 destAddr, u32 srcAddr, u32 size);
+Result svcMapProcessMemoryEx(Handle dstProcessHandle, u32 destAddress, Handle srcProcessHandle, u32 vaSrc, u32 size);
 
 /**
  * @brief Unmaps a block of process memory.
- * @param process Handle of the process.
- * @param destAddress Address of the block of memory to unmap, in the current (destination) process.
+ * @param process Handle of the process to unmap the memory from
+ * @param destAddress Address of the block of memory to unmap
  * @param size Size of the block of memory to unmap (truncated to a multiple of 0x1000 bytes).
+ * This function should only be used to unmap memory mapped with svcMapProcessMemoryEx
  */
 Result svcUnmapProcessMemoryEx(Handle process, u32 destAddress, u32 size);
 
@@ -134,4 +136,19 @@ Result svcCopyHandle(Handle *out, Handle outProcess, Handle in, Handle inProcess
  * @param in The input handle.
 */
 Result svcTranslateHandle(u32 *outKAddr, char *outClassName, Handle in);
+
+/// Operations for svcControlProcess
+typedef enum ProcessOp
+{
+    PROCESSOP_GET_ALL_HANDLES,  ///< List all handles of the process, varg3 can be either 0 to fetch all handles, or token of the type to fetch
+                                ///< svcControlProcess(handle, PROCESSOP_GET_ALL_HANDLES, (u32)&outBuf, 0)
+    PROCESSOP_SET_MMU_TO_RWX,   ///< Set the whole memory of the process with rwx access
+                                ///< svcControlProcess(handle, PROCESSOP_SET_MMU_TO_RWX, 0, 0)
+    PROCESSOP_GET_ON_MEMORY_CHANGE_EVENT,
+    PROCESSOP_GET_ON_EXIT_EVENT,
+    PROCESSOP_GET_PA_FROM_VA,   ///< Get the physical address of the va within the process
+                                ///< svcControlProcess(handle, PROCESSOP_GET_PA_FROM_VA, (u32)&outPa, va)
+} ProcessOp;
+
+Result  svcControlProcess(Handle process, ProcessOp op, u32 varg2, u32 varg3);
 ///@}

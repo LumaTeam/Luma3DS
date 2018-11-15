@@ -207,6 +207,21 @@ static Result HBLDR_Init(Handle *session)
   return res;
 }
 
+static Result PLGLDR_Init(Handle *session)
+{
+  Result res;
+  while (1)
+  {
+    res = svcConnectToPort(session, "plg:ldr");
+    if (R_LEVEL(res) != RL_PERMANENT ||
+        R_SUMMARY(res) != RS_NOTFOUND ||
+        R_DESCRIPTION(res) != RD_NOT_FOUND
+       ) break;
+    svcSleepThread(500000);
+  }
+  return res;
+}
+
 static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 {
   Result res;
@@ -365,6 +380,9 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   // load code
   if ((res = load_code(progid, &shared_addr, prog_handle, g_exheader.codesetinfo.flags.flag & 1)) >= 0)
   {
+    u32   *code = (u32 *)shared_addr.text_addr;
+    bool  isHomebrew = code[0] == 0xEA000006 && code[8] == 0xE1A0400E;
+
     memcpy(&codesetinfo.name, g_exheader.codesetinfo.name, 8);
     codesetinfo.program_id = progid;
     codesetinfo.text_addr = vaddr.text_addr;
@@ -383,6 +401,33 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
       svcCloseHandle(codeset);
       if (res >= 0)
       {
+        // Try to load a plugin for the game
+        if (!isHomebrew && ((u32)((progid >> 0x20) & 0xFFFFFFEDULL) == 0x00040000))
+        {
+            // Special case handling: games rebooting the 3DS on old models
+            if (!isN3DS && (g_exheader.arm11systemlocalcaps.flags[2] >> 4) > 0)
+            {
+                // Check if the plugin loader is enabled, otherwise skip the loading part
+                s64 out;
+
+                svcGetSystemInfo(&out, 0x10000, 0x102);
+                if ((out & 1) == 0)
+                    return 0;
+            }
+
+            Handle plgldr = 0;
+
+            if (R_SUCCEEDED(PLGLDR_Init(&plgldr)))
+            {
+                u32* cmdbuf = getThreadCommandBuffer();
+
+                cmdbuf[0] = IPC_MakeHeader(1, 0, 2);
+                cmdbuf[1] = IPC_Desc_SharedHandles(1);
+                cmdbuf[2] = *process;
+                svcSendSyncRequest(plgldr);
+                svcCloseHandle(plgldr);
+            }
+        }
         return 0;
       }
     }
@@ -582,14 +627,14 @@ void __appExit()
 void __sync_init();
 void __sync_fini();
 void __system_initSyscalls();
- 
+
 void __ctru_exit()
 {
   __appExit();
   __sync_fini();
   svcExitProcess();
 }
- 
+
 void initSystem()
 {
   __sync_init();
@@ -662,7 +707,7 @@ int main()
         g_active_handles--;
         reply_target = 0;
       }
-      else 
+      else
       {
         svcBreak(USERBREAK_ASSERT);
       }

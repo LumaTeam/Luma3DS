@@ -44,8 +44,12 @@ extern KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *
 extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
 extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
+extern Result (*KProcessHwInfo__QueryMemory)(KProcessHwInfo *this, MemoryInfo *memoryInfo, PageInfo *pageInfo, void *address);
 extern Result (*KProcessHwInfo__MapProcessMemory)(KProcessHwInfo *this, KProcessHwInfo *other, void *dst, void *src, u32 nbPages);
 extern Result (*KProcessHwInfo__UnmapProcessMemory)(KProcessHwInfo *this, void *addr, u32 nbPages);
+extern Result (*KProcessHwInfo__CheckVaState)(KProcessHwInfo *hwInfo, u32 va, u32 size, u32 state, u32 perm);
+extern Result (*KProcessHwInfo__GetListOfKBlockInfoForVA)(KProcessHwInfo *hwInfo, KLinkedList *list, u32 va, u32 sizeInPage);
+extern Result (*KProcessHwInfo__MapListOfKBlockInfo)(KProcessHwInfo *this, u32 va, KLinkedList *list, u32 state, u32 perm, u32 sbz);
 extern Result (*KEvent__Clear)(KEvent *this);
 extern void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 extern void (*KObjectMutex__ErrorOccured)(void);
@@ -53,8 +57,11 @@ extern void (*KObjectMutex__ErrorOccured)(void);
 extern void (*KScheduler__AdjustThread)(KScheduler *this, KThread *thread, u32 oldSchedulingMask);
 extern void (*KScheduler__AttemptSwitchingThreadContext)(KScheduler *this);
 
+extern void (*KLinkedList_KBlockInfo__Clear)(KLinkedList *list);
+
 extern Result (*ControlMemory)(u32 *addrOut, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
 extern void (*SleepThread)(s64 ns);
+extern Result (*CreateEvent)(Handle *out, ResetType resetType);
 extern Result (*CloseHandle)(Handle handle);
 extern Result (*GetHandleInfo)(s64 *out, Handle handle, u32 type);
 extern Result (*GetSystemInfo)(s64 *out, s32 type, s32 param);
@@ -65,6 +72,7 @@ extern Result (*SendSyncRequest)(Handle handle);
 extern Result (*OpenProcess)(Handle *out, u32 processId);
 extern Result (*GetProcessId)(u32 *out, Handle process);
 extern Result (*DebugActiveProcess)(Handle *out, u32 processId);
+extern Result (*SignalEvent)(Handle event);
 extern Result (*UnmapProcessMemory)(Handle processHandle, void *dst, u32 size);
 extern Result (*KernelSetState)(u32 type, u32 varg1, u32 varg2, u32 varg3);
 
@@ -129,9 +137,12 @@ typedef struct CfwInfo
     u32 config, multiConfig, bootConfig;
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
+    u32 rosalinaFlags;
 } CfwInfo;
 
 extern CfwInfo cfwInfo;
 
 extern vu32 rosalinaState;
 extern bool hasStartedRosalinaNetworkFuncsOnce;
+
+KLinkedList*    KLinkedList__Initialize(KLinkedList *list);

@@ -35,6 +35,7 @@ void *memset32(void *dest, u32 value, u32 size);
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
 char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, u32 size);
+char *strcat(char *dest, const char *src);
 s32 strnlen(const char *string, s32 maxlen);
 s32 strlen(const char *string);
 s32 strcmp(const char *str1, const char *str2);

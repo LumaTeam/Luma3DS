@@ -26,19 +26,61 @@
 
 #include "svc/MapProcessMemoryEx.h"
 
-Result MapProcessMemoryEx(Handle processHandle, void *dst, void *src, u32 size)
+Result  MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size)
 {
+    Result          res = 0;
+    u32             sizeInPage = size >> 12;
+    KLinkedList     list;
+    KProcess        *srcProcess;
+    KProcess        *dstProcess;
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-    KProcessHwInfo *currentHwInfo = hwInfoOfProcess(currentCoreContext->objectContext.currentProcess);
-    KProcess *process = KProcessHandleTable__ToKProcess(handleTable, processHandle);
 
-    if(process == NULL)
+    if (dstProcessHandle == CUR_PROCESS_HANDLE)
+    {
+        dstProcess = currentCoreContext->objectContext.currentProcess;
+        KAutoObject__AddReference((KAutoObject *)dstProcess);
+    }
+    else
+        dstProcess = KProcessHandleTable__ToKProcess(handleTable, dstProcessHandle);
+
+    if (dstProcess == NULL)
         return 0xD8E007F7;
 
-    Result res = KProcessHwInfo__MapProcessMemory(currentHwInfo, hwInfoOfProcess(process), dst, src, size >> 12);
+    if (srcProcessHandle == CUR_PROCESS_HANDLE)
+    {
+        srcProcess = currentCoreContext->objectContext.currentProcess;
+        KAutoObject__AddReference((KAutoObject *)srcProcess);
+    }
+    else
+        srcProcess = KProcessHandleTable__ToKProcess(handleTable, srcProcessHandle);
 
-    KAutoObject *obj = (KAutoObject *)process;
-    obj->vtable->DecrementReferenceCount(obj);
+    if (srcProcess == NULL)
+    {
+        res =  0xD8E007F7;
+        goto exit1;
+    }
+
+    KLinkedList__Initialize(&list);
+
+    res = KProcessHwInfo__GetListOfKBlockInfoForVA(hwInfoOfProcess(srcProcess), &list, vaSrc, sizeInPage);
+
+    if (res >= 0)
+    {
+        // Check if the destination address is free and large enough
+        res = KProcessHwInfo__CheckVaState(hwInfoOfProcess(dstProcess), vaDst, size, 0, 0);
+        if (res == 0)
+            res = KProcessHwInfo__MapListOfKBlockInfo(hwInfoOfProcess(dstProcess), vaDst, &list, 0x5806, MEMPERM_RW | 0x18, 0);
+    }
+
+    KLinkedList_KBlockInfo__Clear(&list);
+
+    ((KAutoObject *)srcProcess)->vtable->DecrementReferenceCount((KAutoObject *)srcProcess);
+
+exit1:
+    ((KAutoObject *)dstProcess)->vtable->DecrementReferenceCount((KAutoObject *)dstProcess);
+
+    invalidateEntireInstructionCache();
+    flushEntireDataCache();
 
     return res;
 }

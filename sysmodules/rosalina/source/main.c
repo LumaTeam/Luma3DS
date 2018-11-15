@@ -36,6 +36,7 @@
 #include "MyThread.h"
 #include "menus/process_patches.h"
 #include "menus/miscellaneous.h"
+#include "plgloader.h"
 
 // this is called before main
 bool isN3DS;
@@ -111,7 +112,8 @@ int main(void)
     Result res = 0;
     Handle notificationHandle;
 
-    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread(), *hbldrThread = hbldrCreateThread();
+    MyThread    *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread(),
+                *hbldrThread = hbldrCreateThread(), *plgloaderThread = PluginLoader__CreateThread();
 
     if(R_FAILED(srvEnableNotification(&notificationHandle)))
         svcBreak(USERBREAK_ASSERT);
@@ -147,6 +149,7 @@ int main(void)
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
     MyThread_Join(hbldrThread, -1LL);
+    MyThread_Join(plgloaderThread, -1LL);
 
     svcCloseHandle(notificationHandle);
     return 0;

@@ -55,7 +55,6 @@ bool    Sleep__Status(void)
     if (g_isSleeping)
     {
         LightEvent_Wait(&g_onWakeUpEvent);
-        svcSleepThread(1000000000ULL);
         return true;
     }
     return false;

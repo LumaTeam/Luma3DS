@@ -69,6 +69,7 @@ typedef struct __attribute__((packed))
     u32 config, multiConfig, bootConfig;
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
+    u32 rosalinaFlags;
 } CfgData;
 
 typedef struct __attribute__((packed))

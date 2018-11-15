@@ -30,6 +30,7 @@
 #include "memory.h"
 #include "draw.h"
 #include "hbloader.h"
+#include "plgloader.h"
 #include "fmt.h"
 #include "utils.h" // for makeARMBranch
 #include "minisoc.h"
@@ -168,7 +169,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 }
 
-void MiscellaneousMenu_SaveSettings(void)
+Result  SaveSettings(void)
 {
     Result res;
 
@@ -183,12 +184,14 @@ void MiscellaneousMenu_SaveSettings(void)
         u32 config, multiConfig, bootConfig;
         u64 hbldr3dsxTitleId;
         u32 rosalinaMenuCombo;
+        u32 rosalinaFlags;
     } configData;
 
     u32 formatVersion;
     u32 config, multiConfig, bootConfig;
     s64 out;
     bool isSdMode;
+
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 2))) svcBreak(USERBREAK_ASSERT);
     formatVersion = (u32)out;
     if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
@@ -208,12 +211,21 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.bootConfig = bootConfig;
     configData.hbldr3dsxTitleId = HBLDR_3DSX_TID;
     configData.rosalinaMenuCombo = menuCombo;
+    configData.rosalinaFlags = PluginLoader__IsEnabled();
 
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
     res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/config.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
 
     if(R_SUCCEEDED(res))
         res = IFile_Write(&file, &total, &configData, sizeof(configData), 0);
+
+    IFile_Close(&file);
+    return res;
+}
+
+void MiscellaneousMenu_SaveSettings(void)
+{
+    Result res = SaveSettings();
 
     Draw_Lock();
     Draw_ClearFramebuffer();

@@ -19,6 +19,14 @@ static bool doPublishNotification(ProcessData *processData, u32 notificationId, 
         }
     }
 
+    // Handle special case for home button notifications on Mode3 O3DS with plugin loaded
+    if ((notificationId == 0x204 || notificationId == 0x205)
+       && *(u32 *)0x1FF80030 == 3 && *(u32 *)0x1FF800F0)
+    {
+        svcKernelSetState(0x10007, 1);
+        return true;
+    }
+
     if(processData->nbPendingNotifications < 0x10)
     {
         s32 count;

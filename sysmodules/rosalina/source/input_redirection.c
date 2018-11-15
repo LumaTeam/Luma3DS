@@ -166,7 +166,7 @@ Result InputRedirection_DoOrUndoPatches(void)
         totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
         svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-        res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize);
+        res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
 
         if(R_SUCCEEDED(res))
         {
@@ -203,21 +203,21 @@ Result InputRedirection_DoOrUndoPatches(void)
                 u32 *off = (u32 *)memsearch((u8 *)0x00100000, &hidOrigRegisterAndValue, totalSize, sizeof(hidOrigRegisterAndValue));
                 if(off == NULL)
                 {
-                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                     return -1;
                 }
 
                 u32 *off2 = (u32 *)memsearch((u8 *)off + sizeof(hidOrigRegisterAndValue), &hidOrigRegisterAndValue, totalSize - ((u32)off - 0x00100000), sizeof(hidOrigRegisterAndValue));
                 if(off2 == NULL)
                 {
-                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                     return -2;
                 }
 
                 u32 *off3 = (u32 *)memsearch((u8 *)0x00100000, &hidOrigCode, totalSize, sizeof(hidOrigCode));
                 if(off3 == NULL)
                 {
-                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                     return -3;
                 }
 
@@ -230,7 +230,7 @@ Result InputRedirection_DoOrUndoPatches(void)
             }
         }
 
-        res = svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+        res = svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
     }
     svcCloseHandle(processHandle);
 
@@ -244,7 +244,7 @@ Result InputRedirection_DoOrUndoPatches(void)
         totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
         svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-        res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize);
+        res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
 
         if(R_SUCCEEDED(res))
         {
@@ -298,7 +298,7 @@ Result InputRedirection_DoOrUndoPatches(void)
                 u32 *off = (u32 *)memsearch((u8 *)0x00100000, &irOrigReadingCode, totalSize, sizeof(irOrigReadingCode) - 4);
                 if(off == NULL)
                 {
-                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                     return -4;
                 }
 
@@ -308,7 +308,7 @@ Result InputRedirection_DoOrUndoPatches(void)
                     off2 = (u32 *)memsearch((u8 *)0x00100000, &irOrigWaitSyncCodeOld, totalSize, sizeof(irOrigWaitSyncCodeOld));
                     if(off2 == NULL)
                     {
-                        svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                        svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                         return -5;
                     }
 
@@ -320,7 +320,7 @@ Result InputRedirection_DoOrUndoPatches(void)
                 u32 *off3 = (u32 *)memsearch((u8 *)0x00100000, &irOrigCppFlagCode, totalSize, sizeof(irOrigCppFlagCode));
                 if(off3 == NULL)
                 {
-                    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                     return -6;
                 }
 
@@ -343,7 +343,7 @@ Result InputRedirection_DoOrUndoPatches(void)
             }
         }
 
-        res = svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+        res = svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
     }
     svcCloseHandle(processHandle);
 

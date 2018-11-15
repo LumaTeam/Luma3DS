@@ -32,12 +32,6 @@
 #include "fmt.h"
 #include "ifile.h"
 
-static inline void assertSuccess(Result res)
-{
-    if(R_FAILED(res))
-        svcBreak(USERBREAK_PANIC);
-}
-
 static MyThread errDispThread;
 static u8 ALIGN(8) errDispThreadStack[0x2000];
 

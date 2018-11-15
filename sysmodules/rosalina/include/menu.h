@@ -75,14 +75,17 @@ extern Handle terminationRequestEvent;
 
 extern u32 menuCombo;
 
-u32 waitInputWithTimeout(u32 msec);
-u32 waitInput(void);
+u32     waitInputWithTimeout(u32 msec);
+u32     waitInput(void);
 
-u32 waitComboWithTimeout(u32 msec);
-u32 waitCombo(void);
+u32     waitComboWithTimeout(u32 msec);
+u32     waitCombo(void);
 
 MyThread *menuCreateThread(void);
-void menuEnter(void);
-void menuLeave(void);
-void menuThreadMain(void);
-void menuShow(Menu *root);
+void    menuEnter(void);
+void    menuLeave(void);
+void    menuThreadMain(void);
+void    menuShow(Menu *root);
+void    DispMessage(const char *title, const char *message);
+u32     DispErrMessage(const char *title, const char *message, const Result error);
+void    DisplayPluginMenu(u32   *cmdbuf);

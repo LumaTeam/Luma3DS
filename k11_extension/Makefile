@@ -14,7 +14,7 @@ dir_build := build
 
 ARCH    := -mcpu=mpcore -mfpu=vfp
 ASFLAGS := $(ARCH)
-CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -g -flto -O2 -ffast-math \
+CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -flto -O2 -ffast-math \
 -mword-relocations -ffunction-sections -fdata-sections
 LDFLAGS := -nostdlib -Wl,--gc-sections,--nmagic $(ARCH)
 

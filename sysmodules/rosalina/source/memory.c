@@ -118,6 +118,18 @@ char *strncpy(char *dest, const char *src, u32 size)
     return dest;
 }
 
+char *strcat(char *dest, const char *src)
+{
+    char *dst = dest;
+
+    while(*dest) ++dest;
+    while (*src)
+        *dest++ = *src++;
+    *dest = 0;
+
+    return dst;
+}
+
 s32 strnlen(const char *string, s32 maxlen)
 {
     s32 size;
