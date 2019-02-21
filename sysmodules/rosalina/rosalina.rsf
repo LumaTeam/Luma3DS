@@ -52,6 +52,8 @@ AccessControlInfo:
     KernelSetState: 124
 
   InterruptNumbers:
+    - 0x60 # Shell opened
+
   ServiceAccessControl:
     - fs:USER # Not strictly needed as rosalina has access to everything, it's rather to avoid a makerom warning
   FileSystemAccess:

@@ -35,6 +35,8 @@
 #include "MyThread.h"
 #include "menus/process_patches.h"
 #include "menus/miscellaneous.h"
+#include "menus/screen_filters.h"
+#include "shell_open.h"
 
 // this is called before main
 bool isN3DS;
@@ -109,13 +111,14 @@ int main(void)
     Result res = 0;
     Handle notificationHandle;
 
-    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread(), *hbldrThread = hbldrCreateThread();
-
     if(R_FAILED(srvEnableNotification(&notificationHandle)))
         svcBreak(USERBREAK_ASSERT);
 
     if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
+
+    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread(), *hbldrThread = hbldrCreateThread();
+    MyThread *shellOpenThread = shellOpenCreateThread();
 
     do
     {
@@ -141,6 +144,7 @@ int main(void)
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
     MyThread_Join(hbldrThread, -1LL);
+    MyThread_Join(shellOpenThread, -1LL);
 
     svcCloseHandle(notificationHandle);
     return 0;

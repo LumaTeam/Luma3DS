@@ -13,7 +13,7 @@ dir_include := include
 dir_build := build
 dir_out := ../../$(dir_build)
 
-LIBS := -lctru
+LIBS := -lctru -lm
 LIBDIRS	:= $(CTRULIB)
 LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 

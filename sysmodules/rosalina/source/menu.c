@@ -125,12 +125,12 @@ u32 waitCombo(void)
 }
 
 static MyThread menuThread;
-static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
+static u8 ALIGN(8) menuThreadStack[0x3000];
 static u8 batteryLevel = 255;
 
 MyThread *menuCreateThread(void)
 {
-    if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 52, CORE_SYSTEM)))
+    if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0x3000, 52, CORE_SYSTEM)))
         svcBreak(USERBREAK_PANIC);
     return &menuThread;
 }
