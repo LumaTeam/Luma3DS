@@ -35,6 +35,8 @@
 #include "i2c.h"
 #include "utils.h"
 
+bool needToSetupScreens = true;
+
 struct fb fbs[2] =
 {
     {
@@ -92,11 +94,9 @@ void clearScreens(bool isAlternate)
 
 void initScreens(void)
 {
-    static bool needToSetup = true;
-
-    if(needToSetup)
+    if(needToSetupScreens)
     {
-        if(!ARESCREENSINITIALIZED)
+        if(!ARESCREENSINITIALIZED || bootType == FIRMLAUNCH)
         {
             *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
             memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
@@ -111,7 +111,7 @@ void initScreens(void)
         invokeArm11Function(SETUP_FRAMEBUFFERS);
 
         clearScreens(true);
-        needToSetup = false;
+        needToSetupScreens = false;
     }
 
     clearScreens(false);

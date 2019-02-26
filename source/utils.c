@@ -106,7 +106,7 @@ u32 waitInput(bool isMenu)
 
 void mcuPowerOff(void)
 {
-    if(bootType != FIRMLAUNCH && ARESCREENSINITIALIZED) clearScreens(false);
+    if(!needToSetupScreens) clearScreens(false);
 
     //Shutdown LCD
     if(ARESCREENSINITIALIZED) i2cWriteRegister(I2C_DEV_MCU, 0x22, 1 << 0);
@@ -136,17 +136,12 @@ void error(const char *fmt, ...)
     vsprintf(buf, fmt, args);
     va_end(args);
 
-    if(bootType != FIRMLAUNCH)
-    {
-        initScreens();
+    initScreens();
+    drawString(true, 10, 10, COLOR_RED, "An error has occurred:");
+    u32 posY = drawString(true, 10, 30, COLOR_WHITE, buf);
+    drawString(true, 10, posY + 2 * SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
 
-        drawString(true, 10, 10, COLOR_RED, "An error has occurred:");
-        u32 posY = drawString(true, 10, 30, COLOR_WHITE, buf);
-        drawString(true, 10, posY + 2 * SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
-
-        waitInput(false);
-    }
-    else fileWrite(buf, "firmlauncherror.txt", strlen(buf));
+    waitInput(false);
 
     mcuPowerOff();
 }

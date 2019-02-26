@@ -40,6 +40,6 @@ typedef volatile u16 vu16;
 typedef volatile u32 vu32;
 typedef volatile u64 vu64;
 
-#define PDN_GPU_CNT (*(vu8  *)0x10141200)
+#define PDN_GPU_CNT (*(vu32 *)0x10141200)
 
-#define ARESCREENSINITIALIZED (PDN_GPU_CNT != 1)
+#define ARESCREENSINITIALIZED ((PDN_GPU_CNT & 0xFF) != 1)

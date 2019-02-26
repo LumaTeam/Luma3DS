@@ -33,9 +33,9 @@
 
 #include "types.h"
 
-#define PDN_GPU_CNT (*(vu8  *)0x10141200)
+#define PDN_GPU_CNT (*(vu32 *)0x10141200)
 
-#define ARESCREENSINITIALIZED (PDN_GPU_CNT != 1)
+#define ARESCREENSINITIALIZED ((PDN_GPU_CNT & 0xFF) != 1)
 
 #define ARM11_PARAMETERS_ADDRESS 0x1FFFF000
 
@@ -64,6 +64,8 @@ typedef enum
 } Arm11Operation;
 
 extern struct fb fbs[2];
+
+extern bool needToSetupScreens;
 
 void prepareArm11ForFirmlaunch(void);
 void deinitScreens(void);
