@@ -372,6 +372,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                         default:
                             break;
                     }
+                    break;
                 }
 
                 case EXCEVENT_USER_BREAK:
