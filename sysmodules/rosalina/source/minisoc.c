@@ -40,7 +40,7 @@ static Result SOCU_Initialize(Handle memhandle, u32 memsize)
 
     cmdbuf[0] = IPC_MakeHeader(0x1,1,4); // 0x10044
     cmdbuf[1] = memsize;
-    cmdbuf[2] = IPC_Desc_CurProcessHandle();
+    cmdbuf[2] = IPC_Desc_CurProcessId();
     cmdbuf[4] = IPC_Desc_SharedHandles(1);
     cmdbuf[5] = memhandle;
 
@@ -180,7 +180,7 @@ int socSocket(int domain, int type, int protocol)
     cmdbuf[1] = domain;
     cmdbuf[2] = type;
     cmdbuf[3] = protocol;
-    cmdbuf[4] = IPC_Desc_CurProcessHandle();
+    cmdbuf[4] = IPC_Desc_CurProcessId();
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
@@ -228,7 +228,7 @@ int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     cmdbuf[0] = IPC_MakeHeader(0x5,2,4); // 0x50084
     cmdbuf[1] = (u32)sockfd;
     cmdbuf[2] = (u32)tmp_addrlen;
-    cmdbuf[3] = IPC_Desc_CurProcessHandle();
+    cmdbuf[3] = IPC_Desc_CurProcessId();
     cmdbuf[5] = IPC_Desc_StaticBuffer(tmp_addrlen,0);
     cmdbuf[6] = (u32)tmpaddr;
 
@@ -258,7 +258,7 @@ int socListen(int sockfd, int max_connections)
     cmdbuf[0] = IPC_MakeHeader(0x3,2,2); // 0x30082
     cmdbuf[1] = (u32)sockfd;
     cmdbuf[2] = (u32)max_connections;
-    cmdbuf[3] = IPC_Desc_CurProcessHandle();
+    cmdbuf[3] = IPC_Desc_CurProcessId();
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
@@ -293,7 +293,7 @@ int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
     cmdbuf[0] = IPC_MakeHeader(0x4,2,2); // 0x40082
     cmdbuf[1] = (u32)sockfd;
     cmdbuf[2] = (u32)tmp_addrlen;
-    cmdbuf[3] = IPC_Desc_CurProcessHandle();
+    cmdbuf[3] = IPC_Desc_CurProcessId();
 
     u32 *staticbufs = getThreadStaticBuffers();
     saved_threadstorage[0] = staticbufs[0];
@@ -350,7 +350,7 @@ int socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
     cmdbuf[0] = IPC_MakeHeader(0x14,2,4); // 0x140084
     cmdbuf[1] = (u32)nfds;
     cmdbuf[2] = (u32)timeout;
-    cmdbuf[3] = IPC_Desc_CurProcessHandle();
+    cmdbuf[3] = IPC_Desc_CurProcessId();
     cmdbuf[5] = IPC_Desc_StaticBuffer(size,10);
     cmdbuf[6] = (u32)fds;
 
@@ -389,7 +389,7 @@ int socClose(int sockfd)
 
     cmdbuf[0] = IPC_MakeHeader(0xB,1,2); // 0xB0042
     cmdbuf[1] = (u32)sockfd;
-    cmdbuf[2] = IPC_Desc_CurProcessHandle();
+    cmdbuf[2] = IPC_Desc_CurProcessId();
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0) {
@@ -419,7 +419,7 @@ int socSetsockopt(int sockfd, int level, int optname, const void *optval, sockle
     cmdbuf[2] = (u32)level;
     cmdbuf[3] = (u32)optname;
     cmdbuf[4] = (u32)optlen;
-    cmdbuf[5] = IPC_Desc_CurProcessHandle();
+    cmdbuf[5] = IPC_Desc_CurProcessId();
     cmdbuf[7] = IPC_Desc_StaticBuffer(optlen,9);
     cmdbuf[8] = (u32)optval;
 

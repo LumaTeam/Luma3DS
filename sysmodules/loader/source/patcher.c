@@ -2,7 +2,6 @@
 #include "patcher.h"
 #include "memory.h"
 #include "strings.h"
-#include "fsldr.h"
 #include "romfsredir.h"
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
@@ -44,12 +43,12 @@ static bool dirCheck(FS_ArchiveID archiveId, const char *path)
     FS_Path dirPath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
-    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = false;
+    if(R_FAILED(FSUSER_OpenArchive(&archive, archiveId, archivePath))) ret = false;
     else
     {
-        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath));
+        ret = R_SUCCEEDED(FSUSER_OpenDirectory(&handle, archive, dirPath));
         if(ret) FSDIR_Close(handle);
-        FSLDR_CloseArchive(archive);
+        FSUSER_CloseArchive(archive);
     }
 
     return ret;
@@ -356,7 +355,7 @@ error:
     while(true);
 }
 
-bool loadTitleExheader(u64 progId, ExHeader *exheader)
+bool loadTitleExheader(u64 progId, ExHeader_Info *exheader)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/exheader.bin"
        If it exists it should be a decrypted exheader */
@@ -370,12 +369,12 @@ bool loadTitleExheader(u64 progId, ExHeader *exheader)
 
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(ExHeader)) goto error;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(ExHeader_Info) || fileSize != sizeof(ExHeader)) goto error;
     else
     {
         u64 total;
 
-        if(R_FAILED(IFile_Read(&file, &total, exheader, fileSize)) || total != fileSize) goto error;
+        if(R_FAILED(IFile_Read(&file, &total, exheader, sizeof(ExHeader_Info))) || total != sizeof(ExHeader_Info)) goto error;
     }
 
     IFile_Close(&file);

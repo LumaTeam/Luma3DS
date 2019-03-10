@@ -2,10 +2,6 @@
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
-#include "fsldr.h"
-#include "fsreg.h"
-#include "pxipm.h"
-#include "srvsys.h"
 
 #define MAX_SESSIONS    1
 #define HBLDR_3DSX_TID  (*(vu64 *)0x1FF81100)
@@ -29,8 +25,28 @@ typedef struct
 static Handle g_handles[MAX_SESSIONS+2];
 static int g_active_handles;
 static u64 g_cached_prog_handle;
-static ExHeader g_exheader;
+static ExHeader_Info g_exheader;
 static char g_ret_buf[1024];
+
+// MAKE SURE fsreg has been init before calling this
+static Result fsldrPatchPermissions(void)
+{
+  u32 pid;
+  Result res;
+  FS_ProgramInfo info;
+  ExHeader_Arm11StorageInfo storageInfo = {
+    .fs_access_info = FSACCESS_NANDRW | FSACCESS_NANDRO_RO | FSACCESS_SDMC_RW,
+  };
+
+  info.programId = 0x0004013000001302LL; // loader PID
+  info.mediaType = MEDIATYPE_NAND;
+  res = svcGetProcessId(&pid, CUR_PROCESS_HANDLE);
+  if (R_SUCCEEDED(res))
+  {
+    res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storageInfo);
+  }
+  return res;
+}
 
 static inline void loadCFWInfo(void)
 {
@@ -183,12 +199,9 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
     }
   }
 
-  ExHeader_CodeSetInfo *csi = &g_exheader.info.sci.codeset_info;
-  u16 progver = csi->flags.remaster_version;
+  ExHeader_CodeSetInfo *csi = &g_exheader.sci.codeset_info;
 
-  // patch
-  patchCode(progid, progver, (u8 *)shared->text_addr, shared->total_size << 12,
-  csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
+  patchCode(progid, csi->flags.remaster_version, (u8 *)shared->text_addr, shared->total_size << 12, csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
 
   return 0;
 }
@@ -208,7 +221,7 @@ static Result HBLDR_Init(Handle *session)
   return res;
 }
 
-static Result loader_GetProgramInfo(ExHeader *exheader, u64 prog_handle)
+static Result loader_GetProgramInfo(ExHeader_Info *exheader, u64 prog_handle)
 {
   Result res;
 
@@ -237,13 +250,12 @@ static Result loader_GetProgramInfo(ExHeader *exheader, u64 prog_handle)
     svcGetSystemInfo(&nbSection0Modules, 26, 0);
 
     // Force always having sdmc:/ and nand:/rw permission
-    exheader->info.aci.local_caps.storage_info.fs_access_info |= FSACCESS_SDMC_RW | FSACCESS_NANDRW;
-    exheader->access_descriptor.acli.local_caps.storage_info.fs_access_info |= FSACCESS_SDMC_RW | FSACCESS_NANDRW;;
+    exheader->aci.local_caps.storage_info.fs_access_info |= FSACCESS_NANDRW | FSACCESS_SDMC_RW;
 
     // Tweak 3dsx placeholder title exheader
     if (nbSection0Modules == 6)
     {
-      if(exheader->info.aci.local_caps.title_id == HBLDR_3DSX_TID)
+      if(exheader->aci.local_caps.title_id == HBLDR_3DSX_TID)
       {
       	Handle hbldr = 0;
       	res = HBLDR_Init(&hbldr);
@@ -261,11 +273,10 @@ static Result loader_GetProgramInfo(ExHeader *exheader, u64 prog_handle)
       	}
       }
 
-      u64 originalProgId = exheader->info.aci.local_caps.title_id;
-      if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->info.aci.local_caps.title_id, exheader))
+      u64 originalProgId = exheader->aci.local_caps.title_id;
+      if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->aci.local_caps.title_id, exheader))
       {
-        exheader->info.aci.local_caps.title_id = originalProgId;
-        exheader->access_descriptor.acli.local_caps.title_id = originalProgId;
+        exheader->aci.local_caps.title_id = originalProgId;
       }
     }
   }
@@ -288,7 +299,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   u64 progid;
 
   // make sure the cached info corrosponds to the current prog_handle
-  if (g_cached_prog_handle != prog_handle || g_exheader.info.aci.local_caps.title_id == HBLDR_3DSX_TID)
+  if (g_cached_prog_handle != prog_handle || g_exheader.aci.local_caps.title_id == HBLDR_3DSX_TID)
   {
     res = loader_GetProgramInfo(&g_exheader, prog_handle);
     g_cached_prog_handle = prog_handle;
@@ -303,7 +314,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   flags = 0;
   for (count = 0; count < 28; count++)
   {
-    desc = g_exheader.info.aci.kernel_caps.descriptors[count];
+    desc = g_exheader.aci.kernel_caps.descriptors[count];
     if (0x1FE == desc >> 23)
     {
       flags = desc & 0xF00;
@@ -315,7 +326,9 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   }
 
   // check for 3dsx process
-  progid = g_exheader.info.aci.local_caps.title_id;
+  progid = g_exheader.aci.local_caps.title_id;
+  ExHeader_CodeSetInfo *csi = &g_exheader.sci.codeset_info;
+
   if (progid == HBLDR_3DSX_TID)
   {
     Handle hbldr = 0;
@@ -327,11 +340,11 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     }
     u32* cmdbuf = getThreadCommandBuffer();
     cmdbuf[0] = IPC_MakeHeader(1,6,0);
-    cmdbuf[1] = g_exheader.info.sci.codeset_info.text.address;
+    cmdbuf[1] = csi->text.address;
     cmdbuf[2] = flags & 0xF00;
     cmdbuf[3] = progid;
     cmdbuf[4] = progid>>32;
-    memcpy(&cmdbuf[5], g_exheader.info.sci.codeset_info.name, 8);
+    memcpy(&cmdbuf[5], csi->name, 8);
     res = svcSendSyncRequest(hbldr);
     svcCloseHandle(hbldr);
     if (R_SUCCEEDED(res))
@@ -344,13 +357,12 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
       return res;
     }
     codeset = (Handle)cmdbuf[3];
-    res = svcCreateProcess(process, codeset, g_exheader.info.aci.kernel_caps.descriptors, count);
+    res = svcCreateProcess(process, codeset, g_exheader.aci.kernel_caps.descriptors, count);
     svcCloseHandle(codeset);
     return res;
   }
 
   // allocate process memory
-  ExHeader_CodeSetInfo *csi = &g_exheader.info.sci.codeset_info;
   vaddr.text_addr = csi->text.address;
   vaddr.text_size = (csi->text.size + 4095) >> 12;
   vaddr.ro_addr = csi->rodata.address;
@@ -381,7 +393,7 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)shared_addr.text_addr, (void *)shared_addr.ro_addr, (void *)shared_addr.data_addr);
     if (res >= 0)
     {
-      res = svcCreateProcess(process, codeset, g_exheader.info.aci.kernel_caps.descriptors, count);
+      res = svcCreateProcess(process, codeset, g_exheader.aci.kernel_caps.descriptors, count);
       svcCloseHandle(codeset);
       if (res >= 0)
       {
@@ -517,7 +529,7 @@ static void handle_commands(void)
     case 4: // GetProgramInfo
     {
       prog_handle = *(u64 *)&cmdbuf[1];
-      if (prog_handle != g_cached_prog_handle || g_exheader.info.aci.local_caps.title_id == HBLDR_3DSX_TID)
+      if (prog_handle != g_cached_prog_handle || g_exheader.aci.local_caps.title_id == HBLDR_3DSX_TID)
       {
         res = loader_GetProgramInfo(&g_exheader, prog_handle);
         if (res >= 0)
@@ -550,7 +562,7 @@ static Result should_terminate(int *term_request)
   u32 notid;
   Result ret;
 
-  ret = srvSysReceiveNotification(&notid);
+  ret = srvReceiveNotification(&notid);
   if (R_FAILED(ret))
   {
     return ret;
@@ -565,19 +577,36 @@ static Result should_terminate(int *term_request)
 // this is called before main
 void __appInit()
 {
-  srvSysInit();
-  fsregInit();
-  fsldrInit();
-  pxipmInit();
+  Result res;
+  for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
+  {
+    res = srvInit();
+    if(R_FAILED(res) && res != (Result)0xD88007FA)
+      svcBreak(USERBREAK_PANIC);
+  }
+
+  fsRegInit();
+  fsldrPatchPermissions();
+
+  //fsldrInit();
+  res = srvGetServiceHandle(fsGetSessionHandle(), "fs:LDR");
+  if (R_FAILED(res)) svcBreak(USERBREAK_PANIC);
+  res = FSUSER_InitializeWithSdkVersion(*fsGetSessionHandle(), 0x70200C8);
+  if (R_FAILED(res)) svcBreak(USERBREAK_PANIC);
+  res = FSUSER_SetPriority(0);
+  if (R_FAILED(res)) svcBreak(USERBREAK_PANIC);
+
+  pxiPmInit();
 }
 
 // this is called after main exits
 void __appExit()
 {
-  pxipmExit();
-  fsldrExit();
-  fsregExit();
-  srvSysExit();
+  pxiPmExit();
+  //fsldrExit();
+  svcCloseHandle(*fsGetSessionHandle());
+  fsRegExit();
+  srvExit();
 }
 
 // stubs for non-needed pre-main functions
@@ -623,12 +652,12 @@ int main()
   srv_handle = &g_handles[1];
   notification_handle = &g_handles[0];
 
-  if (R_FAILED(srvSysRegisterService(srv_handle, "Loader", MAX_SESSIONS)))
+  if (R_FAILED(srvRegisterService(srv_handle, "Loader", MAX_SESSIONS)))
   {
     svcBreak(USERBREAK_ASSERT);
   }
 
-  if (R_FAILED(srvSysEnableNotification(notification_handle)))
+  if (R_FAILED(srvEnableNotification(notification_handle)))
   {
     svcBreak(USERBREAK_ASSERT);
   }
@@ -717,7 +746,7 @@ int main()
     }
   } while (!term_request || g_active_handles != 2);
 
-  srvSysUnregisterService("Loader");
+  srvUnregisterService("Loader");
   svcCloseHandle(*srv_handle);
   svcCloseHandle(*notification_handle);
 

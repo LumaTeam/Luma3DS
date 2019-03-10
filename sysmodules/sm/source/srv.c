@@ -19,7 +19,7 @@ Result srvHandleCommands(SessionData *sessionData)
     {
         case 1: // RegisterClient
         {
-            if(cmdbuf[0] == IPC_MakeHeader(1, 0, 2) && cmdbuf[1] == IPC_Desc_CurProcessHandle())
+            if(cmdbuf[0] == IPC_MakeHeader(1, 0, 2) && cmdbuf[1] == IPC_Desc_CurProcessId())
             {
                 sessionData->pid = cmdbuf[2];
                 cmdbuf[0] = IPC_MakeHeader(1, 1, 0);

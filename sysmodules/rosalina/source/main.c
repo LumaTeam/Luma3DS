@@ -26,8 +26,6 @@
 
 #include <3ds.h>
 #include "memory.h"
-#include "services.h"
-#include "fsreg.h"
 #include "menu.h"
 #include "service_manager.h"
 #include "errdisp.h"
@@ -40,22 +38,61 @@
 #include "menus/screen_filters.h"
 #include "shell_open.h"
 
+static Result stealFsReg(void)
+{
+    Result ret = 0;
+
+    ret = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, fsRegGetSessionHandle(), "fs:REG");
+    while(ret == 0x9401BFE)
+    {
+        svcSleepThread(500 * 1000LL);
+        ret = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, fsRegGetSessionHandle(), "fs:REG");
+    }
+
+    return ret;
+}
+
+static Result fsRegSetupPermissions(void)
+{
+    u32 pid;
+    Result res;
+    FS_ProgramInfo info;
+
+    ExHeader_Arm11StorageInfo storageInfo = {
+        .fs_access_info = FSACCESS_NANDRO_RW | FSACCESS_NANDRW | FSACCESS_SDMC_RW,
+    };
+
+    info.programId = 0x0004013000006902LL; // Rosalina TID
+    info.mediaType = MEDIATYPE_NAND;
+
+    if(R_SUCCEEDED(res = svcGetProcessId(&pid, CUR_PROCESS_HANDLE)))
+        res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storageInfo);
+
+    return res;
+}
+
 // this is called before main
 bool isN3DS;
 void __appInit()
 {
-    srvSysInit();
-    fsregInit();
+    Result res;
+    for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
+    {
+        res = srvInit();
+        if(R_FAILED(res) && res != (Result)0xD88007FA)
+            svcBreak(USERBREAK_PANIC);
+    }
 
-    fsSysInit();
+    if (R_FAILED(stealFsReg()) || R_FAILED(fsRegSetupPermissions()) || R_FAILED(fsInit()))
+        svcBreak(USERBREAK_PANIC);
 }
 
 // this is called after main exits
 void __appExit()
 {
     fsExit();
-    fsregExit();
-    srvSysExit();
+    svcCloseHandle(*fsRegGetSessionHandle());
+    srvExit();
 }
 
 
