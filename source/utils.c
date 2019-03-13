@@ -86,8 +86,8 @@ u32 waitInput(bool isMenu)
 
         if(!key)
         {
-        	if((!(i2cReadRegister(I2C_DEV_MCU, 0xF) & 2) && shouldShellShutdown) ||
-        	   (i2cReadRegister(I2C_DEV_MCU, 0x10) & 1) == 1) mcuPowerOff();
+        	if((!(I2C_readReg(I2C_DEV_MCU, 0xF) & 2) && shouldShellShutdown) ||
+        	   (I2C_readReg(I2C_DEV_MCU, 0x10) & 1) == 1) mcuPowerOff();
             oldKey = 0;
             dPadDelay = 0;
             continue;
@@ -109,12 +109,12 @@ void mcuPowerOff(void)
     if(!needToSetupScreens) clearScreens(false);
 
     //Shutdown LCD
-    if(ARESCREENSINITIALIZED) i2cWriteRegister(I2C_DEV_MCU, 0x22, 1 << 0);
+    if(ARESCREENSINITIALIZED) I2C_writeReg(I2C_DEV_MCU, 0x22, 1 << 0);
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();
 
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 0);
+    I2C_writeReg(I2C_DEV_MCU, 0x20, 1 << 0);
     while(true);
 }
 

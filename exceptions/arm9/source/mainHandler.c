@@ -73,10 +73,10 @@ void __attribute__((noreturn)) mainHandler(u32 *registerDump, u32 type)
     //Copy header (actually optimized by the compiler)
     *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
 
-    if(ARESCREENSINITIALIZED) i2cWriteRegister(I2C_DEV_MCU, 0x22, 1 << 0); //Shutdown LCD
+    if(ARESCREENSINITIALIZED) I2C_writeReg(I2C_DEV_MCU, 0x22, 1 << 0); //Shutdown LCD
 
     ((void (*)())0xFFFF0830)(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot
+    I2C_writeReg(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot
     while(true);
 }

@@ -37,6 +37,7 @@
 #include "crypto.h"
 #include "memory.h"
 #include "screen.h"
+#include "i2c.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 extern CfgData configData;
@@ -58,6 +59,8 @@ void main(int argc, char **argv, u32 magicWord)
     FirmwareSource nandType;
     const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
     const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
+
+    I2C_init();
 
     //Shell closed, no error booting NTRCARD, NAND paritions not even considered
     isNtrBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];

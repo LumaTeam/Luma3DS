@@ -103,7 +103,7 @@ void initScreens(void)
             invokeArm11Function(INIT_SCREENS);
 
             //Turn on backlight
-            i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
+            I2C_writeReg(I2C_DEV_MCU, 0x22, 0x2A);
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
