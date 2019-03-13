@@ -2,4 +2,4 @@
 
 #include "../../types.h"
 
-void wait_cycles(u32 us);
+void waitcycles(u32 us);
