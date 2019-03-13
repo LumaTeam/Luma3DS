@@ -22,7 +22,7 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
-.section .text.start
+.section .text.start, "ax", %progbits
 .align 4
 .global _start
 _start:

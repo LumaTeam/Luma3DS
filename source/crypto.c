@@ -36,6 +36,7 @@
 #include "emunand.h"
 #include "strings.h"
 #include "utils.h"
+#include "alignedseqmemcpy.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 /****************************************************************
@@ -288,24 +289,18 @@ void sha(void *res, const void *src, u32 size, u32 mode)
     sha_wait_idle();
     *REG_SHA_CNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
 
-    const u32 *src32 = (const u32 *)src;
-    int i;
+    const u8 *src8 = (const u8 *)src;
     while(size >= 0x40)
     {
         sha_wait_idle();
-        for(i = 0; i < 4; ++i)
-        {
-            *REG_SHA_INFIFO = *src32++;
-            *REG_SHA_INFIFO = *src32++;
-            *REG_SHA_INFIFO = *src32++;
-            *REG_SHA_INFIFO = *src32++;
-        }
+        alignedseqmemcpy((void *)REG_SHA_INFIFO, src8, 0x40);
 
+        src8 += 0x40;
         size -= 0x40;
     }
 
     sha_wait_idle();
-    memcpy((void *)REG_SHA_INFIFO, src32, size);
+    alignedseqmemcpy((void *)REG_SHA_INFIFO, src8, size);
 
     *REG_SHA_CNT = (*REG_SHA_CNT & ~SHA_NORMAL_ROUND) | SHA_FINAL_ROUND;
 

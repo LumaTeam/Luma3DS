@@ -22,7 +22,7 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
-.text
+.section .text.cache, "ax", %progbits
 .arm
 .align 4
 
