@@ -115,19 +115,6 @@ _start:
     sub r2, r0
     bl memset
 
-    @ Set additional sections up
-    ldr r0, =__itcm_start__
-    ldr r1, =__itcm_lma__
-    ldr r2, =__itcm_bss_start__
-    sub r2, r0
-    bl  memcpy
-
-    ldr r0, =__itcm_bss_start__
-    mov r1, #0
-    ldr r2, =__itcm_end__
-    sub r2, r0
-    bl memset
-
     bl __libc_init_array
 
     mov r0, r9

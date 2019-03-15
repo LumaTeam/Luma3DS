@@ -39,6 +39,8 @@
 #include "i2c.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
+extern u8 __itcm_start__[], __itcm_lma__[], __itcm_bss_start__[], __itcm_end__[];
+
 extern CfgData configData;
 extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
@@ -53,13 +55,13 @@ void main(int argc, char **argv, u32 magicWord)
          isSafeMode = false,
          needToInitSd = false,
          isNoForceFlagSet = false,
+         isInvalidLoader = false,
          isNtrBoot;
     FirmwareType firmType;
     FirmwareSource nandType;
     const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
     const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
-
-    I2C_init();
+    char firmlaunchTid[16+1];
 
     //Shell closed, no error booting NTRCARD, NAND paritions not even considered
     isNtrBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
@@ -82,6 +84,8 @@ void main(int argc, char **argv, u32 magicWord)
         for(i = 0; i < sizeof(launchedPath)/2 - 1 && p[i] != 0; i++)
             launchedPath[i] = p[i];
         launchedPath[i] = 0;
+
+        strncpy(firmlaunchTid, argv[1], 16);
     }
     else if(magicWord == 0xB002) //FIRM/NTRCARD boot
     {
@@ -106,7 +110,16 @@ void main(int argc, char **argv, u32 magicWord)
 
         setupKeyslots();
     }
-    else error("Launched using an unsupported loader.");
+    else isInvalidLoader = true;
+
+    // Set up the additional sections, overwrites argc
+    memcpy(__itcm_start__, __itcm_lma__, __itcm_bss_start__ - __itcm_start__);
+    memset(__itcm_bss_start__, 0, __itcm_end__ - __itcm_bss_start__);
+    I2C_init();
+    if(isInvalidLoader) error("Launched using an unsupported loader.");
+
+    detectAndProcessExceptionDumps();
+    installArm9Handlers();
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
     {
@@ -151,10 +164,10 @@ void main(int argc, char **argv, u32 magicWord)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
-        switch(argv[1][14])
+        switch(firmlaunchTid[14])
         {
             case '2':
-                firmType = (FirmwareType)(argv[1][10] - '0');
+                firmType = (FirmwareType)(firmlaunchTid[10] - '0');
                 break;
             case '3':
                 firmType = SAFE_FIRM;
@@ -170,9 +183,6 @@ void main(int argc, char **argv, u32 magicWord)
 
         goto boot;
     }
-
-    detectAndProcessExceptionDumps();
-    installArm9Handlers();
 
     firmType = NATIVE_FIRM;
     isFirmProtEnabled = bootType != NTR;
