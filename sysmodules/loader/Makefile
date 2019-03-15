@@ -120,7 +120,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 all	:	$(OUTPUT).cxi
 
 $(OUTPUT).cxi	:	$(OUTPUT).elf $(OUTPUT).rsf
-	@makerom -f ncch -rsf $(word 2,$^) -o $@ -elf $<
+	@makerom -f ncch -rsf $(word 2,$^) -nocodepadding -o $@ -elf $<
 	@echo built ... $(notdir $@)
 
 $(OUTPUT).elf	:	$(OFILES)
