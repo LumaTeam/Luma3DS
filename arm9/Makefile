@@ -42,6 +42,7 @@ endif
 # DATA is a list of directories containing data files
 # INCLUDES is a list of directories containing header files
 #---------------------------------------------------------------------------------
+APP_TITLE	:=	Luma3DS
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source source/fatfs source/fatfs/sdmmc
