@@ -39,13 +39,34 @@ Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
     s64 TTBCR;
     svcGetSystemInfo(&TTBCR, 0x10002, 0);
 
-    if(addr < (1u << (32 - (u32)TTBCR)))
+    if(addr < (1u << (32 - (u32)TTBCR))) // Note: UB with user-mapped MMIO (uses memcpy).
         return svcReadProcessMemory(out, ctx->debug, addr, len);
     else if(!ctx->enableExternalMemoryAccess)
         return -1;
     else if(addr >= 0x80000000 && addr < 0xB0000000)
     {
-        memcpy(out, (const void *)addr, len);
+        if(addr >= 0x90000000 && addr < 0x98000000) // IO
+        {
+            for(u32 off = 0; off < len; )
+            {
+                if((addr + off) & 1)
+                {
+                    *((u8 *)out + off) = *(vu8 *)(addr + off);
+                    off += 1;
+                }
+                else if((addr + off) & 3)
+                {
+                    *((u16 *)out + off) = *(vu16 *)(addr + off);
+                    off += 2;
+                }
+                else
+                {
+                    *((u32 *)out + off) = *(vu32 *)(addr + off);
+                    off += 4;
+                }
+            }
+        }
+        else memcpy(out, (const void *)addr, len);
         return 0;
     }
     else
@@ -73,7 +94,28 @@ Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
         return -1;
     else if(addr >= 0x80000000 && addr < 0xB0000000)
     {
-        memcpy((void *)addr, in, len);
+        if(addr >= 0x90000000 && addr < 0x98000000) // IO
+        {
+            for(u32 off = 0; off < len; )
+            {
+                if((addr + off) & 1)
+                {
+                    *(vu8 *)(addr + off) = *((u8 *)in + off);
+                    off += 1;
+                }
+                else if((addr + off) & 3)
+                {
+                    *(vu16 *)(addr + off) = *((u16 *)in + off);
+                    off += 2;
+                }
+                else
+                {
+                    *(vu32 *)(addr + off) = *((u32 *)in + off);
+                    off += 4;
+                }
+            }
+        }
+        else memcpy((void *)addr, in, len);
         return 0;
     }
     else
