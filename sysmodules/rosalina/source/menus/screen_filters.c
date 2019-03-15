@@ -63,25 +63,28 @@ void applyColorSettings(color_setting_t* cs)
 
     memset(c, 0, sizeof(c));
     memset(px, 0, sizeof(px));
-    
+
     do {
-        *(u32*)&px[i] = i | (i << 8) | (i << 16);
+        px[i].r = i;
+        px[i].g = i;
+        px[i].b = i;
+        px[i].z = 0;
     } while(++i);
-    
+
     do {
         *(c + i + 0x000) = px[i].r | (px[i].r << 8);
         *(c + i + 0x100) = px[i].g | (px[i].g << 8);
         *(c + i + 0x200) = px[i].b | (px[i].b << 8);
     } while(++i);
-    
+
     colorramp_fill(c + 0x000, c + 0x100, c + 0x200, 0x100, cs);
-    
+
     do {
         px[i].r = *(c + i + 0x000) >> 8;
         px[i].g = *(c + i + 0x100) >> 8;
         px[i].b = *(c + i + 0x200) >> 8;
     } while(++i);
-    
+
     writeLut((u32*)px);
 }
 
