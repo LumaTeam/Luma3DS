@@ -313,7 +313,7 @@ void sha(void *res, const void *src, u32 size, u32 mode)
     else if(mode == SHA_1_MODE)
         hashSize = SHA_1_HASH_SIZE;
 
-    memcpy(res, (void *)REG_SHA_HASH, hashSize);
+    alignedseqmemcpy(res, (void *)REG_SHA_HASH, hashSize);
 }
 
 /*****************************************************************/
