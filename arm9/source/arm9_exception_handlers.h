@@ -29,20 +29,4 @@
 extern const u32 arm9ExceptionHandlerAddressTable[6];
 extern u32 arm9ExceptionHandlerSvcBreakAddress;
 
-<<<<<<< HEAD:exceptions/arm9/source/types.h
-//Common data types
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef volatile u8 vu8;
-typedef volatile u16 vu16;
-typedef volatile u32 vu32;
-typedef volatile u64 vu64;
-
-#define PDN_GPU_CNT (*(vu32 *)0x10141200)
-
-#define ARESCREENSINITIALIZED ((PDN_GPU_CNT & 0xFF) != 1)
-=======
 u32 safecpy(void *dst, const void *src, u32 len);
->>>>>>> Do the same for arm9 exceptions:source/arm9_exception_handlers.h

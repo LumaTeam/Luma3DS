@@ -180,11 +180,7 @@ bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, u8 *out, u32 size)
     return true;
 }
 
-<<<<<<< HEAD
 bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const u8 *in, u32 size)
-=======
-bool i2cWriteRegisterNoWait(u8 dev_id, u8 reg, u8 data)
->>>>>>> Do the same for arm9 exceptions
 {
     const u8 busId = i2cDevTable[devId].busId;
     I2cRegs *const regs = i2cGetBusRegsBase(busId);
@@ -204,7 +200,6 @@ bool i2cWriteRegisterNoWait(u8 dev_id, u8 reg, u8 data)
         }
     }
 
-<<<<<<< HEAD
     regs->REG_I2C_DATA = *in;
     regs->REG_I2C_CNT = I2C_ENABLE | I2C_IRQ_ENABLE | I2C_DIRE_WRITE | I2C_STOP;
     i2cWaitBusy(regs);
@@ -223,15 +218,6 @@ u8 I2C_readReg(I2cDevice devId, u8 regAddr)
     if(!I2C_readRegBuf(devId, regAddr, &data, 1)) return 0xFF;
     return data;
 }
-=======
-    return ret;
-}
-
-bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data)
-{
-    bool ret = i2cWriteRegisterNoWait(dev_id, reg, data);
-    wait(3ULL);
->>>>>>> Do the same for arm9 exceptions
 
 bool I2C_writeReg(I2cDevice devId, u8 regAddr, u8 data)
 {

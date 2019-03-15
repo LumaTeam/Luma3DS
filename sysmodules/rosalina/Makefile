@@ -18,9 +18,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source source/gdb source/menus
+SOURCES		:=	source source/gdb source/menus source/redshift
 DATA		:=	source/gdb/xml
-INCLUDES	:=	include include/gdb include/menus
+INCLUDES	:=	include include/gdb include/menus include/redshift
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -39,7 +39,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map),--section-start,.text=0x14000000
 
-LIBS	:=	-lctru
+LIBS	:=	-lctru -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
