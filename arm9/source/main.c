@@ -61,7 +61,7 @@ void main(int argc, char **argv, u32 magicWord)
     FirmwareSource nandType;
     const vu8 *bootMediaStatus = (const vu8 *)0x1FFFE00C;
     const vu32 *bootPartitionsStatus = (const vu32 *)0x1FFFE010;
-    char firmlaunchTid[16+1];
+    u32 firmlaunchTidLow = 0;
 
     //Shell closed, no error booting NTRCARD, NAND paritions not even considered
     isNtrBoot = bootMediaStatus[3] == 2 && !bootMediaStatus[1] && !bootPartitionsStatus[0] && !bootPartitionsStatus[1];
@@ -85,7 +85,8 @@ void main(int argc, char **argv, u32 magicWord)
             launchedPath[i] = p[i];
         launchedPath[i] = 0;
 
-        strncpy(firmlaunchTid, argv[1], 16);
+        for(i = 0; i < 8; i++)
+            firmlaunchTidLow = (argv[1][2 * i] > '9' ? argv[1][2 * i] - 'a' + 10 : argv[1][2 * i] - '0') | (firmlaunchTidLow << 4);
     }
     else if(magicWord == 0xB002) //FIRM/NTRCARD boot
     {
@@ -164,15 +165,15 @@ void main(int argc, char **argv, u32 magicWord)
     {
         if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
-        switch(firmlaunchTid[14])
+        switch(firmlaunchTidLow & 0xF)
         {
-            case '2':
-                firmType = (FirmwareType)(firmlaunchTid[10] - '0');
+            case 2:
+                firmType = (FirmwareType)((firmlaunchTidLow >> 8) & 0xF);
                 break;
-            case '3':
+            case 3:
                 firmType = SAFE_FIRM;
                 break;
-            case '1':
+            case 1:
                 firmType = SYSUPDATER_FIRM;
                 break;
         }

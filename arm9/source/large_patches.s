@@ -146,13 +146,13 @@ rebootPatch:
     mov r1, #0
     mov r2, #0
     mov r3, #0
-    swi 0x7C
+    svc 0x7C
 
     goto_reboot:
         @ Jump to reboot code
         ldr r0, kernel_func_displ
         add r0, pc @ pc is two instructions ahead of the instruction being executed (12 = 2*4 + 4)
-        swi 0x7B
+        svc 0x7B
 
     die:
         b die
@@ -171,7 +171,7 @@ rebootPatch:
     panic:
         mov r1, r0 @ unused register
         mov r0, #0
-        swi 0x3C @ svcBreak(USERBREAK_PANIC)
+        svc 0x3C @ svcBreak(USERBREAK_PANIC)
         b die
 
 kernel_func_displ:
