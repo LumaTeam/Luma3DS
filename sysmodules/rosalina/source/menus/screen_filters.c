@@ -61,8 +61,8 @@ void applyColorSettings(color_setting_t* cs)
     Pixel px[0x400];
     u8 i = 0;
 
-    memset(c, 0, 0x600);
-    memset(px, 0, 0x400 * sizeof(Pixel));
+    memset(c, 0, sizeof(c));
+    memset(px, 0, sizeof(px));
     
     do {
         *(u32*)&px[i] = i | (i << 8) | (i << 16);
