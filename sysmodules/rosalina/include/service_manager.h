@@ -24,13 +24,25 @@
 *         reasonable ways as different from the original version.
 */
 
-/* File mainly written by fincs */
 #pragma once
 
 #include <3ds/types.h>
-#include "MyThread.h"
 
-#define HBLDR_DEFAULT_3DSX_TID  0x000400000D921E00ULL
-#define HBLDR_3DSX_TID          (*(vu64 *)0x1FF81100)
+typedef struct ServiceManagerServiceEntry {
+    const char *name;
+    u32 maxSessions;
+    void (*handler)(void *ctx);
+    bool isGlobalPort;
+} ServiceManagerServiceEntry;
 
-void HBLDR_HandleCommands(void *ctx);
+typedef struct ServiceManagerNotificationEntry {
+    u32 id;
+    void (*handler)(u32 id);
+} ServiceManagerNotificationEntry;
+
+typedef struct ServiceManagerContextAllocator {
+    void* (*newSessionContext)(u8 serviceId);
+    void  (*freeSessionContext)(void *ctx);
+} ServiceManagerContextAllocator;
+
+Result ServiceManager_Run(const ServiceManagerServiceEntry *services, const ServiceManagerNotificationEntry *notifications, const ServiceManagerContextAllocator *allocator);

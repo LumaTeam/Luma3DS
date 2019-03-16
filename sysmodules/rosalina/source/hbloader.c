@@ -122,15 +122,7 @@ static inline void assertSuccess(Result res)
         svcBreak(USERBREAK_PANIC);
 }
 
-static MyThread hbldrThread;
-static u8 ALIGN(8) hbldrThreadStack[THREAD_STACK_SIZE];
 static u16 hbldrTarget[PATH_MAX+1];
-
-MyThread *hbldrCreateThread(void)
-{
-    assertSuccess(MyThread_Create(&hbldrThread, hbldrThreadMain, hbldrThreadStack, THREAD_STACK_SIZE, 0x18, CORE_SYSTEM));
-    return &hbldrThread;
-}
 
 static inline void error(u32* cmdbuf, Result rc)
 {
@@ -149,8 +141,9 @@ static u16 *u16_strncpy(u16 *dest, const u16 *src, u32 size)
     return dest;
 }
 
-static void HBLDR_HandleCommands(void)
+void HBLDR_HandleCommands(void *ctx)
 {
+    (void)ctx;
     Result res;
     IFile file;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -346,73 +339,4 @@ static void HBLDR_HandleCommands(void)
             break;
         }
     }
-}
-
-void hbldrThreadMain(void)
-{
-    Handle handles[2];
-    Handle serverHandle, clientHandle, sessionHandle = 0;
-
-    u32 replyTarget = 0;
-    s32 index;
-
-    char ipcBuf[PATH_MAX+1];
-    u32* bufPtrs = getThreadStaticBuffers();
-    memset(bufPtrs, 0, 16*2*4);
-    bufPtrs[0] = IPC_Desc_StaticBuffer(sizeof(ipcBuf), 0);
-    bufPtrs[1] = (u32)ipcBuf;
-    bufPtrs[2] = IPC_Desc_StaticBuffer(sizeof(ldrArgvBuf), 1);
-    bufPtrs[3] = (u32)ldrArgvBuf;
-
-    Result res;
-    u32 *cmdbuf = getThreadCommandBuffer();
-
-    assertSuccess(svcCreatePort(&serverHandle, &clientHandle, "hb:ldr", 1));
-
-    do
-    {
-        handles[0] = serverHandle;
-        handles[1] = sessionHandle;
-
-        if(replyTarget == 0) // k11
-            cmdbuf[0] = 0xFFFF0000;
-        res = svcReplyAndReceive(&index, handles, sessionHandle == 0 ? 1 : 2, replyTarget);
-
-        if(R_FAILED(res))
-        {
-            if((u32)res == 0xC920181A) // session closed by remote
-            {
-                svcCloseHandle(sessionHandle);
-                sessionHandle = 0;
-                replyTarget = 0;
-            }
-
-            else
-                svcBreak(USERBREAK_PANIC);
-        }
-
-        else
-        {
-            if(index == 0)
-            {
-                Handle session;
-                assertSuccess(svcAcceptSession(&session, serverHandle));
-
-                if(sessionHandle == 0)
-                    sessionHandle = session;
-                else
-                    svcCloseHandle(session);
-            }
-            else
-            {
-                HBLDR_HandleCommands();
-                replyTarget = sessionHandle;
-            }
-        }
-    }
-    while(!terminationRequest);
-
-    svcCloseHandle(sessionHandle);
-    svcCloseHandle(clientHandle);
-    svcCloseHandle(serverHandle);
 }

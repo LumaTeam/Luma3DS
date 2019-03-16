@@ -27,8 +27,5 @@
 #pragma once
 
 #include <3ds/types.h>
-#include "MyThread.h"
 
-MyThread *errDispCreateThread(void);
-
-void errDispThreadMain(void);
+void ERRF_HandleCommands(void *ctx);

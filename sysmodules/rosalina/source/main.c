@@ -29,8 +29,10 @@
 #include "services.h"
 #include "fsreg.h"
 #include "menu.h"
+#include "service_manager.h"
 #include "errdisp.h"
 #include "hbloader.h"
+#include "3dsx.h"
 #include "utils.h"
 #include "MyThread.h"
 #include "menus/process_patches.h"
@@ -67,7 +69,6 @@ void __ctru_exit()
     __libc_fini_array();
     __appExit();
     __sync_fini();
-    for(;;) svcSleepThread(0); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
     svcExitProcess();
 }
 
@@ -105,46 +106,48 @@ void initSystem()
 bool terminationRequest = false;
 Handle terminationRequestEvent;
 
+static void handleTermNotification(u32 notificationId)
+{
+    (void)notificationId;
+    // Termination request
+    terminationRequest = true;
+    svcSignalEvent(terminationRequestEvent);
+}
+
+static const ServiceManagerServiceEntry services[] = {
+    { "err:f",  1, ERRF_HandleCommands,  true },
+    { "hb:ldr", 2, HBLDR_HandleCommands, true },
+    { NULL },
+};
+
+static const ServiceManagerNotificationEntry notifications[] = {
+    { 0x100, handleTermNotification },
+    { 0x000, NULL },
+};
+
 int main(void)
 {
-    Result res = 0;
-    Handle notificationHandle;
+    static u8 ipcBuf[0x100] = {0};  // used by both err:f and hb:ldr
 
-    if(R_FAILED(srvEnableNotification(&notificationHandle)))
-        svcBreak(USERBREAK_ASSERT);
+    // Set up static buffers for IPC
+    u32* bufPtrs = getThreadStaticBuffers();
+    memset(bufPtrs, 0, 16 * 2 * 4);
+    bufPtrs[0] = IPC_Desc_StaticBuffer(sizeof(ipcBuf), 0);
+    bufPtrs[1] = (u32)ipcBuf;
+    bufPtrs[2] = IPC_Desc_StaticBuffer(sizeof(ldrArgvBuf), 1);
+    bufPtrs[3] = (u32)ldrArgvBuf;
 
     if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
 
-    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread(), *hbldrThread = hbldrCreateThread();
+    MyThread *menuThread = menuCreateThread();
     MyThread *shellOpenThread = shellOpenCreateThread();
 
-    do
-    {
-        res = svcWaitSynchronization(notificationHandle, -1LL);
-
-        if(R_FAILED(res))
-            continue;
-
-        u32 notifId = 0;
-
-        if(R_FAILED(srvReceiveNotification(&notifId)))
-          svcBreak(USERBREAK_ASSERT);
-
-        if(notifId == 0x100)
-        {
-            // Termination request
-            terminationRequest = true;
-            svcSignalEvent(terminationRequestEvent);
-        }
-    }
-    while(!terminationRequest);
+    if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
+        svcBreak(USERBREAK_PANIC);
 
     MyThread_Join(menuThread, -1LL);
-    MyThread_Join(errDispThread, -1LL);
-    MyThread_Join(hbldrThread, -1LL);
     MyThread_Join(shellOpenThread, -1LL);
 
-    svcCloseHandle(notificationHandle);
     return 0;
 }
