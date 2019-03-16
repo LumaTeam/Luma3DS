@@ -125,8 +125,6 @@ $(OUTPUT).cxi	:	$(OUTPUT).elf $(OUTPUT).rsf
 
 $(OUTPUT).elf	:	$(OFILES)
 
-memory.o	:	CFLAGS += -O3
-
 %.elf: $(OFILES)
 	@echo linking $(notdir $@)
 	@$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
