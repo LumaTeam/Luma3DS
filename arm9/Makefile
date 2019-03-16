@@ -164,7 +164,7 @@ patches.o:			CFLAGS +=	-DVERSION_MAJOR="$(VERSION_MAJOR)" -DVERSION_MINOR="$(VER
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
 #---------------------------------------------------------------------------------
-%.bin.o	:	%.bin
+%.bin.o	%_bin.h :	%.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
