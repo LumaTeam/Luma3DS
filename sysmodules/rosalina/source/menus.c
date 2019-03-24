@@ -39,7 +39,6 @@
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
-#include "help.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
