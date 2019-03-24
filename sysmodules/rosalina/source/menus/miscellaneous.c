@@ -42,7 +42,7 @@ Menu miscellaneousMenu = {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
-        { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
+        { "Save options", METHOD, .method = &MiscellaneousMenu_SaveSettings },
     }
 };
 
