@@ -159,11 +159,12 @@ int main(void)
                     {
                         sessionData->replayCmdbuf[1] = 0xD0406401; // unregistered service or named port
                         moveNode(sessionData, &sessionDataWaitingForServiceOrPortRegisterList, true);
-                        svcCloseHandle(handles[id]);
-                        handles[id] = handles[--nbHandles];
                         sessionData->busyClientPortHandle = 0;
                     }
                 }
+
+                svcCloseHandle(handles[id]);
+                handles[id] = handles[--nbHandles];
             }
 
             replyTarget = 0;
