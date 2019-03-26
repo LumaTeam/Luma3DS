@@ -14,7 +14,7 @@ static bool doPublishNotification(ProcessData *processData, u32 notificationId, 
     {
         for(u16 i = 0; i < processData->nbPendingNotifications; i++)
         {
-            if(processData->pendingNotifications[(processData->pendingNotificationIndex + i) % 16] == notificationId)
+            if(processData->pendingNotifications[(processData->receivedNotificationIndex + i) % 16] == notificationId)
                 return true;
         }
     }
