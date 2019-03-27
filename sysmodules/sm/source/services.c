@@ -184,7 +184,7 @@ Result GetServiceHandle(SessionData *sessionData, Handle *session, const char *n
             return 0xD0406402;
         }
 
-        return 0;
+        return res;
     }
 }
 
