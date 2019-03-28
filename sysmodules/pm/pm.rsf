@@ -1,0 +1,125 @@
+BasicInfo:
+  Title                   : pm
+  CompanyCode             : "00"
+  ProductCode             : lennybuilder
+  ContentType             : Application
+  Logo                    : None
+
+TitleInfo:
+  UniqueId                : 0x12
+  Category                : Base
+  Version                 : 2
+
+Option:
+  UseOnSD                 : false
+  FreeProductCode         : true # Removes limitations on ProductCode
+  MediaFootPadding        : false # If true CCI files are created with padding
+  EnableCrypt             : false # Enables encryption for NCCH and CIA
+  EnableCompress          : true # Compresses exefs code
+
+AccessControlInfo:
+  IdealProcessor                : 1
+  AffinityMask                  : 3
+
+  Priority                      : 20
+
+  DisableDebug                  : false
+  EnableForceDebug              : false
+  CanWriteSharedPage            : false
+  CanUsePrivilegedPriority      : false
+  CanUseNonAlphabetAndNumber    : false
+  PermitMainFunctionArgument    : false
+  CanShareDeviceMemory          : false
+  RunnableOnSleep               : true
+  SpecialMemoryArrange          : false
+  ResourceLimitCategory         : Other
+
+  CoreVersion                   : 2
+  DescVersion                   : 2
+
+  MemoryType                    : Base # Application / System / Base
+  HandleTableSize: 0x200
+  IORegisterMapping:
+  SystemCallAccess:
+    ControlMemory: 1
+    QueryMemory: 2
+    ExitProcess: 3
+    SetProcessAffinityMask: 5
+    GetProcessIdealProcessor: 6
+    SetProcessIdealProcessor: 7
+    CreateThread: 8
+    ExitThread: 9
+    SleepThread: 10
+    GetThreadPriority: 11
+    SetThreadPriority: 12
+    GetThreadIdealProcessor: 15
+    GetCurrentProcessorNumber: 17
+    Run: 18
+    CreateMutex: 19
+    ReleaseMutex: 20
+    CreateSemaphore: 21
+    ReleaseSemaphore: 22
+    CreateEvent: 23
+    SignalEvent: 24
+    ClearEvent: 25
+    CreateTimer: 26
+    SetTimer: 27
+    CancelTimer: 28
+    ClearTimer: 29
+    CreateMemoryBlock: 30
+    MapMemoryBlock: 31
+    UnmapMemoryBlock: 32
+    CreateAddressArbiter: 33
+    ArbitrateAddress: 34
+    CloseHandle: 35
+    WaitSynchronization1: 36
+    WaitSynchronizationN: 37
+    DuplicateHandle: 39
+    GetSystemTick: 40
+    GetHandleInfo: 41
+    GetSystemInfo: 42
+    GetProcessInfo: 43
+    GetThreadInfo: 44
+    ConnectToPort: 45
+    SendSyncRequest1: 46
+    SendSyncRequest2: 47
+    SendSyncRequest3: 48
+    SendSyncRequest4: 49
+    SendSyncRequest: 50
+    OpenProcess: 51
+    OpenThread: 52
+    GetProcessId: 53
+    GetProcessIdOfThread: 54
+    GetThreadId: 55
+    GetResourceLimit: 56
+    GetResourceLimitLimitValues: 57
+    GetResourceLimitCurrentValues: 58
+    GetThreadContext: 59
+    Break: 60
+    OutputDebugString: 61
+    CreatePort: 71
+    CreateSessionToPort: 72
+    AcceptSession: 74
+    ReplyAndReceive1: 75
+    ReplyAndReceive2: 76
+    ReplyAndReceive3: 77
+    ReplyAndReceive4: 78
+    ReplyAndReceive: 79
+    DebugActiveProcess: 96
+    TerminateDebugProcess: 98
+    GetThreadList: 102
+    TerminateProcess: 118
+    SetProcessResourceLimits: 119
+    CreateResourceLimit: 120
+    SetResourceLimitValues: 121
+    KernelSetState: 124
+  InterruptNumbers:
+  ServiceAccessControl:
+    # Note: pm also uses srv:pm and Loader but doesn't list them here.
+    - fs:REG
+  FileSystemAccess:
+
+SystemControlInfo:
+  SaveDataSize: 0KB # It doesn't use any save data.
+  RemasterVersion: 0
+  StackSize: 0x1000

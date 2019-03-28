@@ -1,4 +1,4 @@
-SUBFOLDERS	:=	loader sm pxi rosalina
+SUBFOLDERS	:=	loader sm pm pxi rosalina
 CXIS		:=	$(foreach dir, $(SUBFOLDERS), $(dir)/$(dir).cxi)
 
 .PHONY:	all clean $(SUBFOLDERS)
