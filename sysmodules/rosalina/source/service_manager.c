@@ -53,6 +53,14 @@ Result ServiceManager_Run(const ServiceManagerServiceEntry *services, const Serv
 
     TRY(srvEnableNotification(&waitHandles[0]));
 
+    // Subscribe to notifications if needed.
+    for (u32 i = 0; notifications[i].handler != NULL; i++) {
+        // Termination & ready for reboot events send by PM using PublishToProcess don't require subscription.
+        if (notifications[i].id != 0x100 && notifications[i].id != 0x179) {
+            TRY(srvSubscribe(notifications[i].id));
+        }
+    }
+
     for (u32 i = 0; i < numServices; i++) {
         if (!services[i].isGlobalPort) {
             TRY(srvRegisterService(&waitHandles[1 + i], services[i].name, (s32)services[i].maxSessions));
@@ -148,6 +156,14 @@ Result ServiceManager_Run(const ServiceManagerServiceEntry *services, const Serv
 cleanup:
     for (u32 i = 0; i < 1 + numServices + numActiveSessions; i++) {
         svcCloseHandle(waitHandles[i]);
+    }
+
+    // Subscribe to notifications if needed.
+    for (u32 i = 0; notifications[i].handler != NULL; i++) {
+        // Termination & ready for reboot events send by PM using PublishToProcess don't require subscription.
+        if (notifications[i].id != 0x100 && notifications[i].id != 0x179) {
+            TRY(srvUnsubscribe(notifications[i].id));
+        }
     }
 
     for (u32 i = 0; i < numServices; i++) {
