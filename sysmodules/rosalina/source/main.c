@@ -36,7 +36,6 @@
 #include "menus/process_patches.h"
 #include "menus/miscellaneous.h"
 #include "menus/screen_filters.h"
-#include "shell_open.h"
 
 static Result stealFsReg(void)
 {
@@ -178,13 +177,11 @@ int main(void)
         svcBreak(USERBREAK_ASSERT);
 
     MyThread *menuThread = menuCreateThread();
-    MyThread *shellOpenThread = shellOpenCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
 
     MyThread_Join(menuThread, -1LL);
-    MyThread_Join(shellOpenThread, -1LL);
 
     return 0;
 }
