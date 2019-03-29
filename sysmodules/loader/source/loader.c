@@ -28,6 +28,26 @@ static u64 g_cached_prog_handle;
 static ExHeader_Info g_exheader;
 static char g_ret_buf[1024];
 
+// MAKE SURE fsreg has been init before calling this
+static Result fsldrPatchPermissions(void)
+{
+  u32 pid;
+  Result res;
+  FS_ProgramInfo info;
+  ExHeader_Arm11StorageInfo storageInfo = {
+    .fs_access_info = FSACCESS_NANDRW | FSACCESS_NANDRO_RO | FSACCESS_SDMC_RW,
+  };
+
+  info.programId = 0x0004013000001302LL; // loader PID
+  info.mediaType = MEDIATYPE_NAND;
+  res = svcGetProcessId(&pid, CUR_PROCESS_HANDLE);
+  if (R_SUCCEEDED(res))
+  {
+    res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storageInfo);
+  }
+  return res;
+}
+
 static inline void loadCFWInfo(void)
 {
     s64 out;
@@ -565,10 +585,8 @@ void __appInit()
       svcBreak(USERBREAK_PANIC);
   }
 
-  // Wait for pm to call fs:REG Register on us
-  bool registered = false;
-  while (srvIsServiceRegistered(&registered, "pm:app"), registered)
-    svcSleepThread(500 * 1000LL);
+  fsRegInit();
+  fsldrPatchPermissions();
 
   //fsldrInit();
   res = srvGetServiceHandle(fsGetSessionHandle(), "fs:LDR");

@@ -17,18 +17,3 @@ bool isTitleLaunchPrevented(u64 titleId)
     svcGetSystemInfo(&numKips, 26, 0);
     return numKips >= 6 && (titleId & ~N3DS_TID_BIT) == 0x0004003000008A02ULL; // ErrDisp
 }
-
-Result fsRegSetupPermissionsForKip(u32 pid, u64 titleId)
-{
-    FS_ProgramInfo info;
-
-    ExHeader_Arm11StorageInfo storageInfo = {
-        .fs_access_info = FSACCESS_NANDRO_RW | FSACCESS_NANDRW | FSACCESS_SDMC_RW,
-    };
-
-    // Non-dummy TID
-    info.programId = titleId;
-    info.mediaType = MEDIATYPE_NAND;
-
-    return FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storageInfo);;
-}

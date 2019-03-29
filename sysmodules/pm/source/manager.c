@@ -42,13 +42,6 @@ void Manager_RegisterKips(void)
     }
 
     ProcessList_Unlock(&g_manager.processList);
-
-    // Register loader, pm, and rosalina (if applicable)
-    assertSuccess(fsRegSetupPermissionsForKip(1, 0x0004013000001302LL)); // loader
-    assertSuccess(fsRegSetupPermissionsForKip(2, 0x0004013000001202LL)); // pm
-    if (numKips >= 6) {
-        assertSuccess(fsRegSetupPermissionsForKip(5, 0x0004013000006902LL)); // rosalina
-    }
 }
 
 Result UnregisterProcess(u64 titleId)

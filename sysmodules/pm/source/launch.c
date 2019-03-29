@@ -205,8 +205,11 @@ static Result loadWithDependencies(Handle *outDebug, ProcessData **outProcessDat
 static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const FS_ProgramInfo *programInfo,
     const FS_ProgramInfo *programInfoUpdate, u32 launchFlags, ExHeader_Info *exheaderInfo)
 {
-    if (isTitleLaunchPrevented(programInfo->programId)) {
+    if (debug != NULL) {
         *debug = 0;
+    }
+
+    if (isTitleLaunchPrevented(programInfo->programId)) {
         return 0;
     }
 
