@@ -77,6 +77,11 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 0x203: // isSdMode
                     *out = (cfwInfo.flags >> 6) & 1;
                     break;
+
+                case 0x300: // K11Ext size
+                    *out = (s64)(__end__ - __start__);
+                    break;
+
                 default:
                     res = 0xF8C007F4; // not implemented
                     break;
