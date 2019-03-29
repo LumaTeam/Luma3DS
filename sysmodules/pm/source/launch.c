@@ -7,6 +7,7 @@
 #include "exheader_info_heap.h"
 #include "task_runner.h"
 #include "util.h"
+#include "luma.h"
 
 static inline void removeAccessToService(const char *service, char (*serviceAccessList)[8])
 {
@@ -204,6 +205,11 @@ static Result loadWithDependencies(Handle *outDebug, ProcessData **outProcessDat
 static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const FS_ProgramInfo *programInfo,
     const FS_ProgramInfo *programInfoUpdate, u32 launchFlags, ExHeader_Info *exheaderInfo)
 {
+    if (isTitleLaunchPrevented(programInfo->programId)) {
+        *debug = 0;
+        return 0;
+    }
+
     if (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) {
         launchFlags |= PMLAUNCHFLAG_LOAD_DEPENDENCIES;
     } else {
@@ -299,7 +305,7 @@ static Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_Pro
     ProcessData *process;
     Result res = launchTitleImpl(outDebug, &process, programInfo, programInfoUpdate, launchFlags, exheaderInfo);
 
-    if (outPid != NULL) {
+    if (outPid != NULL && process != NULL) {
         *outPid = process->pid;
     }
 

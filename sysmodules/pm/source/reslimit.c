@@ -2,6 +2,7 @@
 #include "reslimit.h"
 #include "util.h"
 #include "manager.h"
+#include "luma.h"
 
 typedef s64 ReslimitValues[10];
 
@@ -242,7 +243,7 @@ static ReslimitValues *fixupReslimitValues(void)
 {
     // In order: APPLICATION, SYS_APPLET, LIB_APPLET, OTHER
     // Fixup "commit" reslimit
-    u32 sysmemalloc = SYSMEMALLOC;
+    u32 sysmemalloc = SYSMEMALLOC + getKExtSize();
     ReslimitValues *values = !IS_N3DS ? g_o3dsReslimitValues : g_n3dsReslimitValues;
 
     static const u32 minAppletMemAmount = 0x1200000;

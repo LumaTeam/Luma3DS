@@ -737,17 +737,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
             memset(start, 0, end - start);
         }
-
-        s64 nbSection0Modules;
-        svcGetSystemInfo(&nbSection0Modules, 26, 0);
-
-        if(nbSection0Modules == 6)
-        {
-            // Makes ErrDisp to not start up
-            static const u64 errDispTid = 0x0004003000008A02ULL;
-            u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
-            *(errDispTidLoc - 6) = 0xE3A00000; // mov r0, #0
-        }
     }
 
     else if(progId == 0x0004013000001702LL) //CFG
