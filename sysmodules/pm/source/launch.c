@@ -176,7 +176,9 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     if (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) {
         launchFlags |= PMLAUNCHFLAG_LOAD_DEPENDENCIES;
     } else {
-        launchFlags &= ~(PMLAUNCHFLAG_USE_UPDATE_TITLE | PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION);
+        // NEW: allow non-apps to be debugged with the help of pm
+        //launchFlags &= ~(PMLAUNCHFLAG_USE_UPDATE_TITLE | PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION);
+        launchFlags &= ~PMLAUNCHFLAG_USE_UPDATE_TITLE;
         launchFlags &= ~(PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM | PMLAUNCHFLAG_FORCE_USE_O3DS_MAX_APP_MEM);
     }
 
@@ -303,7 +305,7 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
         panic(4);
     }
 
-    if ((g_manager.runningApplicationData != NULL || g_manager.debugData != NULL) && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
+    if (g_manager.runningApplicationData != NULL && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
         return 0xC8A05BF0;
     }
 
@@ -345,7 +347,7 @@ Result LaunchTitleUpdate(const FS_ProgramInfo *programInfo, const FS_ProgramInfo
     if (g_manager.preparingForReboot) {
         return 0xC8A05801;
     }
-    if (g_manager.runningApplicationData != NULL || g_manager.debugData != NULL) {
+    if (g_manager.runningApplicationData != NULL) {
         return 0xC8A05BF0;
     }
     if (!(launchFlags & ~PMLAUNCHFLAG_NORMAL_APPLICATION)) {
@@ -369,7 +371,7 @@ Result LaunchTitleUpdate(const FS_ProgramInfo *programInfo, const FS_ProgramInfo
 
 Result LaunchApp(const FS_ProgramInfo *programInfo, u32 launchFlags)
 {
-    if (g_manager.runningApplicationData != NULL || g_manager.debugData != NULL) {
+    if (g_manager.runningApplicationData != NULL) {
         return 0xC8A05BF0;
     }
 
