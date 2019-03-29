@@ -9,46 +9,6 @@
 #include "util.h"
 #include "luma.h"
 
-static inline void removeAccessToService(const char *service, char (*serviceAccessList)[8])
-{
-    char ALIGN(8) name[8+1];
-    strncpy(name, service, 8);
-    name[8] = 0;
-
-    u32 j = 0;
-    for (u32 i = 0; i < 34 && *(u64 *)serviceAccessList[i] != 0; i++) {
-        if (*(u64 *)serviceAccessList[i] != *(u64 *)name) {
-            *(u64 *)serviceAccessList[j++] = *(u64 *)serviceAccessList[i];
-        }
-    }
-
-    if (j < 34) {
-        memset(&serviceAccessList[j], 0, 8 * (34 - j));
-    }
-}
-
-static void blacklistServices(u64 titleId, char (*serviceAccessList)[8])
-{
-    if (osGetFirmVersion() < SYSTEM_VERSION(2, 51, 0) || (titleId >> 46) != 0x10) {
-        return;
-    }
-
-    u32 titleUid = ((u32)titleId >> 8) & 0xFFFFF;
-
-    switch (titleUid) {
-        // Cubic Ninja
-        case 0x343:
-        case 0x465:
-        case 0x4B3:
-            removeAccessToService("http:C", serviceAccessList);
-            removeAccessToService("soc:U", serviceAccessList);
-            break;
-
-        default:
-            break;
-    }
-}
-
 // Note: official PM has two distinct functions for sysmodule vs. regular app. We refactor that into a single function.
 static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const FS_ProgramInfo *programInfo,
     const FS_ProgramInfo *programInfoUpdate, u32 launchFlags, ExHeader_Info *exheaderInfo);
@@ -254,8 +214,6 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
             setAppMemLimit(limitMb << 20);
         }
     }
-
-    blacklistServices(exheaderInfo->aci.local_caps.title_id, exheaderInfo->aci.local_caps.service_access);
 
     if (launchFlags & PMLAUNCHFLAG_LOAD_DEPENDENCIES) {
         TRYG(loadWithDependencies(debug, outProcessData, programHandle, programInfo, launchFlags, exheaderInfo), cleanup);
