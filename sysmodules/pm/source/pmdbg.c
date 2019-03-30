@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include <string.h>
 #include "launch.h"
+#include "info.h"
 #include "util.h"
 
 void pmDbgHandleCommands(void *ctx)
@@ -11,6 +12,8 @@ void pmDbgHandleCommands(void *ctx)
 
     FS_ProgramInfo programInfo;
     Handle debug;
+
+    u64 titleId;
 
     switch (cmdhdr >> 16) {
         case 1:
@@ -33,6 +36,27 @@ void pmDbgHandleCommands(void *ctx)
             cmdbuf[2] = IPC_Desc_MoveHandles(1);
             cmdbuf[3] = debug;
             break;
+
+        // Custom
+        case 0x100:
+            titleId = 0;
+            cmdbuf[1] = GetCurrentAppTitleId(&titleId);
+            cmdbuf[0] = IPC_MakeHeader(0x100, 3, 0);
+            memcpy(cmdbuf + 2, &titleId, 8);
+            break;
+        case 0x101:
+            cmdbuf[1] = DebugNextApplicationByForce();
+            cmdbuf[0] = IPC_MakeHeader(0x101, 1, 0);
+            break;
+        case 0x102:
+            debug = 0;
+            memcpy(&programInfo, cmdbuf + 1, sizeof(FS_ProgramInfo));
+            cmdbuf[1] = LaunchTitleDebug(&debug, &programInfo, cmdbuf[5]);
+            cmdbuf[0] = IPC_MakeHeader(0x102, 1, 2);
+            cmdbuf[2] = IPC_Desc_MoveHandles(1);
+            cmdbuf[3] = debug;
+            break;
+
         default:
             cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
             cmdbuf[1] = 0xD900182F;

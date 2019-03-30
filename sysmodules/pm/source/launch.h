@@ -11,3 +11,7 @@ Result RunQueuedProcess(Handle *outDebug);
 Result LaunchAppDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags);
 
 Result autolaunchSysmodules(void);
+
+// Custom
+Result DebugNextApplicationByForce(void);
+Result LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags);

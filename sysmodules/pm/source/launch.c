@@ -9,6 +9,8 @@
 #include "util.h"
 #include "luma.h"
 
+static bool g_debugNextApplication = false;
+
 // Note: official PM has two distinct functions for sysmodule vs. regular app. We refactor that into a single function.
 static Result launchTitleImpl(Handle *outDebug, ProcessData **outProcessData, const FS_ProgramInfo *programInfo,
     const FS_ProgramInfo *programInfoUpdate, u32 launchFlags, ExHeader_Info *exheaderInfo);
@@ -304,8 +306,10 @@ static void LaunchTitleAsync(void *argdata)
 Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFlags)
 {
     ProcessData *process, *foundProcess = NULL;
+    bool originallyDebugged = launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION;
 
     launchFlags &= ~PMLAUNCHFLAG_USE_UPDATE_TITLE;
+    launchFlags |= g_debugNextApplication && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) ? PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION : 0;
 
     if (g_manager.preparingForReboot) {
         return 0xC8A05801;
@@ -340,7 +344,15 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
         return 0;
     } else {
         if (launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION || !(launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION)) {
-            return launchTitleImplWrapper(NULL, outPid, programInfo, programInfo, launchFlags);
+            Result res = launchTitleImplWrapper(NULL, outPid, programInfo, programInfo, launchFlags);
+            if (R_SUCCEEDED(res) && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION)) {
+                g_debugNextApplication = false;
+                if (!originallyDebugged) {
+                    // Custom notification
+                    notifySubscribers(0x1000);
+                }
+            }
+            return res;
         } else {
             struct {
                 FS_ProgramInfo programInfo, programInfoUpdate;
@@ -368,10 +380,21 @@ Result LaunchTitleUpdate(const FS_ProgramInfo *programInfo, const FS_ProgramInfo
         return 0xD8E05802;
     }
 
+    bool originallyDebugged = launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION;
+
     launchFlags |= PMLAUNCHFLAG_USE_UPDATE_TITLE;
+    launchFlags |= g_debugNextApplication ? PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION : 0;
 
     if (launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION) {
-        return launchTitleImplWrapper(NULL, NULL, programInfo, programInfoUpdate, launchFlags);
+        Result res = launchTitleImplWrapper(NULL, NULL, programInfo, programInfoUpdate, launchFlags);
+        if (R_SUCCEEDED(res)) {
+            g_debugNextApplication = false;
+            if (!originallyDebugged) {
+                // Custom notification
+                notifySubscribers(0x1000);
+            }
+        }
+        return res;
     } else {
         struct {
             FS_ProgramInfo programInfo, programInfoUpdate;
@@ -446,9 +469,17 @@ Result LaunchAppDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 l
         return 0xC8A05BF0;
     }
 
+    bool prevdbg = g_debugNextApplication;
+    g_debugNextApplication = false;
+
     assertSuccess(setAppCpuTimeLimit(0));
-    return launchTitleImplWrapper(outDebug, NULL, programInfo, programInfo,
+    Result res = launchTitleImplWrapper(outDebug, NULL, programInfo, programInfo,
         (launchFlags & ~PMLAUNCHFLAG_USE_UPDATE_TITLE) | PMLAUNCHFLAG_NORMAL_APPLICATION);
+
+    if (R_FAILED(res)) {
+        g_debugNextApplication = prevdbg;
+    }
+    return res;
 }
 
 Result autolaunchSysmodules(void)
@@ -463,4 +494,24 @@ Result autolaunchSysmodules(void)
     }
 
     return res;
+}
+
+// Custom
+Result DebugNextApplicationByForce(void)
+{
+    g_debugNextApplication = true;
+    return 0;
+}
+
+Result LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags)
+{
+    if (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) {
+        return LaunchAppDebug(outDebug, programInfo, launchFlags);
+    }
+
+    if (g_manager.debugData != NULL) {
+        return RunQueuedProcess(outDebug);
+    }
+
+    return launchTitleImplWrapper(outDebug, NULL, programInfo, programInfo, launchFlags & ~PMLAUNCHFLAG_USE_UPDATE_TITLE);
 }

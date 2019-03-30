@@ -125,3 +125,14 @@ Result GetTitleExHeaderFlags(ExHeader_Arm11CoreInfo *outCoreInfo, ExHeader_Syste
 
     return res;
 }
+
+Result GetCurrentAppTitleId(u64 *outTitleId)
+{
+    if (g_manager.runningApplicationData != NULL) {
+        *outTitleId = g_manager.runningApplicationData->titleId;
+        return 0;
+    } else {
+        *outTitleId = 0;
+        return MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
+    }
+}
