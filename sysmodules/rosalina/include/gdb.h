@@ -85,6 +85,8 @@ typedef struct GDBContext
     sock_ctx super;
 
     RecursiveLock lock;
+    u16 localPort;
+
     GDBFlags flags;
     GDBState state;
 

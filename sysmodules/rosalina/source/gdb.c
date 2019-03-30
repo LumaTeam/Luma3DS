@@ -29,6 +29,7 @@
 
 void GDB_InitializeContext(GDBContext *ctx)
 {
+    memset(ctx, 0, sizeof(GDBContext));
     RecursiveLock_Init(&ctx->lock);
 
     RecursiveLock_Lock(&ctx->lock);
