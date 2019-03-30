@@ -27,16 +27,18 @@ static void cleanupProcess(ProcessData *process)
         LOADER_UnregisterProgram(process->programHandle);
     }
 
-    if (process == g_manager.runningApplicationData) {
+    ProcessList_Lock(&g_manager.processList);
+    if (g_manager.runningApplicationData != NULL && process->handle == g_manager.runningApplicationData->handle) {
         if (IS_N3DS && APPMEMTYPE == 6) {
             assertSuccess(resetAppMemLimit());
         }
         g_manager.runningApplicationData = NULL;
     }
 
-    if (process == g_manager.debugData) {
+    if (g_manager.debugData != NULL && process->handle == g_manager.debugData->handle) {
         g_manager.debugData = NULL;
     }
+    ProcessList_Unlock(&g_manager.processList);
 
     if (process->flags & PROCESSFLAG_NOTIFY_TERMINATION) {
         notifySubscribers(0x110 + process->terminatedNotificationVariation);

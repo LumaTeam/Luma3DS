@@ -84,11 +84,15 @@ void __appInit()
 
     if (R_FAILED(stealFsReg()) || R_FAILED(fsRegSetupPermissions()) || R_FAILED(fsInit()))
         svcBreak(USERBREAK_PANIC);
+
+    if (R_FAILED(pmDbgInit()))
+        svcBreak(USERBREAK_PANIC);
 }
 
 // this is called after main exits
 void __appExit()
 {
+    pmDbgExit();
     fsExit();
     svcCloseHandle(*fsRegGetSessionHandle());
     srvExit();

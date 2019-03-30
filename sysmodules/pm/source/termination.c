@@ -215,9 +215,11 @@ Result TerminateApplication(s64 timeout)
     assertSuccess(svcClearEvent(g_manager.allNotifiedTerminationEvent));
     g_manager.waitingForTermination = true;
 
+    ProcessList_Lock(&g_manager.processList);
     if (g_manager.runningApplicationData != NULL) {
         terminateProcessImpl(g_manager.runningApplicationData, exheaderInfo);
     }
+    ProcessList_Unlock(&g_manager.processList);
 
     res = commitPendingTerminations(timeout);
 
@@ -266,6 +268,7 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
         ProcessList_Unlock(&g_manager.processList);
     }
 
+    ProcessList_Lock(&g_manager.processList);
     // Send notification 0x100 to the currently running application
     if (g_manager.runningApplicationData != NULL) {
         g_manager.runningApplicationData->flags &= ~PROCESSFLAG_DEPENDENCIES_LOADED;
@@ -274,7 +277,6 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
 
     // Send notification 0x100 to anything but the caller deps or the caller; and *increase* the refcount of the latter if autoloaded
     // Ignore KIPs
-    ProcessList_Lock(&g_manager.processList);
     FOREACH_PROCESS(&g_manager.processList, process) {
         if (process->flags & PROCESSFLAG_KIP) {
             continue;

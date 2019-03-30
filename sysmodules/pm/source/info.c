@@ -128,11 +128,16 @@ Result GetTitleExHeaderFlags(ExHeader_Arm11CoreInfo *outCoreInfo, ExHeader_Syste
 
 Result GetCurrentAppTitleId(u64 *outTitleId)
 {
+    ProcessList_Lock(&g_manager.processList);
+    Result res;
     if (g_manager.runningApplicationData != NULL) {
         *outTitleId = g_manager.runningApplicationData->titleId;
-        return 0;
+        res = 0;
     } else {
         *outTitleId = 0;
-        return MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
+        res = MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
     }
+    ProcessList_Unlock(&g_manager.processList);
+
+    return res;
 }

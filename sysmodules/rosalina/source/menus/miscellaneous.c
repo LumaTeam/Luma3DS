@@ -34,6 +34,7 @@
 #include "utils.h" // for makeARMBranch
 #include "minisoc.h"
 #include "ifile.h"
+#include "pmdbgext.h"
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
@@ -54,31 +55,12 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 
     if(HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID)
     {
-        u32 pidList[0x40];
-        s32 processAmount;
-
-        res = svcGetProcessList(&processAmount, pidList, 0x40);
+        res = PMDBG_GetCurrentAppTitleId(&titleId);
         if(R_SUCCEEDED(res))
-        {
-            for(s32 i = 0; i < processAmount && (u32)(titleId >> 32) != 0x00040010 && (u32)(titleId >> 32) != 0x00040000; i++)
-            {
-                Handle processHandle;
-                Result res = svcOpenProcess(&processHandle, pidList[i]);
-                if(R_FAILED(res))
-                    continue;
-
-                svcGetProcessInfo((s64 *)&titleId, processHandle, 0x10001);
-                svcCloseHandle(processHandle);
-            }
-        }
-
-        if(R_SUCCEEDED(res) && ((u32)(titleId >> 32) == 0x00040010 || (u32)(titleId >> 32) == 0x00040000))
         {
             HBLDR_3DSX_TID = titleId;
             miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
-        else if(R_FAILED(res))
-            sprintf(failureReason, "%08lx", (u32)res);
         else
         {
             res = -1;
