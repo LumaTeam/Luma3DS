@@ -14,6 +14,7 @@ void pmDbgHandleCommands(void *ctx)
     Handle debug;
 
     u64 titleId;
+    u32 pid;
 
     switch (cmdhdr >> 16) {
         case 1:
@@ -40,9 +41,11 @@ void pmDbgHandleCommands(void *ctx)
         // Custom
         case 0x100:
             titleId = 0;
-            cmdbuf[1] = GetCurrentAppTitleId(&titleId);
-            cmdbuf[0] = IPC_MakeHeader(0x100, 3, 0);
+            pid = 0xFFFFFFFF;
+            cmdbuf[1] = GetCurrentAppTitleIdAndPid(&titleId, &pid);
+            cmdbuf[0] = IPC_MakeHeader(0x100, 4, 0);
             memcpy(cmdbuf + 2, &titleId, 8);
+            cmdbuf[4] = pid;
             break;
         case 0x101:
             cmdbuf[1] = DebugNextApplicationByForce();

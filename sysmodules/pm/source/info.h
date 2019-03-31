@@ -12,4 +12,4 @@ Result listMergeUniqueDependencies(ProcessData **procs, u64 *dependencies, u32 *
 Result GetTitleExHeaderFlags(ExHeader_Arm11CoreInfo *outCoreInfo, ExHeader_SystemInfoFlags *outSiFlags, const FS_ProgramInfo *programInfo);
 
 // Custom
-Result GetCurrentAppTitleId(u64 *outTitleId);
+Result GetCurrentAppTitleIdAndPid(u64 *outTitleId, u32 *outPid);

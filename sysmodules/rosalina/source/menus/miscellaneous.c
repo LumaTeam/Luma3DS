@@ -55,7 +55,8 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 
     if(HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID)
     {
-        res = PMDBG_GetCurrentAppTitleId(&titleId);
+        u32 pid;
+        res = PMDBG_GetCurrentAppTitleIdAndPid(&titleId, &pid);
         if(R_SUCCEEDED(res))
         {
             HBLDR_3DSX_TID = titleId;

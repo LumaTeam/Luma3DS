@@ -10,7 +10,7 @@
 #include <3ds/services/pmdbg.h>
 #include <3ds/ipc.h>
 
-Result PMDBG_GetCurrentAppTitleId(u64 *outTitleId)
+Result PMDBG_GetCurrentAppTitleIdAndPid(u64 *outTitleId, u32 *outPid)
 {
     Result ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -18,6 +18,7 @@ Result PMDBG_GetCurrentAppTitleId(u64 *outTitleId)
     if(R_FAILED(ret = svcSendSyncRequest(*pmDbgGetSessionHandle()))) return ret;
 
     memcpy(outTitleId, cmdbuf + 2, 8);
+    *outPid = cmdbuf[4];
     return cmdbuf[1];
 }
 
