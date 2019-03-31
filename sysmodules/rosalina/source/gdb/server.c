@@ -90,10 +90,24 @@ void GDB_RunServer(GDBServer *server)
     server_run(&server->super);
 }
 
+void GDB_LockAllContexts(GDBServer *server)
+{
+    for (u32 i = 0; i < MAX_DEBUG; i++)
+        RecursiveLock_Lock(&server->ctxs[i].lock);
+}
+
+void GDB_UnlockAllContexts(GDBServer *server)
+{
+    for (u32 i = MAX_DEBUG; i > 0; i--)
+        RecursiveLock_Unlock(&server->ctxs[i - 1].lock);
+}
+
 GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPort)
 {
     GDBContext *ctx;
     u16 port;
+
+    GDB_LockAllContexts(server);
 
     // Get a context
     u32 id;
@@ -101,7 +115,10 @@ GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPo
     if(id < MAX_DEBUG)
         ctx = &server->ctxs[id];
     else
+    {
+        GDB_UnlockAllContexts(server);
         return NULL;
+    }
 
     // Get a port
     for (port = minPort; port < maxPort; port++)
@@ -119,20 +136,17 @@ GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPo
 
     if (port >= maxPort)
     {
-        RecursiveLock_Lock(&ctx->lock);
         ctx->flags = ~GDB_FLAG_SELECTED;
-        RecursiveLock_Unlock(&ctx->lock);
-        return NULL;
+        ctx = NULL;
     }
-
     else
     {
-        RecursiveLock_Lock(&ctx->lock);
         ctx->flags |= GDB_FLAG_SELECTED;
         ctx->localPort = port;
-        RecursiveLock_Unlock(&ctx->lock);
-        return ctx;
     }
+
+    GDB_UnlockAllContexts(server);
+    return ctx;
 }
 
 int GDB_AcceptClient(GDBContext *ctx)
@@ -201,6 +215,7 @@ int GDB_CloseClient(GDBContext *ctx)
 
 GDBContext *GDB_GetClient(GDBServer *server, u16 port)
 {
+    GDB_LockAllContexts(server);
     GDBContext *ctx = NULL;
     if (port >= GDB_PORT_BASE && port < GDB_PORT_BASE + MAX_DEBUG)
     {
@@ -216,12 +231,11 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
 
     if (ctx != NULL)
     {
-        RecursiveLock_Lock(&ctx->lock);
         ctx->flags |= GDB_FLAG_USED;
         ctx->state = GDB_STATE_CONNECTED;
-        RecursiveLock_Unlock(&ctx->lock);
     }
 
+    GDB_UnlockAllContexts(server);
     return ctx;
 }
 

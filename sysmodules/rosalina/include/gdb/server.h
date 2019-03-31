@@ -47,6 +47,10 @@ void GDB_IncrementServerReferenceCount(GDBServer *server);
 void GDB_DecrementServerReferenceCount(GDBServer *server);
 
 void GDB_RunServer(GDBServer *server);
+
+void GDB_LockAllContexts(GDBServer *server);
+void GDB_UnlockAllContexts(GDBServer *server);
+
 GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPort);
 
 int GDB_AcceptClient(GDBContext *ctx);

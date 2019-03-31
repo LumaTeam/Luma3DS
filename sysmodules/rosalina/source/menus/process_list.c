@@ -52,9 +52,16 @@ extern GDBServer gdbServer;
 static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *info)
 {
     const char *checkbox;
-    u32 id;
-    for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
-    checkbox = !gdbServer.super.running ? "" : (id < MAX_DEBUG ? "(x) " : "( ) ");
+    u32 id = 0;
+
+    if(gdbServer.super.running)
+    {
+        GDB_LockAllContexts(&gdbServer);
+        for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
+        checkbox = id < MAX_DEBUG ? "(x) " : "( ) ";
+    }
+    else
+        checkbox = "";
 
     char commentBuf[23 + 1] = { 0 }; // exactly the size of "Remote: 255.255.255.255"
     memset(commentBuf, ' ', 23);
@@ -77,6 +84,8 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
         }
     }
 
+    if (gdbServer.super.running)
+        GDB_UnlockAllContexts(&gdbServer);
     return sprintf(out, "%s%-4lu    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
 }
 
@@ -581,6 +590,7 @@ static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
         return;
     }
 
+    GDB_LockAllContexts(&gdbServer);
     u32 id;
     for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
 
@@ -610,6 +620,8 @@ static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
         if (ctx != NULL)
             ctx->pid = info->pid;
     }
+
+    GDB_UnlockAllContexts(&gdbServer);
 }
 
 s32 ProcessListMenu_FetchInfo(void)
