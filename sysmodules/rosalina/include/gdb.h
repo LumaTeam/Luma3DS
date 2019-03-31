@@ -72,7 +72,7 @@ typedef enum GDBState
     GDB_STATE_CONNECTED,
     GDB_STATE_NOACK_SENT,
     GDB_STATE_NOACK,
-    GDB_STATE_CLOSING
+    GDB_STATE_DETACHING
 } GDBState;
 
 typedef struct ThreadInfo
@@ -81,9 +81,12 @@ typedef struct ThreadInfo
     u32 tls;
 } ThreadInfo;
 
+struct GDBServer;
+
 typedef struct GDBContext
 {
     sock_ctx super;
+    struct GDBServer *parent;
 
     RecursiveLock lock;
     u16 localPort;
@@ -98,7 +101,7 @@ typedef struct GDBContext
     u32 currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
     u32 totalNbCreatedThreads;
 
-    Handle clientAcceptedEvent, continuedEvent;
+    Handle processAttachedEvent, continuedEvent;
     Handle eventToWaitFor;
 
     bool catchThreadEvents;
@@ -130,4 +133,8 @@ typedef int (*GDBCommandHandler)(GDBContext *ctx);
 
 void GDB_InitializeContext(GDBContext *ctx);
 void GDB_FinalizeContext(GDBContext *ctx);
+
+Result GDB_AttachToProcess(GDBContext *ctx);
+void GDB_DetachFromProcess(GDBContext *ctx);
+
 GDB_DECLARE_HANDLER(Unsupported);

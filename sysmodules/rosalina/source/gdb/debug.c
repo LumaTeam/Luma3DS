@@ -43,13 +43,13 @@
 
 GDB_DECLARE_HANDLER(Detach)
 {
-    ctx->state = GDB_STATE_CLOSING;
+    ctx->state = GDB_STATE_DETACHING;
     return GDB_ReplyOk(ctx);
 }
 
 GDB_DECLARE_HANDLER(Kill)
 {
-    ctx->state = GDB_STATE_CLOSING;
+    ctx->state = GDB_STATE_DETACHING;
     ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
     return 0;
 }
@@ -480,7 +480,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 */
 int GDB_HandleDebugEvents(GDBContext *ctx)
 {
-    if(ctx->state == GDB_STATE_CLOSING)
+    if(ctx->state == GDB_STATE_DETACHING)
         return -1;
 
     DebugEventInfo info;

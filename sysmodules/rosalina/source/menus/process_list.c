@@ -71,7 +71,7 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
 
     else if(gdbServer.super.running && id < MAX_DEBUG)
     {
-        if(gdbServer.ctxs[id].state >= GDB_STATE_CONNECTED && gdbServer.ctxs[id].state < GDB_STATE_CLOSING)
+        if(gdbServer.ctxs[id].state >= GDB_STATE_CONNECTED && gdbServer.ctxs[id].state < GDB_STATE_DETACHING)
         {
             u8 *addr = (u8 *)&gdbServer.ctxs[id].super.addr_in.sin_addr;
             checkbox = "(A) ";

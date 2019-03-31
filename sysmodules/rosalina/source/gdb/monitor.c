@@ -42,11 +42,13 @@ void GDB_RunMonitor(GDBServer *server)
 
     do
     {
+        GDB_LockAllContexts(server);
         for(int i = 0; i < MAX_DEBUG; i++)
         {
             GDBContext *ctx = &server->ctxs[i];
             handles[3 + i] = ctx->eventToWaitFor;
         }
+        GDB_UnlockAllContexts(server);
 
         s32 idx = -1;
         r = svcWaitSynchronizationN(&idx, handles, 3 + MAX_DEBUG, false, -1LL);
@@ -60,15 +62,15 @@ void GDB_RunMonitor(GDBServer *server)
             GDBContext *ctx = &server->ctxs[idx - 3];
 
             RecursiveLock_Lock(&ctx->lock);
-            if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
+            if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_DETACHING)
             {
-                svcClearEvent(ctx->clientAcceptedEvent);
-                ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+                svcClearEvent(ctx->processAttachedEvent);
+                ctx->eventToWaitFor = ctx->processAttachedEvent;
                 RecursiveLock_Unlock(&ctx->lock);
                 continue;
             }
 
-            if(ctx->eventToWaitFor == ctx->clientAcceptedEvent)
+            if(ctx->eventToWaitFor == ctx->processAttachedEvent)
                 ctx->eventToWaitFor = ctx->continuedEvent;
             else if(ctx->eventToWaitFor == ctx->continuedEvent)
                 ctx->eventToWaitFor = ctx->debug;
@@ -82,8 +84,8 @@ void GDB_RunMonitor(GDBServer *server)
                     while(GDB_HandleDebugEvents(ctx) != -1) // until we've got all the remaining debug events
                         svcSleepThread(1 * 1000 * 1000LL); // sleep just in case
 
-                    svcClearEvent(ctx->clientAcceptedEvent);
-                    ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+                    svcClearEvent(ctx->processAttachedEvent);
+                    ctx->eventToWaitFor = ctx->processAttachedEvent;
                 }
             }
 
