@@ -63,6 +63,7 @@ typedef enum GDBFlags
     GDB_FLAG_USED  = 2,
     GDB_FLAG_PROCESS_CONTINUING = 4,
     GDB_FLAG_TERMINATE_PROCESS = 8,
+    GDB_FLAG_ATTACHED_AT_START = 16,
 } GDBFlags;
 
 typedef enum GDBState
@@ -94,8 +95,8 @@ typedef struct GDBContext
     Handle debug;
     ThreadInfo threadInfos[MAX_DEBUG_THREAD];
     u32 nbThreads;
-
     u32 currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
+    u32 totalNbCreatedThreads;
 
     Handle clientAcceptedEvent, continuedEvent;
     Handle eventToWaitFor;

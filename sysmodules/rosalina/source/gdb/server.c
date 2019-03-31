@@ -87,6 +87,9 @@ void GDB_RunServer(GDBServer *server)
     server_bind(&server->super, GDB_PORT_BASE);
     server_bind(&server->super, GDB_PORT_BASE + 1);
     server_bind(&server->super, GDB_PORT_BASE + 2);
+
+    server_bind(&server->super, GDB_PORT_BASE + 3); // next application
+
     server_run(&server->super);
 }
 
@@ -152,18 +155,51 @@ GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPo
 int GDB_AcceptClient(GDBContext *ctx)
 {
     RecursiveLock_Lock(&ctx->lock);
-    Result r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
+    Result r;
+
+    // Two cases: attached during execution, or started attached
+    // The second case will have, after RunQueuedProcess: attach process, debugger break, attach thread (with creator = 0)
+
+    if (!(ctx->flags & GDB_FLAG_ATTACHED_AT_START))
+        svcDebugActiveProcess(&ctx->debug, ctx->pid);
+    else
+    {
+        r = 0;
+    }
     if(R_SUCCEEDED(r))
     {
+        // Note: ctx->pid will be (re)set while processing 'attach process'
         DebugEventInfo *info = &ctx->latestDebugEvent;
         ctx->state = GDB_STATE_CONNECTED;
         ctx->processExited = ctx->processEnded = false;
         ctx->latestSentPacketSize = 0;
-        while(R_SUCCEEDED(svcGetProcessDebugEvent(info, ctx->debug)) && info->type != DBGEVENT_EXCEPTION &&
-              info->exception.type != EXCEVENT_ATTACH_BREAK)
+        if (!(ctx->flags & GDB_FLAG_ATTACHED_AT_START))
         {
+            while(R_SUCCEEDED(svcGetProcessDebugEvent(info, ctx->debug)) &&
+                info->type != DBGEVENT_EXCEPTION &&
+                info->exception.type != EXCEVENT_ATTACH_BREAK)
+            {
+                GDB_PreprocessDebugEvent(ctx, info);
+                svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
+            }
+        }
+        else
+        {
+            // Attach process, debugger break
+            for(u32 i = 0; i < 2; i++)
+            {
+                if (R_FAILED(svcGetProcessDebugEvent(info, ctx->debug)))
+                    return -1;
+                GDB_PreprocessDebugEvent(ctx, info);
+                if (R_FAILED(svcContinueDebugEvent(ctx->debug, ctx->continueFlags)))
+                    return -1;
+            }
+
+            svcWaitSynchronization(ctx->debug, -1LL);
+            if (R_FAILED(svcGetProcessDebugEvent(info, ctx->debug)))
+                return -1; //svcBreak(0);
+            // Attach thread
             GDB_PreprocessDebugEvent(ctx, info);
-            svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
         }
     }
     else
@@ -217,15 +253,12 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
 {
     GDB_LockAllContexts(server);
     GDBContext *ctx = NULL;
-    if (port >= GDB_PORT_BASE && port < GDB_PORT_BASE + MAX_DEBUG)
+    for (u32 i = 0; i < MAX_DEBUG; i++)
     {
-        for (u32 i = 0; i < MAX_DEBUG; i++)
+        if ((server->ctxs[i].flags & GDB_FLAG_SELECTED) && server->ctxs[i].localPort == port)
         {
-            if ((server->ctxs[i].flags & GDB_FLAG_SELECTED) && server->ctxs[i].localPort == port)
-            {
-                ctx = &server->ctxs[i];
-                break;
-            }
+            ctx = &server->ctxs[i];
+            break;
         }
     }
 
@@ -277,6 +310,7 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
     ctx->nbThreads = 0;
+    ctx->totalNbCreatedThreads = 0;
     memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
     ctx->catchThreadEvents = false;
     ctx->enableExternalMemoryAccess = false;

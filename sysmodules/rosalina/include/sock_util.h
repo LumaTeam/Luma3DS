@@ -31,7 +31,7 @@
 #include <poll.h>
 #include <netinet/in.h>
 
-#define MAX_PORTS 3
+#define MAX_PORTS (3+1)
 #define MAX_CTXS  (2 * MAX_PORTS)
 
 struct sock_server;

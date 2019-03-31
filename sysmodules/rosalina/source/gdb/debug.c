@@ -196,12 +196,19 @@ void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
 {
     switch(info->type)
     {
+        case DBGEVENT_ATTACH_PROCESS:
+        {
+            ctx->pid = info->attach_process.process_id;
+            break;
+        }
+
         case DBGEVENT_ATTACH_THREAD:
         {
             if(ctx->nbThreads == MAX_DEBUG_THREAD)
                 svcBreak(USERBREAK_ASSERT);
             else
             {
+                ++ctx->totalNbCreatedThreads;
                 ctx->threadInfos[ctx->nbThreads].id = info->thread_id;
                 ctx->threadInfos[ctx->nbThreads++].tls = info->attach_thread.thread_local_storage;
             }
@@ -286,7 +293,14 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_ATTACH_THREAD:
         {
-            if(info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)
+            if((ctx->flags & GDB_FLAG_ATTACHED_AT_START) && ctx->totalNbCreatedThreads == 1)
+            {
+                // Main thread created
+                ctx->currentThreadId = info->thread_id;
+                GDB_ParseCommonThreadInfo(buffer, ctx, SIGINT);
+                return GDB_SendFormattedPacket(ctx, "%s", buffer);
+            }
+            else if(info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)
                 break; // Dismissed
             else
             {
@@ -482,7 +496,6 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
                                 (info.type == DBGEVENT_ATTACH_THREAD && (info.attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)) ||
                                 (info.type == DBGEVENT_EXIT_THREAD && (info.exit_thread.reason >= EXITTHREAD_EVENT_EXIT_PROCESS || !ctx->catchThreadEvents)) ||
                                 info.type == DBGEVENT_EXIT_PROCESS || !(info.flags & 1);
-
 
     if(continueAutomatically)
     {
