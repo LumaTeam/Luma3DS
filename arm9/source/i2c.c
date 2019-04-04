@@ -214,10 +214,8 @@ bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const u8 *in, u32 size)
 
 u8 I2C_readReg(I2cDevice devId, u8 regAddr)
 {
-    // note: don't use it in itcm code
     u8 data;
     if(!I2C_readRegBuf(devId, regAddr, &data, 1)) return 0xFF;
-    wait(3);
     return data;
 }
 
