@@ -549,6 +549,28 @@ u32 patchUnitInfoValueSet(u8 *pos, u32 size)
     return 0;
 }
 
+u32 patchP9AMTicketWrapperZeroKeyIV(u8 *pos, u32 size, u32 firmVersion)
+{
+    static const u8 __rt_memclr_pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x04, 0x00, 0x51, 0xE3, 0x07, 0x00, 0x00, 0x3A};
+    static const u8 pattern[] = {0x20, 0x21, 0xA6, 0xA8};
+
+    u32 function = (u32)memsearch(pos, __rt_memclr_pattern, size, sizeof(__rt_memclr_pattern));
+    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(function == 0 || off == NULL) return firmVersion == 0xFFFFFFFF ? 0 : 1;
+
+    s32 opjumpdistance = (s32)(function - ((u32)&off[2])) / 2;
+
+    //Beyond limit
+    if(opjumpdistance < -0x1fffff || opjumpdistance > 0x1fffff) return 1;
+
+    //r0 and r1 for old call are already correct for this one 
+    //BLX __rt_memclr
+    off[1] = 0xE800F000U | (((u32)opjumpdistance & 0x7FF) << 16) | (((u32)opjumpdistance >> 11) & 0x3FF) | (((u32)opjumpdistance >> 21) & 0x400);
+
+    return 0;
+}
+
 u32 patchLgySignatureChecks(u8 *pos, u32 size)
 {
     static const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
@@ -664,28 +686,6 @@ u32 patchAgbBootSplash(u8 *pos, u32 size)
     if(off == NULL) return 1;
 
     off[2] = 0x26;
-
-    return 0;
-}
-
-u32 patchP9AMTicketWrapperZeroKeyIV(u8* pos, u32 size)
-{
-    static const u8 __rt_memclr_pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x04, 0x00, 0x51, 0xE3, 0x07, 0x00, 0x00, 0x3A};
-    static const u8 pattern[] = {0x20, 0x21, 0xA6, 0xA8};
-
-    u32 function = (u32)memsearch(pos, __rt_memclr_pattern, size, sizeof(__rt_memclr_pattern));
-    u32 *off = (u32*)memsearch(pos, pattern, size, sizeof(pattern));
-
-    if(function == 0 || off == NULL) return 1;
-
-    s32 opjumpdistance = (s32)(function - ((u32)&off[2])) / 2;
-
-    //beyond limit
-    if(opjumpdistance < -0x1fffff || opjumpdistance > 0x1fffff) return 1;
-
-    //r0 and r1 for old call are already correctly for this one 
-    //BLX __rt_memclr
-    off[1] = 0xE800F000U | (((u32)opjumpdistance & 0x7FF) << 16) | (((u32)opjumpdistance >> 11) & 0x3FF) | (((u32)opjumpdistance >> 21) & 0x400);
 
     return 0;
 }
