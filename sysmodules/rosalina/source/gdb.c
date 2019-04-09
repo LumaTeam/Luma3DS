@@ -178,7 +178,6 @@ void GDB_DetachFromProcess(GDBContext *ctx)
     ctx->nbThreads = 0;
     ctx->totalNbCreatedThreads = 0;
     memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
-    ctx->catchThreadEvents = false;
 }
 
 GDB_DECLARE_HANDLER(Unsupported)

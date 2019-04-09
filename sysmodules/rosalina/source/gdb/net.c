@@ -141,7 +141,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
         return -1;
     if(ctx->buffer[0] == '+') // GDB sometimes acknowleges TCP acknowledgment packets (yes...). IDA does it properly
     {
-        if(ctx->state == GDB_STATE_NOACK)
+        if(ctx->flags & GDB_FLAG_NOACK)
             return -1;
 
         // Consume it
@@ -193,7 +193,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
         ctx->commandEnd = ctx->buffer;
     }
 
-    if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_NOACK)
+    if(!(ctx->flags & GDB_FLAG_NOACK))
     {
         int r2 = soc_send(ctx->super.sockfd, "+", 1, 0);
         if(r2 != 1)
@@ -201,12 +201,12 @@ int GDB_ReceivePacket(GDBContext *ctx)
     }
 
     if(ctx->state == GDB_STATE_NOACK_SENT)
-        ctx->state = GDB_STATE_NOACK;
+        ctx->flags |= GDB_FLAG_NOACK;
 
     return r;
 
 packet_error:
-    if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_NOACK)
+    if(!(ctx->flags & GDB_FLAG_NOACK))
     {
         r = soc_send(ctx->super.sockfd, "-", 1, 0);
         if(r != 1)

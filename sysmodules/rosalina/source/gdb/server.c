@@ -205,6 +205,9 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->enableExternalMemoryAccess = false;
     ctx->flags = (GDBFlags)0;
     ctx->state = GDB_STATE_DISCONNECTED;
+
+    ctx->catchThreadEvents = false;
+
     RecursiveLock_Unlock(&ctx->lock);
 }
 
