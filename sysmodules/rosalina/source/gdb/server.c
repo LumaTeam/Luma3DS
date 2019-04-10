@@ -152,6 +152,19 @@ GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPo
     return ctx;
 }
 
+GDBContext *GDB_FindAllocatedContextByPid(GDBServer *server, u32 pid)
+{
+    GDB_LockAllContexts(server);
+    GDBContext *ctx = NULL;
+    for(u32 i = 0; i < MAX_DEBUG; i++)
+    {
+        if((server->ctxs[i].flags & GDB_FLAG_SELECTED) && server->ctxs[i].pid == pid)
+            ctx = &server->ctxs[i];
+    }
+    GDB_UnlockAllContexts(server);
+    return ctx;
+}
+
 int GDB_AcceptClient(GDBContext *ctx)
 {
     Result r;

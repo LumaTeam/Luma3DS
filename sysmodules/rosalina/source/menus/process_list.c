@@ -52,13 +52,13 @@ extern GDBServer gdbServer;
 static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *info)
 {
     const char *checkbox;
-    u32 id = 0;
+    GDBContext *ctx = NULL;
 
     if(gdbServer.super.running)
     {
         GDB_LockAllContexts(&gdbServer);
-        for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
-        checkbox = id < MAX_DEBUG ? "(x) " : "( ) ";
+        ctx = GDB_FindAllocatedContextByPid(&gdbServer, info->pid);
+        checkbox = ctx != NULL ? "(x) " : "( ) ";
     }
     else
         checkbox = "";
@@ -69,18 +69,18 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
     if(info->isZombie)
         memcpy(commentBuf, "Zombie", 7);
 
-    else if(gdbServer.super.running && id < MAX_DEBUG)
+    else if(gdbServer.super.running && ctx != NULL)
     {
-        if(gdbServer.ctxs[id].state >= GDB_STATE_CONNECTED && gdbServer.ctxs[id].state < GDB_STATE_DETACHING)
+        if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_DETACHING)
         {
-            u8 *addr = (u8 *)&gdbServer.ctxs[id].super.addr_in.sin_addr;
+            u8 *addr = (u8 *)&ctx->super.addr_in.sin_addr;
             checkbox = "(A) ";
             sprintf(commentBuf, "Remote: %hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         }
-        else if (gdbServer.ctxs[id].localPort >= GDB_PORT_BASE && gdbServer.ctxs[id].localPort < GDB_PORT_BASE + MAX_DEBUG)
+        else if (ctx->localPort >= GDB_PORT_BASE && ctx->localPort < GDB_PORT_BASE + MAX_DEBUG)
         {
             checkbox = "(W) ";
-            sprintf(commentBuf, "Port: %hu", gdbServer.ctxs[id].localPort);
+            sprintf(commentBuf, "Port: %hu", ctx->localPort);
         }
     }
 
@@ -591,12 +591,11 @@ static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
     }
 
     GDB_LockAllContexts(&gdbServer);
-    u32 id;
-    for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
+    GDBContext *ctx = NULL;
+    ctx = GDB_FindAllocatedContextByPid(&gdbServer, info->pid);
 
-    if(id < MAX_DEBUG)
+    if(ctx != NULL)
     {
-        GDBContext *ctx = &gdbServer.ctxs[id];
         if(ctx->flags & GDB_FLAG_USED)
         {
             RecursiveLock_Lock(&ctx->lock);
@@ -606,7 +605,7 @@ static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
             while(ctx->super.should_close)
                 svcSleepThread(12 * 1000 * 1000LL);
         }
-        else if (gdbServer.ctxs[id].localPort >= GDB_PORT_BASE && gdbServer.ctxs[id].localPort < GDB_PORT_BASE + MAX_DEBUG)
+        else if (ctx->localPort >= GDB_PORT_BASE && ctx->localPort < GDB_PORT_BASE + MAX_DEBUG)
         {
             RecursiveLock_Lock(&ctx->lock);
             ctx->flags &= ~GDB_FLAG_SELECTED;
