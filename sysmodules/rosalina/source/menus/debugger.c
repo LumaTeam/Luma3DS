@@ -73,7 +73,7 @@ void debuggerSetNextApplicationDebugHandle(Handle debug)
     GDB_LockAllContexts(&gdbServer);
     nextApplicationGdbCtx->debug = debug;
     if (debug == 0)
-        nextApplicationGdbCtx->flags = (GDBFlags)0;
+        nextApplicationGdbCtx->flags = 0;
     else
         nextApplicationGdbCtx->flags |= GDB_FLAG_ATTACHED_AT_START;
     nextApplicationGdbCtx = NULL;
