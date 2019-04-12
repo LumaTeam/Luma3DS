@@ -144,17 +144,17 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Processes)
         if(ctx->processesOsInfoXmlData[0] == 0)
         {
             static const char header[] =
-            "<?xml version=\"1.0\"?>\n"
-            "<!DOCTYPE target SYSTEM \"osdata.dtd\">\n"
-            "<osdata type=\"processes\">\n";
+            /*"<?xml version=\"1.0\"?>"
+            "<!DOCTYPE target SYSTEM \"osdata.dtd\">" IDA rejects the xml header*/
+            "<osdata type=\"processes\">";
 
             static const char item[] =
-            "  <item>\n"
-            "    <column name=\"pid\">%lu</column>\n"
-            "    <column name=\"command\">%s</column>\n"
-            "  </item>\n";
+            "<item>"
+            "<column name=\"pid\">%lu</column>"
+            "<column name=\"command\">%s</column>"
+            "</item>";
 
-            static const char footer[] = "</osdata>\n";
+            static const char footer[] = "</osdata>";
 
             int n;
             u32 pos = 0;

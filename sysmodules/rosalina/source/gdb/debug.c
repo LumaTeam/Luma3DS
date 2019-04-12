@@ -25,6 +25,7 @@
 */
 
 #include "gdb/debug.h"
+#include "gdb/server.h"
 #include "gdb/verbose.h"
 #include "gdb/net.h"
 #include "gdb/thread.h"
@@ -35,6 +36,23 @@
 #include <stdlib.h>
 #include <signal.h>
 
+GDB_DECLARE_VERBOSE_HANDLER(Attach)
+{
+    // Extended remote only
+    if (!(ctx->flags & GDB_FLAG_EXTENDED_REMOTE))
+        return GDB_ReplyErrno(ctx, EPERM);
+
+    u32 pid;
+    if(GDB_ParseHexIntegerList(&pid, ctx->commandData, 1, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    RecursiveLock_Lock(&ctx->lock);
+    ctx->pid = pid;
+    Result r = GDB_AttachToProcess(ctx);
+    RecursiveLock_Unlock(&ctx->lock);
+    return R_SUCCEEDED(r) ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_ReplyErrno(ctx, EPERM);
+}
+
 /*
     Since we can't select particular threads to continue (and that's uncompliant behavior):
         - if we continue the current thread, continue all threads
@@ -44,6 +62,15 @@
 GDB_DECLARE_HANDLER(Detach)
 {
     ctx->state = GDB_STATE_DETACHING;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+    {
+        // detach immediately
+        RecursiveLock_Lock(&ctx->lock);
+        svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
+        GDB_DetachFromProcess(ctx);
+        ctx->flags = GDB_FLAG_USED;
+        RecursiveLock_Unlock(&ctx->lock);
+    }
     return GDB_ReplyOk(ctx);
 }
 
@@ -51,6 +78,14 @@ GDB_DECLARE_HANDLER(Kill)
 {
     ctx->state = GDB_STATE_DETACHING;
     ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+    {
+        // detach & kill immediately
+        RecursiveLock_Lock(&ctx->lock);
+        svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
+        GDB_DetachFromProcess(ctx);
+        RecursiveLock_Unlock(&ctx->lock);
+    }
     return 0;
 }
 
@@ -153,7 +188,7 @@ GDB_DECLARE_VERBOSE_HANDLER(Continue)
 
 GDB_DECLARE_HANDLER(GetStopReason)
 {
-    return GDB_SendStopReply(ctx, &ctx->latestDebugEvent);
+    return ctx->debug != 0 ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_SendPacket(ctx, "W00", 3); // "process exited" if nothing
 }
 
 static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)

@@ -26,6 +26,7 @@
 
 #include "gdb.h"
 #include "gdb/net.h"
+#include "gdb/server.h"
 
 #include "gdb/debug.h"
 
@@ -138,8 +139,6 @@ void GDB_DetachFromProcess(GDBContext *ctx)
     svcKernelSetState(0x10002, ctx->pid, false);
     memset(ctx->svcMask, 0, 32);
 
-    memset(ctx->memoryOsInfoXmlData, 0, sizeof(ctx->memoryOsInfoXmlData));
-    memset(ctx->processesOsInfoXmlData, 0, sizeof(ctx->processesOsInfoXmlData));
     memset(ctx->threadListData, 0, sizeof(ctx->threadListData));
     ctx->threadListDataPos = 0;
 
@@ -183,4 +182,11 @@ void GDB_DetachFromProcess(GDBContext *ctx)
 GDB_DECLARE_HANDLER(Unsupported)
 {
     return GDB_ReplyEmpty(ctx);
+}
+
+GDB_DECLARE_HANDLER(EnableExtendedMode)
+{
+
+    ctx->flags |= GDB_FLAG_EXTENDED_REMOTE;
+    return GDB_ReplyOk(ctx);
 }
