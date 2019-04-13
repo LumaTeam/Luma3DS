@@ -38,6 +38,7 @@ static const struct
     { "Cont?", GDB_VERBOSE_HANDLER(ContinueSupported) },
     { "Cont",  GDB_VERBOSE_HANDLER(Continue) },
     { "MustReplyEmpty", GDB_HANDLER(Unsupported) },
+    { "Run", GDB_VERBOSE_HANDLER(Run) },
 };
 
 GDB_DECLARE_HANDLER(VerboseCommand)

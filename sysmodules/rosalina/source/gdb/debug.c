@@ -24,6 +24,7 @@
 *         reasonable ways as different from the original version.
 */
 
+#define _GNU_SOURCE // for strchrnul
 #include "gdb/debug.h"
 #include "gdb/server.h"
 #include "gdb/verbose.h"
@@ -35,6 +36,105 @@
 
 #include <stdlib.h>
 #include <signal.h>
+#include "pmdbgext.h"
+
+static void GDB_DetachImmediatelyExtended(GDBContext *ctx)
+{
+    // detach immediately
+    RecursiveLock_Lock(&ctx->lock);
+    svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
+
+    ctx->state = GDB_STATE_DETACHING;
+    GDB_DetachFromProcess(ctx);
+    ctx->flags &= GDB_FLAG_PROC_RESTART_MASK;
+    RecursiveLock_Unlock(&ctx->lock);
+}
+
+GDB_DECLARE_VERBOSE_HANDLER(Run)
+{
+    // Note: only titleId [mediaType [launchFlags]] is supported, and the launched title shouldn't rely on APT
+    // all 3 parameters should be hex-encoded.
+
+    // Extended remote only
+    if (!(ctx->flags & GDB_FLAG_EXTENDED_REMOTE))
+        return GDB_ReplyErrno(ctx, EPERM);
+
+    u64 titleId;
+    u32 mediaType = MEDIATYPE_NAND;
+    u32 launchFlags = PMLAUNCHFLAG_LOAD_DEPENDENCIES;
+
+    char args[3][32] = {{0}};
+    char *pos = ctx->commandData;
+    for (u32 i = 0; i < 3 && *pos != 0; i++)
+    {
+        char *pos2 = strchrnul(pos, ';');
+        u32 dist = pos2 - pos;
+        if (dist < 2)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+        if (dist % 2 == 1)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        if (dist / 2 > 16) // buffer overflow check
+            return GDB_ReplyErrno(ctx, EINVAL);
+
+        u32 n = GDB_DecodeHex(args[i], pos, dist / 2);
+        if (n == 0)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+        pos = *pos2 == 0 ? pos2 : pos2 + 1;
+    }
+
+    if (args[0][0] == 0)
+        return GDB_ReplyErrno(ctx, EINVAL); // first arg mandatory
+
+    if (GDB_ParseIntegerList64(&titleId, args[0], 1, 0, 0, 16, false) == NULL)
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    if (args[1][0] != 0 && (GDB_ParseIntegerList(&mediaType, args[1], 1, 0, 0, 16, true) == NULL || mediaType >= 0x100))
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    if (args[2][0] != 0 && GDB_ParseIntegerList(&launchFlags, args[2], 1, 0, 0, 16, true) == NULL)
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    FS_ProgramInfo progInfo;
+    progInfo.mediaType = (FS_MediaType)mediaType;
+    progInfo.programId = titleId;
+
+    RecursiveLock_Lock(&ctx->lock);
+    Result r = GDB_CreateProcess(ctx, &progInfo, launchFlags);
+
+    if (R_FAILED(r))
+    {
+        if(ctx->debug != 0)
+            GDB_DetachImmediatelyExtended(ctx);
+        RecursiveLock_Unlock(&ctx->lock);
+        return GDB_ReplyErrno(ctx, EPERM);
+    }
+
+    RecursiveLock_Unlock(&ctx->lock);
+    return R_SUCCEEDED(r) ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_ReplyErrno(ctx, EPERM);
+}
+
+GDB_DECLARE_HANDLER(Restart)
+{
+    // Note: removed from gdb
+    // Extended remote only & process must have been created
+    if (!(ctx->flags & GDB_FLAG_EXTENDED_REMOTE) || !(ctx->flags & GDB_FLAG_CREATED))
+        return GDB_ReplyErrno(ctx, EPERM);
+
+    FS_ProgramInfo progInfo = ctx->launchedProgramInfo;
+    u32 launchFlags = ctx->launchedProgramLaunchFlags;
+
+    ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        GDB_DetachImmediatelyExtended(ctx);
+    
+    RecursiveLock_Lock(&ctx->lock);
+    Result r = GDB_CreateProcess(ctx, &progInfo, launchFlags);
+    if (R_FAILED(r) && ctx->debug != 0)
+        GDB_DetachImmediatelyExtended(ctx);
+    RecursiveLock_Unlock(&ctx->lock);
+    return 0;
+}
 
 GDB_DECLARE_VERBOSE_HANDLER(Attach)
 {
@@ -49,6 +149,8 @@ GDB_DECLARE_VERBOSE_HANDLER(Attach)
     RecursiveLock_Lock(&ctx->lock);
     ctx->pid = pid;
     Result r = GDB_AttachToProcess(ctx);
+    if(R_FAILED(r))
+        GDB_DetachImmediatelyExtended(ctx);
     RecursiveLock_Unlock(&ctx->lock);
     return R_SUCCEEDED(r) ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_ReplyErrno(ctx, EPERM);
 }
@@ -63,14 +165,7 @@ GDB_DECLARE_HANDLER(Detach)
 {
     ctx->state = GDB_STATE_DETACHING;
     if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
-    {
-        // detach immediately
-        RecursiveLock_Lock(&ctx->lock);
-        svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
-        GDB_DetachFromProcess(ctx);
-        ctx->flags = GDB_FLAG_USED;
-        RecursiveLock_Unlock(&ctx->lock);
-    }
+        GDB_DetachImmediatelyExtended(ctx);
     return GDB_ReplyOk(ctx);
 }
 
@@ -79,13 +174,8 @@ GDB_DECLARE_HANDLER(Kill)
     ctx->state = GDB_STATE_DETACHING;
     ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
     if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
-    {
-        // detach & kill immediately
-        RecursiveLock_Lock(&ctx->lock);
-        svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
-        GDB_DetachFromProcess(ctx);
-        RecursiveLock_Unlock(&ctx->lock);
-    }
+        GDB_DetachImmediatelyExtended(ctx);
+
     return 0;
 }
 

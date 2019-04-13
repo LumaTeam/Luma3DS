@@ -120,13 +120,13 @@ GDB_DECLARE_QUERY_HANDLER(Supported)
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 {
-    ctx->state = GDB_STATE_NOACK_SENT;
+    ctx->noAckSent = true;
     return GDB_ReplyOk(ctx);
 }
 
 GDB_DECLARE_QUERY_HANDLER(Attached)
 {
-    return GDB_SendPacket(ctx, "1", 1);
+    return GDB_SendPacket(ctx, (ctx->flags & GDB_FLAG_CREATED) ? "0" :  "1", 1);
 }
 
 GDB_DECLARE_QUERY_HANDLER(CatchSyscalls)

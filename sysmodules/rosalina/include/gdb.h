@@ -30,6 +30,7 @@
 #include <3ds/svc.h>
 #include <3ds/synchronization.h>
 #include <3ds/result.h>
+#include "pmdbgext.h"
 #include "sock_util.h"
 #include "memory.h"
 
@@ -64,17 +65,19 @@ enum
     GDB_FLAG_ALLOCATED_MASK = GDB_FLAG_SELECTED | GDB_FLAG_USED,
     GDB_FLAG_EXTENDED_REMOTE = 4,
     GDB_FLAG_NOACK = 8,
+    GDB_FLAG_PROC_RESTART_MASK = GDB_FLAG_NOACK | GDB_FLAG_EXTENDED_REMOTE | GDB_FLAG_USED,
     GDB_FLAG_PROCESS_CONTINUING = 16,
     GDB_FLAG_TERMINATE_PROCESS = 32,
     GDB_FLAG_ATTACHED_AT_START = 64,
+    GDB_FLAG_CREATED = 128,
 };
 
 typedef enum GDBState
 {
     GDB_STATE_DISCONNECTED,
     GDB_STATE_CONNECTED,
-    GDB_STATE_NOACK_SENT,
-    GDB_STATE_DETACHING
+    GDB_STATE_ATTACHED,
+    GDB_STATE_DETACHING,
 } GDBState;
 
 typedef struct ThreadInfo
@@ -95,9 +98,15 @@ typedef struct GDBContext
 
     u32 flags;
     GDBState state;
+    bool noAckSent;
 
     u32 pid;
     Handle debug;
+
+    // vRun and R (restart) info:
+    FS_ProgramInfo launchedProgramInfo;
+    u32 launchedProgramLaunchFlags;
+
     ThreadInfo threadInfos[MAX_DEBUG_THREAD];
     u32 nbThreads;
     u32 currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
@@ -138,6 +147,7 @@ void GDB_FinalizeContext(GDBContext *ctx);
 
 Result GDB_AttachToProcess(GDBContext *ctx);
 void GDB_DetachFromProcess(GDBContext *ctx);
+Result GDB_CreateProcess(GDBContext *ctx, const FS_ProgramInfo *progInfo, u32 launchFlags);
 
 GDB_DECLARE_HANDLER(Unsupported);
 GDB_DECLARE_HANDLER(EnableExtendedMode);

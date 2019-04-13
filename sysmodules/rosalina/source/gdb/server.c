@@ -158,7 +158,11 @@ GDBContext *GDB_FindAllocatedContextByPid(GDBServer *server, u32 pid)
     GDBContext *ctx = NULL;
     for(u32 i = 0; i < MAX_DEBUG; i++)
     {
-        if((server->ctxs[i].flags & GDB_FLAG_ALLOCATED_MASK) && server->ctxs[i].pid == pid)
+        if(
+            ((server->ctxs[i].flags & GDB_FLAG_SELECTED) ||
+                (server->ctxs[i].state >= GDB_STATE_ATTACHED && server->ctxs[i].state < GDB_STATE_DETACHING))
+            && server->ctxs[i].pid == pid
+        )
             ctx = &server->ctxs[i];
     }
     GDB_UnlockAllContexts(server);
@@ -170,8 +174,12 @@ int GDB_AcceptClient(GDBContext *ctx)
     Result r = 0;
 
     RecursiveLock_Lock(&ctx->lock);
+    ctx->state = GDB_STATE_CONNECTED;
+    ctx->latestSentPacketSize = 0;
+
     if (ctx->flags & GDB_FLAG_SELECTED)
         r = GDB_AttachToProcess(ctx);
+
     RecursiveLock_Unlock(&ctx->lock);
 
     return R_SUCCEEDED(r) ? 0 : -1;
@@ -182,6 +190,7 @@ int GDB_CloseClient(GDBContext *ctx)
     RecursiveLock_Lock(&ctx->lock);
     svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
     GDB_DetachFromProcess(ctx);
+    ctx->state = GDB_STATE_DISCONNECTED;
     RecursiveLock_Unlock(&ctx->lock);
     return 0;
 }
@@ -202,7 +211,6 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
     if (ctx != NULL)
     {
         // Context already tied to a port/selected
-        // Extended remote support disabled
         if (ctx->flags & GDB_FLAG_USED)
         {
             GDB_UnlockAllContexts(server);
@@ -274,6 +282,7 @@ static const struct
     { 'P', GDB_HANDLER(WriteRegister) },
     { 'q', GDB_HANDLER(ReadQuery) },
     { 'Q', GDB_HANDLER(WriteQuery) },
+    { 'R', GDB_HANDLER(Restart) },
     { 'T', GDB_HANDLER(IsThreadAlive) },
     { 'v', GDB_HANDLER(VerboseCommand) },
     { 'X', GDB_HANDLER(WriteMemoryRaw) },

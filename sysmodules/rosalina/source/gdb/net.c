@@ -125,9 +125,45 @@ const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, ch
     return pos;
 }
 
+const char *GDB_ParseIntegerList64(u64 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix)
+{
+    const char *pos = src;
+    const char *endpos;
+    bool ok;
+
+    for(u32 i = 0; i < nb; i++)
+    {
+        u64 n = xstrtoull(pos, (char **)&endpos, (int) base, allowPrefix, &ok);
+        if(!ok || endpos == pos)
+            return NULL;
+
+        if(i != nb - 1)
+        {
+            if(*endpos != sep)
+                return NULL;
+            pos = endpos + 1;
+        }
+        else
+        {
+            if(*endpos != lastSep && *endpos != 0)
+                return NULL;
+            pos = endpos;
+        }
+
+        dst[i] = n;
+    }
+
+    return pos;
+}
+
 const char *GDB_ParseHexIntegerList(u32 *dst, const char *src, u32 nb, char lastSep)
 {
     return GDB_ParseIntegerList(dst, src, nb, ',', lastSep, 16, false);
+}
+
+const char *GDB_ParseHexIntegerList64(u64 *dst, const char *src, u32 nb, char lastSep)
+{
+    return GDB_ParseIntegerList64(dst, src, nb, ',', lastSep, 16, false);
 }
 
 int GDB_ReceivePacket(GDBContext *ctx)
@@ -200,8 +236,11 @@ int GDB_ReceivePacket(GDBContext *ctx)
             return -1;
     }
 
-    if(ctx->state == GDB_STATE_NOACK_SENT)
+    if(ctx->noAckSent)
+    {
         ctx->flags |= GDB_FLAG_NOACK;
+        ctx->noAckSent = false;
+    }
 
     return r;
 

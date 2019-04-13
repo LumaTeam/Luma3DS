@@ -36,6 +36,8 @@ u32 GDB_DecodeHex(void *dst, const char *src, u32 len);
 u32 GDB_UnescapeBinaryData(void *dst, const void *src, u32 len);
 const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix);
 const char *GDB_ParseHexIntegerList(u32 *dst, const char *src, u32 nb, char lastSep);
+const char *GDB_ParseIntegerList64(u64 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix);
+const char *GDB_ParseHexIntegerList64(u64 *dst, const char *src, u32 nb, char lastSep);
 int GDB_ReceivePacket(GDBContext *ctx);
 int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len);
 int GDB_SendFormattedPacket(GDBContext *ctx, const char *packetDataFmt, ...);
