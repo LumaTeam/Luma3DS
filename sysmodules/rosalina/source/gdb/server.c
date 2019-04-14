@@ -32,6 +32,7 @@
 #include "gdb/debug.h"
 #include "gdb/regs.h"
 #include "gdb/mem.h"
+#include "gdb/hio.h"
 #include "gdb/watchpoints.h"
 #include "gdb/breakpoints.h"
 #include "gdb/stop_point.h"
@@ -272,6 +273,7 @@ static const struct
     { 'c', GDB_HANDLER(Continue) },
     { 'C', GDB_HANDLER(Continue) },
     { 'D', GDB_HANDLER(Detach) },
+    { 'F', GDB_HANDLER(HioReply) },
     { 'g', GDB_HANDLER(ReadRegisters) },
     { 'G', GDB_HANDLER(WriteRegisters) },
     { 'H', GDB_HANDLER(SetThreadId) },

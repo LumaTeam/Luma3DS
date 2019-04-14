@@ -28,8 +28,11 @@
 
 #include "gdb.h"
 
-Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len);
-Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len);
+Result GDB_ReadTargetMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len);
+Result GDB_WriteTargetMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len);
+u32 GDB_ReadTargetMemory(void *out, GDBContext *ctx, u32 addr, u32 len);
+u32 GDB_WriteTargetMemory(GDBContext *ctx, const void *in, u32 addr, u32 len);
+
 int GDB_SendMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr, u32 len);
 int GDB_WriteMemory(GDBContext *ctx, const void *buf, u32 addr, u32 len);
 u32 GDB_SearchMemory(bool *found, GDBContext *ctx, u32 addr, u32 len, const void *pattern, u32 patternLen);

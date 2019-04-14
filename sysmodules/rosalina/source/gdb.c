@@ -180,6 +180,9 @@ void GDB_DetachFromProcess(GDBContext *ctx)
     ctx->totalNbCreatedThreads = 0;
     memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
 
+    ctx->currentHioRequestTargetAddr = 0;
+    memset(&ctx->currentHioRequest, 0, sizeof(PackedGdbHioRequest));
+
     ctx->state = GDB_STATE_CONNECTED;
 }
 

@@ -34,7 +34,7 @@ static void *k_memcpy_no_interrupt(void *dst, const void *src, u32 len)
     return memcpy(dst, src, len);
 }
 
-Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
+Result GDB_ReadTargetMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
 {
     s64 TTBCR;
     svcGetSystemInfo(&TTBCR, 0x10002, 0);
@@ -83,7 +83,7 @@ Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
     }
 }
 
-Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
+Result GDB_WriteTargetMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
 {
     s64 TTBCR;
     svcGetSystemInfo(&TTBCR, 0x10002, 0);
@@ -133,12 +133,53 @@ Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
 
             svcFlushEntireDataCache();
             svcInvalidateEntireInstructionCache();
-            Result ret = GDB_WriteMemoryInPage(ctx, PA_FROM_VA_PTR(in), addr, len);
+            Result ret = GDB_WriteTargetMemoryInPage(ctx, PA_FROM_VA_PTR(in), addr, len);
             svcFlushEntireDataCache();
             svcInvalidateEntireInstructionCache();
             return ret;
         }
     }
+}
+
+u32 GDB_ReadTargetMemory(void *out, GDBContext *ctx, u32 addr, u32 len)
+{
+    Result r = 0;
+    u32 remaining = len, total = 0;
+    u8 *out8 = (u8 *)out;
+    do
+    {
+        u32 nb = (remaining > 0x1000 - (addr & 0xFFF)) ? 0x1000 - (addr & 0xFFF) : remaining;
+        r = GDB_ReadTargetMemoryInPage(out8 + total, ctx, addr, nb);
+        if(R_SUCCEEDED(r))
+        {
+            addr += nb;
+            total += nb;
+            remaining -= nb;
+        }
+    }
+    while(remaining > 0 && R_SUCCEEDED(r));
+
+    return total;
+}
+
+u32 GDB_WriteTargetMemory(GDBContext *ctx, const void *in, u32 addr, u32 len)
+{
+    Result r = 0;
+    u32 remaining = len, total = 0;
+    do
+    {
+        u32 nb = (remaining > 0x1000 - (addr & 0xFFF)) ? 0x1000 - (addr & 0xFFF) : remaining;
+        r = GDB_WriteTargetMemoryInPage(ctx, (u8 *)in + total, addr, nb);
+        if(R_SUCCEEDED(r))
+        {
+            addr += nb;
+            total += nb;
+            remaining -= nb;
+        }
+    }
+    while(remaining > 0 && R_SUCCEEDED(r));
+
+    return total;
 }
 
 int GDB_SendMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr, u32 len)
@@ -154,21 +195,7 @@ int GDB_SendMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr,
     if(prefixLen + 2 * len > GDB_BUF_LEN) // gdb shouldn't send requests which responses don't fit in a packet
         return prefix == NULL ? GDB_ReplyErrno(ctx, ENOMEM) : -1;
 
-    Result r = 0;
-    u32 remaining = len, total = 0;
-    do
-    {
-        u32 nb = (remaining > 0x1000 - (addr & 0xFFF)) ? 0x1000 - (addr & 0xFFF) : remaining;
-        r = GDB_ReadMemoryInPage(membuf + total, ctx, addr, nb);
-        if(R_SUCCEEDED(r))
-        {
-            addr += nb;
-            total += nb;
-            remaining -= nb;
-        }
-    }
-    while(remaining > 0 && R_SUCCEEDED(r));
-
+    u32 total = GDB_ReadTargetMemory(membuf, ctx, addr, len);
     if(total == 0)
         return prefix == NULL ? GDB_ReplyErrno(ctx, EFAULT) : -EFAULT;
     else
@@ -180,22 +207,8 @@ int GDB_SendMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr,
 
 int GDB_WriteMemory(GDBContext *ctx, const void *buf, u32 addr, u32 len)
 {
-    Result r = 0;
-    u32 remaining = len, total = 0;
-    do
-    {
-        u32 nb = (remaining > 0x1000 - (addr & 0xFFF)) ? 0x1000 - (addr & 0xFFF) : remaining;
-        r = GDB_WriteMemoryInPage(ctx, (u8 *)buf + total, addr, nb);
-        if(R_SUCCEEDED(r))
-        {
-            addr += nb;
-            total += nb;
-            remaining -= nb;
-        }
-    }
-    while(remaining > 0 && R_SUCCEEDED(r));
-
-    if(R_FAILED(r))
+    u32 total = GDB_WriteTargetMemory(ctx, buf, addr, len);
+    if(total != len)
         return GDB_ReplyErrno(ctx, EFAULT);
     else
         return GDB_ReplyOk(ctx);
@@ -223,7 +236,7 @@ u32 GDB_SearchMemory(bool *found, GDBContext *ctx, u32 addr, u32 len, const void
                     break;
             }
 
-            if(R_FAILED(GDB_ReadMemoryInPage(buf + 0x1000 * nbPages, ctx, addrBase + nbPages * 0x1000, 0x1000)))
+            if(R_FAILED(GDB_ReadTargetMemoryInPage(buf + 0x1000 * nbPages, ctx, addrBase + nbPages * 0x1000, 0x1000)))
                 break;
         }
 

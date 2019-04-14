@@ -28,18 +28,8 @@
 
 #include "gdb.h"
 
-GDB_DECLARE_VERBOSE_HANDLER(Run);
-GDB_DECLARE_HANDLER(Restart);
-GDB_DECLARE_VERBOSE_HANDLER(Attach);
-GDB_DECLARE_HANDLER(Detach);
-GDB_DECLARE_HANDLER(Kill);
-GDB_DECLARE_HANDLER(Break);
-GDB_DECLARE_HANDLER(Continue);
-GDB_DECLARE_VERBOSE_HANDLER(Continue);
-GDB_DECLARE_HANDLER(GetStopReason);
+bool GDB_FetchPackedHioRequest(GDBContext *ctx, u32 addr);
+bool GDB_IsHioInProgress(GDBContext *ctx);
+int GDB_SendCurrentHioRequest(GDBContext *ctx);
 
-void GDB_ContinueExecution(GDBContext *ctx);
-void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info);
-int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info);
-int GDB_HandleDebugEvents(GDBContext *ctx);
-void GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, DebugFlags flags);
+GDB_DECLARE_HANDLER(HioReply);

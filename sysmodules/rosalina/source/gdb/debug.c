@@ -31,6 +31,7 @@
 #include "gdb/net.h"
 #include "gdb/thread.h"
 #include "gdb/mem.h"
+#include "gdb/hio.h"
 #include "gdb/watchpoints.h"
 #include "fmt.h"
 
@@ -190,7 +191,7 @@ GDB_DECLARE_HANDLER(Break)
     }
 }
 
-static void GDB_ContinueExecution(GDBContext *ctx)
+void GDB_ContinueExecution(GDBContext *ctx)
 {
     ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
     svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
@@ -376,6 +377,8 @@ void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
                 info->flags = 1;
                 info->syscall.syscall = sz;
             }
+            else if (info->output_string.string_size == 0)
+                GDB_FetchPackedHioRequest(ctx, info->output_string.string_addr);
 
             break;
         }
@@ -572,25 +575,34 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_OUTPUT_STRING:
         {
-            u32 addr = info->output_string.string_addr;
-            u32 remaining = info->output_string.string_size;
-            u32 sent = 0;
-            int total = 0;
-            while(remaining > 0)
+            // Regular "output string"
+            if (!GDB_IsHioInProgress(ctx))
             {
-                u32 pending = (GDB_BUF_LEN - 1) / 2;
-                pending = pending < remaining ? pending : remaining;
+                u32 addr = info->output_string.string_addr;
+                u32 remaining = info->output_string.string_size;
+                u32 sent = 0;
+                int total = 0;
+                while(remaining > 0)
+                {
+                    u32 pending = (GDB_BUF_LEN - 1) / 2;
+                    pending = pending < remaining ? pending : remaining;
 
-                int res = GDB_SendMemory(ctx, "O", 1, addr + sent, pending);
-                if(res < 0 || (u32) res != 5 + 2 * pending)
-                    break;
+                    int res = GDB_SendMemory(ctx, "O", 1, addr + sent, pending);
+                    if(res < 0 || (u32) res != 5 + 2 * pending)
+                        break;
 
-                sent += pending;
-                remaining -= pending;
-                total += res;
+                    sent += pending;
+                    remaining -= pending;
+                    total += res;
+                }
+
+                return total;
+            }
+            else // HIO
+            {
+                return GDB_SendCurrentHioRequest(ctx);
             }
 
-            return total;
         }
         default:
             break;
@@ -617,7 +629,8 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
     GDB_PreprocessDebugEvent(ctx, &info);
 
     int ret = 0;
-    bool continueAutomatically = info.type == DBGEVENT_OUTPUT_STRING || info.type == DBGEVENT_ATTACH_PROCESS ||
+    bool continueAutomatically = (info.type == DBGEVENT_OUTPUT_STRING  && !GDB_IsHioInProgress(ctx)) ||
+                                info.type == DBGEVENT_ATTACH_PROCESS ||
                                 (info.type == DBGEVENT_ATTACH_THREAD && (info.attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)) ||
                                 (info.type == DBGEVENT_EXIT_THREAD && (info.exit_thread.reason >= EXITTHREAD_EVENT_EXIT_PROCESS || !ctx->catchThreadEvents)) ||
                                 info.type == DBGEVENT_EXIT_PROCESS || !(info.flags & 1);

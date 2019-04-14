@@ -58,6 +58,24 @@ typedef struct Breakpoint
     bool persistent;
 } Breakpoint;
 
+typedef struct PackedGdbHioRequest
+{
+    char magic[4]; // "GDB\x00"
+    u32 version;
+
+    // Request
+    char functionName[16+1];
+    char paramFormat[8+1];
+
+    u32 parameters[8];
+    u32 stringLengths[8];
+
+    // Return
+    int retval;
+    int gdbErrno;
+    bool ctrlC;
+} PackedGdbHioRequest;
+
 enum
 {
     GDB_FLAG_SELECTED = 1,
@@ -127,6 +145,9 @@ typedef struct GDBContext
 
     u32 nbWatchpoints;
     u32 watchpoints[2];
+
+    u32 currentHioRequestTargetAddr;
+    PackedGdbHioRequest currentHioRequest;
 
     bool enableExternalMemoryAccess;
     char *commandData, *commandEnd;
