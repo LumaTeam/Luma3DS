@@ -71,7 +71,7 @@ Result IFile_Read(IFile *file, u64 *total, void *buffer, u32 len)
   while (1)
   {
     res = FSFILE_Read(file->handle, &read, file->pos, buf, left);
-    if (R_FAILED(res))
+    if (R_FAILED(res) || read == 0)
     {
       break;
     }
