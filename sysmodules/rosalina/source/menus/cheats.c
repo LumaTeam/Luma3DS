@@ -887,13 +887,13 @@ static Result Cheat_ReadLine(char* line, u32 lineSize)
 
     char c = '\0';
     u32 idx = 0;
-    while (R_SUCCEEDED(res))
+    while (R_SUCCEEDED(res) && cheatFilePos < sizeof(cheatFileBuffer))
     {
         c = cheatFileBuffer[cheatFilePos++];
         res = c ? 0 : -1;
         if (R_SUCCEEDED(res) && c != '\0')
         {
-            if (c == '\r' && cheatFileBuffer[cheatFilePos] == '\n')
+            if (c == '\r' && cheatFilePos < sizeof(cheatFileBuffer) && cheatFileBuffer[cheatFilePos] == '\n')
             {
                 cheatFilePos++;
                 line[idx++] = '\0';
