@@ -55,10 +55,16 @@ typedef struct CheatDescription
     u64 codes[0];
 } CheatDescription;
 
+typedef struct BufferedFile
+{
+    IFile file;
+    u64 curPos;
+    u64 maxPos;
+    char buffer[512];
+} BufferedFile;
+
 CheatDescription* cheats[1024] = { 0 };
-u8 cheatFileBuffer[16384] = { 0 };
-u32 cheatFilePos = 0;
-u8 cheatBuffer[16384] = { 0 };
+u8 cheatBuffer[32768] = { 0 };
 
 static CheatProcessInfo cheatinfo[0x40] = { 0 };
 
@@ -883,35 +889,95 @@ static void Cheat_AddCode(CheatDescription* cheat, u64 code)
     }
 }
 
-static Result Cheat_ReadLine(char* line)
+static Result BufferedFile_Open(BufferedFile* file, FS_ArchiveID archiveId, FS_Path archivePath, FS_Path filePath, u32 flags)
+{
+    Result res = 0;
+    memset(file->buffer, '\0', sizeof(file->buffer));
+    res = IFile_Open(&file->file, archiveId, archivePath, filePath, flags);
+    if (R_SUCCEEDED(res))
+    {
+        file->curPos = 0;
+        res = IFile_Read(&file->file, &file->maxPos, file->buffer, sizeof(file->buffer));
+    }
+    return res;
+}
+
+static Result BufferedFile_Read(BufferedFile* file, u64* totalRead, void* buffer, u32 len)
+{
+    Result res = 0;
+    if (len == 0)
+    {
+        *totalRead = 0;
+        return 0;
+    }
+    else if (file->curPos + len < file->maxPos)
+    {
+        memcpy(buffer, file->buffer + file->curPos, len);
+        file->curPos += len;
+        *totalRead = len;
+    }
+    else
+    {
+        *totalRead = 0;
+        while(R_SUCCEEDED(res) && file->maxPos != 0 && *totalRead < len)
+        {
+            u32 toRead = file->maxPos - file->curPos < len - *totalRead ? file->maxPos - file->curPos : len - *totalRead;
+            memcpy(buffer + *totalRead, file->buffer + file->curPos, toRead);
+            *totalRead += toRead;
+            file->curPos += toRead;
+            if (file->curPos >= file->maxPos)
+            {
+                res = IFile_Read(&file->file, &file->maxPos, file->buffer, sizeof(file->buffer));
+                file->curPos = 0;
+            }
+        }
+    }
+    return res;
+}
+
+static Result Cheat_ReadLine(BufferedFile* file, char* line, u32 lineSize)
 {
     Result res = 0;
 
-    char c = '\0';
     u32 idx = 0;
-    while (R_SUCCEEDED(res))
+    u64 total = 0;
+    bool lastWasCarriageReturn = false;
+    while (R_SUCCEEDED(res) && idx < lineSize)
     {
-        c = cheatFileBuffer[cheatFilePos++];
-        res = c ? 0 : -1;
-        if (R_SUCCEEDED(res) && c != '\0')
+        res = BufferedFile_Read(file, &total, line + idx, 1);
+        if (total == 0)
         {
-            if (c == '\n' || c == '\r' || idx >= 1023)
+            line[idx] = '\0';
+            return -1;
+        }
+        if (R_SUCCEEDED(res))
+        {
+            if (line[idx] == '\r')
             {
-                line[idx++] = '\0';
-                return idx;
+                lastWasCarriageReturn = true;
+            }
+            else if (line[idx] == '\n')
+            {
+                if (lastWasCarriageReturn)
+                {
+                    line[--idx] = '\0';
+                    return idx;
+                }
+                else
+                {
+                    line[idx] = '\0';
+                    return idx;
+                }
+            }
+            else if (line[idx] == '\0')
+            {
+                return -1;
             }
             else
             {
-                line[idx++] = c;
+                lastWasCarriageReturn = false;
             }
-        }
-        else
-        {
-            if (idx > 0)
-            {
-                line[idx++] = '\0';
-                return idx;
-            }
+            idx++;
         }
     }
     return res;
@@ -998,6 +1064,22 @@ static u64 Cheat_GetCode(const char *line)
     return tmp;
 }
 
+static char* stripWhitespace(char* in)
+{
+    char* ret = in;
+    while (*ret == ' ' || *ret == '\t')
+    {
+        ret++;
+    }
+    int back = strlen(ret) - 1;
+    while (back > 0 && (ret[back] == ' ' || ret[back] == '\t'))
+    {
+        back--;
+    }
+    ret[back+1] = '\0';
+    return ret;
+}
+
 static void Cheat_LoadCheatsIntoMemory(u64 titleId)
 {
     cheatCount = 0;
@@ -1007,54 +1089,46 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
     char path[64] = { 0 };
     sprintf(path, "/luma/titles/%016llX/cheats.txt", titleId);
 
-    IFile file;
+    BufferedFile file;
 
-    if (R_FAILED(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, path), FS_OPEN_READ)))
+    if (R_FAILED(BufferedFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, path), FS_OPEN_READ)))
     {
         // OK, let's try another source
         sprintf(path, "/cheats/%016llX.txt", titleId);
-        if (R_FAILED(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, path), FS_OPEN_READ))) return;
+        if (R_FAILED(BufferedFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, path), FS_OPEN_READ))) return;
     };
-
-    u64 fileLen = 0;
-    IFile_GetSize(&file, &fileLen);
-    if (fileLen > 16383)
-    {
-        fileLen = 16383;
-    }
-
-    u64 total;
-    IFile_Read(&file, &total, cheatFileBuffer, fileLen);
-    IFile_Close(&file);
-    for (int i = fileLen; i < 16384; i++)
-    {
-        cheatFileBuffer[i] = 0;
-    }
 
     char line[1024] = { 0 };
     Result res = 0;
     CheatDescription* cheat = 0;
-    cheatFilePos = 0;
+    u32 cheatSize = 0;
     do
     {
-        res = Cheat_ReadLine(line);
+        res = Cheat_ReadLine(&file, line, 1024);
         if (R_SUCCEEDED(res))
         {
-            s32 lineLen = strnlen(line, 1023);
+            char* strippedLine = stripWhitespace(line);
+            s32 lineLen = strnlen(strippedLine, 1023);
             if (!lineLen)
             {
                 continue;
             }
-            if (line[0] == '#')
+            if (strippedLine[0] == '#')
             {
                 continue;
             }
-            if (Cheat_IsCodeLine(line))
+            if (Cheat_IsCodeLine(strippedLine))
             {
+                if (cheatSize + sizeof(u64) >= sizeof(cheatBuffer))
+                {
+                    cheatCount--;
+                    break;
+                }
                 if (cheat)
                 {
-                    u64 tmp = Cheat_GetCode(line);
+                    u64 tmp = Cheat_GetCode(strippedLine);
                     Cheat_AddCode(cheat, tmp);
+                    cheatSize += sizeof(u64);
                     if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000)
                     {
                         if (tmp & 0xFFFFFFFF)
@@ -1068,23 +1142,22 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
             }
             else
             {
-                if (!cheat)
+                if (!cheat || cheat->codesCount > 0)
                 {
-                    cheat = Cheat_AllocCheat();
-                }
-                else
-                {
-                    if (cheat->codesCount > 0)
+                    if (cheatSize + sizeof(CheatDescription) >= sizeof(cheatBuffer))
                     {
-                        // Add new cheat only if previous has body. In other case just rewrite it's name
-                        cheat = Cheat_AllocCheat();
+                        break;
                     }
+                    cheat = Cheat_AllocCheat();
+                    cheatSize += sizeof(CheatDescription);
                 }
                 strncpy(cheat->name, line, 38);
                 cheat->name[38] = '\0';
             }
         }
-    } while (R_SUCCEEDED(res));
+    } while (R_SUCCEEDED(res) && cheatSize < sizeof(cheatBuffer));
+
+    IFile_Close(&file.file);
 
     if ((cheatCount > 0) && (cheats[cheatCount - 1]->codesCount == 0))
     {
