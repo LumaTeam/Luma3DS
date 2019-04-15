@@ -48,9 +48,8 @@ typedef struct CheatDescription
 {
     u32 active;
     u32 valid;
-    u32 keyActivated;
-    u32 keyCombo;
-    char name[40];
+    char hasKeyCode;
+    char name[39];
     u32 codesCount;
     u64 codes[0];
 } CheatDescription;
@@ -116,7 +115,6 @@ typedef struct CheatState
 
 CheatState cheat_state = { 0 };
 u8 cheatCount = 0;
-u8 hasKeyActivated = 0;
 u64 cheatTitleInfo = -1ULL;
 
 char failureReason[64];
@@ -846,6 +844,7 @@ static Result Cheat_MapMemoryAndApplyCheat(u32 pid, CheatDescription* const chea
         }
         else
         {
+            sprintf(failureReason, "Debug process failed");
             svcCloseHandle(processHandle);
         }
     }
@@ -871,8 +870,7 @@ static CheatDescription* Cheat_AllocCheat()
     cheat->active = 0;
     cheat->valid = 1;
     cheat->codesCount = 0;
-    cheat->keyActivated = 0;
-    cheat->keyCombo = 0;
+    cheat->hasKeyCode = 0;
     cheat->name[0] = '\0';
 
     cheats[cheatCount] = cheat;
@@ -1084,7 +1082,6 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
 {
     cheatCount = 0;
     cheatTitleInfo = titleId;
-    hasKeyActivated = 0;
 
     char path[64] = { 0 };
     sprintf(path, "/luma/titles/%016llX/cheats.txt", titleId);
@@ -1131,12 +1128,7 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
                     cheatSize += sizeof(u64);
                     if (((tmp >> 32) & 0xFFFFFFFF) == 0xDD000000)
                     {
-                        if (tmp & 0xFFFFFFFF)
-                        {
-                            // Not empty key code
-                            cheat->keyCombo |= (tmp & 0xFFF);
-                            cheat->keyActivated = 1;
-                        }
+                        cheat->hasKeyCode = 1;
                     }
                 }
             }
@@ -1207,28 +1199,21 @@ void Cheat_ApplyCheats(void)
     if (!titleId)
     {
         cheatCount = 0;
-        hasKeyActivated = 0;
         return;
     }
 
     if (titleId != cheatTitleInfo)
     {
         cheatCount = 0;
-        hasKeyActivated = 0;
         return;
     }
 
-    u32 keys = HID_PAD & 0xFFF;
     for (int i = 0; i < cheatCount; i++)
     {
-        if (cheats[i]->active && !(cheats[i]->keyActivated))
+        if (cheats[i]->active)
         {
             Cheat_MapMemoryAndApplyCheat(pid, cheats[i]);
         } 
-        else if (cheats[i]->active && cheats[i]->keyActivated && (cheats[i]->keyCombo & keys) == keys)
-        {
-            Cheat_MapMemoryAndApplyCheat(pid, cheats[i]);    
-        }
     }
 }
 
@@ -1290,7 +1275,7 @@ void RosalinaMenu_Cheats(void)
                     char buf[65] = { 0 };
                     s32 j = page * CHEATS_PER_MENU_PAGE + i;
                     const char * checkbox = (cheats[j]->active ? "(x) " : "( ) ");
-                    const char * keyAct = (cheats[j]->keyActivated ? "*" : " ");
+                    const char * keyAct = (cheats[j]->hasKeyCode ? "*" : " ");
                     sprintf(buf, "%s%s%s", checkbox, keyAct, cheats[j]->name);
 
                     Draw_DrawString(30, 30 + i * SPACING_Y, cheats[j]->valid ? COLOR_WHITE : COLOR_RED, buf);
@@ -1325,15 +1310,6 @@ void RosalinaMenu_Cheats(void)
                 else
                 {
                     r = Cheat_MapMemoryAndApplyCheat(pid, cheats[selected]);
-                }
-                hasKeyActivated = 0;
-                for (int i = 0; i < cheatCount; i++)
-                {
-                    if (cheats[i]->active && cheats[i]->keyActivated)
-                    {
-                        hasKeyActivated = 1;
-                        break;
-                    }
                 }
             }
             else if (pressed & BUTTON_DOWN)
