@@ -312,15 +312,15 @@ void setAppCpuTimeLimitAndSchedModeFromDescriptor(u64 titleId, u16 descriptor)
 {
     /*
         Two main cases here:
-            - app has a non-0 cputime descriptor in exhdr: current core1 cputime reslimit,
-            and maximum, and scheduling mode are set to it. SetAppResourceLimit is *not* needed
+            - app has a non-0 cputime descriptor in exhdr: maximum core1 cputime reslimit and scheduling
+            mode are set according to it. Current reslimit is set to 0. SetAppResourceLimit *is* needed
             to use core1.
             - app has a 0 cputime descriptor: maximum is set to 80.
             Current reslimit is set to 0, and SetAppResourceLimit *is* needed
             to use core1, **EXCEPT** for an hardcoded set of titles.
     */
     u8 cpuTime = (u8)descriptor;
-    assertSuccess(setAppCpuTimeLimit(cpuTime));
+    assertSuccess(setAppCpuTimeLimit(0)); // remove preemption first.
 
     g_manager.cpuTimeBase = 0;
 
