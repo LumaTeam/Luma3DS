@@ -67,8 +67,8 @@ typedef struct PackedGdbHioRequest
     char functionName[16+1];
     char paramFormat[8+1];
 
-    u32 parameters[8];
-    u32 stringLengths[8];
+    u64 parameters[8];
+    size_t stringLengths[8];
 
     // Return
     int retval;

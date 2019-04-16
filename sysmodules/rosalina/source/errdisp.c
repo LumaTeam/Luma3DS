@@ -235,7 +235,8 @@ void ERRF_HandleCommands(void *ctx)
         case 1: // Throw
         {
             ERRF_FatalErrInfo *info = (ERRF_FatalErrInfo *)(cmdbuf + 1);
-            if(info->type != ERRF_ERRTYPE_LOGGED || info->procId == 0 || R_FAILED(ERRF_SaveErrorToFile(info)))
+            ERRF_SaveErrorToFile(info);
+            if(info->type != ERRF_ERRTYPE_LOGGED || info->procId == 0)
             {
                 menuEnter();
 

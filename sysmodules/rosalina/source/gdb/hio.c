@@ -69,10 +69,13 @@ int GDB_SendCurrentHioRequest(GDBContext *ctx)
             case 'i':
             case 'I':
             case 'p':
-                sprintf(tmp, ",%lx", ctx->currentHioRequest.parameters[i]);
+                sprintf(tmp, ",%lx", (u32)ctx->currentHioRequest.parameters[i]);
+                break;
+            case 'L':
+                sprintf(tmp, ",%llx", ctx->currentHioRequest.parameters[i]);
                 break;
             case 's':
-                sprintf(tmp, ",%lx/%lx", ctx->currentHioRequest.parameters[i], ctx->currentHioRequest.stringLengths[nStr++]);
+                sprintf(tmp, ",%lx/%x", (u32)ctx->currentHioRequest.parameters[i], ctx->currentHioRequest.stringLengths[nStr++]);
                 break;
             default:
                 tmp[0] = 0;
