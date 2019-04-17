@@ -70,7 +70,7 @@ Result GDB_AttachToProcess(GDBContext *ctx)
     // The second case will have, after RunQueuedProcess: attach process, debugger break, attach thread (with creator = 0)
 
     if (!(ctx->flags & GDB_FLAG_ATTACHED_AT_START))
-        svcDebugActiveProcess(&ctx->debug, ctx->pid);
+        r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
     else
     {
         r = 0;
