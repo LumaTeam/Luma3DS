@@ -55,8 +55,10 @@ void GDB_RunMonitor(GDBServer *server)
 
         if(R_FAILED(r) || idx < 2)
             break;
-        else if(idx == 2)
+        else if(idx == 2) {
+            svcSignalEvent(server->statusUpdateReceived);
             continue;
+        }
         else
         {
             GDBContext *ctx = &server->ctxs[idx - 3];
@@ -84,6 +86,12 @@ void GDB_RunMonitor(GDBServer *server)
                     while(GDB_HandleDebugEvents(ctx) != -1) // until we've got all the remaining debug events
                         svcSleepThread(1 * 1000 * 1000LL); // sleep just in case
 
+                    // GDB doens't close the socket in extended-remote
+                    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE) {
+                        ctx->state = GDB_STATE_DETACHING;
+                        GDB_DetachFromProcess(ctx);
+                        ctx->flags &= GDB_FLAG_PROC_RESTART_MASK;
+                    }
                     svcClearEvent(ctx->processAttachedEvent);
                     ctx->eventToWaitFor = ctx->processAttachedEvent;
                 }

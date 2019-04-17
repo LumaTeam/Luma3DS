@@ -43,9 +43,15 @@ static void GDB_DetachImmediatelyExtended(GDBContext *ctx)
 {
     // detach immediately
     RecursiveLock_Lock(&ctx->lock);
-    svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
-
     ctx->state = GDB_STATE_DETACHING;
+
+    svcClearEvent(ctx->parent->statusUpdateReceived);
+    svcSignalEvent(ctx->parent->statusUpdated);
+    RecursiveLock_Unlock(&ctx->lock);
+
+    svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
+
+    RecursiveLock_Lock(&ctx->lock);
     GDB_DetachFromProcess(ctx);
     ctx->flags &= GDB_FLAG_PROC_RESTART_MASK;
     RecursiveLock_Unlock(&ctx->lock);
@@ -279,7 +285,15 @@ GDB_DECLARE_VERBOSE_HANDLER(Continue)
 
 GDB_DECLARE_HANDLER(GetStopReason)
 {
-    return ctx->debug != 0 ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_SendPacket(ctx, "W00", 3); // "process exited" if nothing
+    if (ctx->processEnded && ctx->processExited) {
+        return GDB_SendPacket(ctx, "W00", 3);
+    } else if (ctx->processEnded && !ctx->processExited) {
+        return GDB_SendPacket(ctx, "X0f", 3);
+    } else if (ctx->debug == 0) {
+        return GDB_SendPacket(ctx, "W00", 3);
+    } else {
+        return GDB_SendStopReply(ctx, &ctx->latestDebugEvent);
+    }
 }
 
 static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)

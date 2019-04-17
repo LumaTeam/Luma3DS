@@ -56,6 +56,7 @@ Result GDB_InitializeServer(GDBServer *server)
 
     server->referenceCount = 0;
     svcCreateEvent(&server->statusUpdated, RESET_ONESHOT);
+    svcCreateEvent(&server->statusUpdateReceived, RESET_STICKY);
 
     for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
         GDB_InitializeContext(server->ctxs + i);
@@ -70,6 +71,7 @@ void GDB_FinalizeServer(GDBServer *server)
     server_finalize(&server->super);
 
     svcCloseHandle(server->statusUpdated);
+    svcCloseHandle(server->statusUpdateReceived);
 }
 
 void GDB_IncrementServerReferenceCount(GDBServer *server)
@@ -189,7 +191,13 @@ int GDB_AcceptClient(GDBContext *ctx)
 int GDB_CloseClient(GDBContext *ctx)
 {
     RecursiveLock_Lock(&ctx->lock);
+    svcClearEvent(ctx->parent->statusUpdateReceived);
     svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
+    RecursiveLock_Unlock(&ctx->lock);
+
+    svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
+
+    RecursiveLock_Lock(&ctx->lock);
     GDB_DetachFromProcess(ctx);
     ctx->state = GDB_STATE_DISCONNECTED;
     RecursiveLock_Unlock(&ctx->lock);

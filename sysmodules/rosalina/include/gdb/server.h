@@ -37,6 +37,7 @@ typedef struct GDBServer
     sock_server super;
     s32 referenceCount;
     Handle statusUpdated;
+    Handle statusUpdateReceived;
     GDBContext ctxs[MAX_DEBUG];
 } GDBServer;
 
