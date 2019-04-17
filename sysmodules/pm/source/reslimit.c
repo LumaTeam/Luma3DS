@@ -327,7 +327,7 @@ void setAppCpuTimeLimitAndSchedModeFromDescriptor(u64 titleId, u16 descriptor)
     if (cpuTime != 0) {
         // Set core1 scheduling mode
         g_manager.maxAppCpuTime = cpuTime & 0x7F;
-        assertSuccess(svcKernelSetState(6, 3, (cpuTime & 0x80) ? 1LL : 0LL));
+        assertSuccess(svcKernelSetState(6, 3, (cpuTime & 0x80) ? 0LL : 1LL));
     } else {
         u32 titleUid = ((u32)titleId >> 8) & 0xFFFFF;
         g_manager.maxAppCpuTime = 80;
