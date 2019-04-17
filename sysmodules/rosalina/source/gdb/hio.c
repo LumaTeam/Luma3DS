@@ -125,7 +125,7 @@ GDB_DECLARE_HANDLER(HioReply)
     if (*pos != 0)
     {
         u32 errno_;
-        pos = GDB_ParseHexIntegerList(&errno_, pos, 1, ',');
+        pos = GDB_ParseHexIntegerList(&errno_, ++pos, 1, ',');
         ctx->currentHioRequest.gdbErrno = (int)errno_;
         if (pos == NULL)
             return GDB_ReplyErrno(ctx, EILSEQ);
