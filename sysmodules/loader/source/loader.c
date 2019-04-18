@@ -2,753 +2,396 @@
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
+#include "util.h"
+#include "hbldr.h"
 
-#define MAX_SESSIONS    1
-#define HBLDR_3DSX_TID  (*(vu64 *)0x1FF81100)
+extern u32 config, multiConfig, bootConfig;
+extern bool isN3DS, needToInitSd, isSdMode;
 
-u32 config, multiConfig, bootConfig;
-bool isN3DS, needToInitSd, isSdMode;
+static u8 g_ret_buf[sizeof(ExHeader_Info)];
+static u64 g_cached_programHandle;
+static ExHeader_Info g_exheaderInfo;
 
 const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
 
-typedef struct
+typedef struct prog_addrs_t
 {
-  u32 text_addr;
-  u32 text_size;
-  u32 ro_addr;
-  u32 ro_size;
-  u32 data_addr;
-  u32 data_size;
-  u32 total_size;
+    u32 text_addr;
+    u32 text_size;
+    u32 ro_addr;
+    u32 ro_size;
+    u32 data_addr;
+    u32 data_size;
+    u32 total_size;
 } prog_addrs_t;
-
-static Handle g_handles[MAX_SESSIONS+2];
-static int g_active_handles;
-static u64 g_cached_prog_handle;
-static ExHeader_Info g_exheader;
-static char g_ret_buf[1024];
-
-// MAKE SURE fsreg has been init before calling this
-static Result fsldrPatchPermissions(void)
-{
-  u32 pid;
-  Result res;
-  FS_ProgramInfo info;
-  ExHeader_Arm11StorageInfo storageInfo = {
-    .fs_access_info = FSACCESS_NANDRW | FSACCESS_NANDRO_RO | FSACCESS_SDMC_RW,
-  };
-
-  info.programId = 0x0004013000001302LL; // loader PID
-  info.mediaType = MEDIATYPE_NAND;
-  res = svcGetProcessId(&pid, CUR_PROCESS_HANDLE);
-  if (R_SUCCEEDED(res))
-  {
-    res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storageInfo);
-  }
-  return res;
-}
-
-static inline void loadCFWInfo(void)
-{
-    s64 out;
-
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
-    config = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
-    multiConfig = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
-    bootConfig = (u32)out;
-
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x201))) svcBreak(USERBREAK_ASSERT);
-    isN3DS = (bool)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x202))) svcBreak(USERBREAK_ASSERT);
-    needToInitSd = (bool)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
-    isSdMode = (bool)out;
-
-    IFile file;
-    if(needToInitSd) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
-}
 
 static int lzss_decompress(u8 *end)
 {
-  unsigned int v1; // r1@2
-  u8 *v2; // r2@2
-  u8 *v3; // r3@2
-  u8 *v4; // r1@2
-  char v5; // r5@4
-  char v6; // t1@4
-  signed int v7; // r6@4
-  int v9; // t1@7
-  u8 *v11; // r3@8
-  int v12; // r12@8
-  int v13; // t1@8
-  int v14; // t1@8
-  unsigned int v15; // r7@8
-  int v16; // r12@8
-  int ret;
+    unsigned int v1; // r1@2
+    u8 *v2; // r2@2
+    u8 *v3; // r3@2
+    u8 *v4; // r1@2
+    char v5; // r5@4
+    char v6; // t1@4
+    signed int v7; // r6@4
+    int v9; // t1@7
+    u8 *v11; // r3@8
+    int v12; // r12@8
+    int v13; // t1@8
+    int v14; // t1@8
+    unsigned int v15; // r7@8
+    int v16; // r12@8
+    int ret;
 
-  ret = 0;
-  if ( end )
-  {
-    v1 = *((u32 *)end - 2);
-    v2 = &end[*((u32 *)end - 1)];
-    v3 = &end[-(v1 >> 24)];
-    v4 = &end[-(v1 & 0xFFFFFF)];
-    while ( v3 > v4 )
+    ret = 0;
+    if ( end )
     {
-      v6 = *(v3-- - 1);
-      v5 = v6;
-      v7 = 8;
-      while ( 1 )
-      {
-        if ( (v7-- < 1) )
-          break;
-        if ( v5 & 0x80 )
+        v1 = *((u32 *)end - 2);
+        v2 = &end[*((u32 *)end - 1)];
+        v3 = &end[-(v1 >> 24)];
+        v4 = &end[-(v1 & 0xFFFFFF)];
+        while ( v3 > v4 )
         {
-          v13 = *(v3 - 1);
-          v11 = v3 - 1;
-          v12 = v13;
-          v14 = *(v11 - 1);
-          v3 = v11 - 1;
-          v15 = ((v14 | (v12 << 8)) & 0xFFFF0FFF) + 2;
-          v16 = v12 + 32;
-          do
-          {
-            ret = v2[v15];
-            *(v2-- - 1) = ret;
-            v16 -= 16;
-          }
-          while ( !(v16 < 0) );
+            v6 = *(v3-- - 1);
+            v5 = v6;
+            v7 = 8;
+            while ( 1 )
+            {
+                if ( (v7-- < 1) )
+                    break;
+                if ( v5 & 0x80 )
+                {
+                    v13 = *(v3 - 1);
+                    v11 = v3 - 1;
+                    v12 = v13;
+                    v14 = *(v11 - 1);
+                    v3 = v11 - 1;
+                    v15 = ((v14 | (v12 << 8)) & 0xFFFF0FFF) + 2;
+                    v16 = v12 + 32;
+                    do
+                    {
+                        ret = v2[v15];
+                        *(v2-- - 1) = ret;
+                        v16 -= 16;
+                    }
+                    while ( !(v16 < 0) );
+                }
+                else
+                {
+                    v9 = *(v3-- - 1);
+                    ret = v9;
+                    *(v2-- - 1) = v9;
+                }
+                v5 *= 2;
+                if ( v3 <= v4 )
+                    return ret;
+            }
+        }
+    }
+    return ret;
+}
+
+static Result allocateSharedMem(prog_addrs_t *shared, prog_addrs_t *vaddr, int flags)
+{
+    u32 dummy;
+
+    memcpy(shared, vaddr, sizeof(prog_addrs_t));
+    shared->text_addr = 0x10000000;
+    shared->ro_addr = shared->text_addr + (shared->text_size << 12);
+    shared->data_addr = shared->ro_addr + (shared->ro_size << 12);
+    return svcControlMemory(&dummy, shared->text_addr, 0, shared->total_size << 12, (flags & 0xF00) | MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+}
+
+static Result loadCode(u64 titleId, prog_addrs_t *shared, u64 programHandle, int isCompressed)
+{
+    IFile file;
+    FS_Path archivePath;
+    FS_Path filePath;
+    u64 size;
+    u64 total;
+
+    if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)shared->text_addr, (u64)shared->total_size << 12))
+    {
+        archivePath.type = PATH_BINARY;
+        archivePath.data = &programHandle;
+        archivePath.size = 8;
+
+        filePath.type = PATH_BINARY;
+        filePath.data = CODE_PATH;
+        filePath.size = sizeof(CODE_PATH);
+        if (R_FAILED(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
+            svcBreak(USERBREAK_ASSERT);
+
+        // get file size
+        assertSuccess(IFile_GetSize(&file, &size));
+
+        // check size
+        if (size > (u64)shared->total_size << 12)
+        {
+            IFile_Close(&file);
+            return 0xC900464F;
+        }
+
+        // read code
+        assertSuccess(IFile_Read(&file, &total, (void *)shared->text_addr, size));
+        IFile_Close(&file); // done reading
+
+        // decompress
+        if (isCompressed)
+            lzss_decompress((u8 *)shared->text_addr + size);
+    }
+
+    ExHeader_CodeSetInfo *csi = &g_exheaderInfo.sci.codeset_info;
+
+    patchCode(titleId, csi->flags.remaster_version, (u8 *)shared->text_addr, shared->total_size << 12, csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
+
+    return 0;
+}
+
+static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
+{
+    Result res = 0;
+
+    if (programHandle >> 32 == 0xFFFF0000)
+        res = FSREG_GetProgramInfo(exheaderInfo, 1, programHandle);
+    else
+    {
+        res = FSREG_CheckHostLoadId(programHandle);
+        //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
+        //so use PXIPM if FSREG fails OR returns "info", is the second condition a bug?
+        if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
+        {
+            TRY(PXIPM_GetProgramInfo(exheaderInfo, programHandle));
         }
         else
         {
-          v9 = *(v3-- - 1);
-          ret = v9;
-          *(v2-- - 1) = v9;
+            TRY(FSREG_GetProgramInfo(exheaderInfo, 1, programHandle));
         }
-        v5 *= 2;
-        if ( v3 <= v4 )
-          return ret;
-      }
-    }
-  }
-  return ret;
-}
-
-static Result allocate_shared_mem(prog_addrs_t *shared, prog_addrs_t *vaddr, int flags)
-{
-  u32 dummy;
-
-  memcpy(shared, vaddr, sizeof(prog_addrs_t));
-  shared->text_addr = 0x10000000;
-  shared->ro_addr = shared->text_addr + (shared->text_size << 12);
-  shared->data_addr = shared->ro_addr + (shared->ro_size << 12);
-  return svcControlMemory(&dummy, shared->text_addr, 0, shared->total_size << 12, (flags & 0xF00) | MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
-}
-
-static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int is_compressed)
-{
-  IFile file;
-  FS_Path archivePath;
-  FS_Path filePath;
-  Result res;
-  u64 size;
-  u64 total;
-
-  if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(progid, (u8 *)shared->text_addr, (u64)shared->total_size << 12))
-  {
-    archivePath.type = PATH_BINARY;
-    archivePath.data = &prog_handle;
-    archivePath.size = 8;
-
-    filePath.type = PATH_BINARY;
-    filePath.data = CODE_PATH;
-    filePath.size = sizeof(CODE_PATH);
-    if (R_FAILED(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
-    {
-        svcBreak(USERBREAK_ASSERT);
     }
 
-    // get file size
-    if (R_FAILED(IFile_GetSize(&file, &size)))
-    {
-        IFile_Close(&file);
-        svcBreak(USERBREAK_ASSERT);
-    }
-
-    // check size
-    if (size > (u64)shared->total_size << 12)
-    {
-        IFile_Close(&file);
-        return 0xC900464F;
-    }
-
-    // read code
-    res = IFile_Read(&file, &total, (void *)shared->text_addr, size);
-    IFile_Close(&file); // done reading
-    if (R_FAILED(res))
-    {
-        svcBreak(USERBREAK_ASSERT);
-    }
-
-    // decompress
-    if (is_compressed)
-    {
-      lzss_decompress((u8 *)shared->text_addr + size);
-    }
-  }
-
-  ExHeader_CodeSetInfo *csi = &g_exheader.sci.codeset_info;
-
-  patchCode(progid, csi->flags.remaster_version, (u8 *)shared->text_addr, shared->total_size << 12, csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
-
-  return 0;
-}
-
-static Result HBLDR_Init(Handle *session)
-{
-  Result res;
-  while (1)
-  {
-    res = svcConnectToPort(session, "hb:ldr");
-    if (R_LEVEL(res) != RL_PERMANENT ||
-        R_SUMMARY(res) != RS_NOTFOUND ||
-        R_DESCRIPTION(res) != RD_NOT_FOUND
-       ) break;
-    svcSleepThread(500000);
-  }
-  return res;
-}
-
-static Result loader_GetProgramInfo(ExHeader_Info *exheader, u64 prog_handle)
-{
-  Result res;
-
-  if (prog_handle >> 32 == 0xFFFF0000)
-  {
-    res = FSREG_GetProgramInfo(exheader, 1, prog_handle);
-  }
-  else
-  {
-    res = FSREG_CheckHostLoadId(prog_handle);
-    //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-    //so use PXIPM if FSREG fails OR returns "info", is the second condition a bug?
-    if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-    {
-      res = PXIPM_GetProgramInfo(exheader, prog_handle);
-    }
-    else
-    {
-      res = FSREG_GetProgramInfo(exheader, 1, prog_handle);
-    }
-  }
-
-  if (R_SUCCEEDED(res))
-  {
     s64 nbSection0Modules;
     svcGetSystemInfo(&nbSection0Modules, 26, 0);
 
     // Force always having sdmc:/ and nand:/rw permission
-    exheader->aci.local_caps.storage_info.fs_access_info |= FSACCESS_NANDRW | FSACCESS_SDMC_RW;
+    exheaderInfo->aci.local_caps.storage_info.fs_access_info |= FSACCESS_NANDRW | FSACCESS_SDMC_RW;
 
-    // Tweak 3dsx placeholder title exheader
-    if (nbSection0Modules == 6)
+    // Tweak 3dsx placeholder title exheaderInfo
+    if (nbSection0Modules == 6 && exheaderInfo->aci.local_caps.title_id == HBLDR_3DSX_TID)
     {
-      if(exheader->aci.local_caps.title_id == HBLDR_3DSX_TID)
-      {
-      	Handle hbldr = 0;
-      	res = HBLDR_Init(&hbldr);
-      	if (R_SUCCEEDED(res))
-      	{
-      	  u32* cmdbuf = getThreadCommandBuffer();
-      	  cmdbuf[0] = IPC_MakeHeader(4,0,2);
-      	  cmdbuf[1] = IPC_Desc_Buffer(sizeof(*exheader), IPC_BUFFER_RW);
-      	  cmdbuf[2] = (u32)exheader;
-      	  res = svcSendSyncRequest(hbldr);
-      	  svcCloseHandle(hbldr);
-       	  if (R_SUCCEEDED(res)) {
-          	res = cmdbuf[1];
-          }
-      	}
-      }
-
-      u64 originalProgId = exheader->aci.local_caps.title_id;
-      if(CONFIG(PATCHGAMES) && loadTitleExheader(exheader->aci.local_caps.title_id, exheader))
-      {
-        exheader->aci.local_caps.title_id = originalProgId;
-      }
+        assertSuccess(hbldrInit());
+        HBLDR_PatchExHeaderInfo(exheaderInfo);
+        hbldrExit();
     }
-  }
 
-  return res;
+    u64 originaltitleId = exheaderInfo->aci.local_caps.title_id;
+    if(CONFIG(PATCHGAMES) && loadTitleExheaderInfo(exheaderInfo->aci.local_caps.title_id, exheaderInfo))
+        exheaderInfo->aci.local_caps.title_id = originaltitleId;
+
+    return res;
 }
 
-static Result loader_LoadProcess(Handle *process, u64 prog_handle)
+static Result LoadProcess(Handle *process, u64 programHandle)
 {
-  Result res;
-  int count;
-  u32 flags;
-  u32 desc;
-  u32 dummy;
-  prog_addrs_t shared_addr;
-  prog_addrs_t vaddr;
-  Handle codeset;
-  CodeSetInfo codesetinfo;
-  u32 data_mem_size;
-  u64 progid;
+    Result res;
+    int count;
+    u32 flags;
+    u32 desc;
+    u32 dummy;
+    prog_addrs_t sharedAddr;
+    prog_addrs_t vaddr;
+    Handle codeset;
+    CodeSetInfo codesetinfo;
+    u32 dataMemSize;
+    u64 titleId;
 
-  // make sure the cached info corrosponds to the current prog_handle
-  if (g_cached_prog_handle != prog_handle || g_exheader.aci.local_caps.title_id == HBLDR_3DSX_TID)
-  {
-    res = loader_GetProgramInfo(&g_exheader, prog_handle);
-    g_cached_prog_handle = prog_handle;
-    if (res < 0)
+    // make sure the cached info corrosponds to the current programHandle
+    if (g_cached_programHandle != programHandle || g_exheaderInfo.aci.local_caps.title_id == HBLDR_3DSX_TID)
     {
-      g_cached_prog_handle = 0;
-      return res;
+        res = GetProgramInfo(&g_exheaderInfo, programHandle);
+        g_cached_programHandle = programHandle;
+        if (R_FAILED(res))
+        {
+            g_cached_programHandle = 0;
+            return res;
+        }
     }
-  }
 
-  // get kernel flags
-  flags = 0;
-  for (count = 0; count < 28; count++)
-  {
-    desc = g_exheader.aci.kernel_caps.descriptors[count];
-    if (0x1FE == desc >> 23)
+    // get kernel flags
+    flags = 0;
+    for (count = 0; count < 28; count++)
     {
-      flags = desc & 0xF00;
+        desc = g_exheaderInfo.aci.kernel_caps.descriptors[count];
+        if (0x1FE == desc >> 23)
+            flags = desc & 0xF00;
     }
-  }
-  if (flags == 0)
-  {
-    return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, 1, 2);
-  }
+    if (flags == 0)
+        return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, 1, 2);
 
-  // check for 3dsx process
-  progid = g_exheader.aci.local_caps.title_id;
-  ExHeader_CodeSetInfo *csi = &g_exheader.sci.codeset_info;
+    // check for 3dsx process
+    titleId = g_exheaderInfo.aci.local_caps.title_id;
+    ExHeader_CodeSetInfo *csi = &g_exheaderInfo.sci.codeset_info;
 
-  if (progid == HBLDR_3DSX_TID)
-  {
-    Handle hbldr = 0;
-    res = HBLDR_Init(&hbldr);
-    if (R_FAILED(res))
+    if (titleId == HBLDR_3DSX_TID)
     {
-      svcBreak(USERBREAK_ASSERT);
-      return res;
-    }
-    u32* cmdbuf = getThreadCommandBuffer();
-    cmdbuf[0] = IPC_MakeHeader(1,6,0);
-    cmdbuf[1] = csi->text.address;
-    cmdbuf[2] = flags & 0xF00;
-    cmdbuf[3] = progid;
-    cmdbuf[4] = progid>>32;
-    memcpy(&cmdbuf[5], csi->name, 8);
-    res = svcSendSyncRequest(hbldr);
-    svcCloseHandle(hbldr);
-    if (R_SUCCEEDED(res))
-    {
-      res = cmdbuf[1];
-    }
-    if (R_FAILED(res))
-    {
-      svcBreak(USERBREAK_ASSERT);
-      return res;
-    }
-    codeset = (Handle)cmdbuf[3];
-    res = svcCreateProcess(process, codeset, g_exheader.aci.kernel_caps.descriptors, count);
-    svcCloseHandle(codeset);
-    return res;
-  }
-
-  // allocate process memory
-  vaddr.text_addr = csi->text.address;
-  vaddr.text_size = (csi->text.size + 4095) >> 12;
-  vaddr.ro_addr = csi->rodata.address;
-  vaddr.ro_size = (csi->rodata.size + 4095) >> 12;
-  vaddr.data_addr = csi->data.address;
-  vaddr.data_size = (csi->data.size + 4095) >> 12;
-  data_mem_size = (csi->data.size + csi->bss_size + 4095) >> 12;
-  vaddr.total_size = vaddr.text_size + vaddr.ro_size + vaddr.data_size;
-  if ((res = allocate_shared_mem(&shared_addr, &vaddr, flags)) < 0)
-  {
-    return res;
-  }
-
-  // load code
-  if ((res = load_code(progid, &shared_addr, prog_handle, csi->flags.compress_exefs_code)) >= 0)
-  {
-    memcpy(&codesetinfo.name, csi->name, 8);
-    codesetinfo.program_id = progid;
-    codesetinfo.text_addr = vaddr.text_addr;
-    codesetinfo.text_size = vaddr.text_size;
-    codesetinfo.text_size_total = vaddr.text_size;
-    codesetinfo.ro_addr = vaddr.ro_addr;
-    codesetinfo.ro_size = vaddr.ro_size;
-    codesetinfo.ro_size_total = vaddr.ro_size;
-    codesetinfo.rw_addr = vaddr.data_addr;
-    codesetinfo.rw_size = vaddr.data_size;
-    codesetinfo.rw_size_total = data_mem_size;
-    res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)shared_addr.text_addr, (void *)shared_addr.ro_addr, (void *)shared_addr.data_addr);
-    if (res >= 0)
-    {
-      res = svcCreateProcess(process, codeset, g_exheader.aci.kernel_caps.descriptors, count);
-      svcCloseHandle(codeset);
-      if (res >= 0)
-      {
-        return 0;
-      }
-    }
-  }
-
-  svcControlMemory(&dummy, shared_addr.text_addr, 0, shared_addr.total_size << 12, MEMOP_FREE, 0);
-  return res;
-}
-
-static Result loader_RegisterProgram(u64 *prog_handle, FS_ProgramInfo *title, FS_ProgramInfo *update)
-{
-  Result res;
-  u64 prog_id;
-
-  prog_id = title->programId;
-  if (prog_id >> 32 != 0xFFFF0000)
-  {
-    res = FSREG_CheckHostLoadId(prog_id);
-    //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-    if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-    {
-      res = PXIPM_RegisterProgram(prog_handle, title, update);
-      if (res < 0)
-      {
+        assertSuccess(hbldrInit());
+        assertSuccess(HBLDR_LoadProcess(&codeset, csi->text.address, flags & 0xF00, titleId, csi->name));
+        res = svcCreateProcess(process, codeset, g_exheaderInfo.aci.kernel_caps.descriptors, count);
+        svcCloseHandle(codeset);
+        hbldrExit();
         return res;
-      }
-      if (*prog_handle >> 32 != 0xFFFF0000)
-      {
-        res = FSREG_CheckHostLoadId(*prog_handle);
+    }
+
+    // allocate process memory
+    vaddr.text_addr = csi->text.address;
+    vaddr.text_size = (csi->text.size + 4095) >> 12;
+    vaddr.ro_addr = csi->rodata.address;
+    vaddr.ro_size = (csi->rodata.size + 4095) >> 12;
+    vaddr.data_addr = csi->data.address;
+    vaddr.data_size = (csi->data.size + 4095) >> 12;
+    dataMemSize = (csi->data.size + csi->bss_size + 4095) >> 12;
+    vaddr.total_size = vaddr.text_size + vaddr.ro_size + vaddr.data_size;
+    TRY(allocateSharedMem(&sharedAddr, &vaddr, flags));
+
+    // load code
+    if (R_SUCCEEDED(res = loadCode(titleId, &sharedAddr, programHandle, csi->flags.compress_exefs_code)))
+    {
+        memcpy(&codesetinfo.name, csi->name, 8);
+        codesetinfo.program_id = titleId;
+        codesetinfo.text_addr = vaddr.text_addr;
+        codesetinfo.text_size = vaddr.text_size;
+        codesetinfo.text_size_total = vaddr.text_size;
+        codesetinfo.ro_addr = vaddr.ro_addr;
+        codesetinfo.ro_size = vaddr.ro_size;
+        codesetinfo.ro_size_total = vaddr.ro_size;
+        codesetinfo.rw_addr = vaddr.data_addr;
+        codesetinfo.rw_size = vaddr.data_size;
+        codesetinfo.rw_size_total = dataMemSize;
+        res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)sharedAddr.text_addr, (void *)sharedAddr.ro_addr, (void *)sharedAddr.data_addr);
+        if (R_SUCCEEDED(res))
+        {
+            res = svcCreateProcess(process, codeset, g_exheaderInfo.aci.kernel_caps.descriptors, count);
+            svcCloseHandle(codeset);
+            res = R_SUCCEEDED(res) ? 0 : res;
+        }
+    }
+
+    svcControlMemory(&dummy, sharedAddr.text_addr, 0, sharedAddr.total_size << 12, MEMOP_FREE, 0);
+    return res;
+}
+
+static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_ProgramInfo *update)
+{
+    Result res;
+    u64 titleId;
+
+    titleId = title->programId;
+    if (titleId >> 32 != 0xFFFF0000)
+    {
+        res = FSREG_CheckHostLoadId(titleId);
         //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
         if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
         {
-          return 0;
-        }
-      }
-      svcBreak(USERBREAK_ASSERT);
-    }
-  }
-
-  if ((title->mediaType != update->mediaType) || (prog_id != update->programId))
-  {
-    svcBreak(USERBREAK_ASSERT);
-  }
-  res = FSREG_LoadProgram(prog_handle, title);
-  if (R_SUCCEEDED(res))
-  {
-    if (*prog_handle >> 32 == 0xFFFF0000)
-    {
-      return 0;
-    }
-    res = FSREG_CheckHostLoadId(*prog_handle);
-    //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-    if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-    {
-      svcBreak(USERBREAK_ASSERT);
-    }
-  }
-  return res;
-}
-
-static Result loader_UnregisterProgram(u64 prog_handle)
-{
-  Result res;
-
-  if (prog_handle >> 32 == 0xFFFF0000)
-  {
-    return FSREG_UnloadProgram(prog_handle);
-  }
-  else
-  {
-    res = FSREG_CheckHostLoadId(prog_handle);
-    //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-    if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-    {
-      return PXIPM_UnregisterProgram(prog_handle);
-    }
-    else
-    {
-      return FSREG_UnloadProgram(prog_handle);
-    }
-  }
-}
-
-static void handle_commands(void)
-{
-  FS_ProgramInfo title;
-  FS_ProgramInfo update;
-  u32* cmdbuf;
-  u16 cmdid;
-  int res;
-  Handle handle;
-  u64 prog_handle;
-
-  cmdbuf = getThreadCommandBuffer();
-  cmdid = cmdbuf[0] >> 16;
-  res = 0;
-  switch (cmdid)
-  {
-    case 1: // LoadProcess
-    {
-      res = loader_LoadProcess(&handle, *(u64 *)&cmdbuf[1]);
-      cmdbuf[0] = 0x10042;
-      cmdbuf[1] = res;
-      cmdbuf[2] = 16;
-      cmdbuf[3] = handle;
-      break;
-    }
-    case 2: // RegisterProgram
-    {
-      memcpy(&title, &cmdbuf[1], sizeof(FS_ProgramInfo));
-      memcpy(&update, &cmdbuf[5], sizeof(FS_ProgramInfo));
-      res = loader_RegisterProgram(&prog_handle, &title, &update);
-      cmdbuf[0] = 0x200C0;
-      cmdbuf[1] = res;
-      *(u64 *)&cmdbuf[2] = prog_handle;
-      break;
-    }
-    case 3: // UnregisterProgram
-    {
-      prog_handle = *(u64 *)&cmdbuf[1];
-
-      if (g_cached_prog_handle == prog_handle)
-      {
-        g_cached_prog_handle = 0;
-      }
-      cmdbuf[0] = 0x30040;
-      cmdbuf[1] = loader_UnregisterProgram(prog_handle);
-      break;
-    }
-    case 4: // GetProgramInfo
-    {
-      prog_handle = *(u64 *)&cmdbuf[1];
-      if (prog_handle != g_cached_prog_handle || g_exheader.aci.local_caps.title_id == HBLDR_3DSX_TID)
-      {
-        res = loader_GetProgramInfo(&g_exheader, prog_handle);
-        if (res >= 0)
-        {
-          g_cached_prog_handle = prog_handle;
-        }
-        else
-        {
-          g_cached_prog_handle = 0;
-        }
-      }
-      memcpy(&g_ret_buf, &g_exheader, 1024);
-      cmdbuf[0] = 0x40042;
-      cmdbuf[1] = res;
-      cmdbuf[2] = 0x1000002;
-      cmdbuf[3] = (u32) &g_ret_buf;
-      break;
-    }
-    default: // error
-    {
-      cmdbuf[0] = 0x40;
-      cmdbuf[1] = 0xD900182F;
-      break;
-    }
-  }
-}
-
-static Result should_terminate(int *term_request)
-{
-  u32 notid;
-  Result ret;
-
-  ret = srvReceiveNotification(&notid);
-  if (R_FAILED(ret))
-  {
-    return ret;
-  }
-  if (notid == 0x100) // term request
-  {
-    *term_request = 1;
-  }
-  return 0;
-}
-
-// this is called before main
-void __appInit()
-{
-  Result res;
-  for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
-  {
-    res = srvInit();
-    if(R_FAILED(res) && res != (Result)0xD88007FA)
-      svcBreak(USERBREAK_PANIC);
-  }
-
-  fsRegInit();
-  fsldrPatchPermissions();
-
-  //fsldrInit();
-  res = srvGetServiceHandle(fsGetSessionHandle(), "fs:LDR");
-  if (R_FAILED(res)) svcBreak(USERBREAK_PANIC);
-  res = FSUSER_InitializeWithSdkVersion(*fsGetSessionHandle(), 0x70200C8);
-  if (R_FAILED(res)) svcBreak(USERBREAK_PANIC);
-  res = FSUSER_SetPriority(0);
-  if (R_FAILED(res)) svcBreak(USERBREAK_PANIC);
-
-  pxiPmInit();
-}
-
-// this is called after main exits
-void __appExit()
-{
-  pxiPmExit();
-  //fsldrExit();
-  svcCloseHandle(*fsGetSessionHandle());
-  fsRegExit();
-  srvExit();
-}
-
-// stubs for non-needed pre-main functions
-void __sync_init();
-void __sync_fini();
-void __system_initSyscalls();
-
-void __ctru_exit()
-{
-  void __libc_fini_array(void);
-
-  __libc_fini_array();
-  __appExit();
-  __sync_fini();
-  svcExitProcess();
-}
-
-void initSystem()
-{
-  void __libc_init_array(void);
-
-  __sync_init();
-  __system_initSyscalls();
-  __appInit();
-
-  __libc_init_array();
-}
-
-int main()
-{
-  Result ret;
-  Handle handle;
-  Handle reply_target;
-  Handle *srv_handle;
-  Handle *notification_handle;
-  s32 index;
-  int i;
-  int term_request;
-  u32* cmdbuf;
-
-  ret = 0;
-
-  srv_handle = &g_handles[1];
-  notification_handle = &g_handles[0];
-
-  if (R_FAILED(srvRegisterService(srv_handle, "Loader", MAX_SESSIONS)))
-  {
-    svcBreak(USERBREAK_ASSERT);
-  }
-
-  if (R_FAILED(srvEnableNotification(notification_handle)))
-  {
-    svcBreak(USERBREAK_ASSERT);
-  }
-
-  loadCFWInfo();
-
-  g_active_handles = 2;
-  g_cached_prog_handle = 0;
-  index = 1;
-
-  reply_target = 0;
-  term_request = 0;
-  do
-  {
-    if (reply_target == 0)
-    {
-      cmdbuf = getThreadCommandBuffer();
-      cmdbuf[0] = 0xFFFF0000;
-    }
-    ret = svcReplyAndReceive(&index, g_handles, g_active_handles, reply_target);
-
-    if (R_FAILED(ret))
-    {
-      // check if any handle has been closed
-      if (ret == (int)0xC920181A)
-      {
-        if (index == -1)
-        {
-          for (i = 2; i < MAX_SESSIONS+2; i++)
-          {
-            if (g_handles[i] == reply_target)
+            TRY(PXIPM_RegisterProgram(programHandle, title, update));
+            if (*programHandle >> 32 != 0xFFFF0000)
             {
-              index = i;
-              break;
+                res = FSREG_CheckHostLoadId(*programHandle);
+                //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
+                if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
+                {
+                    return 0;
+                }
             }
-          }
+            panic(0);
         }
-        svcCloseHandle(g_handles[index]);
-        g_handles[index] = g_handles[g_active_handles-1];
-        g_active_handles--;
-        reply_target = 0;
-      }
-      else
-      {
-        svcBreak(USERBREAK_ASSERT);
-      }
     }
+
+    if ((title->mediaType != update->mediaType) || (titleId != update->programId))
+        panic(1);
+
+    TRY(FSREG_LoadProgram(programHandle, title));
+    if (*programHandle >> 32 == 0xFFFF0000)
+        return 0;
+
+    res = FSREG_CheckHostLoadId(*programHandle);
+    //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
+    if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
+        panic(2);
+
+    return res;
+}
+
+static Result UnregisterProgram(u64 programHandle)
+{
+    Result res;
+
+    if (programHandle >> 32 == 0xFFFF0000)
+        return FSREG_UnloadProgram(programHandle);
     else
     {
-      // process responses
-      reply_target = 0;
-      switch (index)
-      {
-        case 0: // notification
-        {
-          if (R_FAILED(should_terminate(&term_request)))
-          {
-            svcBreak(USERBREAK_ASSERT);
-          }
-          break;
-        }
-        case 1: // new session
-        {
-          if (R_FAILED(svcAcceptSession(&handle, *srv_handle)))
-          {
-            svcBreak(USERBREAK_ASSERT);
-          }
-          if (g_active_handles < MAX_SESSIONS+2)
-          {
-            g_handles[g_active_handles] = handle;
-            g_active_handles++;
-          }
-          else
-          {
-            svcCloseHandle(handle);
-          }
-          break;
-        }
-        default: // session
-        {
-          handle_commands();
-          reply_target = g_handles[index];
-          break;
-        }
-      }
+        res = FSREG_CheckHostLoadId(programHandle);
+        //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
+        if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
+            return PXIPM_UnregisterProgram(programHandle);
+        else
+            return FSREG_UnloadProgram(programHandle);
     }
-  } while (!term_request || g_active_handles != 2);
+}
 
-  srvUnregisterService("Loader");
-  svcCloseHandle(*srv_handle);
-  svcCloseHandle(*notification_handle);
+void loaderHandleCommands(void *ctx)
+{
+    (void)ctx;
+    FS_ProgramInfo title;
+    FS_ProgramInfo update;
+    u32* cmdbuf;
+    u16 cmdid;
+    int res;
+    Handle handle;
+    u64 programHandle;
 
-  return 0;
+    cmdbuf = getThreadCommandBuffer();
+    cmdid = cmdbuf[0] >> 16;
+    res = 0;
+    switch (cmdid)
+    {
+        case 1: // LoadProcess
+            memcpy(&programHandle, &cmdbuf[1], 8);
+            handle = 0;
+            cmdbuf[1] = LoadProcess(&handle, programHandle);
+            cmdbuf[0] = IPC_MakeHeader(1, 1, 2);
+            cmdbuf[2] = IPC_Desc_MoveHandles(1);
+            cmdbuf[3] = handle;
+            break;
+        case 2: // RegisterProgram
+            memcpy(&title, &cmdbuf[1], sizeof(FS_ProgramInfo));
+            memcpy(&update, &cmdbuf[5], sizeof(FS_ProgramInfo));
+            cmdbuf[1] = RegisterProgram(&programHandle, &title, &update);
+            cmdbuf[0] = IPC_MakeHeader(2, 3, 0);
+            memcpy(&cmdbuf[2], &programHandle, 8);
+            break;
+        case 3: // UnregisterProgram
+            memcpy(&programHandle, &cmdbuf[1], 8);
+
+            if (g_cached_programHandle == programHandle)
+                g_cached_programHandle = 0;
+            cmdbuf[1] = UnregisterProgram(programHandle);
+            cmdbuf[0] = IPC_MakeHeader(3, 1, 0);
+            break;
+        case 4: // GetProgramInfo
+            memcpy(&programHandle, &cmdbuf[1], 8);
+            if (programHandle != g_cached_programHandle || g_exheaderInfo.aci.local_caps.title_id == HBLDR_3DSX_TID)
+            {
+                res = GetProgramInfo(&g_exheaderInfo, programHandle);
+                g_cached_programHandle = R_SUCCEEDED(res) ? programHandle : 0;
+            }
+            memcpy(&g_ret_buf, &g_exheaderInfo, sizeof(ExHeader_Info));
+            cmdbuf[0] = IPC_MakeHeader(4, 1, 2);
+            cmdbuf[1] = res;
+            cmdbuf[2] = IPC_Desc_StaticBuffer(sizeof(ExHeader_Info), 0); //0x1000002;
+            cmdbuf[3] = (u32)&g_ret_buf;
+            break;
+        default: // error
+            cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
+            cmdbuf[1] = 0xD900182F;
+            break;
+    }
 }

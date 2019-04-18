@@ -355,10 +355,10 @@ error:
     while(true);
 }
 
-bool loadTitleExheader(u64 progId, ExHeader_Info *exheader)
+bool loadTitleExheaderInfo(u64 progId, ExHeader_Info *exheaderInfo)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/exheader.bin"
-       If it exists it should be a decrypted exheader */
+       If it exists it should be a decrypted exheader / exheader info */
 
     char path[] = "/luma/titles/0000000000000000/exheader.bin";
     progIdToStr(path + 28, progId);
@@ -374,7 +374,7 @@ bool loadTitleExheader(u64 progId, ExHeader_Info *exheader)
     {
         u64 total;
 
-        if(R_FAILED(IFile_Read(&file, &total, exheader, sizeof(ExHeader_Info))) || total != sizeof(ExHeader_Info)) goto error;
+        if(R_FAILED(IFile_Read(&file, &total, exheaderInfo, sizeof(ExHeader_Info))) || total != sizeof(ExHeader_Info)) goto error;
     }
 
     IFile_Close(&file);

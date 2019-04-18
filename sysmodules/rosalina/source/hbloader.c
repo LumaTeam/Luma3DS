@@ -149,7 +149,7 @@ void HBLDR_HandleCommands(void *ctx)
     u32 *cmdbuf = getThreadCommandBuffer();
     switch (cmdbuf[0] >> 16)
     {
-        case 1:
+        case 1: // LoadProcess
         {
             if (cmdbuf[0] != IPC_MakeHeader(1, 6, 0))
             {
@@ -212,7 +212,7 @@ void HBLDR_HandleCommands(void *ctx)
             cmdbuf[3] = hCodeset;
             break;
         }
-        case 2:
+        case 2: // SetTarget
         {
             if (cmdbuf[0] != IPC_MakeHeader(2, 0, 2) || (cmdbuf[1] & 0x3FFF) != 0x0002)
             {
@@ -232,7 +232,7 @@ void HBLDR_HandleCommands(void *ctx)
             cmdbuf[1] = 0;
             break;
         }
-        case 3:
+        case 3: // SetArgv
         {
             if (cmdbuf[0] != IPC_MakeHeader(3, 0, 2) || (cmdbuf[1] & 0x3FFF) != (0x2 | (1<<10)))
             {
@@ -244,7 +244,7 @@ void HBLDR_HandleCommands(void *ctx)
             cmdbuf[1] = 0;
             break;
         }
-        case 4:
+        case 4: // PatchExHeaderInfo
         {
             if (cmdbuf[0] != IPC_MakeHeader(4, 0, 2) || cmdbuf[1] != IPC_Desc_Buffer(sizeof(ExHeader_Info), IPC_BUFFER_RW))
             {
@@ -253,14 +253,14 @@ void HBLDR_HandleCommands(void *ctx)
             }
 
             // Perform ExHeader patches
-            ExHeader_Info* exh = (ExHeader_Info*)cmdbuf[2];
+            ExHeader_Info* exhi = (ExHeader_Info*)cmdbuf[2];
             u32 stacksize = 4096; // 3dsx/libctru don't require anymore than this
-            memcpy(exh->sci.codeset_info.name, "3dsx_app", 8);
-            memcpy(&exh->sci.codeset_info.stack_size, &stacksize, 4);
-            memset(&exh->sci.dependencies, 0, sizeof(exh->sci.dependencies));
-            memcpy(exh->sci.dependencies, dependencyList, sizeof(dependencyList));
+            memcpy(exhi->sci.codeset_info.name, "3dsx_app", 8);
+            memcpy(&exhi->sci.codeset_info.stack_size, &stacksize, 4);
+            memset(&exhi->sci.dependencies, 0, sizeof(exhi->sci.dependencies));
+            memcpy(exhi->sci.dependencies, dependencyList, sizeof(dependencyList));
 
-            ExHeader_Arm11SystemLocalCapabilities* localcaps0 = &exh->aci.local_caps;
+            ExHeader_Arm11SystemLocalCapabilities* localcaps0 = &exhi->aci.local_caps;
 
             localcaps0->core_info.core_version = 2;
             localcaps0->core_info.use_cpu_clockrate_804MHz = false;
@@ -285,20 +285,20 @@ void HBLDR_HandleCommands(void *ctx)
 
             localcaps0->reslimit_category = RESLIMIT_CATEGORY_APPLICATION;
 
-            ExHeader_Arm11KernelCapabilities* kcaps0 = &exh->aci.kernel_caps;
+            ExHeader_Arm11KernelCapabilities* kcaps0 = &exhi->aci.kernel_caps;
             memset(kcaps0->descriptors, 0xFF, sizeof(kcaps0->descriptors));
             memcpy(kcaps0->descriptors, kernelCaps, sizeof(kernelCaps));
 
             u64 lastdep = sizeof(dependencyList)/8;
             if (osGetFirmVersion() >= SYSTEM_VERSION(2,50,0)) // 9.6+ FIRM
             {
-                exh->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
+                exhi->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
                 strncpy((char*)&localcaps0->service_access[0x20], "nfc:u", 8);
                 s64 dummy = 0;
                 bool isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
                 if (isN3DS)
                 {
-                    exh->sci.dependencies[lastdep++] = 0x0004013020004102ULL; // mvd
+                    exhi->sci.dependencies[lastdep++] = 0x0004013020004102ULL; // mvd
                     strncpy((char*)&localcaps0->service_access[0x21], "mvd:STD", 8);
                 }
             }
@@ -306,7 +306,7 @@ void HBLDR_HandleCommands(void *ctx)
             cmdbuf[0] = IPC_MakeHeader(4, 1, 2);
             cmdbuf[1] = 0;
             cmdbuf[2] = IPC_Desc_Buffer(sizeof(ExHeader_Info), IPC_BUFFER_RW);
-            cmdbuf[3] = (u32)exh;
+            cmdbuf[3] = (u32)exhi;
             break;
         }
         default:
