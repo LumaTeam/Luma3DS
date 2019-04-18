@@ -36,6 +36,7 @@
 #include "gdb/watchpoints.h"
 #include "gdb/breakpoints.h"
 #include "gdb/stop_point.h"
+#include "task_runner.h"
 
 Result GDB_InitializeServer(GDBServer *server)
 {
@@ -225,6 +226,10 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
             GDB_UnlockAllContexts(server);
             return NULL;
         }
+
+        if (ctx->localPort == GDB_PORT_BASE + MAX_DEBUG)
+            TaskRunner_WaitReady(); // Finish grabbing new process debug, if anything...
+
         ctx->flags |= GDB_FLAG_USED;
         ctx->state = GDB_STATE_CONNECTED;
         ctx->parent = server;

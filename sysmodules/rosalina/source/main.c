@@ -38,6 +38,8 @@
 #include "menus/debugger.h"
 #include "menus/screen_filters.h"
 
+#include "task_runner.h"
+
 static Result stealFsReg(void)
 {
     Result ret = 0;
@@ -157,10 +159,10 @@ static void handleTermNotification(u32 notificationId)
 
 static void handleNextApplicationDebuggedByForce(u32 notificationId)
 {
+    int dummy;
     (void)notificationId;
-    Handle debug = 0;
-    PMDBG_RunQueuedProcess(&debug);
-    debuggerSetNextApplicationDebugHandle(debug);
+    // Following call needs to be async because pm -> Loader depends on rosalina hb:ldr, handled in this very thread.
+    TaskRunner_RunTask(debuggerFetchAndSetNextApplicationDebugHandleTask, &dummy, 0);
 }
 
 static const ServiceManagerServiceEntry services[] = {
@@ -191,11 +193,13 @@ int main(void)
         svcBreak(USERBREAK_ASSERT);
 
     MyThread *menuThread = menuCreateThread();
+    MyThread *taskRunnerThread = taskRunnerCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
 
     MyThread_Join(menuThread, -1LL);
+    MyThread_Join(taskRunnerThread, -1LL);
 
     return 0;
 }

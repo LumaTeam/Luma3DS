@@ -31,7 +31,7 @@
 
 extern Menu debuggerMenu;
 
-void debuggerSetNextApplicationDebugHandle(Handle debug);
+void debuggerFetchAndSetNextApplicationDebugHandleTask(void *argdata);
 void DebuggerMenu_EnableDebugger(void);
 void DebuggerMenu_DisableDebugger(void);
 void DebuggerMenu_DebugNextApplicationByForce(void);

@@ -34,6 +34,7 @@
 #include "gdb/debug.h"
 #include "gdb/monitor.h"
 #include "gdb/net.h"
+#include "pmdbgext.h"
 
 Menu debuggerMenu = {
     "Debugger options menu",
@@ -68,8 +69,11 @@ MyThread *debuggerCreateDebugThread(void)
     return &debuggerDebugThread;
 }
 
-void debuggerSetNextApplicationDebugHandle(Handle debug)
+void debuggerFetchAndSetNextApplicationDebugHandleTask(void *argdata)
 {
+    (void)argdata;
+    Handle debug = 0;
+    PMDBG_RunQueuedProcess(&debug);
     GDB_LockAllContexts(&gdbServer);
     nextApplicationGdbCtx->debug = debug;
     if (debug == 0)
