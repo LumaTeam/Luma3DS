@@ -211,7 +211,11 @@ GDB_DECLARE_HANDLER(Unsupported)
 
 GDB_DECLARE_HANDLER(EnableExtendedMode)
 {
-
-    ctx->flags |= GDB_FLAG_EXTENDED_REMOTE;
-    return GDB_ReplyOk(ctx);
+    if (ctx->localPort >= GDB_PORT_BASE && ctx->localPort < GDB_PORT_BASE + MAX_DEBUG)
+    {
+        ctx->flags |= GDB_FLAG_EXTENDED_REMOTE;
+        return GDB_ReplyOk(ctx);
+    }
+    else
+        return GDB_ReplyEmpty(ctx);
 }

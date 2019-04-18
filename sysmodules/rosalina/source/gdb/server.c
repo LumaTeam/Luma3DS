@@ -229,7 +229,7 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
         ctx->state = GDB_STATE_CONNECTED;
         ctx->parent = server;
     }
-    else
+    else if (port >= GDB_PORT_BASE && port < GDB_PORT_BASE + MAX_DEBUG)
     {
         // Grab a free context
         u32 id;
