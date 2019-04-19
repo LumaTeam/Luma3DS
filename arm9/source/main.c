@@ -119,7 +119,6 @@ void main(int argc, char **argv, u32 magicWord)
     I2C_init();
     if(isInvalidLoader) error("Launched using an unsupported loader.");
 
-    detectAndProcessExceptionDumps();
     installArm9Handlers();
 
     if(memcmp(launchedPath, u"sdmc", 8) == 0)
@@ -156,6 +155,8 @@ void main(int argc, char **argv, u32 magicWord)
 
         error("Launched from an unsupported location: %s.", mountPoint);
     }
+
+    detectAndProcessExceptionDumps();
 
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
