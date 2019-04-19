@@ -82,3 +82,16 @@ Result HBLDR_PatchExHeaderInfo(ExHeader_Info *exheaderInfo)
 
     return rc;
 }
+
+Result HBLDR_DebugNextApplicationByForce(bool dryRun)
+{
+    u32* cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = IPC_MakeHeader(5, 1, 0); // 0x50040
+    cmdbuf[1] = dryRun ? 1 : 0;
+
+    Result rc = svcSendSyncRequest(hbldrHandle);
+    if (R_SUCCEEDED(rc)) rc = cmdbuf[1];
+
+    return rc;
+}

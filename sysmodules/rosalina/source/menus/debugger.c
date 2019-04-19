@@ -174,34 +174,37 @@ void DebuggerMenu_DebugNextApplicationByForce(void)
     Result res = 0;
     char buf[256];
 
-    GDB_LockAllContexts(&gdbServer);
-
-    if (nextApplicationGdbCtx != NULL)
-        strcpy(buf, "Operation already performed.");
-    else if(initialized)
+    if(initialized)
     {
-        nextApplicationGdbCtx = GDB_SelectAvailableContext(&gdbServer, GDB_PORT_BASE + 3, GDB_PORT_BASE + 4);
+        GDB_LockAllContexts(&gdbServer);
+
         if (nextApplicationGdbCtx != NULL)
-        {
-            nextApplicationGdbCtx->debug = 0;
-            nextApplicationGdbCtx->pid = 0xFFFFFFFF;
-            res = PMDBG_DebugNextApplicationByForce();
-            if(R_SUCCEEDED(res))
-                sprintf(buf, "Operation succeeded.\nUse port %d to connect to the next launched\napplication.", nextApplicationGdbCtx->localPort);
-            else
-            {
-                nextApplicationGdbCtx->flags = 0;
-                nextApplicationGdbCtx->localPort = 0;
-                nextApplicationGdbCtx = NULL;
-                    sprintf(buf, "Operation failed (0x%08lx).", (u32)res);
-            }
-        }
+            strcpy(buf, "Operation already performed.");
         else
-            strcpy(buf, "Failed to allocate a slot.\nPlease unselect a process in the process list first");
+        {
+            nextApplicationGdbCtx = GDB_SelectAvailableContext(&gdbServer, GDB_PORT_BASE + 3, GDB_PORT_BASE + 4);
+            if (nextApplicationGdbCtx != NULL)
+            {
+                nextApplicationGdbCtx->debug = 0;
+                nextApplicationGdbCtx->pid = 0xFFFFFFFF;
+                res = PMDBG_DebugNextApplicationByForce();
+                if(R_SUCCEEDED(res))
+                    sprintf(buf, "Operation succeeded.\nUse port %d to connect to the next launched\napplication.", nextApplicationGdbCtx->localPort);
+                else
+                {
+                    nextApplicationGdbCtx->flags = 0;
+                    nextApplicationGdbCtx->localPort = 0;
+                    nextApplicationGdbCtx = NULL;
+                        sprintf(buf, "Operation failed (0x%08lx).", (u32)res);
+                }
+            }
+            else
+                strcpy(buf, "Failed to allocate a slot.\nPlease unselect a process in the process list first");
+        }
+        GDB_UnlockAllContexts(&gdbServer);
     }
     else
         strcpy(buf, "Debugger not enabled.");
-    GDB_UnlockAllContexts(&gdbServer);
 
     do
     {

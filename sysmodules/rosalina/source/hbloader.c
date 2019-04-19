@@ -318,30 +318,33 @@ void HBLDR_HandleCommands(void *ctx)
         case 5: // DebugNextApplicationByForce
         {
             res = 0;
-            GDB_LockAllContexts(&gdbServer);
-            if (nextApplicationGdbCtx != NULL)
-                res = MAKERESULT(RL_PERMANENT, RS_NOP, RM_LDR, RD_ALREADY_DONE);
-            else if (gdbServer.referenceCount == 0)
+            if (gdbServer.referenceCount == 0)
                 res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, RM_LDR, RD_NOT_INITIALIZED);
-            else
+            else if (cmdbuf[1] == 0)
             {
-                nextApplicationGdbCtx = GDB_SelectAvailableContext(&gdbServer, GDB_PORT_BASE + 3, GDB_PORT_BASE + 4);
+                GDB_LockAllContexts(&gdbServer);
                 if (nextApplicationGdbCtx != NULL)
-                {
-                    nextApplicationGdbCtx->debug = 0;
-                    nextApplicationGdbCtx->pid = 0xFFFFFFFF;
-                    res = PMDBG_DebugNextApplicationByForce();
-                    if (R_FAILED(res))
-                    {
-                        nextApplicationGdbCtx->flags = 0;
-                        nextApplicationGdbCtx->localPort = 0;
-                        nextApplicationGdbCtx = NULL;
-                    }
-                }
+                    res = MAKERESULT(RL_PERMANENT, RS_NOP, RM_LDR, RD_ALREADY_DONE);
                 else
-                    res = MAKERESULT(RL_PERMANENT, RS_OUTOFRESOURCE, RM_LDR, RD_OUT_OF_RANGE);
+                {
+                    nextApplicationGdbCtx = GDB_SelectAvailableContext(&gdbServer, GDB_PORT_BASE + 3, GDB_PORT_BASE + 4);
+                    if (nextApplicationGdbCtx != NULL)
+                    {
+                        nextApplicationGdbCtx->debug = 0;
+                        nextApplicationGdbCtx->pid = 0xFFFFFFFF;
+                        res = PMDBG_DebugNextApplicationByForce();
+                        if (R_FAILED(res))
+                        {
+                            nextApplicationGdbCtx->flags = 0;
+                            nextApplicationGdbCtx->localPort = 0;
+                            nextApplicationGdbCtx = NULL;
+                        }
+                    }
+                    else
+                        res = MAKERESULT(RL_PERMANENT, RS_OUTOFRESOURCE, RM_LDR, RD_OUT_OF_RANGE);
+                }
+                GDB_UnlockAllContexts(&gdbServer);
             }
-            GDB_UnlockAllContexts(&gdbServer);
             cmdbuf[1] = res;
             cmdbuf[0] = IPC_MakeHeader(5, 1, 0);
             break;
