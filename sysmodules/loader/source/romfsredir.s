@@ -23,7 +23,7 @@ romfsRedirPatch:
         .word   0xdead0002  @ Substituted opcode
     .global romfsRedirPatchHook2
     romfsRedirPatchHook2:
-        .word   0xdead0002  @ Branch to hooked function
+        .word   0xdead0003  @ Branch to hooked function
 
     @ Mounts the archive and registers it as 'lf:'
     mountArchive:
@@ -31,7 +31,7 @@ romfsRedirPatch:
         bne     romfsRedirPatchSubstituted1
         stmfd   sp!, {r0-r4, lr}
         sub     sp, sp, #4
-        adr     r1, romfsRedirPatchArchiveId
+        ldr     r1, romfsRedirPatchArchiveId
         mov     r0, sp
         ldr     r4, romfsRedirPatchFsMountArchive
         blx     r4
