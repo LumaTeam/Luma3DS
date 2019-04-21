@@ -68,7 +68,7 @@ static u32 checkLumaDir(const char *path)
     return dirCheck(archiveId, path) ? archiveId : 0;
 }
 
-static inline bool secureInfoExists(void)
+static bool secureInfoExists(void)
 {
     static bool exists = false;
 
@@ -84,7 +84,7 @@ static inline bool secureInfoExists(void)
     return exists;
 }
 
-static inline void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
+static void loadCustomVerString(u16 *out, u32 *verStringSize, u32 currentNand)
 {
     static const char *paths[] = { "/luma/customversion_sys.txt",
                                    "/luma/customversion_emu.txt",
@@ -151,7 +151,7 @@ static u32 findFunctionStart(u8 *code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
+static bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
 {
     u32 found = 0,
         *temp = NULL;
@@ -196,7 +196,7 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
     return found == 4;
 }
 
-static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress, u32 *payloadOffset, u32 *pathOffset, u32 *pathAddress)
+static bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress, u32 *payloadOffset, u32 *pathOffset, u32 *pathAddress)
 {
     u32 roundedTextSize = ((size + 4095) & 0xFFFFF000),
         roundedRoSize = ((roSize + 4095) & 0xFFFFF000),
@@ -263,7 +263,7 @@ static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u3
     return *payloadOffset != 0 && *pathOffset != 0;
 }
 
-static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
+static bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.ips"
        If it exists it should be an IPS format patch */
@@ -388,7 +388,7 @@ error:
     while(true);
 }
 
-static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 *languageId, u8 *countryId, u8 *stateId)
+static bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 *languageId, u8 *countryId, u8 *stateId)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/locale.txt"
        If it exists it should contain, for example, "EUR IT" */
@@ -485,7 +485,8 @@ exit:
     return ret;
 }
 
-static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
+__attribute__((noinline))
+static bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/romfs"
        If it exists it should be a folder containing ROMFS files */
@@ -508,18 +509,18 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
-    static const char *updateRomFsMounts[] = { "rom2:",
-                                               "rex:",
-                                               "patch:",
-                                               "ext:",
-                                               "rom:" };
+    static const char *const updateRomFsMounts[] = {"rom2:",
+                                                    "rex:",
+                                                    "patch:",
+                                                    "ext:",
+                                                    "rom:" };
     u32 updateRomFsIndex;
 
     //Locate update RomFSes
     for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
     {
-        u32 patternSize = strnlen(updateRomFsMounts[updateRomFsIndex], 255);
-        u8 temp[7];
+        u32 patternSize = strlen(updateRomFsMounts[updateRomFsIndex]);
+        u8 temp[7] = {0};
         temp[0] = 0;
         memcpy(temp + 1, updateRomFsMounts[updateRomFsIndex], patternSize);
         if(memsearch(code, temp, size, patternSize + 1) != NULL) break;
@@ -528,10 +529,12 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     //Setup the payload
     u8 *payload = code + payloadOffset;
 
+    u32 off1 = payloadOffset + (u32)&romfsRedirPatchHook1 - (u32)romfsRedirPatch;
+    u32 off2 = payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch;
     romfsRedirPatchSubstituted1 = *(u32 *)(code + fsOpenFileDirectly);
-    romfsRedirPatchHook1 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook1 - (u32)romfsRedirPatch, fsOpenFileDirectly + 4);
+    romfsRedirPatchHook1 = MAKE_BRANCH(off1, fsOpenFileDirectly + 4);
     romfsRedirPatchSubstituted1 = *(u32 *)(code + fsTryOpenFile);
-    romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
+    romfsRedirPatchHook2 = MAKE_BRANCH(off2, fsTryOpenFile + 4);
     romfsRedirPatchCustomPath = pathAddress;
     romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
     romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
