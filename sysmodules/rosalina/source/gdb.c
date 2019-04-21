@@ -143,9 +143,6 @@ void GDB_DetachFromProcess(GDBContext *ctx)
     memset(ctx->threadListData, 0, sizeof(ctx->threadListData));
     ctx->threadListDataPos = 0;
 
-    svcClearEvent(ctx->processAttachedEvent);
-    ctx->eventToWaitFor = ctx->processAttachedEvent;
-
     //svcSignalEvent(server->statusUpdated);
 
     /*
@@ -184,8 +181,6 @@ void GDB_DetachFromProcess(GDBContext *ctx)
 
     ctx->currentHioRequestTargetAddr = 0;
     memset(&ctx->currentHioRequest, 0, sizeof(PackedGdbHioRequest));
-
-    ctx->state = GDB_STATE_CONNECTED;
 }
 
 Result GDB_CreateProcess(GDBContext *ctx, const FS_ProgramInfo *progInfo, u32 launchFlags)

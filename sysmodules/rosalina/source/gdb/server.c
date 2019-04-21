@@ -192,6 +192,8 @@ int GDB_AcceptClient(GDBContext *ctx)
 int GDB_CloseClient(GDBContext *ctx)
 {
     RecursiveLock_Lock(&ctx->lock);
+    svcClearEvent(ctx->processAttachedEvent);
+    ctx->eventToWaitFor = ctx->processAttachedEvent;
     svcClearEvent(ctx->parent->statusUpdateReceived);
     svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
     RecursiveLock_Unlock(&ctx->lock);
@@ -199,8 +201,20 @@ int GDB_CloseClient(GDBContext *ctx)
     svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
 
     RecursiveLock_Lock(&ctx->lock);
-    GDB_DetachFromProcess(ctx);
+    if (ctx->state >= GDB_STATE_ATTACHED)
+        GDB_DetachFromProcess(ctx);
+
+    ctx->localPort = 0;
+    ctx->enableExternalMemoryAccess = false;
+    ctx->flags = 0;
     ctx->state = GDB_STATE_DISCONNECTED;
+
+    ctx->catchThreadEvents = false;
+
+    memset(&ctx->latestDebugEvent, 0, sizeof(DebugEventInfo));
+    memset(ctx->memoryOsInfoXmlData, 0, sizeof(ctx->memoryOsInfoXmlData));
+    memset(ctx->processesOsInfoXmlData, 0, sizeof(ctx->processesOsInfoXmlData));
+
     RecursiveLock_Unlock(&ctx->lock);
     return 0;
 }
@@ -260,19 +274,7 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
 void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
 {
     (void)server;
-    RecursiveLock_Lock(&ctx->lock);
-    ctx->localPort = 0;
-    ctx->enableExternalMemoryAccess = false;
-    ctx->flags = 0;
-    ctx->state = GDB_STATE_DISCONNECTED;
-
-    ctx->catchThreadEvents = false;
-
-    memset(&ctx->latestDebugEvent, 0, sizeof(DebugEventInfo));
-    memset(ctx->memoryOsInfoXmlData, 0, sizeof(ctx->memoryOsInfoXmlData));
-    memset(ctx->processesOsInfoXmlData, 0, sizeof(ctx->processesOsInfoXmlData));
-
-    RecursiveLock_Unlock(&ctx->lock);
+    (void)ctx;
 }
 
 static const struct
@@ -344,9 +346,20 @@ int GDB_DoPacket(GDBContext *ctx)
     else
         ret = 0;
 
-    RecursiveLock_Unlock(&ctx->lock);
     if(ctx->state == GDB_STATE_DETACHING)
-        return (ctx->flags & GDB_FLAG_EXTENDED_REMOTE) ? ret : -1;
+    {
+        if(ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        {
+            ctx->state = GDB_STATE_CONNECTED;
+            RecursiveLock_Unlock(&ctx->lock);
+            return ret;
+        }
+        else
+        {
+            RecursiveLock_Unlock(&ctx->lock);
+            return -1;
+        }
+    }
 
     if((oldFlags & GDB_FLAG_PROCESS_CONTINUING) && !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
     {
@@ -356,5 +369,6 @@ int GDB_DoPacket(GDBContext *ctx)
     else if(!(oldFlags & GDB_FLAG_PROCESS_CONTINUING) && (ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
         svcSignalEvent(ctx->continuedEvent);
 
+    RecursiveLock_Unlock(&ctx->lock);
     return ret;
 }
