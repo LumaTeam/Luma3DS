@@ -45,6 +45,9 @@ static void GDB_DetachImmediatelyExtended(GDBContext *ctx)
     RecursiveLock_Lock(&ctx->lock);
     ctx->state = GDB_STATE_DETACHING;
 
+    svcClearEvent(ctx->processAttachedEvent);
+    ctx->eventToWaitFor = ctx->processAttachedEvent;
+
     svcClearEvent(ctx->parent->statusUpdateReceived);
     svcSignalEvent(ctx->parent->statusUpdated);
     RecursiveLock_Unlock(&ctx->lock);

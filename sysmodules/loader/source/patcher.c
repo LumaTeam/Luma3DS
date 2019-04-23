@@ -530,7 +530,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
     romfsRedirPatchSubstituted1 = *(u32 *)(code + fsOpenFileDirectly);
     romfsRedirPatchHook1 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook1 - (u32)romfsRedirPatch, fsOpenFileDirectly + 4);
-    romfsRedirPatchSubstituted1 = *(u32 *)(code + fsTryOpenFile);
+    romfsRedirPatchSubstituted2 = *(u32 *)(code + fsTryOpenFile);
     romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
     romfsRedirPatchCustomPath = pathAddress;
     romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
