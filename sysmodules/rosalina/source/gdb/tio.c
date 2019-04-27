@@ -181,12 +181,19 @@ static int GDB_TioRegisterFile(GDBContext *ctx, Handle h, int gdbOpenFlags)
     return fd;
 }
 
-static int GDB_MakeUtf16Path(FS_Path *outPath, const char *path)
+static int GDB_MakeUtf16Path(FS_Path *outPath, const char *pathData)
 {
+    size_t pathDataLen = strlen(pathData);
+    if (pathDataLen % 2 == 1) return GDBHIO_EINVAL;
+
+    char path[PATH_MAX + 1];
+    u32 count = GDB_DecodeHex(path, pathData, pathDataLen / 2);
+    path[count] = 0;
+
     u16 *p16 = (u16 *)outPath->data;
     outPath->type = PATH_UTF16;
 
-    ssize_t units = utf8_to_utf16(p16, (const u8 *) path, PATH_MAX);
+    ssize_t units = utf8_to_utf16(p16, (const u8 *) path, count);
     if (units < 0) return GDBHIO_EINVAL;
     else if (units >= PATH_MAX) return  GDBHIO_ENAMETOOLONG;
 
@@ -200,12 +207,22 @@ static inline int GDB_TioReplyErrno(GDBContext *ctx, int err)
     return GDB_SendFormattedPacket(ctx, "F-1,%lx", (u32)err);
 }
 
-GDB_DECLARE_TIO_HANDLER(Open)
+static inline FS_ArchiveID GDB_TioGetArchiveId(void)
 {
+    /*
     s64 out = 1;
     svcGetSystemInfo(&out, 0x10000, 0x203);
     bool isSdMode = (bool)out;
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    */
+
+    // Actually, only support SD card for security reasons.
+    return ARCHIVE_SDMC;
+}
+
+GDB_DECLARE_TIO_HANDLER(Open)
+{
+    FS_ArchiveID archiveId = GDB_TioGetArchiveId();
     u16 fsNameBuf[PATH_MAX + 1];
     FS_Path fsPath;
     fsPath.data = fsNameBuf;
@@ -215,7 +232,7 @@ GDB_DECLARE_TIO_HANDLER(Open)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
     *comma = 0;
-    char *fileName = ctx->commandData;
+    char *fileNameData = ctx->commandData;
 
     u32 args[2] = {0};
     if (GDB_ParseHexIntegerList(args, comma + 1, 2, 0) == NULL)
@@ -227,7 +244,7 @@ GDB_DECLARE_TIO_HANDLER(Open)
     if (ctx->numOpenTioFiles >= MAX_TIO_OPEN_FILE)
         return GDB_TioReplyErrno(ctx, GDBHIO_EMFILE);
 
-    int err = GDB_MakeUtf16Path(&fsPath, fileName);
+    int err = GDB_MakeUtf16Path(&fsPath, fileNameData);
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
 
@@ -254,16 +271,25 @@ GDB_DECLARE_TIO_HANDLER(Open)
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
 
-    if ((flags & O_CREAT) && (flags & O_EXCL))
-    {
-        err = GDB_TioConvertResult(FSUSER_CreateFile(archiveId, fsPath, 0, 0));
-        if (err != 0)
-            return GDB_TioReplyErrno(ctx, err);
-    }
-
-    err = GDB_TioConvertResult(IFile_Open(&f, archiveId, fsPath, fsMakePath(PATH_EMPTY, ""), fsFlags));
+    FS_Archive ar;
+    err = GDB_TioConvertResult(FSUSER_OpenArchive(&ar, archiveId, fsMakePath(PATH_EMPTY, "")));
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
+
+    if ((flags & GDBHIO_O_CREAT) && (flags & GDBHIO_O_EXCL))
+    {
+        err = GDB_TioConvertResult(FSUSER_CreateFile(ar, fsPath, 0, 0));
+        if (err != 0)
+        {
+            FSUSER_CloseArchive(ar);
+            return GDB_TioReplyErrno(ctx, err);
+        }
+    }
+
+    err = GDB_TioConvertResult(IFile_OpenFromArchive(&f, ar, fsPath, fsFlags));
+    if (err != 0)
+        __builtin_trap();//return GDB_TioReplyErrno(ctx, err);
+    FSUSER_CloseArchive(ar);
     
     if((flags & GDBHIO_O_ACCMODE) != GDBHIO_O_RDONLY && (flags & GDBHIO_O_TRUNC))
     {
@@ -365,19 +391,17 @@ GDB_DECLARE_TIO_HANDLER(Write)
 
 GDB_DECLARE_TIO_HANDLER(Stat)
 {
-    char *fileName = ctx->commandData; 
-    if (*fileName == 0)
+    char *fileNameData = ctx->commandData; 
+    if (*fileNameData == 0)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
-    s64 out = 1;
-    svcGetSystemInfo(&out, 0x10000, 0x203);
-    bool isSdMode = (bool)out;
-    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    FS_ArchiveID archiveId = GDB_TioGetArchiveId();
+
     u16 fsNameBuf[PATH_MAX + 1];
     FS_Path fsPath;
     fsPath.data = fsNameBuf;
 
-    int err = GDB_MakeUtf16Path(&fsPath, fileName);
+    int err = GDB_MakeUtf16Path(&fsPath, fileNameData);
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
 
@@ -430,23 +454,27 @@ GDB_DECLARE_TIO_HANDLER(Stat)
 
 GDB_DECLARE_TIO_HANDLER(Unlink)
 {
-    char *fileName = ctx->commandData; 
-    if (*fileName == 0)
+    char *fileNameData = ctx->commandData; 
+    if (*fileNameData == 0)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
-    s64 out = 1;
-    svcGetSystemInfo(&out, 0x10000, 0x203);
-    bool isSdMode = (bool)out;
-    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    FS_ArchiveID archiveId = GDB_TioGetArchiveId();
+
     u16 fsNameBuf[PATH_MAX + 1];
     FS_Path fsPath;
     fsPath.data = fsNameBuf;
 
-    int err = GDB_MakeUtf16Path(&fsPath, fileName);
+    int err = GDB_MakeUtf16Path(&fsPath, fileNameData);
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
 
-    err = GDB_TioConvertResult(FSUSER_DeleteFile(archiveId, fsPath));
+    FS_Archive ar;
+    err = GDB_TioConvertResult(FSUSER_OpenArchive(&ar, archiveId, fsMakePath(PATH_EMPTY, "")));
+    if (err != 0)
+        return GDB_TioReplyErrno(ctx, err);
+
+    err = GDB_TioConvertResult(FSUSER_DeleteFile(ar, fsPath));
+    FSUSER_CloseArchive(ar);
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
 
@@ -456,8 +484,8 @@ GDB_DECLARE_TIO_HANDLER(Unlink)
 GDB_DECLARE_TIO_HANDLER(Readlink)
 {
     // Not really supported
-    char *fileName = ctx->commandData; 
-    if (*fileName == 0)
+    char *fileNameData = ctx->commandData; 
+    if (*fileNameData == 0)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
     return GDB_SendPacket(ctx, "F0;", 3);
