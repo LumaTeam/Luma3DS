@@ -33,10 +33,14 @@
 #include "pmdbgext.h"
 #include "sock_util.h"
 #include "memory.h"
+#include "ifile.h"
 
 #define MAX_DEBUG           3
 #define MAX_DEBUG_THREAD    127
 #define MAX_BREAKPOINT      256
+
+#define MAX_TIO_OPEN_FILE   64
+
 // 512+24 is the ideal size as IDA will try to read exactly 0x100 bytes at a time. Add 4 to this, for $#<checksum>, see below.
 // IDA seems to want additional bytes as well.
 // 1024 is fine enough to put all regs in the 'T' stop reply packets
@@ -75,6 +79,12 @@ typedef struct PackedGdbHioRequest
     int gdbErrno;
     bool ctrlC;
 } PackedGdbHioRequest;
+
+typedef struct GdbTioFileInfo
+{
+    IFile f;
+    int flags;
+} GdbTioFileInfo;
 
 enum
 {
@@ -148,6 +158,9 @@ typedef struct GDBContext
 
     u32 currentHioRequestTargetAddr;
     PackedGdbHioRequest currentHioRequest;
+
+    GdbTioFileInfo openTioFileInfos[MAX_TIO_OPEN_FILE];
+    u32 numOpenTioFiles;
 
     bool enableExternalMemoryAccess;
     char *commandData, *commandEnd;

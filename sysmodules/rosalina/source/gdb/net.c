@@ -75,6 +75,25 @@ u32 GDB_DecodeHex(void *dst, const char *src, u32 len)
     return (!ok) ? i - 1 : i;
 }
 
+u32 GDB_EscapeBinaryData(void *dst, const void *src, u32 len, u32 maxLen)
+{
+    u8 *dst8 = (u8 *)dst;
+    const u8 *src8 = (const u8 *)src;
+
+    for(u32 i = 0; i < len && (u32)dst8 - (u32)dst < maxLen; i++)
+    {
+        if(*src8 == '$' || *src8 == '#' || *src8 == '}' || *src8 == '*')
+        {
+            *dst8++ = '}';
+            *dst8++ = *src8++ ^ 0x20;
+        }
+        else
+            *dst8++ = *src8++;
+    }
+
+    return dst8 - (u8 *)dst;
+}
+
 u32 GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
 {
     u8 *dst8 = (u8 *)dst;

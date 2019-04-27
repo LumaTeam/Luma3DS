@@ -215,6 +215,11 @@ int GDB_CloseClient(GDBContext *ctx)
     memset(ctx->memoryOsInfoXmlData, 0, sizeof(ctx->memoryOsInfoXmlData));
     memset(ctx->processesOsInfoXmlData, 0, sizeof(ctx->processesOsInfoXmlData));
 
+    for (u32 i = 0; i < MAX_TIO_OPEN_FILE; i++)
+        IFile_Close(&ctx->openTioFileInfos[i].f);
+    memset(ctx->openTioFileInfos, 0, sizeof(ctx->openTioFileInfos));
+    ctx->numOpenTioFiles = 0;
+
     RecursiveLock_Unlock(&ctx->lock);
     return 0;
 }

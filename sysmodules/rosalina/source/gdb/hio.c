@@ -26,7 +26,6 @@
 
 #include <string.h>
 
-#include "gdb.h"
 #include "gdb/hio.h"
 #include "gdb/net.h"
 #include "gdb/mem.h"

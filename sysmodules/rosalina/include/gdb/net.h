@@ -33,6 +33,7 @@
 u8 GDB_ComputeChecksum(const char *packetData, u32 len);
 void GDB_EncodeHex(char *dst, const void *src, u32 len);
 u32 GDB_DecodeHex(void *dst, const char *src, u32 len);
+u32 GDB_EscapeBinaryData(void *dst, const void *src, u32 len, u32 maxLen);
 u32 GDB_UnescapeBinaryData(void *dst, const void *src, u32 len);
 const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix);
 const char *GDB_ParseHexIntegerList(u32 *dst, const char *src, u32 nb, char lastSep);

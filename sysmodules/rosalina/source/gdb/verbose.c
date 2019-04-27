@@ -27,6 +27,7 @@
 #include "gdb/verbose.h"
 #include "gdb/net.h"
 #include "gdb/debug.h"
+#include "gdb/tio.h"
 
 static const struct
 {
@@ -37,6 +38,7 @@ static const struct
     { "Attach", GDB_VERBOSE_HANDLER(Attach) },
     { "Cont?", GDB_VERBOSE_HANDLER(ContinueSupported) },
     { "Cont",  GDB_VERBOSE_HANDLER(Continue) },
+    { "File", GDB_VERBOSE_HANDLER(File) },
     { "MustReplyEmpty", GDB_HANDLER(Unsupported) },
     { "Run", GDB_VERBOSE_HANDLER(Run) },
 };
