@@ -237,7 +237,8 @@ GDB_DECLARE_TIO_HANDLER(Open)
     u32 args[2] = {0};
     if (GDB_ParseHexIntegerList(args, comma + 1, 2, 0) == NULL)
         return GDB_ReplyErrno(ctx, EILSEQ);
-    int flags = (int)args[1];
+    int flags = (int)args[0];
+    // mode unused
     IFile f = {0};
     u32 fsFlags = 0;
 
@@ -288,7 +289,7 @@ GDB_DECLARE_TIO_HANDLER(Open)
 
     err = GDB_TioConvertResult(IFile_OpenFromArchive(&f, ar, fsPath, fsFlags));
     if (err != 0)
-        __builtin_trap();//return GDB_TioReplyErrno(ctx, err);
+        return GDB_TioReplyErrno(ctx, err);
     FSUSER_CloseArchive(ar);
     
     if((flags & GDBHIO_O_ACCMODE) != GDBHIO_O_RDONLY && (flags & GDBHIO_O_TRUNC))
