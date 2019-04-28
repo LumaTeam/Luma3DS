@@ -48,8 +48,8 @@ Menu debuggerMenu = {
 
 static MyThread debuggerSocketThread;
 static MyThread debuggerDebugThread;
-static u8 ALIGN(8) debuggerSocketThreadStack[0x4000];
-static u8 ALIGN(8) debuggerDebugThreadStack[0x2000];
+static u8 ALIGN(8) debuggerSocketThreadStack[0x5000];
+static u8 ALIGN(8) debuggerDebugThreadStack[0x3000];
 
 GDBServer gdbServer = { 0 };
 
@@ -58,14 +58,14 @@ GDBContext *nextApplicationGdbCtx = NULL;
 void debuggerSocketThreadMain(void);
 MyThread *debuggerCreateSocketThread(void)
 {
-    MyThread_Create(&debuggerSocketThread, debuggerSocketThreadMain, debuggerSocketThreadStack, 0x4000, 0x20, CORE_SYSTEM);
+    MyThread_Create(&debuggerSocketThread, debuggerSocketThreadMain, debuggerSocketThreadStack, 0x5000, 0x20, CORE_SYSTEM);
     return &debuggerSocketThread;
 }
 
 void debuggerDebugThreadMain(void);
 MyThread *debuggerCreateDebugThread(void)
 {
-    MyThread_Create(&debuggerDebugThread, debuggerDebugThreadMain, debuggerDebugThreadStack, 0x2000, 0x20, CORE_SYSTEM);
+    MyThread_Create(&debuggerDebugThread, debuggerDebugThreadMain, debuggerDebugThreadStack, 0x3000, 0x20, CORE_SYSTEM);
     return &debuggerDebugThread;
 }
 
