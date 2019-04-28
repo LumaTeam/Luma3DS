@@ -332,6 +332,7 @@ GDB_DECLARE_TIO_HANDLER(Close)
 
 GDB_DECLARE_TIO_HANDLER(Read)
 {
+    // GDB, with it code quality we're all aware of, always ask to read GDB_BUF_LEN, even if the packet can't fit...
     // "$F<num>;<data>#XX"
     char buf2[GDB_BUF_LEN - 4];
     u8 buf[sizeof(buf2) - 2 - 8];
@@ -355,10 +356,13 @@ GDB_DECLARE_TIO_HANDLER(Read)
     if (err != 0)
         return GDB_TioReplyErrno(ctx, err);
 
-    int pos = sprintf(buf2, "F%lx;", (u32)numRead);
-    u32 actualCount = GDB_EscapeBinaryData(buf2 + pos, buf, (u32)numRead, sizeof(buf));
+    char hdr[16];
+    u32 encodedCount;
+    u32 actualCount = GDB_EscapeBinaryData(&encodedCount, buf2 + 10, buf, (u32)numRead, sizeof(buf));
+    sprintf(hdr, "F%08lx;", (u32)actualCount); // buffer might not fit the entire read data
+    memcpy(buf2, hdr, 10);
 
-    return GDB_SendPacket(ctx, buf2, pos + actualCount);
+    return GDB_SendPacket(ctx, buf2, 10 + encodedCount);
 }
 
 GDB_DECLARE_TIO_HANDLER(Write)
@@ -448,9 +452,10 @@ GDB_DECLARE_TIO_HANDLER(Stat)
     GDB_TioMakeStructStat(&gdbStFinal, &gdbSt);
 
     char buf[3 + 2 * sizeof(struct gdbhio_stat)] = "F0;";
-    u32 actualCount = GDB_EscapeBinaryData(buf + 3, buf, sizeof(struct gdbhio_stat), 2 * sizeof(struct gdbhio_stat));
+    u32 encodedCount;
+    GDB_EscapeBinaryData(&encodedCount, buf + 3, buf, sizeof(struct gdbhio_stat), 2 * sizeof(struct gdbhio_stat));
 
-    return GDB_SendPacket(ctx, buf, 3 + actualCount);
+    return GDB_SendPacket(ctx, buf, 3 + encodedCount);
 }
 
 GDB_DECLARE_TIO_HANDLER(Unlink)
