@@ -246,9 +246,6 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
             return NULL;
         }
 
-        if (ctx->localPort == GDB_PORT_BASE + MAX_DEBUG)
-            TaskRunner_WaitReady(); // Finish grabbing new process debug, if anything...
-
         ctx->flags |= GDB_FLAG_USED;
         ctx->state = GDB_STATE_CONNECTED;
         ctx->parent = server;
@@ -273,6 +270,20 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
     }
 
     GDB_UnlockAllContexts(server);
+    if (port == GDB_PORT_BASE + MAX_DEBUG)
+    {
+        // this is not sufficient/foolproof and is buggy: TaskRunner_WaitReady(); // Finish grabbing new process debug, if anything...
+        bool ok = false;
+        do
+        {
+            svcSleepThread(5 * 1000 * 1000LL);
+            RecursiveLock_Lock(&ctx->lock);
+            ok = ctx->debug != 0;
+            RecursiveLock_Unlock(&ctx->lock);
+        }
+        while (!ok);
+    }
+
     return ctx;
 }
 
