@@ -77,14 +77,14 @@ GDB_DECLARE_HANDLER(HioReply)
     // "Call specific attachement" is always empty, though.
 
     const char *pos = ctx->commandData;
-    u32 retval;
+    u64 retval;
 
     if (*pos == 0 || *pos == ',')
         return GDB_ReplyErrno(ctx, EILSEQ);
     else if (*pos == '-')
     {
         pos++;
-        ctx->currentHioRequest.retval = -1;
+        ctx->currentHioRequest.retval = -1ll;
     }
     else if (*pos == '+')
     {
@@ -94,7 +94,7 @@ GDB_DECLARE_HANDLER(HioReply)
     else
         ctx->currentHioRequest.retval = 1;
 
-    pos = GDB_ParseHexIntegerList(&retval, pos, 1, ',');
+    pos = GDB_ParseHexIntegerList64(&retval, pos, 1, ',');
 
     if (pos == NULL)
         return GDB_ReplyErrno(ctx, EILSEQ);
@@ -106,6 +106,7 @@ GDB_DECLARE_HANDLER(HioReply)
     if (*pos != 0)
     {
         u32 errno_;
+        // GDB protocol technically allows errno to have a +/- prefix but this will never happen.
         pos = GDB_ParseHexIntegerList(&errno_, ++pos, 1, ',');
         ctx->currentHioRequest.gdbErrno = (int)errno_;
         if (pos == NULL)

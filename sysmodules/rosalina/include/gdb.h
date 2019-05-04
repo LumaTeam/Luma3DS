@@ -56,7 +56,7 @@ typedef struct PackedGdbHioRequest
     size_t stringLengths[8];
 
     // Return
-    int retval;
+    s64 retval;
     int gdbErrno;
     bool ctrlC;
 } PackedGdbHioRequest;
