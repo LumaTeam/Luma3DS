@@ -1513,14 +1513,32 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.floatMode)
                             {
+                                u32 tmp;
+                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                {
+                                    return 0;
+                                }
                                 float value;
-                                memcpy(&value, (u8*)(arg0 & 0x00FFFFFF) + *activeOffset(), sizeof(float));
+                                memcpy(&value, &tmp, sizeof(float));
                                 value += arg1;
-                                memcpy((u8*)(arg0 & 0x00FFFFFF) + *activeOffset(), &value, sizeof(float));
+                                memcpy(&tmp, &value, sizeof(u32));
+                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                {
+                                    return 0;
+                                }
                             }
                             else
                             {
-                                *(u32*)((arg0 & 0x00FFFFFF) + *activeOffset()) += arg1;
+                                u32 tmp;
+                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                {
+                                    return 0;
+                                }
+                                tmp += arg1;
+                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                {
+                                    return 0;
+                                }
                             }
                         }
                             break;
@@ -1528,14 +1546,32 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.floatMode)
                             {
+                                u32 tmp;
+                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                {
+                                    return 0;
+                                }
                                 float value;
-                                memcpy(&value, (u8*)(arg0 & 0x00FFFFFF) +*activeOffset(), sizeof(float));
+                                memcpy(&value, &tmp, sizeof(float));
                                 value *= arg1;
-                                memcpy((u8*)(arg0 & 0x00FFFFFF) + *activeOffset(), &value, sizeof(float));
+                                memcpy(&tmp, &value, sizeof(u32));
+                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                {
+                                    return 0;
+                                }
                             }
                             else
                             {
-                                *(u32*)((arg0 & 0x00FFFFFF) + *activeOffset()) *= arg1;
+                                u32 tmp;
+                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                {
+                                    return 0;
+                                }
+                                tmp *= arg1;
+                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                {
+                                    return 0;
+                                }
                             }
                         }
                             break;
@@ -1543,14 +1579,32 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.floatMode)
                             {
+                                u32 tmp;
+                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                {
+                                    return 0;
+                                }
                                 float value;
-                                memcpy(&value, (u8*)(arg0 & 0x00FFFFFF) + *activeOffset(), sizeof(float));
+                                memcpy(&value, &tmp, sizeof(float));
                                 value /= arg1;
-                                memcpy((u8*)(arg0 & 0x00FFFFFF) + *activeOffset(), &value, sizeof(float));
+                                memcpy(&tmp, &value, sizeof(u32));
+                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                {
+                                    return 0;
+                                }
                             }
                             else
                             {
-                                *(u32*)((arg0 & 0x00FFFFFF) + *activeOffset()) /= arg1;
+                                u32 tmp;
+                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                {
+                                    return 0;
+                                }
+                                tmp /= arg1;
+                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                {
+                                    return 0;
+                                }
                             }
                         }
                             break;
@@ -1616,7 +1670,22 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                             break;
                         case 0xC:
                         {
-                            memcpy((u8*)cheat_state.offset1, (u8*)cheat_state.offset2, arg1);
+                            u8 origActiveOffset = cheat_state.activeOffset;
+                            for (size_t i = 0; i < arg1; i++)
+                            {
+                                u8 data;
+                                cheat_state.activeOffset = 1;
+                                if (!Cheat_Read8(processHandle, 0, &data))
+                                {
+                                    return 0;
+                                }
+                                cheat_state.activeOffset = 0;
+                                if (!Cheat_Write8(processHandle, 0, data))
+                                {
+                                    return 0;
+                                }
+                            }
+                            cheat_state.activeOffset = origActiveOffset;
                         }
                             break;
                         // Search for pattern
@@ -1655,7 +1724,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                             break;
                                         }
                                     }
-                                    free(searchData);
                                 }
 
                                 cheat_state.ifStack <<= 1;
