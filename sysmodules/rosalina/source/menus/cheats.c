@@ -1009,7 +1009,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         }
                         break;
                     case 0x04:
-                        // TODO: Check if float mode affects this
                         // D4 Type
                         // Format: D4000000 YYYYYYYY
                         // Description: adds to the stored address' value.
@@ -1505,7 +1504,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
             {
                 if (arg0 == 0xF0F00000)
                 {
-                    // ASM routine
+                    // I have no clue how to implement this, or if it's even possible. Needs research.
+                    return 0;
                 }
                 else
                 {
