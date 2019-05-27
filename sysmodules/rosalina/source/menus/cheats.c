@@ -68,8 +68,7 @@ typedef struct BufferedFile
 
 CheatDescription* cheats[1024] = { 0 };
 u8 cheatBuffer[32768] = { 0 };
-Handle cheatMemoryBlock;
-bool memoryBlockCreated = false;
+u8* cheatPage = NULL;
 
 static CheatProcessInfo cheatinfo[0x40] = { 0 };
 
@@ -189,39 +188,63 @@ static u8 ReadWriteBuffer8 = 0;
 
 static bool Cheat_Write8(const Handle processHandle, u32 offset, u8 value)
 {
-    if (Cheat_IsValidAddress(processHandle, *activeOffset() + offset, 1))
+    u32 addr = *activeOffset() + offset;
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
+    {
+        cheatPage[addr - 0x01E81000] = value;
+        return true;
+    }
+    if (Cheat_IsValidAddress(processHandle, addr, 1))
     {
         *((u8*) (&ReadWriteBuffer8)) = value;
-        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer8, *activeOffset() + offset, 1));
+        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer8, addr, 1));
     }
     return false;
 }
 
 static bool Cheat_Write16(const Handle processHandle, u32 offset, u16 value)
 {
-    if (Cheat_IsValidAddress(processHandle, *activeOffset() + offset, 2))
+    u32 addr = *activeOffset() + offset;
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
+    {
+        *(u16*)(cheatPage + addr - 0x01E81000) = value;
+        return true;
+    }
+    if (Cheat_IsValidAddress(processHandle, addr, 2))
     {
         *((u16*) (&ReadWriteBuffer16)) = value;
-        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer16, *activeOffset() + offset, 2));
+        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer16, addr, 2));
     }
     return false;
 }
 
 static bool Cheat_Write32(const Handle processHandle, u32 offset, u32 value)
 {
-    if (Cheat_IsValidAddress(processHandle, *activeOffset() + offset, 4))
+    u32 addr = *activeOffset() + offset;
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
+    {
+        *(u32*)(cheatPage + addr - 0x01E81000) = value;
+        return true;
+    }
+    if (Cheat_IsValidAddress(processHandle, addr, 4))
     {
         *((u32*) (&ReadWriteBuffer32)) = value;
-        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer32, *activeOffset() + offset, 4));
+        return R_SUCCEEDED(svcWriteProcessMemory(processHandle, &ReadWriteBuffer32, addr, 4));
     }
     return false;
 }
 
 static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
 {
-    if (Cheat_IsValidAddress(processHandle, *activeOffset() + offset, 1))
+    u32 addr = *activeOffset() + offset;
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
-        Result res = svcReadProcessMemory(&ReadWriteBuffer8, processHandle, *activeOffset() + offset, 1);
+        *retValue = cheatPage[addr - 0x01E81000];
+        return true;
+    }
+    if (Cheat_IsValidAddress(processHandle, addr, 1))
+    {
+        Result res = svcReadProcessMemory(&ReadWriteBuffer8, processHandle, addr, 1);
         *retValue = *((u8*) (&ReadWriteBuffer8));
         return R_SUCCEEDED(res);
     }
@@ -230,9 +253,15 @@ static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
 
 static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
 {
-    if (Cheat_IsValidAddress(processHandle, *activeOffset() + offset, 2))
+    u32 addr = *activeOffset() + offset;
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
-        Result res = svcReadProcessMemory(&ReadWriteBuffer16, processHandle, *activeOffset() + offset, 2);
+        *retValue = *(u16*)(cheatPage + addr - 0x01E81000);
+        return true;
+    }
+    if (Cheat_IsValidAddress(processHandle, addr, 2))
+    {
+        Result res = svcReadProcessMemory(&ReadWriteBuffer16, processHandle, addr, 2);
         *retValue = *((u16*) (&ReadWriteBuffer16));
         return R_SUCCEEDED(res);
     }
@@ -241,9 +270,15 @@ static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
 
 static bool Cheat_Read32(const Handle processHandle, u32 offset, u32* retValue)
 {
-    if (Cheat_IsValidAddress(processHandle, *activeOffset() + offset, 4))
+    u32 addr = *activeOffset() + offset;
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
-        Result res = svcReadProcessMemory(&ReadWriteBuffer32, processHandle, *activeOffset() + offset, 4);
+        *retValue = *(u32*)(cheatPage + addr - 0x01E81000);
+        return true;
+    }
+    if (Cheat_IsValidAddress(processHandle, addr, 4))
+    {
+        Result res = svcReadProcessMemory(&ReadWriteBuffer32, processHandle, addr, 4);
         *retValue = *((u32*) (&ReadWriteBuffer32));
         return R_SUCCEEDED(res);
     }
@@ -1593,8 +1628,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                 u8 newSkip = 1;
                                 if (!skipExecution) // Don't do an expensive operation if we don't have to
                                 {
-                                    u8* searchData = malloc(searchSize * sizeof(u8));
-                                    memcpy(searchData, cheat->codes + cheat_state.index + 1, searchSize);
+                                    u8* searchData = (u8*)(cheat->codes + cheat_state.index + 1);
                                     cheat_state.index += searchSize / 8;
                                     if (searchSize & 0x7)
                                     {
@@ -1602,10 +1636,15 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                     }
                                     for (size_t i = 0; i < arg1 - searchSize; i++)
                                     {
+                                        u8 curVal;
                                         newSkip = 0;
                                         for (size_t j = 0; j < searchSize; j++)
                                         {
-                                            if (*(u8*)(activeOffset() + i + j) != searchData[j])
+                                            if (!Cheat_Read8(processHandle, i + j, &curVal))
+                                            {
+                                                return 0;
+                                            }
+                                            if (curVal != searchData[j])
                                             {
                                                 newSkip = 1;
                                                 break;
@@ -2003,9 +2042,9 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
         cheatCount--; // Remove last empty cheat
     }
 
-    if (memoryBlockCreated)
+    if (cheatPage)
     {
-        memset((u8*)0x01E81000, 0, 0x1000);
+        memset(cheatPage, 0, 0x1000);
     }
 }
 
@@ -2074,23 +2113,23 @@ void RosalinaMenu_Cheats(void)
     u64 titleId = 0;
     u32 pid = Cheat_GetCurrentPID(&titleId);
 
-    if (!memoryBlockCreated)
+    if (!cheatPage)
     {
-        if (R_FAILED(svcCreateMemoryBlock(&cheatMemoryBlock, 0x01E81000, 0x1000, MEMPERM_READ | MEMPERM_WRITE, MEMPERM_READ | MEMPERM_WRITE)))
+        Result res = svcControlMemory((u32*)cheatPage, 0x09000000, 0, 0x1000, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+        if (R_FAILED(res))
         {
+            char string[32] = {0};
+            sprintf(string, "ERROR: %lX", res);
             do
             {
                 Draw_Lock();
-                Draw_DrawString(10, 10, COLOR_TITLE, "Cheats");
-                Draw_DrawString(10, 30, COLOR_RED, "Failed to create cheat memory page");
+                Draw_DrawString(10, 10, COLOR_TITLE, string);
+                Draw_DrawString(10, 30, COLOR_RED, "Failed to allocate cheat page");
 
                 Draw_FlushFramebuffer();
                 Draw_Unlock();
             } while (!(waitInput() & BUTTON_B) && !terminationRequest);
-        }
-        else
-        {
-            memoryBlockCreated = true;
+            return;
         }
     }
 
