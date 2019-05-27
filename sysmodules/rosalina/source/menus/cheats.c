@@ -315,7 +315,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
     cheat_state.data1Mode = 0;
     cheat_state.data2Mode = 0;
     cheat_state.floatMode = 0;
-    cheat_state.index = 0;
     cheat_state.loopCount = 0;
     cheat_state.loopLine = -1;
     cheat_state.ifStack = 0;
