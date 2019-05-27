@@ -894,7 +894,14 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             cheat_state.loopCount = 0;
                             cheat_state.loopLine = -1;
-                            // TODO: Loop until next D1 or D2
+                            while (cheat_state.index < cheat->codesCount)
+                            {
+                                u64 code = cheat->codes[++cheat_state.index];
+                                if ((code >> 56) == 0xD1 || (code >> 56) == 0xD2)
+                                {
+                                    break;
+                                }
+                            }
                         }
                         break;
                     case 0x01:
