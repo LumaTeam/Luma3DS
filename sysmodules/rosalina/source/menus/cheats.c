@@ -897,7 +897,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                             while (cheat_state.index < cheat->codesCount)
                             {
                                 u64 code = cheat->codes[++cheat_state.index];
-                                if ((code >> 56) == 0xD1 || (code >> 56) == 0xD2)
+                                if (code == MAKE_QWORD(0xD1000000, 0x00000000) || code == MAKE_QWORD(0xD2000000, 0x00000000))
                                 {
                                     break;
                                 }
