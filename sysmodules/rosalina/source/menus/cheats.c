@@ -68,7 +68,7 @@ typedef struct BufferedFile
 
 CheatDescription* cheats[1024] = { 0 };
 u8 cheatBuffer[32768] = { 0 };
-u8* cheatPage = NULL;
+u8 cheatPage[0x1000] = { 0 };
 
 static CheatProcessInfo cheatinfo[0x40] = { 0 };
 
@@ -2117,10 +2117,7 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
         cheatCount--; // Remove last empty cheat
     }
 
-    if (cheatPage)
-    {
-        memset(cheatPage, 0, 0x1000);
-    }
+    memset(cheatPage, 0, 0x1000);
 }
 
 static u32 Cheat_GetCurrentPID(u64* titleId)
@@ -2187,26 +2184,6 @@ void RosalinaMenu_Cheats(void)
 {
     u64 titleId = 0;
     u32 pid = Cheat_GetCurrentPID(&titleId);
-
-    if (!cheatPage)
-    {
-        Result res = svcControlMemory((u32*)cheatPage, 0x09000000, 0, 0x1000, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
-        if (R_FAILED(res))
-        {
-            char string[32] = {0};
-            sprintf(string, "ERROR: %lX", res);
-            do
-            {
-                Draw_Lock();
-                Draw_DrawString(10, 10, COLOR_TITLE, string);
-                Draw_DrawString(10, 30, COLOR_RED, "Failed to allocate cheat page");
-
-                Draw_FlushFramebuffer();
-                Draw_Unlock();
-            } while (!(waitInput() & BUTTON_B) && !terminationRequest);
-            return;
-        }
-    }
 
     if (titleId != 0)
     {
