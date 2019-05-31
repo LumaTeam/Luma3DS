@@ -134,38 +134,17 @@ u64 cheatTitleInfo = -1ULL;
 
 static inline u32* activeOffset()
 {
-    if (cheat_state.activeOffset)
-    {
-        return &cheat_state.offset2;
-    }
-    else
-    {
-        return &cheat_state.offset1;
-    }
+    return cheat_state.activeOffset ? &cheat_state.offset2 : &cheat_state.offset1;
 }
 
 static inline u32* activeData()
 {
-    if (cheat_state.activeData)
-    {
-        return &cheat_state.data2;
-    }
-    else
-    {
-        return &cheat_state.data1;
-    }
+    return cheat_state.activeData ? &cheat_state.data2 : &cheat_state.data1;
 }
 
 static inline u32* activeStorage(CheatDescription* desc)
 {
-    if (desc->activeStorage)
-    {
-        return &desc->storage2;
-    }
-    else
-    {
-        return &desc->storage1;
-    }
+    return desc->activeStorage ? &desc->storage2 : &desc->storage1;
 }
 
 char failureReason[64];
@@ -474,7 +453,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                    {
                         if ((value & (~mask)) < (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -483,10 +461,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x1:
-                    {
                         if ((value & (~mask)) < (*activeData() & (~mask)))
                         {
                             newSkip = 0;
@@ -495,10 +471,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x2:
-                    {
                         if ((*activeData() & (~mask)) < (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -507,10 +481,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x3:
-                    {
                         if ((*activeStorage(cheat) & (~mask)) < (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -519,10 +491,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x4:
-                    {
                         if ((*activeData() & (~mask)) < (*activeStorage(cheat) & (~mask)))
                         {
                             newSkip = 0;
@@ -531,7 +501,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     default:
                         return 0;
@@ -555,7 +524,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                    {
                         if ((value & (~mask)) > (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -564,10 +532,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x1:
-                    {
                         if ((value & (~mask)) > (*activeData() & (~mask)))
                         {
                             newSkip = 0;
@@ -576,10 +542,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x2:
-                    {
                         if ((*activeData() & (~mask)) > (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -588,10 +552,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x3:
-                    {
                         if ((*activeStorage(cheat) & (~mask)) > (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -600,10 +562,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x4:
-                    {
                         if ((*activeData() & (~mask)) > (*activeStorage(cheat) & (~mask)))
                         {
                             newSkip = 0;
@@ -612,7 +572,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     default:
                         return 0;
@@ -637,7 +596,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                    {
                         if ((value & (~mask)) == (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -646,10 +604,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x1:
-                    {
                         if ((value & (~mask)) == (*activeData() & (~mask)))
                         {
                             newSkip = 0;
@@ -658,10 +614,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x2:
-                    {
                         if ((*activeData() & (~mask)) == (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -670,10 +624,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x3:
-                    {
                         if ((*activeStorage(cheat) & (~mask)) == (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -682,10 +634,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x4:
-                    {
                         if ((*activeData() & (~mask)) == (*activeStorage(cheat) & (~mask)))
                         {
                             newSkip = 0;
@@ -694,7 +644,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     default:
                         return 0;
@@ -719,7 +668,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                    {
                         if ((value & (~mask)) != (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -728,10 +676,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x1:
-                    {
                         if ((value & (~mask)) != (*activeData() & (~mask)))
                         {
                             newSkip = 0;
@@ -740,10 +686,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x2:
-                    {
                         if ((*activeData() & (~mask)) != (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -752,10 +696,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x3:
-                    {
                         if ((*activeStorage(cheat) & (~mask)) != (arg1 & 0xFFFF))
                         {
                             newSkip = 0;
@@ -764,10 +706,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     case 0x4:
-                    {
                         if ((*activeData() & (~mask)) != (*activeStorage(cheat) & (~mask)))
                         {
                             newSkip = 0;
@@ -776,7 +716,6 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             newSkip = 1;
                         }
-                    }
                         break;
                     default:
                         return 0;
@@ -868,12 +807,9 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                         {
                                             cheat_state.loopLine = -1;
                                         }
-                                        else
+                                        else if (cheat_state.loopLine != -1)
                                         {
-                                            if (cheat_state.loopLine != -1)
-                                            {
-                                                cheat_state.index = cheat_state.loopLine;
-                                            }
+                                            cheat_state.index = cheat_state.loopLine;
                                         }
                                     }
                                 }
@@ -897,7 +833,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                             while (cheat_state.index < cheat->codesCount)
                             {
                                 u64 code = cheat->codes[cheat_state.index++];
-                                if (code == MAKE_QWORD(0xD1000000, 0x00000000) || code == MAKE_QWORD(0xD2000000, 0x00000000))
+                                if (code == 0xD100000000000000 || code == 0xD2000000000000000)
                                 {
                                     break;
                                 }
