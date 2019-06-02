@@ -34,6 +34,10 @@
 
 #define NTP_TIMESTAMP_DELTA 2208988800ull
 
+#ifndef NTP_IP
+#define NTP_IP 0xD8EF2300
+#endif
+
 typedef struct RtcTime {
         // From 3dbrew
         u8 seconds;
@@ -109,7 +113,7 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
 
     // Copy the server's IP address to the server address structure.
 
-    servAddr.sin_addr.s_addr = htonl(0xD8EF2300); // 216.239.35.0 time1.google.com
+    servAddr.sin_addr.s_addr = htonl(NTP_IP); // 216.239.35.0 time1.google.com
     // Convert the port number integer to network big-endian style and save it to the server address structure.
 
     servAddr.sin_port = htons(123);
