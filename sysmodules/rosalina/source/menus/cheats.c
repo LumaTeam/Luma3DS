@@ -303,7 +303,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
 
     while (cheat_state.index < cheat->codesCount)
     {
-        bool skipExecution = cheat_state.ifStack & 0x00000001 != 0;
+        bool skipExecution = (cheat_state.ifStack & 0x00000001) != 0;
         u32 arg0 = (u32) ((cheat->codes[cheat_state.index] >> 32) & 0x00000000FFFFFFFFULL);
         u32 arg1 = (u32) ((cheat->codes[cheat_state.index]) & 0x00000000FFFFFFFFULL);
         if (arg0 == 0 && arg1 == 0)
@@ -685,7 +685,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                             while (cheat_state.index < cheat->codesCount)
                             {
                                 u64 code = cheat->codes[cheat_state.index++];
-                                if (code == 0xD100000000000000 || code == 0xD2000000000000000)
+                                if (code == 0xD100000000000000ull || code == 0xD200000000000000ull)
                                 {
                                     break;
                                 }
