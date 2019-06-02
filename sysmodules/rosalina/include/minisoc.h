@@ -33,6 +33,7 @@ int socSocket(int domain, int type, int protocol);
 int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int socListen(int sockfd, int max_connections);
 int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+int socConnect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int socPoll(struct pollfd *fds, nfds_t nfds, int timeout);
 int socSetsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 int socClose(int sockfd);
