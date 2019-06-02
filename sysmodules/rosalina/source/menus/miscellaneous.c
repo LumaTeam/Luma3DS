@@ -27,6 +27,7 @@
 #include <3ds.h>
 #include "menus/miscellaneous.h"
 #include "input_redirection.h"
+#include "ntp.h"
 #include "memory.h"
 #include "draw.h"
 #include "hbloader.h"
@@ -38,11 +39,12 @@
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 4,
+    .nbItems = 5,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
-        { "Change the menu combo", METHOD, .method = MiscellaneousMenu_ChangeMenuCombo },
+        { "Change the menu combo", METHOD, .method = &MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
+        { "Sync time and date via NTP", METHOD, .method = &MiscellaneousMenu_SyncTimeDate },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
     }
 };
@@ -315,4 +317,86 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_Unlock();
     }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void MiscellaneousMenu_SyncTimeDate(void)
+{
+    u32 posY;
+    u32 input = 0;
+
+    Result res;
+    bool cantStart = false;
+
+    bool isSocURegistered;
+
+    time_t t;
+    struct tm localt = {0};
+
+    res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
+    cantStart = R_FAILED(res) || !isSocURegistered;
+
+    int utcOffset = 12;
+    int absOffset;
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+
+        //posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:            ");
+        absOffset = utcOffset - 12;
+        absOffset = absOffset < 0 ? -absOffset : absOffset;
+        posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d", utcOffset < 12 ? '-' : '+', absOffset);
+        posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Use DPAD Left/Right to change offset.\nPress A when done.") + SPACING_Y;
+
+        input = waitInput();
+
+        if(input & BUTTON_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
+        if(input & BUTTON_RIGHT) utcOffset = (utcOffset + 1) % 24;
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(input & (BUTTON_A | BUTTON_B)) && !terminationRequest);
+
+    if (input & BUTTON_B)
+        return;
+
+    utcOffset -= 12;
+
+    res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
+    cantStart = R_FAILED(res) || !isSocURegistered;
+    res = 0;
+    if(!cantStart)
+    {
+        res = ntpGetTimeStamp(&t);
+        if(R_SUCCEEDED(res))
+        {
+            t += 3600 * utcOffset;
+            gmtime_r(&t, &localt);
+            res = ntpSetTimeDate(&localt);
+        }
+    }
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+
+        absOffset = utcOffset;
+        absOffset = absOffset < 0 ? -absOffset : absOffset;
+        Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d", utcOffset < 0 ? '-' : '+', absOffset);
+        if (cantStart)
+            posY = Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Can't sync time/date before the system\nhas finished loading.") + SPACING_Y;
+        else if (R_FAILED(res))
+            posY = Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Operation failed (%08lx).", (u32)res) + SPACING_Y;
+        else
+            posY = Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Timedate & RTC updated successfully.\nYou may need to reboot to see the changes.") + SPACING_Y;
+
+        input = waitInput();
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(input & BUTTON_B) && !terminationRequest);
+
 }

@@ -312,6 +312,47 @@ int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
     return ret;
 }
 
+int socConnect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
+    int ret = 0;
+    socklen_t tmp_addrlen = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u8 tmpaddr[0x1c];
+
+    memset(tmpaddr, 0, 0x1c);
+
+    if(addr->sa_family == AF_INET)
+        tmp_addrlen = 8;
+    else
+        tmp_addrlen = 0x1c;
+
+    if(addrlen < tmp_addrlen)
+        return -1;
+
+    tmpaddr[0] = tmp_addrlen;
+    tmpaddr[1] = addr->sa_family;
+    memcpy(&tmpaddr[2], &addr->sa_data, tmp_addrlen-2);
+
+    cmdbuf[0] = IPC_MakeHeader(0x6,2,4); // 0x60084
+    cmdbuf[1] = (u32)sockfd;
+    cmdbuf[2] = (u32)addrlen;
+    cmdbuf[3] = IPC_Desc_CurProcessId();
+    cmdbuf[5] = IPC_Desc_StaticBuffer(tmp_addrlen,0);
+    cmdbuf[6] = (u32)tmpaddr;
+
+    ret = svcSendSyncRequest(SOCU_handle);
+    if(ret != 0) return -1;
+
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
+
+    if(ret < 0)
+        return -1;
+
+    return 0;
+}
+
 int socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
     int ret = 0;
