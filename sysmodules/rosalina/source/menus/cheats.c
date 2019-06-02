@@ -303,7 +303,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
 
     while (cheat_state.index < cheat->codesCount)
     {
-        u32 skipExecution = cheat_state.ifStack & 0x00000001;
+        bool skipExecution = cheat_state.ifStack & 0x00000001 != 0;
         u32 arg0 = (u32) ((cheat->codes[cheat_state.index] >> 32) & 0x00000000FFFFFFFFULL);
         u32 arg1 = (u32) ((cheat->codes[cheat_state.index]) & 0x00000000FFFFFFFFULL);
         if (arg0 == 0 && arg1 == 0)
@@ -350,20 +350,18 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is less than the value YYYYYYYY.
                 // Example: 323D6B28 10000000
             {
-                u32 newSkip;
                 u32 value = 0;
                 if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+
+                cheat_state.ifStack <<= 1;
                 if (value < arg1)
                 {
-                    newSkip = 0;
+                    cheat_state.ifStack |= skipExecution ? 1 : 0;
                 }
                 else
                 {
-                    newSkip = 1;
+                    cheat_state.ifStack |= 1;
                 }
-
-                cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
                 cheat_state.ifCount++;
             }
                 break;
@@ -374,20 +372,18 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is greater than the value YYYYYYYY.
                 // Example: 423D6B28 10000000
             {
-                u32 newSkip;
                 u32 value = 0;
                 if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+                
+                cheat_state.ifStack <<= 1;
                 if (value > arg1)
                 {
-                    newSkip = 0;
+                    cheat_state.ifStack |= skipExecution ? 1 : 0;
                 }
                 else
                 {
-                    newSkip = 1;
+                    cheat_state.ifStack |= 1;
                 }
-
-                cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
                 cheat_state.ifCount++;
             }
                 break;
@@ -398,20 +394,18 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is equal to the value YYYYYYYY.
                 // Example: 523D6B28 10000000
             {
-                u32 newSkip;
                 u32 value = 0;
                 if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+
+                cheat_state.ifStack <<= 1;
                 if (value == arg1)
                 {
-                    newSkip = 0;
+                    cheat_state.ifStack |= skipExecution ? 1 : 0;
                 }
                 else
                 {
-                    newSkip = 1;
+                    cheat_state.ifStack |= 1;
                 }
-
-                cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
                 cheat_state.ifCount++;
             }
                 break;
@@ -422,20 +416,18 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is not equal to the value YYYYYYYY.
                 // Example: 623D6B28 10000000
             {
-                u32 newSkip;
                 u32 value = 0;
                 if (!Cheat_Read32(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
+
+                cheat_state.ifStack <<= 1;
                 if (value != arg1)
                 {
-                    newSkip = 0;
+                    cheat_state.ifStack |= skipExecution ? 1 : 0;
                 }
                 else
                 {
-                    newSkip = 1;
+                    cheat_state.ifStack |= 1;
                 }
-
-                cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
                 cheat_state.ifCount++;
             }
                 break;
@@ -446,67 +438,32 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is less than the value YYYY.
                 // Example: 723D6B28 00005400
             {
-                u32 newSkip;
+                bool newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
                 if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                        if ((value & (~mask)) < (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) < (arg1 & 0xFFFF));
                         break;
                     case 0x1:
-                        if ((value & (~mask)) < (*activeData() & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) < (*activeData() & (~mask)));
                         break;
                     case 0x2:
-                        if ((*activeData() & (~mask)) < (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) < (arg1 & 0xFFFF));
                         break;
                     case 0x3:
-                        if ((*activeStorage(cheat) & (~mask)) < (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeStorage(cheat) & (~mask)) < (arg1 & 0xFFFF));
                         break;
                     case 0x4:
-                        if ((*activeData() & (~mask)) < (*activeStorage(cheat) & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) < (*activeStorage(cheat) & (~mask)));
                         break;
                     default:
                         return 0;
                 }
                 cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;
                 cheat_state.ifCount++;
             }
                 break;
@@ -517,68 +474,33 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is greater than the value YYYY.
                 // Example: 823D6B28 00005400
             {
-                u32 newSkip;
+                bool newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
                 if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                        if ((value & (~mask)) > (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) > (arg1 & 0xFFFF));
                         break;
                     case 0x1:
-                        if ((value & (~mask)) > (*activeData() & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) > (*activeData() & (~mask)));
                         break;
                     case 0x2:
-                        if ((*activeData() & (~mask)) > (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) > (arg1 & 0xFFFF));
                         break;
                     case 0x3:
-                        if ((*activeStorage(cheat) & (~mask)) > (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeStorage(cheat) & (~mask)) > (arg1 & 0xFFFF));
                         break;
                     case 0x4:
-                        if ((*activeData() & (~mask)) > (*activeStorage(cheat) & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) > (*activeStorage(cheat) & (~mask)));
                         break;
                     default:
                         return 0;
                 }
 
                 cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;
                 cheat_state.ifCount++;
             }
                 break;
@@ -589,68 +511,33 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is equal to the value YYYY.
                 // Example: 923D6B28 00005400
             {
-                u32 newSkip;
+                bool newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
                 if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                        if ((value & (~mask)) == (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) == (arg1 & 0xFFFF));
                         break;
                     case 0x1:
-                        if ((value & (~mask)) == (*activeData() & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) == (*activeData() & (~mask)));
                         break;
                     case 0x2:
-                        if ((*activeData() & (~mask)) == (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) == (arg1 & 0xFFFF));
                         break;
                     case 0x3:
-                        if ((*activeStorage(cheat) & (~mask)) == (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeStorage(cheat) & (~mask)) == (arg1 & 0xFFFF));
                         break;
                     case 0x4:
-                        if ((*activeData() & (~mask)) == (*activeStorage(cheat) & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) == (*activeStorage(cheat) & (~mask)));
                         break;
                     default:
                         return 0;
                 }
 
                 cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;
                 cheat_state.ifCount++;
             }
                 break;
@@ -661,68 +548,33 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                 // Simple: If the value at address 0XXXXXXX is not equal to the value YYYY.
                 // Example: A23D6B28 00005400
             {
-                u32 newSkip;
+                bool newSkip;
                 u16 mask = (u16) ((arg1 >> 16) & 0xFFFF);
                 u16 value = 0;
                 if (!Cheat_Read16(processHandle, arg0 & 0x0FFFFFFF, &value)) return 0;
                 switch (cheat_state.conditionalMode)
                 {
                     case 0x0:
-                        if ((value & (~mask)) != (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) != (arg1 & 0xFFFF));
                         break;
                     case 0x1:
-                        if ((value & (~mask)) != (*activeData() & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((value & (~mask)) != (*activeData() & (~mask)));
                         break;
                     case 0x2:
-                        if ((*activeData() & (~mask)) != (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) != (arg1 & 0xFFFF));
                         break;
                     case 0x3:
-                        if ((*activeStorage(cheat) & (~mask)) != (arg1 & 0xFFFF))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeStorage(cheat) & (~mask)) != (arg1 & 0xFFFF));
                         break;
                     case 0x4:
-                        if ((*activeData() & (~mask)) != (*activeStorage(cheat) & (~mask)))
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        newSkip = !((*activeData() & (~mask)) != (*activeStorage(cheat) & (~mask)));
                         break;
                     default:
                         return 0;
                 }
 
                 cheat_state.ifStack <<= 1;
-                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;
                 cheat_state.ifCount++;
             }
                 break;
@@ -1170,18 +1022,10 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                     case 0x0D:
                         // DD Type
                     {
-                        u32 newSkip;
-                        if (arg1 == 0 || (HID_PAD & arg1) == arg1)
-                        {
-                            newSkip = 0;
-                        }
-                        else
-                        {
-                            newSkip = 1;
-                        }
+                        bool newSkip = !(arg1 == 0 || (HID_PAD & arg1) == arg1);
 
                         cheat_state.ifStack <<= 1;
-                        cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                        cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;;
                         cheat_state.ifCount++;
                     }
                         break;
@@ -1190,32 +1034,18 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         // DE000000 AAAABBBB: AAAA >= X position >= BBBB
                         // DE000001 AAAABBBB: AAAA >= Y position >= BBBB
                     {
-                        u32 newSkip;
+                        bool newSkip;
                         u32 highBound = arg1 >> 16;
                         u32 lowBound = arg1 & 0xFFFF;
                         touchPosition touch;
                         hidTouchRead(&touch);
                         if (codeArg == 0)
                         {
-                            if (lowBound <= touch.px && highBound >= touch.px)
-                            {
-                                newSkip = 0;
-                            }
-                            else
-                            {
-                                newSkip = 1;
-                            }
+                            newSkip = !(lowBound <= touch.px && highBound >= touch.px);
                         }
                         else if (codeArg == 1)
                         {
-                            if (lowBound <= touch.py && highBound >= touch.py)
-                            {
-                                newSkip = 0;
-                            }
-                            else
-                            {
-                                newSkip = 1;
-                            }
+                            newSkip = !(lowBound <= touch.py && highBound >= touch.py);
                         }
                         else
                         {
@@ -1223,7 +1053,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         }
 
                         cheat_state.ifStack <<= 1;
-                        cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                        cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;
                         cheat_state.ifCount++;
                     }
                         break;
@@ -1637,7 +1467,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                             u32 searchSize = arg0 & 0xFFFF;
                             if (searchSize <= arg1 && searchSize + cheat_state.index < cheat->codesCount)
                             {
-                                u8 newSkip = 1;
+                                bool newSkip = true;
                                 if (!skipExecution) // Don't do an expensive operation if we don't have to
                                 {
                                     u8* searchData = (u8*)(cheat->codes + cheat_state.index + 1);
@@ -1649,7 +1479,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                     for (size_t i = 0; i < arg1 - searchSize; i++)
                                     {
                                         u8 curVal;
-                                        newSkip = 0;
+                                        newSkip = false;
                                         for (size_t j = 0; j < searchSize; j++)
                                         {
                                             if (!Cheat_Read8(processHandle, i + j, &curVal))
@@ -1662,7 +1492,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                                 break;
                                             }
                                         }
-                                        if (newSkip == 0)
+                                        if (!newSkip)
                                         {
                                             break;
                                         }
@@ -1670,7 +1500,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                 }
 
                                 cheat_state.ifStack <<= 1;
-                                cheat_state.ifStack |= ((newSkip | skipExecution) & 0x1);
+                                cheat_state.ifStack |= (newSkip || skipExecution) ? 1 : 0;
                                 cheat_state.ifCount++;
                             }
                             else
