@@ -152,7 +152,6 @@ void server_run(struct sock_server *serv)
 
     serv->running = true;
     svcSignalEvent(serv->started_event);
-
     while(serv->running && !terminationRequest)
     {
         idx = -1;
@@ -205,6 +204,7 @@ void server_run(struct sock_server *serv)
                         {
                             fds[serv->nfds].fd = client_sockfd;
                             fds[serv->nfds].events = POLLIN;
+                            fds[serv->nfds].revents = 0;
 
                             int new_idx = serv->nfds;
                             serv->nfds++;
@@ -215,6 +215,7 @@ void server_run(struct sock_server *serv)
                             new_ctx->serv = curr_ctx;
                             new_ctx->i = new_idx;
                             new_ctx->n = 0;
+                            new_ctx->should_close = false;
 
                             serv->ctx_ptrs[new_idx] = new_ctx;
 
@@ -257,6 +258,14 @@ abort_connections:
 
     serv->running = false;
     svcClearEvent(serv->started_event);
+}
+
+void server_set_should_close_all(struct sock_server *serv)
+{
+    nfds_t nfds = serv->nfds;
+
+    for(unsigned int i = 0; i < nfds; i++)
+        serv->ctx_ptrs[i]->should_close = true;
 }
 
 void server_kill_connections(struct sock_server *serv)

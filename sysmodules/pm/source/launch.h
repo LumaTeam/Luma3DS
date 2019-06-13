@@ -13,5 +13,5 @@ Result LaunchAppDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 l
 Result autolaunchSysmodules(void);
 
 // Custom
-Result DebugNextApplicationByForce(void);
+Result DebugNextApplicationByForce(bool debug);
 Result LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags);

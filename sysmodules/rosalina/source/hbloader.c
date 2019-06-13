@@ -332,7 +332,7 @@ void HBLDR_HandleCommands(void *ctx)
                     {
                         nextApplicationGdbCtx->debug = 0;
                         nextApplicationGdbCtx->pid = 0xFFFFFFFF;
-                        res = PMDBG_DebugNextApplicationByForce();
+                        res = PMDBG_DebugNextApplicationByForce(true);
                         if (R_FAILED(res))
                         {
                             nextApplicationGdbCtx->flags = 0;

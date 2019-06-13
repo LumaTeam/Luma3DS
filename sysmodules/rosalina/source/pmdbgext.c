@@ -22,11 +22,12 @@ Result PMDBG_GetCurrentAppTitleIdAndPid(u64 *outTitleId, u32 *outPid)
     return cmdbuf[1];
 }
 
-Result PMDBG_DebugNextApplicationByForce(void)
+Result PMDBG_DebugNextApplicationByForce(bool debug)
 {
     Result ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
-    cmdbuf[0] = IPC_MakeHeader(0x101, 0, 0);
+    cmdbuf[0] = IPC_MakeHeader(0x101, 1, 0);
+    cmdbuf[1] = (u32)debug;
 
     if(R_FAILED(ret = svcSendSyncRequest(*pmDbgGetSessionHandle()))) return ret;
     return cmdbuf[1];

@@ -147,11 +147,23 @@ void DebuggerMenu_DisableDebugger(void)
 
     if(initialized)
     {
+        GDB_LockAllContexts(&gdbServer);
+
         svcSignalEvent(gdbServer.super.shall_terminate_event);
-        server_kill_connections(&gdbServer.super);
-        res = MyThread_Join(&debuggerDebugThread, 5 * 1000 * 1000 * 1000LL);
+        //server_kill_connections(&gdbServer.super);
+        server_set_should_close_all(&gdbServer.super);
+
+        GDB_UnlockAllContexts(&gdbServer);
+
+        res = MyThread_Join(&debuggerDebugThread, 2 * 1000 * 1000 * 1000LL);
         if(res == 0)
-            res = MyThread_Join(&debuggerSocketThread, 5 * 1000 * 1000 * 1000LL);
+            res = MyThread_Join(&debuggerSocketThread, 2 * 1000 * 1000 * 1000LL);
+
+        Handle dummy = 0;
+        PMDBG_RunQueuedProcess(&dummy);
+        svcCloseHandle(dummy);
+        PMDBG_DebugNextApplicationByForce(false);
+        nextApplicationGdbCtx = NULL;
         svcKernelSetState(0x10000, 2);
     }
 
@@ -188,7 +200,7 @@ void DebuggerMenu_DebugNextApplicationByForce(void)
             {
                 nextApplicationGdbCtx->debug = 0;
                 nextApplicationGdbCtx->pid = 0xFFFFFFFF;
-                res = PMDBG_DebugNextApplicationByForce();
+                res = PMDBG_DebugNextApplicationByForce(true);
                 if(R_SUCCEEDED(res))
                     sprintf(buf, "Operation succeeded.\nUse port %d to connect to the next launched\napplication.", nextApplicationGdbCtx->localPort);
                 else

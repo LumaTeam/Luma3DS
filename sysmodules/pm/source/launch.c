@@ -516,9 +516,9 @@ Result autolaunchSysmodules(void)
 }
 
 // Custom
-Result DebugNextApplicationByForce(void)
+Result DebugNextApplicationByForce(bool debug)
 {
-    g_debugNextApplication = true;
+    g_debugNextApplication = debug;
     return 0;
 }
 

@@ -7,5 +7,5 @@
 #include <3ds/services/pmdbg.h>
 
 Result PMDBG_GetCurrentAppTitleIdAndPid(u64 *outTitleId, u32 *outPid);
-Result PMDBG_DebugNextApplicationByForce(void);
+Result PMDBG_DebugNextApplicationByForce(bool debug);
 Result PMDBG_LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags);

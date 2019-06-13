@@ -48,7 +48,7 @@ void pmDbgHandleCommands(void *ctx)
             cmdbuf[4] = pid;
             break;
         case 0x101:
-            cmdbuf[1] = DebugNextApplicationByForce();
+            cmdbuf[1] = DebugNextApplicationByForce(cmdbuf[1] != 0);
             cmdbuf[0] = IPC_MakeHeader(0x101, 1, 0);
             break;
         case 0x102:
