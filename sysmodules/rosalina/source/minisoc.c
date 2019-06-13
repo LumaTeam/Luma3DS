@@ -396,11 +396,6 @@ int socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
     if(ret == 0)
         ret = _net_convert_error(cmdbuf[2]);
 
-    if(ret < 0) {
-        //errno = -ret;
-        return -1;
-    }
-
     return ret;
 }
 

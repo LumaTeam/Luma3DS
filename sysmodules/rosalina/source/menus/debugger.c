@@ -148,6 +148,7 @@ void DebuggerMenu_DisableDebugger(void)
     if(initialized)
     {
         svcSignalEvent(gdbServer.super.shall_terminate_event);
+        server_kill_connections(&gdbServer.super);
         res = MyThread_Join(&debuggerDebugThread, 5 * 1000 * 1000 * 1000LL);
         if(res == 0)
             res = MyThread_Join(&debuggerSocketThread, 5 * 1000 * 1000 * 1000LL);

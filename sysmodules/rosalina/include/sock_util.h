@@ -73,4 +73,5 @@ typedef struct sock_server
 Result server_init(struct sock_server *serv);
 void server_bind(struct sock_server *serv, u16 port);
 void server_run(struct sock_server *serv);
+void server_kill_connections(struct sock_server *serv);
 void server_finalize(struct sock_server *serv);
