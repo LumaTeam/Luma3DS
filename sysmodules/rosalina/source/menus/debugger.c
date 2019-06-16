@@ -147,13 +147,9 @@ void DebuggerMenu_DisableDebugger(void)
 
     if(initialized)
     {
-        GDB_LockAllContexts(&gdbServer);
-
         svcSignalEvent(gdbServer.super.shall_terminate_event);
-        //server_kill_connections(&gdbServer.super);
-        server_set_should_close_all(&gdbServer.super);
-
-        GDB_UnlockAllContexts(&gdbServer);
+        server_kill_connections(&gdbServer.super);
+        //server_set_should_close_all(&gdbServer.super);
 
         res = MyThread_Join(&debuggerDebugThread, 2 * 1000 * 1000 * 1000LL);
         if(res == 0)

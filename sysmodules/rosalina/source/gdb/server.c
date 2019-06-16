@@ -52,6 +52,11 @@ void GDB_FinalizeServer(GDBServer *server)
 {
     server_finalize(&server->super);
 
+    // Kill the "next application" context if needed
+    for (u32 i = 0; i < MAX_DEBUG; i++) {
+        if (server->ctxs[i].debug != 0)
+            GDB_CloseClient(&server->ctxs[i]);
+    }
     svcCloseHandle(server->statusUpdated);
     svcCloseHandle(server->statusUpdateReceived);
 }
@@ -133,6 +138,7 @@ GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPo
         ctx->localPort = port;
     }
 
+    ctx->parent = server;
     GDB_UnlockAllContexts(server);
     return ctx;
 }
@@ -179,10 +185,11 @@ int GDB_CloseClient(GDBContext *ctx)
     svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
     RecursiveLock_Unlock(&ctx->lock);
 
-    svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
+    if(ctx->parent->referenceCount >= 2)
+        svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
 
     RecursiveLock_Lock(&ctx->lock);
-    if (ctx->state >= GDB_STATE_ATTACHED)
+    if (ctx->state >= GDB_STATE_ATTACHED || ctx->debug != 0)
         GDB_DetachFromProcess(ctx);
 
     ctx->localPort = 0;

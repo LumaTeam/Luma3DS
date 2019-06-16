@@ -77,6 +77,7 @@ static void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
     serv->poll_fds[ctx->i].revents = 0;
 
     ctx->type = SOCK_NONE;
+    serv->ctx_ptrs[ctx->i] = NULL;
 }
 
 Result server_init(struct sock_server *serv)
@@ -144,34 +145,33 @@ void server_bind(struct sock_server *serv, u16 port)
     }
 }
 
+static bool server_should_exit(struct sock_server *serv)
+{
+    return svcWaitSynchronization(serv->shall_terminate_event, 0) == 0 || svcWaitSynchronization(terminationRequestEvent, 0) == 0;
+}
+
 void server_run(struct sock_server *serv)
 {
     struct pollfd *fds = serv->poll_fds;
-    Handle handles[2] = { terminationRequestEvent, serv->shall_terminate_event };
-    s32 idx = -1;
 
     serv->running = true;
     svcSignalEvent(serv->started_event);
     while(serv->running && !terminationRequest)
     {
-        idx = -1;
-        if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
+        if(server_should_exit(serv))
             goto abort_connections;
 
         if(serv->nfds == 0)
         {
-            if(svcWaitSynchronizationN(&idx, handles, 2, false, 12 * 1000 * 1000LL) == 0)
-                goto abort_connections;
-            else
-                continue;
+            svcSleepThread(12 * 1000 * 1000LL);
+            continue;
         }
 
         for(nfds_t i = 0; i < serv->nfds; i++)
             fds[i].revents = 0;
         int pollres = socPoll(fds, serv->nfds, 50);
 
-        idx = -1;
-        if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
+        if(server_should_exit(serv))
             goto abort_connections;
 
         for(nfds_t i = 0; pollres > 0 && i < serv->nfds; i++)
@@ -189,7 +189,7 @@ void server_run(struct sock_server *serv)
                     socklen_t len = sizeof(struct sockaddr_in);
                     int client_sockfd = socAccept(fds[i].fd, (struct sockaddr *)&saddr, &len);
 
-                    if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
+                    if(server_should_exit(serv))
                         goto abort_connections;
 
                     if(client_sockfd < 0 || curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
@@ -234,8 +234,7 @@ void server_run(struct sock_server *serv)
             }
         }
 
-        idx = -1;
-        if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
+        if(server_should_exit(serv))
             goto abort_connections;
 
         if(serv->compact_needed)
@@ -255,7 +254,6 @@ void server_run(struct sock_server *serv)
 
 abort_connections:
     server_kill_connections(serv);
-
     serv->running = false;
     svcClearEvent(serv->started_event);
 }
