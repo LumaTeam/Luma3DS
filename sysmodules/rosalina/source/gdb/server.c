@@ -258,7 +258,7 @@ GDBContext *GDB_GetClient(GDBServer *server, u16 port)
     }
 
     GDB_UnlockAllContexts(server);
-    if (port == GDB_PORT_BASE + MAX_DEBUG)
+    if (port == GDB_PORT_BASE + MAX_DEBUG && ctx != NULL)
     {
         // this is not sufficient/foolproof and is buggy: TaskRunner_WaitReady(); // Finish grabbing new process debug, if anything...
         bool ok = false;
