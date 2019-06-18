@@ -114,7 +114,7 @@ GDB_DECLARE_HANDLER(HioReply)
 
         if (*pos != 0)
         {
-            if (*pos == 'C')
+            if (*pos != 'C')
                 return GDB_ReplyErrno(ctx, EILSEQ);
 
             ctx->currentHioRequest.ctrlC = true;
