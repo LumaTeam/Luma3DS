@@ -45,9 +45,9 @@ typedef struct CheatProcessInfo
 
 typedef struct CheatDescription
 {
-    u32 active;
-    u32 valid;
     struct {
+        u8 active : 1;
+        u8 valid : 1;
         u8 hasKeyCode : 1;
         u8 activeStorage : 1;
     };
