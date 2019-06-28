@@ -320,7 +320,7 @@ int GDB_SendStreamData(GDBContext *ctx, const char *streamData, u32 offset, u32 
 
     if((forceEmptyLast && offset >= totalSize) || (!forceEmptyLast && offset + length >= totalSize))
     {
-        length = totalSize - offset;
+        length = offset >= totalSize ? 0 : totalSize - offset;
         buf[0] = 'l';
         memcpy(buf + 1, streamData + offset, length);
         return GDB_SendPacket(ctx, buf, 1 + length);
