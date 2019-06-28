@@ -1,3 +1,8 @@
+---
+name: Bug report
+about: Use this to report bugs you encounter with Luma3DS. Make sure you upload the crash dumps if Luma3DS crashes.
+---
+
 <!--
 -- THIS IS NOT A SUPPORT FORUM! For support go here:
 -- Nintendo Homebrew: https://discord.gg/MjzatM8
