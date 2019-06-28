@@ -40,10 +40,13 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 **Luma3DS configuration/options:**
 
 Default EmuNAND: ( )
+<!--This option is only available if there's at least one EmuNAND.-->
 
 Screen brightness: ( )
 
 Splash: ( )
+
+Splash duration: ( )
 
 PIN lock: ( )
 
@@ -53,8 +56,10 @@ New 3DS CPU: ( )
 --
 
 Autoboot EmuNAND: ( )
+<!--This option is only available if there's at least one EmuNAND.-->
 
 Use EmuNAND FIRM if booting with R: ( )
+<!--This option is only available if there's at least one EmuNAND.-->
 
 Enable loading external FIRMs and modules: ( )
 <!--Firmware (.bin) files are not required by Luma, or NTR CFW anymore.
