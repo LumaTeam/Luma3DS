@@ -181,6 +181,8 @@ static Result loadWithDependencies(Handle *outDebug, ProcessData **outProcessDat
 static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const FS_ProgramInfo *programInfo,
     const FS_ProgramInfo *programInfoUpdate, u32 launchFlags, ExHeader_Info *exheaderInfo)
 {
+    *outProcessData = NULL;
+
     if (debug != NULL) {
         *debug = 0;
     }
@@ -283,7 +285,7 @@ static Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_Pro
         panic(0);
     }
 
-    ProcessData *process;
+    ProcessData *process = NULL;
     Result res = launchTitleImpl(outDebug, &process, programInfo, programInfoUpdate, launchFlags, exheaderInfo);
 
     if (outPid != NULL && process != NULL) {
