@@ -555,18 +555,24 @@ u32 patchP9AMTicketWrapperZeroKeyIV(u8 *pos, u32 size, u32 firmVersion)
     static const u8 pattern[] = {0x20, 0x21, 0xA6, 0xA8};
 
     u32 function = (u32)memsearch(pos, __rt_memclr_pattern, size, sizeof(__rt_memclr_pattern));
-    u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
     if(function == 0 || off == NULL) return firmVersion == 0xFFFFFFFF ? 0 : 1;
 
-    s32 opjumpdistance = (s32)(function - ((u32)&off[2])) / 2;
+    //After the found code it's a BL call (at &off[2]), that will be replaced
+    //From Thumb, op distance for setting in BLX can be got with,
+    //(Destination_offset - blx_op_offset+2) / 2
+    s32 opjumpdistance = (s32)(function - ((u32)&off[3])) / 2;
 
     //Beyond limit
     if(opjumpdistance < -0x1fffff || opjumpdistance > 0x1fffff) return 1;
 
     //r0 and r1 for old call are already correct for this one 
     //BLX __rt_memclr
-    off[1] = 0xE800F000U | (((u32)opjumpdistance & 0x7FF) << 16) | (((u32)opjumpdistance >> 11) & 0x3FF) | (((u32)opjumpdistance >> 21) & 0x400);
+    u32 op = (0xE800F000U | (((u32)opjumpdistance & 0x7FF) << 16) | (((u32)opjumpdistance >> 11) & 0x3FF) | (((u32)opjumpdistance >> 21) & 0x400)) & ~(1<<16);
+
+    off[2] = op;
+    off[3] = op >> 16;
 
     return 0;
 }
