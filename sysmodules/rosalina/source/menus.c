@@ -36,6 +36,7 @@
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
 #include "menus/screen_filters.h"
+#include "plgloader.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
@@ -46,6 +47,7 @@ Menu rosalinaMenu = {
     {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
+        { "", METHOD, .method = PluginLoader__MenuCallback},
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
@@ -54,7 +56,7 @@ Menu rosalinaMenu = {
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
     }
 };
 

@@ -35,6 +35,7 @@
 #include "MyThread.h"
 #include "menus/process_patches.h"
 #include "menus/miscellaneous.h"
+#include "plgloader.h"
 #include "menus/debugger.h"
 #include "menus/screen_filters.h"
 
@@ -194,12 +195,14 @@ int main(void)
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
+    MyThread *plgloaderThread = PluginLoader__CreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
 
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(taskRunnerThread, -1LL);
+    MyThread_Join(plgloaderThread, -1LL);
 
     return 0;
 }

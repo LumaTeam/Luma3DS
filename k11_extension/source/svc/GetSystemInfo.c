@@ -64,6 +64,9 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 0x101:
                     *out = cfwInfo.rosalinaMenuCombo;
                     break;
+                case 0x102:
+                    *out = cfwInfo.rosalinaFlags;
+                    break;
 
                 case 0x200: // isRelease
                     *out = cfwInfo.flags & 1;

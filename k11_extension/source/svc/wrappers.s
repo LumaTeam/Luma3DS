@@ -84,3 +84,12 @@ ControlMemoryEx:
     ldr r1, [sp, #12]
     add sp, #20
     pop {pc}
+
+.global MapProcessMemoryExWrapper
+.type   MapProcessMemoryExWrapper, %function
+MapProcessMemoryExWrapper:
+    push {lr}
+    str r4, [sp, #-4]!
+    bl MapProcessMemoryEx
+    add sp, #4
+    pop {pc}

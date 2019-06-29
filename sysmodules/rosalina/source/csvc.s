@@ -59,7 +59,10 @@ SVC_BEGIN svcInvalidateEntireInstructionCache
 SVC_END
 
 SVC_BEGIN svcMapProcessMemoryEx
+    str r4, [sp, #-4]!
+    ldr r4, [sp, #4]
     svc 0xA0
+    ldr r4, [sp], #4
     bx lr
 SVC_END
 
@@ -97,5 +100,10 @@ SVC_BEGIN svcTranslateHandle
     svc 0xB2
     ldr r2, [sp], #4
     str r1, [r2]
+    bx lr
+SVC_END
+
+SVC_BEGIN svcControlProcess
+    svc 0xB3
     bx lr
 SVC_END
