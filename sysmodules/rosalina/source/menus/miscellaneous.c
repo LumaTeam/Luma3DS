@@ -342,7 +342,6 @@ void MiscellaneousMenu_SyncTimeDate(void)
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
 
-        //posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:            ");
         absOffset = utcOffset - 12;
         absOffset = absOffset < 0 ? -absOffset : absOffset;
         posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d", utcOffset < 12 ? '-' : '+', absOffset);
@@ -386,11 +385,11 @@ void MiscellaneousMenu_SyncTimeDate(void)
         absOffset = absOffset < 0 ? -absOffset : absOffset;
         Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d", utcOffset < 0 ? '-' : '+', absOffset);
         if (cantStart)
-            posY = Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Can't sync time/date before the system\nhas finished loading.") + SPACING_Y;
+            Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Can't sync time/date before the system\nhas finished loading.") + SPACING_Y;
         else if (R_FAILED(res))
-            posY = Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Operation failed (%08lx).", (u32)res) + SPACING_Y;
+            Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Operation failed (%08lx).", (u32)res) + SPACING_Y;
         else
-            posY = Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Timedate & RTC updated successfully.\nYou may need to reboot to see the changes.") + SPACING_Y;
+            Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Timedate & RTC updated successfully.\nYou may need to reboot to see the changes.") + SPACING_Y;
 
         input = waitInput();
 
