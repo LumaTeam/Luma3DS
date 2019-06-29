@@ -79,6 +79,14 @@ Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
                 *out = ttb & ~((1 << (14 - TTBCR)) - 1);
                 break;
             }
+            case 0x10009:
+            {
+                KProcessHwInfo *hwInfo = hwInfoOfProcess(process);
+                u32 mmusize = KPROCESSHWINFO_GET_RVALUE(hwInfo, mmuTableSize);
+                u32 mmupa = (u32)PA_FROM_VA_PTR(KPROCESSHWINFO_GET_RVALUE(hwInfo, mmuTableVA));
+                *out = (s64)(mmusize | ((s64)mmupa << 32));
+                break;
+            }
             default:
                 res = 0xD8E007ED; // invalid enum value
                 break;

@@ -126,6 +126,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u32 config, multiConfig, bootConfig;
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
+            u32 rosalinaFlags;
         } info;
     };
 
@@ -195,6 +196,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->bootConfig = configData.bootConfig;
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
+    info->rosalinaFlags = configData.rosalinaFlags;
     info->versionMajor = VERSION_MAJOR;
     info->versionMinor = VERSION_MINOR;
     info->versionBuild = VERSION_BUILD;
@@ -220,6 +222,10 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
 
     u8 *ControlMemoryPos = instrPos + 8 + displ;
     u32 *off;
+
+    // Patch ControlMemory bounds checks for mem mapping
+    for (off = (u32 *)ControlMemoryPos; *off != 0xE0E01BF5; ++off);
+    *off = 0;
 
     /*
         Here we replace currentProcess->processID == 1 by additionnalParameter == 1.

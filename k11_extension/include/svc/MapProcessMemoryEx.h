@@ -30,4 +30,5 @@
 #include "kernel.h"
 #include "svc.h"
 
-Result MapProcessMemoryEx(Handle processHandle, void *dst, void *src, u32 size);
+Result MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
+Result MapProcessMemoryExWrapper(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);

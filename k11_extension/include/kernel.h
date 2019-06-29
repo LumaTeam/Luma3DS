@@ -105,12 +105,44 @@ typedef struct ALIGN(4) KMutex
   union KProcess *owner;
 } KMutex;
 
+typedef struct KAddressArbiter
+{
+  KAutoObject     autoObject;
+  struct KThread  *first;
+  struct KThread  *last;
+  union  KProcess *owner;
+} KAddressArbiter;
+
 /* 92 */
 typedef struct KMutexLinkedList
 {
   KMutex *first;
   KMutex *last;
 } KMutexLinkedList;
+
+enum
+{
+    TOKEN_KAUTOOBJECT = 0,
+    TOKEN_KSYNCHRONIZATIONOBJECT = 1,
+    TOKEN_KEVENT = 0x1F,
+    TOKEN_KSEMAPHORE = 0x2F,
+    TOKEN_KTIMER = 0x35,
+    TOKEN_KMUTEX = 0x39,
+    TOKEN_KDEBUG = 0x4D,
+    TOKEN_KSERVERPORT = 0x55,
+    TOKEN_KDMAOBJECT = 0x59,
+    TOKEN_KCLIENTPORT = 0x65,
+    TOKEN_KCODESET = 0x68,
+    TOKEN_KSESSION = 0x70,
+    TOKEN_KTHREAD = 0x8D,
+    TOKEN_KSERVERSESSION = 0x95,
+    TOKEN_KADDRESSARBITER = 0x98,
+    TOKEN_KCLIENTSESSION = 0xA5,
+    TOKEN_KPORT = 0xA8,
+    TOKEN_KSHAREDMEMORY = 0xB0,
+    TOKEN_KPROCESS = 0xC5,
+    TOKEN_KRESOURCELIMIT = 0xC8
+};
 
 /* 45 */
 typedef struct KClassToken
@@ -539,6 +571,20 @@ typedef struct KBlockInfo
   void *memSectionStartKVaddr;
   u32 pageCount;
 } KBlockInfo;
+
+typedef struct KSharedMemory
+{
+  KAutoObject   autoObject;
+  KLinkedList   ownedKBlockInfo;
+  union KProcess *owner;
+  u32           ownerPermissions;
+  u32           otherPermissions;
+  u8            isBlockInfoGenerated;
+  s8            allBlockInfoGenerated;
+  u8            unknown_1;
+  u8            unknown_2;
+  u32           address;
+} KSharedMemory;
 
 /* 25 */
 typedef struct KMemoryBlock
@@ -1037,9 +1083,25 @@ typedef struct KProcess##sys\
   KThread *mainThread;\
   u32 interruptEnabledFlags[4];\
   KProcessHandleTable handleTable;\
-  u8 gap234[52];\
+  /* Custom fields for plugin system
+     { */ \
+  u32     customFlags; /* see KProcess_CustomFlags enum below */ \
+  Handle  onMemoryLayoutChangeEvent;\
+  Handle  onProcessExitEvent;\
+  Handle  resumeProcessExitEvent;\
+  /* } */ \
+  u8 gap234[36];\
   u64 unused;\
 } KProcess##sys;
+
+enum KProcess_CustomFlags
+{
+    ForceRWXPages = 1 << 0,
+    SignalOnMemLayoutChanges = 1 << 1,
+    SignalOnExit = 1 << 2,
+
+    MemLayoutChanged = 1 << 16
+};
 
 INSTANCIATE_KPROCESS(N3DS);
 INSTANCIATE_KPROCESS(O3DS8x);
