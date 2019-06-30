@@ -49,7 +49,7 @@ Result UnregisterProcess(u64 titleId)
     ProcessData *foundProcess = NULL;
 
     ProcessList_Lock(&g_manager.processList);
-    foundProcess = ProcessList_FindProcessByTitleId(&g_manager.processList, titleId);
+    foundProcess = ProcessList_FindProcessByTitleId(&g_manager.processList, titleId & ~N3DS_TID_MASK);
     if (foundProcess != NULL) {
         if (foundProcess == g_manager.runningApplicationData) {
             g_manager.runningApplicationData = NULL;
