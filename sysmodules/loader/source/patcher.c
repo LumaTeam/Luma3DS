@@ -536,7 +536,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
     romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
     romfsRedirPatchArchiveId = archiveId;
-    memcpy(&romfsRedirPatchRomFsMount, updateRomFsMounts[updateRomFsIndex], 4);
+    memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMounts[updateRomFsIndex], 4);
 
     memcpy(payload, romfsRedirPatch, romfsRedirPatchSize);
 
