@@ -150,7 +150,7 @@ void SysConfigMenu_ToggleWireless(void)
 
 void SysConfigMenu_TogglePowerButton(void)
 {
-    u8 result;
+    u32 mcuIRQMask;
     
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -158,7 +158,7 @@ void SysConfigMenu_TogglePowerButton(void)
     Draw_Unlock();
     
     mcuHwcInit();
-    MCUHWC_ReadRegister(0x18, &result, 1);
+    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
     mcuHwcExit();
 
     do
@@ -168,7 +168,7 @@ void SysConfigMenu_TogglePowerButton(void)
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
 
         Draw_DrawString(10, 50, COLOR_WHITE, "Current status:");
-        Draw_DrawString(100, 50, (((result & 0x01) == 0x01) ? COLOR_RED : COLOR_GREEN), (((result & 0x01) == 0x01) ? " DISABLED" : " ENABLED "));
+        Draw_DrawString(100, 50, (((mcuIRQMask & 0x00000001) == 0x00000001) ? COLOR_RED : COLOR_GREEN), (((mcuIRQMask & 0x00000001) == 0x00000001) ? " DISABLED" : " ENABLED "));
         
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -178,9 +178,9 @@ void SysConfigMenu_TogglePowerButton(void)
         if(pressed & BUTTON_A)
         {
             mcuHwcInit();
-            MCUHWC_ReadRegister(0x18, &result, 1);
-            result ^= 0x01;
-            MCUHWC_WriteRegister(0x18, &result, 1);
+            MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+            mcuIRQMask ^= 0x00000001;
+            MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
             mcuHwcExit();
         }
         else if(pressed & BUTTON_B)
