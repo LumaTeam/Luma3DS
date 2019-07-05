@@ -34,10 +34,11 @@
 
 Menu sysconfigMenu = {
     "System configuration menu",
-    .nbItems = 2,
+    .nbItems = 3,
     {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
+        { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
     }
 };
 
@@ -140,6 +141,47 @@ void SysConfigMenu_ToggleWireless(void)
             nwmExtInit();
             NWMEXT_ControlWirelessEnabled(!wireless);
             nwmExtExit();
+        }
+        else if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
+}
+
+void SysConfigMenu_TogglePowerButton(void)
+{
+    u8 result;
+    
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+    
+    mcuHwcInit();
+    MCUHWC_ReadRegister(0x18, &result, 1);
+    mcuHwcExit();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+
+        Draw_DrawString(10, 50, COLOR_WHITE, "Current status:");
+        Draw_DrawString(100, 50, (((result & 0x01) == 0x01) ? COLOR_RED : COLOR_GREEN), (((result & 0x01) == 0x01) ? " DISABLED" : " ENABLED "));
+        
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+        
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            mcuHwcInit();
+            MCUHWC_ReadRegister(0x18, &result, 1);
+            result ^= 0x01;
+            MCUHWC_WriteRegister(0x18, &result, 1);
+            mcuHwcExit();
         }
         else if(pressed & BUTTON_B)
             return;
