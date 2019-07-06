@@ -43,7 +43,7 @@
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 11,
+    .nbItems = 12,
     {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu },
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
@@ -56,7 +56,7 @@ Menu rosalinaMenu = {
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
     }
 };
 
@@ -77,6 +77,7 @@ void RosalinaMenu_ShowCredits(void)
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "3DSX loading code by fincs");
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Networking code & basic GDB functionality by Stary");
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "InputRedirection by Stary (PoC by ShinyQuagsire)");
+		posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Plugin Loader by Nanquitas");
 
         posY += 2 * SPACING_Y;
 
@@ -85,7 +86,8 @@ void RosalinaMenu_ShowCredits(void)
                 "Special thanks to:\n"
                 "  Bond697, WinterMute, piepie62, yifanlu\n"
                 "  Luma3DS contributors, ctrulib contributors,\n"
-                "  other people"
+                "  other people\n\n\n"
+				"Luma Mod Edition by HIDE810"
             ));
 
         Draw_FlushFramebuffer();

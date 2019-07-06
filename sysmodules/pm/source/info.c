@@ -11,6 +11,9 @@ Result registerProgram(u64 *programHandle, const FS_ProgramInfo *programInfo, co
     Result res = 0;
 
     if (IS_N3DS) {
+        if (pi.programId >> 48 == 0xFFFF) {
+            return LOADER_RegisterProgram(programHandle, &pi, &piu);
+        }
         pi.programId = (pi.programId  & ~N3DS_TID_MASK) | N3DS_TID_BIT;
         piu.programId = (piu.programId & ~N3DS_TID_MASK) | N3DS_TID_BIT;
         res = LOADER_RegisterProgram(programHandle, &pi, &piu);
