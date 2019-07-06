@@ -14,6 +14,8 @@ all:		boot.firm
 release:	$(NAME)$(REVISION).zip
 
 clean:
+	@echo clean...
+	@echo
 	@$(foreach dir, $(SUBFOLDERS), $(MAKE) -C $(dir) clean &&) true
 	@rm -rf *.firm *.zip
 
@@ -26,4 +28,4 @@ boot.firm:	$(SUBFOLDERS)
 	@echo built... $(notdir $@)
 
 $(SUBFOLDERS):
-	@$(MAKE) -C $@ all
+	@$(MAKE) -j -s -C $@ all

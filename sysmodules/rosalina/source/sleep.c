@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -24,14 +24,38 @@
 *         reasonable ways as different from the original version.
 */
 
-#pragma once
+#include <3ds.h>
 
-#include <3ds/types.h>
-#include <string.h>
+static bool         g_isSleeping = false;
+static LightEvent   g_onWakeUpEvent;
 
-u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
-void *memset32(void *dest, u32 value, u32 size);
+void    Sleep__Init(void)
+{
+    srvSubscribe(0x214); ///< Sleep entry
+    srvSubscribe(0x213); ///< Sleep exit
+    LightEvent_Init(&g_onWakeUpEvent, RESET_STICKY);
+}
 
-void hexItoa(u64 number, char *out, u32 digits, bool uppercase);
-unsigned long int xstrtoul(const char *nptr, char **endptr, int base, bool allowPrefix, bool *ok);
-unsigned long long int xstrtoull(const char *nptr, char **endptr, int base, bool allowPrefix, bool *ok);
+void    Sleep__HandleNotification(u32 notifId)
+{
+    if (notifId == 0x214) ///< Sleep entry
+    {
+        LightEvent_Clear(&g_onWakeUpEvent);
+        g_isSleeping = true;
+    }
+    else if (notifId == 0x213) ///< Sleep exit
+    {
+        g_isSleeping = false;
+        LightEvent_Signal(&g_onWakeUpEvent);
+    }
+}
+
+bool    Sleep__Status(void)
+{
+    if (g_isSleeping)
+    {
+        LightEvent_Wait(&g_onWakeUpEvent);
+        return true;
+    }
+    return false;
+}

@@ -32,12 +32,6 @@
 #include "fmt.h"
 #include "ifile.h"
 
-static inline void assertSuccess(Result res)
-{
-    if(R_FAILED(res))
-        svcBreak(USERBREAK_PANIC);
-}
-
 static char userString[0x100 + 1] = {0};
 
 static inline u32 ERRF_DisplayRegisterValue(u32 posX, u32 posY, const char *name, u32 value)

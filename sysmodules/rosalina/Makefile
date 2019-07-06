@@ -28,9 +28,10 @@ INCLUDES	:=	include include/gdb include/menus include/redshift
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 DEFINES :=	-DARM11 -D_3DS
 
-CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Werror -Wno-unused-value -O2 -mword-relocations \
+
+CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Wno-unused-value -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections -fdata-sections \
-			$(ARCH) $(DEFINES)
+			$(ARCH) $(DEFINES) -w
 
 CFLAGS	+=	$(INCLUDE)
 
@@ -104,7 +105,6 @@ $(BUILD):
 
 #---------------------------------------------------------------------------------
 clean:
-	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).cxi $(TARGET).elf
 
 

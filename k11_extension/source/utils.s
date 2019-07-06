@@ -96,6 +96,36 @@ KObjectMutex__Release:
     blx r12
     bx lr
 
+.global KProcessHwInfo__MapL1Section_Hook
+.type   KProcessHwInfo__MapL1Section_Hook, %function
+KProcessHwInfo__MapL1Section_Hook:
+    @r0 => hwInfo
+    @sp + 0x34 => our ptr to state
+    add     r1, sp, #0x34
+    str     lr, [sp, #-4]!
+    bl      PatchDescriptorAccessControl
+    ldr     lr, [sp], #4
+    ldmfd   sp, {r0-r4}
+    sub     sp, sp, #0x14
+    add     r4, sp, #0x48
+    mov     r11, #0
+    mov     pc, lr
+
+.global KProcessHwInfo__MapL2Section_Hook
+.type   KProcessHwInfo__MapL2Section_Hook, %function
+KProcessHwInfo__MapL2Section_Hook:
+    @r0 => hwInfo
+    @sp + 0x34 => our ptr to state
+    add     r1, sp, #0x34
+    str     lr, [sp, #-4]!
+    bl      PatchDescriptorAccessControl
+    ldr     lr, [sp], #4
+    ldmfd   sp, {r0-r4}
+    sub     sp, sp, #0x4C
+    mov     r4, r1
+    mov     r6, r2
+    mov     pc, lr
+
 .global safecpy
 .type   safecpy, %function
 safecpy:

@@ -29,12 +29,42 @@
 
 Result UnmapProcessMemoryEx(Handle processHandle, void *dst, u32 size)
 {
-    if(kernelVersion < SYSTEM_VERSION(2, 37, 0)) // < 6.x
-        return UnmapProcessMemory(processHandle, dst, size); // equivalent when size <= 64MB
+    Result          res = 0;
+    u32             sizeInPage = size >> 12;
+    KLinkedList     list;
+    KProcess        *process;
+    KProcessHwInfo  *hwInfo;
+    KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
 
-    KProcessHwInfo *currentHwInfo = hwInfoOfProcess(currentCoreContext->objectContext.currentProcess);
+    if (processHandle == CUR_PROCESS_HANDLE)
+    {
+        process = currentCoreContext->objectContext.currentProcess;
+        KAutoObject__AddReference((KAutoObject *)process);
+    }
+    else
+        process = KProcessHandleTable__ToKProcess(handleTable, processHandle);
 
-    Result res = KProcessHwInfo__UnmapProcessMemory(currentHwInfo, dst, size >> 12);
+    if (process == NULL)
+        return 0xD8E007F7;
+
+    hwInfo = hwInfoOfProcess(process);
+
+    KLinkedList__Initialize(&list);
+
+    res = KProcessHwInfo__GetListOfKBlockInfoForVA(hwInfo, &list, (u32)dst, sizeInPage);
+
+    if (res >= 0)
+    {
+        // Check for dst address to be in the right state (0x5806 as we set it with svcMapProcessMemoryEx)
+        res = KProcessHwInfo__CheckVaState(hwInfo, (u32)dst, size, 0x5806, 0);
+        if (res == 0)
+            res = KProcessHwInfo__MapListOfKBlockInfo(hwInfo, (u32)dst, &list, 0, 0, 0);
+    }
+
+    KLinkedList_KBlockInfo__Clear(&list);
+
+
+    ((KAutoObject *)process)->vtable->DecrementReferenceCount((KAutoObject *)process);
 
     invalidateEntireInstructionCache();
     flushEntireDataCache();

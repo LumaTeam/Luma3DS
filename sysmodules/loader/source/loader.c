@@ -148,6 +148,21 @@ static Result loadCode(u64 titleId, prog_addrs_t *shared, u64 programHandle, int
     return 0;
 }
 
+static Result PLGLDR_Init(Handle *session)
+{
+      Result res;
+      while (1)
+      {
+        res = svcConnectToPort(session, "plg:ldr");
+        if (R_LEVEL(res) != RL_PERMANENT ||
+            R_SUMMARY(res) != RS_NOTFOUND ||
+            R_DESCRIPTION(res) != RD_NOT_FOUND
+           ) break;
+        svcSleepThread(500000);
+      }
+      return res;
+}
+
 static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
 {
     Result res = 0;
@@ -255,6 +270,9 @@ static Result LoadProcess(Handle *process, u64 programHandle)
     // load code
     if (R_SUCCEEDED(res = loadCode(titleId, &sharedAddr, programHandle, csi->flags.compress_exefs_code)))
     {
+        u32   *code = (u32 *)sharedAddr.text_addr;
+        bool  isHomebrew = code[0] == 0xEA000006 && code[8] == 0xE1A0400E;
+        
         memcpy(&codesetinfo.name, csi->name, 8);
         codesetinfo.program_id = titleId;
         codesetinfo.text_addr = vaddr.text_addr;
@@ -271,7 +289,37 @@ static Result LoadProcess(Handle *process, u64 programHandle)
         {
             res = svcCreateProcess(process, codeset, g_exheaderInfo.aci.kernel_caps.descriptors, count);
             svcCloseHandle(codeset);
-            res = R_SUCCEEDED(res) ? 0 : res;
+            if (res >= 0)
+            {
+                // Try to load a plugin for the game
+                if (!isHomebrew && ((u32)((titleId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000))
+                {
+                    // Special case handling: games rebooting the 3DS on old models
+                    if (!isN3DS && g_exheaderInfo.aci.local_caps.core_info.o3ds_system_mode > 0)
+                    {
+                        // Check if the plugin loader is enabled, otherwise skip the loading part
+                        s64 out;
+
+                        svcGetSystemInfo(&out, 0x10000, 0x102);
+                        if ((out & 1) == 0)
+                            return 0;
+                    }
+
+                    Handle plgldr = 0;
+
+                    if (R_SUCCEEDED(PLGLDR_Init(&plgldr)))
+                    {
+                        u32* cmdbuf = getThreadCommandBuffer();
+
+                        cmdbuf[0] = IPC_MakeHeader(1, 0, 2);
+                        cmdbuf[1] = IPC_Desc_SharedHandles(1);
+                        cmdbuf[2] = *process;
+                        svcSendSyncRequest(plgldr);
+                        svcCloseHandle(plgldr);
+                    }
+                }
+                return 0;
+            }
         }
     }
 
