@@ -262,7 +262,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 u32 max;
             } MenuData;
 
-            bool editing;
+            bool editing = false;
 
             MenuData menus[MENU_MODE_MAX] = {0};
             int menuMode = MENU_MODE_NORMAL;
