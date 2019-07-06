@@ -43,3 +43,4 @@ u32 waitInput(bool isMenu);
 void mcuPowerOff(void);
 void wait(u64 amount);
 void error(const char *fmt, ...);
+unsigned char reverseBits(unsigned char b);
