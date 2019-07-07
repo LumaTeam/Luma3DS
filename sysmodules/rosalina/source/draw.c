@@ -61,12 +61,12 @@ void Draw_DrawCharacter(u32 posX, u32 posY, u32 color, char character)
     volatile u16 *const fb = (volatile u16 *const)FB_BOTTOM_VRAM_ADDR;
 
     s32 y;
-    for(y = 0; y < 10; y++)
+    for(y = 0; y < FONT_HEIGHT; y++)
     {
-        char charPos = font[character * 10 + y];
+        char charPos = font[character * FONT_HEIGHT + y];
 
         s32 x;
-        for(x = 6; x >= 1; x--)
+        for(x = FONT_WIDTH; x >= 1; x--)
         {
             u32 screenPos = (posX * SCREEN_BOT_HEIGHT * 2 + (SCREEN_BOT_HEIGHT - y - posY - 1) * 2) + (5 - x) * 2 * SCREEN_BOT_HEIGHT;
             u32 pixelColor = ((charPos >> x) & 1) ? color : COLOR_BLACK;
