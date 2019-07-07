@@ -369,7 +369,7 @@ bool loadTitleExheaderInfo(u64 progId, ExHeader_Info *exheaderInfo)
 
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(ExHeader_Info) || fileSize != sizeof(ExHeader)) goto error;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || (fileSize != sizeof(ExHeader_Info) && fileSize != sizeof(ExHeader))) goto error;
     else
     {
         u64 total;
