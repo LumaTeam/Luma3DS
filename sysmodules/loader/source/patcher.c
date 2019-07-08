@@ -1,5 +1,6 @@
 #include <3ds.h>
 #include "patcher.h"
+#include "bps_patcher.h"
 #include "memory.h"
 #include "strings.h"
 #include "romfsredir.h"
@@ -845,6 +846,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     if(CONFIG(PATCHGAMES))
     {
+        if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
         if(!applyCodeIpsPatch(progId, code, size)) goto error;
 
         if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
