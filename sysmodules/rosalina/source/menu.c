@@ -208,7 +208,8 @@ static void menuDraw(Menu *menu, u32 selected)
     u32 version, commitHash;
     bool isRelease;
     bool isMcuHwcRegistered;
-
+    bool isPtmURegistered;
+    u8 batteryCharging;
     if(R_SUCCEEDED(srvIsServiceRegistered(&isMcuHwcRegistered, "mcu::HWC")) && isMcuHwcRegistered && R_SUCCEEDED(mcuHwcInit()))
     {
         if(R_FAILED(MCUHWC_GetBatteryLevel(&batteryLevel)))
@@ -218,6 +219,20 @@ static void menuDraw(Menu *menu, u32 selected)
     else
         batteryLevel = 255;
 
+    if(R_SUCCEEDED(srvIsServiceRegistered(&isPtmURegistered, "ptm:u")) && isPtmURegistered && R_SUCCEEDED(ptmuInit()))
+    {
+        if(R_FAILED(PTMU_GetBatteryChargeState(&batteryCharging)))
+            batteryCharging = ' ';
+        ptmuExit();
+    }
+    else
+        batteryCharging = ' ';
+    if(batteryCharging == 1) {
+        batteryCharging = '+';
+    }
+    else {
+        batteryCharging = ' ';
+    }
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;
 
@@ -254,9 +269,10 @@ static void menuDraw(Menu *menu, u32 selected)
     Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
 
     if(batteryLevel != 255)
-        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%02hhu%%", batteryLevel);
+        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - 6 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%c%02hhu%%", batteryCharging, batteryLevel);
     else
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
+
 
     if(isRelease)
         Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);
