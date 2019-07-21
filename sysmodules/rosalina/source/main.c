@@ -90,11 +90,15 @@ void __appInit()
 
     if (R_FAILED(pmDbgInit()))
         svcBreak(USERBREAK_PANIC);
+
+    if (R_FAILED(acInit()))
+        svcBreak(USERBREAK_PANIC);
 }
 
 // this is called after main exits
 void __appExit()
 {
+    acExit();
     pmDbgExit();
     fsExit();
     svcCloseHandle(*fsRegGetSessionHandle());
