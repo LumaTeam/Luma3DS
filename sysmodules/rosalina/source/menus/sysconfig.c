@@ -152,17 +152,17 @@ static void SysConfigMenu_ForceWifiConnection(int slot)
 {
     char ssid[0x20 + 1] = {0};
 
-    u8 data[0x200] = {0};
-    ACU_CreateDefaultConfig(data);
-    ACU_SetNetworkArea(data, 2);
-    ACU_SetAllowApType(data, 1 << slot);
-    ACU_SetRequestEulaVersion(data);
+    acuConfig config = {0};
+    ACU_CreateDefaultConfig(&config);
+    ACU_SetNetworkArea(&config, 2);
+    ACU_SetAllowApType(&config, 1 << slot);
+    ACU_SetRequestEulaVersion(&config);
 
     Handle connectEvent = 0;
     svcCreateEvent(&connectEvent, RESET_ONESHOT);
 
     bool forcedConnection = false;
-    if(R_SUCCEEDED(ACU_ConnectAsync(data, connectEvent)))
+    if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
     {
         if(R_SUCCEEDED(svcWaitSynchronization(connectEvent, -1)))
         {
