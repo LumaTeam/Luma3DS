@@ -279,7 +279,7 @@ void ERRF_HandleCommands(void *ctx)
             else
             {
                 cmdbuf[0] = 0x20040;
-                u32 sz = cmdbuf[1] <= 0x100 ? sz : 0x100;
+                u32 sz = cmdbuf[1] <= 0x100 ? cmdbuf[1] : 0x100;
                 memcpy(userString, cmdbuf + 3, sz);
                 userString[sz] = 0;
             }
