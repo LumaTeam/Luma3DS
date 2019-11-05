@@ -33,3 +33,4 @@ extern Menu sysconfigMenu;
 
 void SysConfigMenu_ToggleLEDs(void);
 void SysConfigMenu_ToggleWireless(void);
+void SysConfigMenu_ControlWifi(void);

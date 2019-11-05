@@ -34,10 +34,11 @@
 
 Menu sysconfigMenu = {
     "System configuration menu",
-    .nbItems = 2,
+    .nbItems = 3,
     {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
+        { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
     }
 };
 
@@ -140,6 +141,118 @@ void SysConfigMenu_ToggleWireless(void)
             nwmExtInit();
             NWMEXT_ControlWirelessEnabled(!wireless);
             nwmExtExit();
+        }
+        else if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
+}
+
+static void SysConfigMenu_ForceWifiConnection(int slot)
+{
+    char ssid[0x20 + 1] = {0};
+
+    acuConfig config = {0};
+    ACU_CreateDefaultConfig(&config);
+    ACU_SetNetworkArea(&config, 2);
+    ACU_SetAllowApType(&config, 1 << slot);
+    ACU_SetRequestEulaVersion(&config);
+
+    Handle connectEvent = 0;
+    svcCreateEvent(&connectEvent, RESET_ONESHOT);
+
+    bool forcedConnection = false;
+    if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
+    {
+        if(R_SUCCEEDED(svcWaitSynchronization(connectEvent, -1)))
+        {
+            ACU_GetSSID(ssid);
+            forcedConnection = true;
+        }
+    }
+    svcCloseHandle(connectEvent);
+
+    char infoString[80] = {0};
+    u32 infoStringColor = forcedConnection ? COLOR_GREEN : COLOR_RED;
+    if(forcedConnection)
+        sprintf(infoString, "Succesfully forced a connection to: %s", ssid);
+    else
+       sprintf(infoString, "Failed to connect to slot %d", slot + 1);
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, infoStringColor, infoString);
+        Draw_DrawString(10, 40, COLOR_WHITE, "Press B to go back.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
+}
+
+void SysConfigMenu_ControlWifi(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    int slot = 0;
+    char slotString[12] = {0};
+    sprintf(slotString, ">1<  2   3 ");
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to force a connection to slot:");
+        Draw_DrawString(10, 40, COLOR_WHITE, slotString);
+        Draw_DrawString(10, 60, COLOR_WHITE, "Press B to go back.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            SysConfigMenu_ForceWifiConnection(slot);
+
+            Draw_Lock();
+            Draw_ClearFramebuffer();
+            Draw_FlushFramebuffer();
+            Draw_Unlock();
+        }
+        else if(pressed & BUTTON_LEFT)
+        {
+            slotString[slot * 4] = ' ';
+            slotString[(slot * 4) + 2] = ' ';
+            slot--;
+            if(slot == -1)
+                slot = 2;
+            slotString[slot * 4] = '>';
+            slotString[(slot * 4) + 2] = '<';
+        }
+        else if(pressed & BUTTON_RIGHT)
+        {
+            slotString[slot * 4] = ' ';
+            slotString[(slot * 4) + 2] = ' ';
+            slot++;
+            if(slot == 3)
+                slot = 0;
+            slotString[slot * 4] = '>';
+            slotString[(slot * 4) + 2] = '<';
         }
         else if(pressed & BUTTON_B)
             return;
