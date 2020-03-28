@@ -200,7 +200,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { 0x100 , handleTermNotification                },
     //{ 0x103 , relinquishConnectionSessions          }, // Sleep mode entry <=== causes issues
     { 0x1000, handleNextApplicationDebuggedByForce  },
-    { 0x1001, relinquishConnectionSessions          },
+    { 0x2000, relinquishConnectionSessions          },
     { 0x000, NULL },
 };
 
