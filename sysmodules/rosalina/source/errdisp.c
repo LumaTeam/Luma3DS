@@ -32,13 +32,26 @@
 #include "fmt.h"
 #include "ifile.h"
 
+extern Handle terminationRequestEvent;
+
 static inline void assertSuccess(Result res)
 {
     if(R_FAILED(res))
         svcBreak(USERBREAK_PANIC);
 }
 
+static MyThread errDispThread;
+static u8 ALIGN(8) errDispThreadStack[0xD00];
+
 static char userString[0x100 + 1] = {0};
+static char staticBuf[0x100 + 1] = {0};
+
+MyThread *errDispCreateThread(void)
+{
+    if(R_FAILED(MyThread_Create(&errDispThread, errDispThreadMain, errDispThreadStack, 0xD00, 0x18, CORE_SYSTEM)))
+        svcBreak(USERBREAK_PANIC);
+    return &errDispThread;
+}
 
 static inline u32 ERRF_DisplayRegisterValue(u32 posX, u32 posY, const char *name, u32 value)
 {
@@ -230,9 +243,8 @@ static Result ERRF_SaveErrorToFile(ERRF_FatalErrInfo *info)
     return res;
 }
 
-void ERRF_HandleCommands(void *ctx)
+void ERRF_HandleCommands(void)
 {
-    (void)ctx;
     u32 *cmdbuf = getThreadCommandBuffer();
     ERRF_FatalErrInfo info;
 
@@ -264,26 +276,98 @@ void ERRF_HandleCommands(void *ctx)
                 __builtin_unreachable();
             }
 
-            cmdbuf[0] = 0x10040;
+            cmdbuf[0] = IPC_MakeHeader(1, 1, 0);
             cmdbuf[1] = 0;
             break;
         }
 
         case 2: // SetUserString
         {
-            if(cmdbuf[0] != 0x20042 || (cmdbuf[2] & 0x3C0F) != 2)
+            if(cmdbuf[0] != IPC_MakeHeader(2, 1, 2) || (cmdbuf[2] & 0x3C0F) != 2)
             {
-                cmdbuf[0] = 0x40;
+                cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
                 cmdbuf[1] = 0xD9001830;
             }
             else
             {
-                cmdbuf[0] = 0x20040;
                 u32 sz = cmdbuf[1] <= 0x100 ? cmdbuf[1] : 0x100;
                 memcpy(userString, cmdbuf + 3, sz);
                 userString[sz] = 0;
+
+                cmdbuf[0] = IPC_MakeHeader(2, 1, 0);
+                cmdbuf[1] = 0;
             }
             break;
         }
     }
+}
+
+void errDispThreadMain(void)
+{
+    Handle handles[3];
+    Handle serverHandle, clientHandle, sessionHandle = 0;
+
+    u32 replyTarget = 0;
+    s32 index;
+
+    Result res;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u32 *sbuf = getThreadStaticBuffers();
+
+    sbuf[0] = IPC_Desc_StaticBuffer(0x100, 0);
+    sbuf[1] = (u32)staticBuf;
+
+    assertSuccess(svcCreatePort(&serverHandle, &clientHandle, "err:f", 1));
+
+    do
+    {
+        handles[0] = terminationRequestEvent;
+        handles[1] = serverHandle;
+        handles[2] = sessionHandle;
+
+        if(replyTarget == 0) // k11
+            cmdbuf[0] = 0xFFFF0000;
+        res = svcReplyAndReceive(&index, handles, 1 + (sessionHandle == 0 ? 1 : 2), replyTarget);
+
+        if(R_FAILED(res))
+        {
+            if((u32)res == 0xC920181A) // session closed by remote
+            {
+                svcCloseHandle(sessionHandle);
+                sessionHandle = 0;
+                replyTarget = 0;
+            }
+
+            else
+                svcBreak(USERBREAK_PANIC);
+        }
+
+        else
+        {
+            if (index == 0)
+            {
+                break;
+            }
+            else if(index == 1)
+            {
+                Handle session;
+                assertSuccess(svcAcceptSession(&session, serverHandle));
+
+                if(sessionHandle == 0)
+                    sessionHandle = session;
+                else
+                    svcCloseHandle(session);
+            }
+            else
+            {
+                ERRF_HandleCommands();
+                replyTarget = sessionHandle;
+            }
+        }
+    }
+    while(!terminationRequest);
+
+    svcCloseHandle(sessionHandle);
+    svcCloseHandle(clientHandle);
+    svcCloseHandle(serverHandle);
 }

@@ -170,7 +170,6 @@ static void handleNextApplicationDebuggedByForce(u32 notificationId)
 }
 
 static const ServiceManagerServiceEntry services[] = {
-    { "err:f",  1, ERRF_HandleCommands,  true },
     { "hb:ldr", 2, HBLDR_HandleCommands, true },
     { NULL },
 };
@@ -198,12 +197,14 @@ int main(void)
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
+    MyThread *errDispThread = errDispCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
 
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(taskRunnerThread, -1LL);
+    MyThread_Join(errDispThread, -1LL);
 
     return 0;
 }
