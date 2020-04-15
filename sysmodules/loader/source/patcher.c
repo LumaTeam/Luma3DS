@@ -468,13 +468,13 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 
         ((buf[10] >= '0' && buf[10] <= '9') || (buf[10] >= 'a' && buf[10] <= 'f') || (buf[10] >= 'A' && buf[10] <= 'F')) &&
         ((buf[11] >= '0' && buf[11] <= '9') || (buf[11] >= 'a' && buf[11] <= 'f') || (buf[11] >= 'A' && buf[11] <= 'F')))
     {
-        if     (buf[10] >= '0' && buf[10] <= '9') *stateId = 16 * (buf[10] - '0');
-        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a');
-        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A');
+        if     (buf[10] >= '0' && buf[10] <= '9') *stateId = 16 * (buf[10] - '0' + 10);
+        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a' + 10);
+        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A' + 10);
 
-        if     (buf[11] >= '0' && buf[11] <= '9') *stateId += buf[11] - '0';
-        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a';
-        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A';
+        if     (buf[11] >= '0' && buf[11] <= '9') *stateId += buf[11] - '0' + 10;
+        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a' + 10;
+        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A' + 10;
 
         *mask |= 8;
     }
