@@ -34,10 +34,11 @@
 
 Menu sysconfigMenu = {
     "System configuration menu",
-    .nbItems = 3,
+    .nbItems = 4,
     {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
+        { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
     }
 };
@@ -197,6 +198,47 @@ static void SysConfigMenu_ForceWifiConnection(int slot)
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
+}
+
+void SysConfigMenu_TogglePowerButton(void)
+{
+    u32 mcuIRQMask;
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    mcuHwcInit();
+    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+    mcuHwcExit();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
+
+        Draw_DrawString(10, 50, COLOR_WHITE, "Current status:");
+        Draw_DrawString(100, 50, (((mcuIRQMask & 0x00000001) == 0x00000001) ? COLOR_RED : COLOR_GREEN), (((mcuIRQMask & 0x00000001) == 0x00000001) ? " DISABLED" : " ENABLED "));
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & BUTTON_A)
+        {
+            mcuHwcInit();
+            MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+            mcuIRQMask ^= 0x00000001;
+            MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
+            mcuHwcExit();
+        }
+        else if(pressed & BUTTON_B)
             return;
     }
     while(!terminationRequest);
