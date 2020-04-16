@@ -28,13 +28,13 @@ INCLUDES	:=	include
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 DEFINES :=	-DARM11 -D_3DS
 
-CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Werror -O2 -mword-relocations \
+COMMON_FLAGS = -g -Wall -Wextra -Werror -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections -fdata-sections \
-			$(ARCH) $(DEFINES)
+			$(ARCH) $(DEFINES) $(INCLUDE)
 
-CFLAGS	+=	$(INCLUDE)
+CFLAGS	:=	-std=gnu11 $(COMMON_FLAGS)
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS	:= -fno-rtti -fno-exceptions -std=gnu++17 $(COMMON_FLAGS)
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map),--section-start,.text=0x14000000

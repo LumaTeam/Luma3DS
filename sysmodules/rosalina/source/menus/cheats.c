@@ -168,7 +168,7 @@ static u8 ReadWriteBuffer8 = 0;
 static bool Cheat_Write8(const Handle processHandle, u32 offset, u8 value)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
         cheatPage[addr - 0x01E81000] = value;
         return true;
@@ -184,7 +184,7 @@ static bool Cheat_Write8(const Handle processHandle, u32 offset, u8 value)
 static bool Cheat_Write16(const Handle processHandle, u32 offset, u16 value)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 2 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
     {
         *(u16*)(cheatPage + addr - 0x01E81000) = value;
         return true;
@@ -200,7 +200,7 @@ static bool Cheat_Write16(const Handle processHandle, u32 offset, u16 value)
 static bool Cheat_Write32(const Handle processHandle, u32 offset, u32 value)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 4 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 3 < 0x01E82000)
     {
         *(u32*)(cheatPage + addr - 0x01E81000) = value;
         return true;
@@ -216,7 +216,7 @@ static bool Cheat_Write32(const Handle processHandle, u32 offset, u32 value)
 static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
         *retValue = cheatPage[addr - 0x01E81000];
         return true;
@@ -233,7 +233,7 @@ static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
 static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 2 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
     {
         *retValue = *(u16*)(cheatPage + addr - 0x01E81000);
         return true;
@@ -250,7 +250,7 @@ static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
 static bool Cheat_Read32(const Handle processHandle, u32 offset, u32* retValue)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 4 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 3 < 0x01E82000)
     {
         *retValue = *(u32*)(cheatPage + addr - 0x01E81000);
         return true;

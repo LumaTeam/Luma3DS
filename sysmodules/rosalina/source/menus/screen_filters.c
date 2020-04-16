@@ -55,37 +55,38 @@ typedef struct {
     u8 z;
 } Pixel;
 
+static u16 g_c[0x600];
+static Pixel g_px[0x400];
+
 void applyColorSettings(color_setting_t* cs)
 {
-    u16 c[0x600];
-    Pixel px[0x400];
     u8 i = 0;
 
-    memset(c, 0, sizeof(c));
-    memset(px, 0, sizeof(px));
+    memset(g_c, 0, sizeof(g_c));
+    memset(g_px, 0, sizeof(g_px));
 
     do {
-        px[i].r = i;
-        px[i].g = i;
-        px[i].b = i;
-        px[i].z = 0;
+        g_px[i].r = i;
+        g_px[i].g = i;
+        g_px[i].b = i;
+        g_px[i].z = 0;
     } while(++i);
 
     do {
-        *(c + i + 0x000) = px[i].r | (px[i].r << 8);
-        *(c + i + 0x100) = px[i].g | (px[i].g << 8);
-        *(c + i + 0x200) = px[i].b | (px[i].b << 8);
+        *(g_c + i + 0x000) = g_px[i].r | (g_px[i].r << 8);
+        *(g_c + i + 0x100) = g_px[i].g | (g_px[i].g << 8);
+        *(g_c + i + 0x200) = g_px[i].b | (g_px[i].b << 8);
     } while(++i);
 
-    colorramp_fill(c + 0x000, c + 0x100, c + 0x200, 0x100, cs);
+    colorramp_fill(g_c + 0x000, g_c + 0x100, g_c + 0x200, 0x100, cs);
 
     do {
-        px[i].r = *(c + i + 0x000) >> 8;
-        px[i].g = *(c + i + 0x100) >> 8;
-        px[i].b = *(c + i + 0x200) >> 8;
+        g_px[i].r = *(g_c + i + 0x000) >> 8;
+        g_px[i].g = *(g_c + i + 0x100) >> 8;
+        g_px[i].b = *(g_c + i + 0x200) >> 8;
     } while(++i);
 
-    writeLut((u32*)px);
+    writeLut((u32*)g_px);
 }
 
 Menu screenFiltersMenu = {
@@ -143,10 +144,10 @@ void screenFiltersSetTemperature(int temperature)
     memset(&cs, 0, sizeof(cs));
 
     cs.temperature = temperature;
-    cs.gamma[0] = 1.0F;
+    /*cs.gamma[0] = 1.0F;
     cs.gamma[1] = 1.0F;
     cs.gamma[2] = 1.0F;
-    cs.brightness = 1.0F;
+    cs.brightness = 1.0F;*/
 
     applyColorSettings(&cs);
 }
