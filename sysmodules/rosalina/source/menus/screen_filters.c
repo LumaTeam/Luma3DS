@@ -144,10 +144,10 @@ void screenFiltersSetTemperature(int temperature)
     memset(&cs, 0, sizeof(cs));
 
     cs.temperature = temperature;
-    cs.gamma[0] = 1.0F;
+    /*cs.gamma[0] = 1.0F;
     cs.gamma[1] = 1.0F;
     cs.gamma[2] = 1.0F;
-    cs.brightness = 1.0F;
+    cs.brightness = 1.0F;*/
 
     applyColorSettings(&cs);
 }
