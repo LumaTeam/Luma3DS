@@ -30,12 +30,14 @@
 #include "utils.h"
 #include "minisoc.h"
 
-#define NUM2BCD(n)  ((n<99) ? (((n/10)*0x10)|(n%10)) : 0x99)
+#define NUM2BCD(n)          ((n<99) ? (((n/10)*0x10)|(n%10)) : 0x99)
 
 #define NTP_TIMESTAMP_DELTA 2208988800ull
 
+#define MAKE_IPV4(a,b,c,d)  ((a) << 24 | (b) << 16 | (c) << 8 | (d))
+
 #ifndef NTP_IP
-#define NTP_IP 0xD8EF2300
+#define NTP_IP              MAKE_IPV4(51, 137, 137, 111) // time.windows.com
 #endif
 
 typedef struct RtcTime {
@@ -113,7 +115,7 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
 
     // Copy the server's IP address to the server address structure.
 
-    servAddr.sin_addr.s_addr = htonl(NTP_IP); // 216.239.35.0 time1.google.com
+    servAddr.sin_addr.s_addr = htonl(NTP_IP);
     // Convert the port number integer to network big-endian style and save it to the server address structure.
 
     servAddr.sin_port = htons(123);

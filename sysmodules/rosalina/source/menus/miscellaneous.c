@@ -352,8 +352,8 @@ void MiscellaneousMenu_SyncTimeDate(void)
 
         if(input & BUTTON_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
         if(input & BUTTON_RIGHT) utcOffset = (utcOffset + 1) % 24;
-		if(input & BUTTON_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
-		if(input & BUTTON_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
+        if(input & BUTTON_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
+        if(input & BUTTON_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
@@ -373,7 +373,7 @@ void MiscellaneousMenu_SyncTimeDate(void)
         if(R_SUCCEEDED(res))
         {
             t += 3600 * utcOffset;
-			t += 60 * utcOffsetMinute;
+            t += 60 * utcOffsetMinute;
             gmtime_r(&t, &localt);
             res = ntpSetTimeDate(&localt);
         }
