@@ -504,7 +504,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset = 0,
         pathOffset = 0,
-        pathAddress;
+        pathAddress = 0xDEADCAFE;
 
     if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
