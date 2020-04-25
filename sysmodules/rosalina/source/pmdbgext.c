@@ -1,5 +1,5 @@
 // License for this file: ctrulib's license
-// Copyright AuroraWright, TuxSH 2019
+// Copyright AuroraWright, TuxSH 2019-2020
 
 #include <string.h>
 #include <3ds/types.h>
