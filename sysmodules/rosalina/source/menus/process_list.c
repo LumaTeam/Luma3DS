@@ -104,7 +104,7 @@ static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
     IFile file;
     Result res;
 
-    char filename[64] = {0};
+    char filename[100] = {0};
 
     FS_Archive archive;
     FS_ArchiveID archiveId;
