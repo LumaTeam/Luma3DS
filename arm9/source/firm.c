@@ -58,7 +58,7 @@ static __attribute__((noinline)) bool inRange(u32 as, u32 ae, u32 bs, u32 be)
 
 static bool checkFirm(u32 firmSize)
 {
-    if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the ARM11 entrypoint to be zero in which case nothing is done on the ARM11 side
+    if(memcmp(firm->magic, "FIRM", 4) != 0 || firm->arm9Entry == NULL) //Allow for the Arm11 entrypoint to be zero in which case nothing is done on the Arm11 side
         return false;
 
     bool arm9EpFound = false,
@@ -184,7 +184,7 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
         else if(ctrNandError) error("Unable to mount CTRNAND or load the CTRNAND FIRM.\nPlease use an external one.");
     }
 
-    //Check that the FIRM is right for the console from the ARM9 section address
+    //Check that the FIRM is right for the console from the Arm9 section address
     if((firm->section[3].offset != 0 ? firm->section[3].address : firm->section[2].address) != (ISN3DS ? (u8 *)0x8006000 : (u8 *)0x8006800))
         error("The %s FIRM is not for this console.", loadedFromStorage ? "external" : "CTRNAND");
 
@@ -350,7 +350,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 
     if(ISN3DS)
     {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
+        //Decrypt Arm9Bin and patch Arm9 entrypoint to skip kernel9loader
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
@@ -409,7 +409,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         if(!ISDEVUNIT) ret += patchCheckForDevCommonKey(process9Offset, process9Size);
     }
 
-    //ARM9 exception handlers
+    //Arm9 exception handlers
     ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
     ret += patchKernel9Panic(arm9Section, kernel9Size);
@@ -426,7 +426,7 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
-    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
+    //On N3DS, decrypt Arm9Bin and patch Arm9 entrypoint to skip kernel9loader
     if(ISN3DS)
     {
         kernel9Loader((Arm9Bin *)arm9Section);
@@ -465,7 +465,7 @@ u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
-    //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
+    //On N3DS, decrypt Arm9Bin and patch Arm9 entrypoint to skip kernel9loader
     if(ISN3DS)
     {
         kernel9Loader((Arm9Bin *)arm9Section);
@@ -501,7 +501,7 @@ u32 patch1x2xNativeAndSafeFirm(void)
 
     if(ISN3DS)
     {
-        //Decrypt ARM9Bin and patch ARM9 entrypoint to skip kernel9loader
+        //Decrypt Arm9Bin and patch Arm9 entrypoint to skip kernel9loader
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
@@ -518,7 +518,7 @@ u32 patch1x2xNativeAndSafeFirm(void)
 
     ret += ISN3DS ? patchSignatureChecks(process9Offset, process9Size) : patchOldSignatureChecks(process9Offset, process9Size);
 
-    //ARM9 exception handlers
+    //Arm9 exception handlers
     ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
 

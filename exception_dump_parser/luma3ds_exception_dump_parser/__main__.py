@@ -121,8 +121,8 @@ def main(args=None):
     addtionalDataOffset = stackOffset + stackDumpSize
     additionalData = data[addtionalDataOffset : addtionalDataOffset + additionalDataSize]
 
-    if processor == 9: print("Processor: ARM9")
-    else: print("Processor: ARM11 (core {0})".format(processor >> 16))
+    if processor == 9: print("Processor: Arm9")
+    else: print("Processor: Arm11 (core {0})".format(processor >> 16))
 
     typeDetailsStr = ""
     if exceptionType == 2:

@@ -26,7 +26,7 @@
 
 #include <3ds.h>
 #include <arpa/inet.h>
-#include "utils.h" // for makeARMBranch
+#include "utils.h" // for makeArmBranch
 #include "minisoc.h"
 #include "input_redirection.h"
 #include "menus.h"
@@ -315,7 +315,7 @@ Result InputRedirection_DoOrUndoPatches(void)
                     return -6;
                 }
 
-                *(void **)(irCodePhys + 8) = decodeARMBranch(off + 4);
+                *(void **)(irCodePhys + 8) = decodeArmBranch(off + 4);
                 *(void **)(irCodePhys + 12) = (void*)irDataPhys;
 
                 irHookLoc = off;

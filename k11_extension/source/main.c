@@ -108,67 +108,67 @@ static void findUsefulSymbols(void)
 
     for(; *off != 0xE3A0A0C2; off++);
     mcuReboot = (void (*) (void))--off;
-    coreBarrier = (void (*) (void))decodeARMBranch(off - 4);
+    coreBarrier = (void (*) (void))decodeArmBranch(off - 4);
 
     for(off = (u32 *)originalHandlers[2]; *off != 0xE1A00009; off++);
-    svcFallbackHandler = (void (*)(u8))decodeARMBranch(off + 1);
+    svcFallbackHandler = (void (*)(u8))decodeArmBranch(off + 1);
     for(; *off != 0xE92D000F; off++);
-    officialPostProcessSvc = (void (*)(void))decodeARMBranch(off + 1);
+    officialPostProcessSvc = (void (*)(void))decodeArmBranch(off + 1);
 
-    KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
+    KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeArmBranch(5 + (u32 *)officialSVCs[0x76]);
 
     for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE1A00004; off++);
-    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeARMBranch(off + 1);
+    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeArmBranch(off + 1);
 
     for(; *off != 0xE320F000; off++);
-    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 1);
+    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeArmBranch(off + 1);
 
-    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5D42034; off++);
+    for(off = (u32 *)decodeArmBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5D42034; off++);
     off -= 2;
     criticalSectionLock = (KRecursiveLock *)off[2 + (off[0] & 0xFF) / 4];
-    KRecursiveLock__Lock = (void (*)(KRecursiveLock *))decodeARMBranch(off + 1);
+    KRecursiveLock__Lock = (void (*)(KRecursiveLock *))decodeArmBranch(off + 1);
     off += 4;
 
     for(; (*off >> 16) != 0xE59F; off++);
-    KRecursiveLock__Unlock = (void (*)(KRecursiveLock *))decodeARMBranch(off + 1);
+    KRecursiveLock__Unlock = (void (*)(KRecursiveLock *))decodeArmBranch(off + 1);
 
     for(; *off != 0xE5C4007D; off++);
-    KSynchronizationObject__Signal = (void (*)(KSynchronizationObject *, bool))decodeARMBranch(off + 3);
+    KSynchronizationObject__Signal = (void (*)(KSynchronizationObject *, bool))decodeArmBranch(off + 3);
 
     for(off = (u32 *)officialSVCs[0x19]; *off != 0xE1A04005; off++);
-    KEvent__Clear = (Result (*)(KEvent *))decodeARMBranch(off + 1);
+    KEvent__Clear = (Result (*)(KEvent *))decodeArmBranch(off + 1);
     for(off = (u32 *)KEvent__Clear; *off != 0xE8BD8070; off++);
     synchronizationMutex = *(KObjectMutex **)(off + 1);
 
     for(off = (u32 *)officialSVCs[0x24]; *off != 0xE59F004C; off++);
-    WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))decodeARMBranch(off + 6);
+    WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))decodeArmBranch(off + 6);
 
-    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x33]) /* OpenProcess */ ; *off != 0xE1A05000; off++);
-    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off - 1);
+    for(off = (u32 *)decodeArmBranch(3 + (u32 *)officialSVCs[0x33]) /* OpenProcess */ ; *off != 0xE1A05000; off++);
+    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeArmBranch(off - 1);
 
-    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[0x34]) /* OpenThread */; *off != 0xD9001BF7; off++);
+    for(off = (u32 *)decodeArmBranch(3 + (u32 *)officialSVCs[0x34]) /* OpenThread */; *off != 0xD9001BF7; off++);
     threadList = *(KObjectList **)(off + 1);
 
-    off = (u32 *)decodeARMBranch((u32 *)officialSVCs[0x37] + 3) + 5; /* GetThreadId */
-    KProcessHandleTable__ToKThread = (KThread * (*)(KProcessHandleTable *, Handle))decodeARMBranch((*off >> 16) == 0xEB00 ? off : off + 2);
+    off = (u32 *)decodeArmBranch((u32 *)officialSVCs[0x37] + 3) + 5; /* GetThreadId */
+    KProcessHandleTable__ToKThread = (KThread * (*)(KProcessHandleTable *, Handle))decodeArmBranch((*off >> 16) == 0xEB00 ? off : off + 2);
 
     for(off = (u32 *)officialSVCs[0x50]; off[0] != 0xE1A05000 || off[1] != 0xE2100102 || off[2] != 0x5A00000B; off++);
-    InterruptManager__MapInterrupt = (Result (*)(InterruptManager *, KBaseInterruptEvent *, u32, u32, u32, bool, bool))decodeARMBranch(--off);
+    InterruptManager__MapInterrupt = (Result (*)(InterruptManager *, KBaseInterruptEvent *, u32, u32, u32, bool, bool))decodeArmBranch(--off);
     interruptManager = *(InterruptManager **)(off - 4 + (off[-6] & 0xFFF) / 4);
     for(off = (u32 *)officialSVCs[0x54]; *off != 0xE8BD8008; off++);
     flushDataCacheRange = (void (*)(void *, u32))(*(u32 **)(off[1]) + 3);
 
     for(off = (u32 *)officialSVCs[0x71]; *off != 0xE2101102; off++);
-    KProcessHwInfo__MapProcessMemory = (Result (*)(KProcessHwInfo *, KProcessHwInfo *, void *, void *, u32))decodeARMBranch(off - 1);
+    KProcessHwInfo__MapProcessMemory = (Result (*)(KProcessHwInfo *, KProcessHwInfo *, void *, void *, u32))decodeArmBranch(off - 1);
 
     // From 4.x to 6.x the pattern will match but the result will be wrong
     for(off = (u32 *)officialSVCs[0x72]; *off != 0xE2041102; off++);
-    KProcessHwInfo__UnmapProcessMemory = (Result (*)(KProcessHwInfo *, void *, u32))decodeARMBranch(off - 1);
+    KProcessHwInfo__UnmapProcessMemory = (Result (*)(KProcessHwInfo *, void *, u32))decodeArmBranch(off - 1);
 
     for(off = (u32 *)officialSVCs[0x7C]; *off != 0x03530000; off++);
-    KObjectMutex__WaitAndAcquire = (void (*)(KObjectMutex *))decodeARMBranch(++off);
+    KObjectMutex__WaitAndAcquire = (void (*)(KObjectMutex *))decodeArmBranch(++off);
     for(; *off != 0xE320F000; off++);
-    KObjectMutex__ErrorOccured = (void (*)(void))decodeARMBranch(off + 1);
+    KObjectMutex__ErrorOccured = (void (*)(void))decodeArmBranch(off + 1);
 
     for(off = (u32 *)originalHandlers[4]; *off != (u32)exceptionStackTop; off++);
     kernelUsrCopyFuncsStart = (void *)off[1];
@@ -208,26 +208,26 @@ static void findUsefulSymbols(void)
 
     // The official prototype of ControlMemory doesn't have that extra param'
     ControlMemory = (Result (*)(u32 *, u32, u32, u32, MemOp, MemPerm, bool))
-                    decodeARMBranch((u32 *)officialSVCs[0x01] + 5);
+                    decodeArmBranch((u32 *)officialSVCs[0x01] + 5);
     SleepThread = (void (*)(s64))officialSVCs[0x0A];
     CloseHandle = (Result (*)(Handle))officialSVCs[0x23];
-    GetHandleInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x29] + 3);
-    GetSystemInfo = (Result (*)(s64 *, s32, s32))decodeARMBranch((u32 *)officialSVCs[0x2A] + 3);
-    GetProcessInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2B] + 3);
-    GetThreadInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2C] + 3);
-    ConnectToPort = (Result (*)(Handle *, const char*))decodeARMBranch((u32 *)officialSVCs[0x2D] + 3);
+    GetHandleInfo = (Result (*)(s64 *, Handle, u32))decodeArmBranch((u32 *)officialSVCs[0x29] + 3);
+    GetSystemInfo = (Result (*)(s64 *, s32, s32))decodeArmBranch((u32 *)officialSVCs[0x2A] + 3);
+    GetProcessInfo = (Result (*)(s64 *, Handle, u32))decodeArmBranch((u32 *)officialSVCs[0x2B] + 3);
+    GetThreadInfo = (Result (*)(s64 *, Handle, u32))decodeArmBranch((u32 *)officialSVCs[0x2C] + 3);
+    ConnectToPort = (Result (*)(Handle *, const char*))decodeArmBranch((u32 *)officialSVCs[0x2D] + 3);
     SendSyncRequest = (Result (*)(Handle))officialSVCs[0x32];
-    OpenProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x33] + 3);
-    GetProcessId = (Result (*)(u32 *, Handle))decodeARMBranch((u32 *)officialSVCs[0x35] + 3);
-    DebugActiveProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x60] + 3);
+    OpenProcess = (Result (*)(Handle *, u32))decodeArmBranch((u32 *)officialSVCs[0x33] + 3);
+    GetProcessId = (Result (*)(u32 *, Handle))decodeArmBranch((u32 *)officialSVCs[0x35] + 3);
+    DebugActiveProcess = (Result (*)(Handle *, u32))decodeArmBranch((u32 *)officialSVCs[0x60] + 3);
     UnmapProcessMemory = (Result (*)(Handle, void *, u32))officialSVCs[0x72];
     KernelSetState = (Result (*)(u32, u32, u32, u32))((u32 *)officialSVCs[0x7C] + 1);
 
     for(off = (u32 *)svcFallbackHandler; *off != 0xE8BD4010; off++);
-    kernelpanic = (void (*)(void))decodeARMBranch(off + 1);
+    kernelpanic = (void (*)(void))decodeArmBranch(off + 1);
 
     for(off = (u32 *)0xFFFF0000; off[0] != 0xE3A01002 || off[1] != 0xE3A00004; off++);
-    SignalDebugEvent = (Result (*)(DebugEventType type, u32 info, ...))decodeARMBranch(off + 2);
+    SignalDebugEvent = (Result (*)(DebugEventType type, u32 info, ...))decodeArmBranch(off + 2);
 
     for(; *off != 0x96007F9; off++);
     isDevUnit = *(bool **)(off - 1);

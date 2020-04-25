@@ -32,7 +32,7 @@
 #include "draw.h"
 #include "hbloader.h"
 #include "fmt.h"
-#include "utils.h" // for makeARMBranch
+#include "utils.h" // for makeArmBranch
 #include "minisoc.h"
 #include "ifile.h"
 #include "pmdbgext.h"

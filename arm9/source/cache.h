@@ -33,7 +33,7 @@
     The data cache and/or the instruction cache MUST be flushed before doing one of the following:
         - rebooting
         - powering down
-        - setting the ARM11 entrypoint to execute a function
+        - setting the Arm11 entrypoint to execute a function
         - jumping to a payload
 ***/
 

@@ -31,7 +31,7 @@
 flushEntireDCache:
     @ Adapted from http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0155a/ch03s03s05.html,
     @ and https://github.com/gemarcano/libctr9_io/blob/master/src/ctr_system_ARM.c#L39 as well
-    @ Note: ARM's example is actually for a 8KB DCache (which is what the 3DS has)
+    @ Note: Arm's example is actually for a 8KB DCache (which is what the 3DS has)
 
     @ Implemented in bootROM at address 0xffff0830
     mov r1, #0                          @ segment counter

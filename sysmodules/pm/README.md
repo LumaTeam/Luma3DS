@@ -1,5 +1,5 @@
 # 3ds_pm
-Open source replacement of the ARM11 PM system module.
+Open source replacement of the Arm11 PM system module.
 This is licensed under the MIT license.
 
 # Usage

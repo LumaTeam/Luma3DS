@@ -79,8 +79,8 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     return arm11SvcTable;
 }
 
-// For ARM prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
-static inline u32 computeARMFrameSize(const u32 *prolog)
+// For Arm prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
+static inline u32 computeArmFrameSize(const u32 *prolog)
 {
     const u32 *off;
 
@@ -230,7 +230,7 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
     */
     for(off = (u32 *)ControlMemoryPos; (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
     off -= 2;
-    *off = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)ControlMemoryPos)); // ldr r0, [sp, #(frameSize + 8)]
+    *off = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeArmFrameSize((u32 *)ControlMemoryPos)); // ldr r0, [sp, #(frameSize + 8)]
 
     //Patch DebugActiveProcess
     for(off = (u32 *)(pos + (arm11SvcTable[0x60] - baseK11VA)); *off != 0xE3110001; off++);
@@ -312,7 +312,7 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 
     off -= 0x13;
 
-    //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
+    //Firmlaunch function offset - offset in BLX opcode (A4-16 - Arm DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
 
     //Put the fOpen offset in the right location

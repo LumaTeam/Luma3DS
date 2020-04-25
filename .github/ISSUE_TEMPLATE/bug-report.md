@@ -70,11 +70,11 @@ Show NAND or user string in System Settings: ( )
 
 Show GBA boot screen in patched AGB_FIRM: ( )
 
-Patch ARM9 access: ( )
+Patch Arm9 access: ( )
 
 Set developer UNITINFO: ( )
 
-Disable ARM11 exception handlers: ( )
+Disable Arm11 exception handlers: ( )
 
 --
 
@@ -94,6 +94,6 @@ Disable ARM11 exception handlers: ( )
 
 
 **Dump file:**
-<!--If the issue leads to a crash you must uncheck the "Disable ARM11 exception handlers" option.
+<!--If the issue leads to a crash you must uncheck the "Disable Arm11 exception handlers" option.
 -- The error message will tell you where the dump is.
 -- Zip the dmp file and drag & drop it below.-->

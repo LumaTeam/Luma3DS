@@ -71,7 +71,7 @@ start:
 .global prepareForFirmlaunch
 .type   prepareForFirmlaunch, %function
 prepareForFirmlaunch:
-    str r0, [r1]            @ tell ARM9 we're done
+    str r0, [r1]            @ tell Arm9 we're done
     mov r0, #0x20000000
 
     _wait_for_core0_entrypoint_loop:

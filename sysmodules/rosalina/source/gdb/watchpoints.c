@@ -12,7 +12,7 @@
 #include <errno.h>
 
 /*
-    There are only 2 Watchpoint Register Pairs on MPCORE ARM11 CPUs,
+    There are only 2 Watchpoint Register Pairs on MPCORE Arm11 CPUs,
     and only 2 Breakpoint Register Pairs with context ID capabilities (BRP4-5) as well.
 
     We'll reserve and use all 4 of them
