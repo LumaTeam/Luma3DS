@@ -125,10 +125,10 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
     if(socConnect(sock, (struct sockaddr *)&servAddr, sizeof(struct sockaddr_in)) < 0)
         goto cleanup;
 
-    if(soc_send(sock, &packet, sizeof(NtpPacket), 0) < 0)
+    if(socSend(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
 
-    if(soc_recv(sock, &packet, sizeof(NtpPacket), 0) < 0)
+    if(socRecv(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
 
     res = 0;

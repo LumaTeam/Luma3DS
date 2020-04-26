@@ -666,7 +666,7 @@ void RosalinaMenu_ProcessList(void)
         if(gdbServer.super.running)
         {
             char ipBuffer[17];
-            u32 ip = gethostid();
+            u32 ip = socGethostid();
             u8 *addr = (u8 *)&ip;
             int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
             Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);

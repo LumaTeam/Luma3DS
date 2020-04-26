@@ -120,7 +120,7 @@ void server_bind(struct sock_server *serv, u16 port)
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
-    saddr.sin_addr.s_addr = gethostid();
+    saddr.sin_addr.s_addr = socGethostid();
 
     res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
 

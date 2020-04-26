@@ -457,12 +457,262 @@ int socSetsockopt(int sockfd, int level, int optname, const void *optval, sockle
     return ret;
 }
 
-ssize_t soc_recv(int sockfd, void *buf, size_t len, int flags)
+long socGethostid(void)
 {
-    return soc_recvfrom(sockfd, buf, len, flags, NULL, 0);
+    int ret = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = IPC_MakeHeader(0x16,0,0); // 0x160000
+
+    ret = svcSendSyncRequest(SOCU_handle);
+    if(ret != 0) {
+        //errno = SYNC_ERROR;
+        return -1;
+    }
+
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = cmdbuf[2];
+
+    return ret;
 }
 
-ssize_t soc_send(int sockfd, const void *buf, size_t len, int flags)
+static ssize_t _socuipc_cmd7(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen)
 {
-    return soc_sendto(sockfd, buf, len, flags, NULL, 0);
+    int ret = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u32 tmp_addrlen = 0;
+    u8 tmpaddr[0x1c];
+    u32 saved_threadstorage[2];
+
+    memset(tmpaddr, 0, 0x1c);
+
+    if(src_addr)
+        tmp_addrlen = 0x1c;
+
+    cmdbuf[0] = IPC_MakeHeader(0x7,4,4); // 0x70104
+    cmdbuf[1] = (u32)sockfd;
+    cmdbuf[2] = (u32)len;
+    cmdbuf[3] = (u32)flags;
+    cmdbuf[4] = (u32)tmp_addrlen;
+    cmdbuf[5] = IPC_Desc_CurProcessId();
+    cmdbuf[7] = IPC_Desc_Buffer(len,IPC_BUFFER_W);
+    cmdbuf[8] = (u32)buf;
+
+    u32 * staticbufs = getThreadStaticBuffers();
+    saved_threadstorage[0] = staticbufs[0];
+    saved_threadstorage[1] = staticbufs[1];
+
+    staticbufs[0] = IPC_Desc_StaticBuffer(tmp_addrlen,0);
+    staticbufs[1] = (u32)tmpaddr;
+
+    ret = svcSendSyncRequest(SOCU_handle);
+
+    staticbufs[0] = saved_threadstorage[0];
+    staticbufs[1] = saved_threadstorage[1];
+
+    if(ret != 0) {
+        //errno = SYNC_ERROR;
+        return -1;
+    }
+
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
+
+    if(ret < 0) {
+        //errno = -ret;
+        return -1;
+    }
+
+    if(src_addr != NULL) {
+        src_addr->sa_family = tmpaddr[1];
+        if(*addrlen > tmpaddr[0])
+            *addrlen = tmpaddr[0];
+        memcpy(src_addr->sa_data, &tmpaddr[2], *addrlen - 2);
+    }
+
+    return ret;
+}
+
+static ssize_t _socuipc_cmd8(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen)
+{
+    int ret = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u32 tmp_addrlen = 0;
+    u8 tmpaddr[0x1c];
+    u32 saved_threadstorage[4];
+
+    if(src_addr)
+        tmp_addrlen = 0x1c;
+
+    memset(tmpaddr, 0, 0x1c);
+
+    cmdbuf[0] = 0x00080102;
+    cmdbuf[1] = (u32)sockfd;
+    cmdbuf[2] = (u32)len;
+    cmdbuf[3] = (u32)flags;
+    cmdbuf[4] = (u32)tmp_addrlen;
+    cmdbuf[5] = 0x20;
+
+    saved_threadstorage[0] = cmdbuf[0x100>>2];
+    saved_threadstorage[1] = cmdbuf[0x104>>2];
+    saved_threadstorage[2] = cmdbuf[0x108>>2];
+    saved_threadstorage[3] = cmdbuf[0x10c>>2];
+
+    cmdbuf[0x100>>2] = (((u32)len)<<14) | 2;
+    cmdbuf[0x104>>2] = (u32)buf;
+    cmdbuf[0x108>>2] = (tmp_addrlen<<14) | 2;
+    cmdbuf[0x10c>>2] = (u32)tmpaddr;
+
+    ret = svcSendSyncRequest(SOCU_handle);
+    if(ret != 0) {
+        //errno = SYNC_ERROR;
+        return ret;
+    }
+
+    cmdbuf[0x100>>2] = saved_threadstorage[0];
+    cmdbuf[0x104>>2] = saved_threadstorage[1];
+    cmdbuf[0x108>>2] = saved_threadstorage[2];
+    cmdbuf[0x10c>>2] = saved_threadstorage[3];
+
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
+
+    if(ret < 0) {
+        //errno = -ret;
+        return -1;
+    }
+
+    if(src_addr != NULL) {
+        src_addr->sa_family = tmpaddr[1];
+        if(*addrlen > tmpaddr[0])
+            *addrlen = tmpaddr[0];
+        memcpy(src_addr->sa_data, &tmpaddr[2], *addrlen - 2);
+    }
+
+    return ret;
+}
+
+static ssize_t _socuipc_cmd9(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen)
+{
+    int ret = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u32 tmp_addrlen = 0;
+    u8 tmpaddr[0x1c];
+
+    memset(tmpaddr, 0, 0x1c);
+
+    if(dest_addr) {
+        if(dest_addr->sa_family == AF_INET)
+            tmp_addrlen = 8;
+        else
+            tmp_addrlen = 0x1c;
+
+        if(addrlen < tmp_addrlen) {
+            //errno = EINVAL;
+            return -1;
+        }
+
+        tmpaddr[0] = tmp_addrlen;
+        tmpaddr[1] = dest_addr->sa_family;
+        memcpy(&tmpaddr[2], &dest_addr->sa_data, tmp_addrlen-2);
+    }
+
+    cmdbuf[0] = IPC_MakeHeader(0x9,4,6); // 0x90106
+    cmdbuf[1] = (u32)sockfd;
+    cmdbuf[2] = (u32)len;
+    cmdbuf[3] = (u32)flags;
+    cmdbuf[4] = (u32)tmp_addrlen;
+    cmdbuf[5] = IPC_Desc_CurProcessId();
+    cmdbuf[7] = IPC_Desc_StaticBuffer(tmp_addrlen,1);
+    cmdbuf[8] = (u32)tmpaddr;
+    cmdbuf[9] = IPC_Desc_Buffer(len,IPC_BUFFER_R);
+    cmdbuf[10] = (u32)buf;
+
+    ret = svcSendSyncRequest(SOCU_handle);
+    if(ret != 0) {
+        //errno = SYNC_ERROR;
+        return ret;
+    }
+
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
+
+    if(ret < 0) {
+        //errno = -ret;
+        return -1;
+    }
+
+    return ret;
+}
+
+static ssize_t _socuipc_cmda(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen)
+{
+    int ret = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u32 tmp_addrlen = 0;
+    u8 tmpaddr[0x1c];
+
+    memset(tmpaddr, 0, 0x1c);
+
+    if(dest_addr) {
+        if(dest_addr->sa_family == AF_INET)
+            tmp_addrlen = 8;
+        else
+            tmp_addrlen = 0x1c;
+
+        if(addrlen < tmp_addrlen) {
+            //errno = EINVAL;
+            return -1;
+        }
+
+        tmpaddr[0] = tmp_addrlen;
+        tmpaddr[1] = dest_addr->sa_family;
+        memcpy(&tmpaddr[2], &dest_addr->sa_data, tmp_addrlen-2);
+    }
+
+    cmdbuf[0] = IPC_MakeHeader(0xA,4,6); // 0xA0106
+    cmdbuf[1] = (u32)sockfd;
+    cmdbuf[2] = (u32)len;
+    cmdbuf[3] = (u32)flags;
+    cmdbuf[4] = (u32)tmp_addrlen;
+    cmdbuf[5] = IPC_Desc_CurProcessId();
+    cmdbuf[7] = IPC_Desc_StaticBuffer(len,2);
+    cmdbuf[8] = (u32)buf;
+    cmdbuf[9] = IPC_Desc_StaticBuffer(tmp_addrlen,1);
+    cmdbuf[10] = (u32)tmpaddr;
+
+    ret = svcSendSyncRequest(SOCU_handle);
+    if(ret != 0) {
+        //errno = SYNC_ERROR;
+        return ret;
+    }
+
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
+
+    if(ret < 0) {
+        //errno = -ret;
+        return -1;
+    }
+
+    return ret;
+}
+
+ssize_t socRecvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen)
+{
+    if(len < 0x2000)
+        return _socuipc_cmd8(sockfd, buf, len, flags, src_addr, addrlen);
+    return _socuipc_cmd7(sockfd, buf, len, flags, src_addr, addrlen);
+}
+
+ssize_t socSendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen)
+{
+    if(len < 0x2000)
+        return _socuipc_cmda(sockfd, buf, len, flags, dest_addr, addrlen);
+    return _socuipc_cmd9(sockfd, buf, len, flags, dest_addr, addrlen);
 }

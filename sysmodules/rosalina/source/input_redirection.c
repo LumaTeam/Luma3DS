@@ -69,7 +69,7 @@ void inputRedirectionThreadMain(void)
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(4950);
-    saddr.sin_addr.s_addr = gethostid();
+    saddr.sin_addr.s_addr = socGethostid();
     res = socBind(sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
     if(res != 0)
     {
@@ -99,7 +99,7 @@ void inputRedirectionThreadMain(void)
         int pollres = socPoll(&pfd, 1, 10);
         if(pollres > 0 && (pfd.revents & POLLIN))
         {
-            int n = soc_recvfrom(sock, buf, 20, 0, NULL, 0);
+            int n = socRecvfrom(sock, buf, 20, 0, NULL, 0);
             if(n < 0)
                 break;
             else if(n < 12)
