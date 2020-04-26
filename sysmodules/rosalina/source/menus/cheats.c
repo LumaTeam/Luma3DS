@@ -33,15 +33,10 @@
 #include "utils.h"
 #include "fmt.h"
 #include "ifile.h"
+#include "pmdbgext.h"
 
 #define MAKE_QWORD(hi,low) \
     ((u64) ((((u64)(hi)) << 32) | (low)))
-
-typedef struct CheatProcessInfo
-{
-    u32 pid;
-    u64 titleId;
-} CheatProcessInfo;
 
 typedef struct CheatDescription
 {
@@ -69,36 +64,6 @@ typedef struct BufferedFile
 CheatDescription* cheats[1024] = { 0 };
 u8 cheatBuffer[32768] = { 0 };
 u8 cheatPage[0x1000] = { 0 };
-
-static CheatProcessInfo cheatinfo[0x40] = { 0 };
-
-static s32 Cheats_FetchProcessInfo(void)
-{
-    u32 pidList[0x40];
-    s32 processAmount;
-
-    s64 sa, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
-
-    svcGetProcessList(&processAmount, pidList, 0x40);
-
-    for (s32 i = 0; i < processAmount; i++)
-    {
-        Handle processHandle;
-        Result res = svcOpenProcess(&processHandle, pidList[i]);
-        if (R_FAILED(res)) continue;
-
-        cheatinfo[i].pid = pidList[i];
-        svcGetProcessInfo((s64 *) &cheatinfo[i].titleId, processHandle, 0x10001);
-        svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002);
-        svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
-        svcGetProcessInfo(&dataTotalRoundedSize, processHandle, 0x10004);
-        svcGetProcessInfo(&sa, processHandle, 0x10005);
-
-        svcCloseHandle(processHandle);
-    }
-
-    return processAmount;
-}
 
 typedef struct CheatState
 {
@@ -1886,33 +1851,15 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
     memset(cheatPage, 0, 0x1000);
 }
 
-static u32 Cheat_GetCurrentPID(u64* titleId)
+static u32 Cheat_GetCurrentTitleId(u64* titleId)
 {
-    s32 processAmount = Cheats_FetchProcessInfo();
-
-    s32 index = -1;
-
-    for (s32 i = 0; i < processAmount; i++)
-    {
-
-        if (((u32) (cheatinfo[i].titleId >> 32)) == 0x00040010 || ((u32) (cheatinfo[i].titleId >> 32) == 0x00040000))
-        {
-            index = i;
-
-            break;
-        }
-    }
-
-    if (index != -1)
-    {
-        *titleId = cheatinfo[index].titleId;
-        return cheatinfo[index].pid;
-    }
-    else
-    {
+    u32 pid;
+    Result res = PMDBG_GetCurrentAppTitleIdAndPid(titleId, &pid);
+    if (R_FAILED(res)) {
         *titleId = 0;
-        return 0xFFFFFFFF;
+        return res;
     }
+    return res;
 }
 
 void Cheat_ApplyCheats(void)
@@ -1923,7 +1870,7 @@ void Cheat_ApplyCheats(void)
     }
 
     u64 titleId = 0;
-    u32 pid = Cheat_GetCurrentPID(&titleId);
+    u32 pid = Cheat_GetCurrentTitleId(&titleId);
 
     if (!titleId)
     {
@@ -1949,7 +1896,7 @@ void Cheat_ApplyCheats(void)
 void RosalinaMenu_Cheats(void)
 {
     u64 titleId = 0;
-    u32 pid = Cheat_GetCurrentPID(&titleId);
+    u32 pid = Cheat_GetCurrentTitleId(&titleId);
 
     if (titleId != 0)
     {
