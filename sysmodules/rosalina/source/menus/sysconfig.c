@@ -153,6 +153,8 @@ static void SysConfigMenu_ForceWifiConnection(int slot)
 {
     char ssid[0x20 + 1] = {0};
 
+    acInit();
+
     acuConfig config = {0};
     ACU_CreateDefaultConfig(&config);
     ACU_SetNetworkArea(&config, 2);
@@ -172,6 +174,8 @@ static void SysConfigMenu_ForceWifiConnection(int slot)
         }
     }
     svcCloseHandle(connectEvent);
+
+    acExit();
 
     char infoString[80] = {0};
     u32 infoStringColor = forcedConnection ? COLOR_GREEN : COLOR_RED;

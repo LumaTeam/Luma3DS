@@ -91,7 +91,7 @@ void exit(int rc)
     __libc_fini_array();
 
     // Kernel will take care of it all
-    /*acExit();
+    /*
     pmDbgExit();
     fsExit();
     svcCloseHandle(*fsRegGetSessionHandle());
@@ -134,8 +134,8 @@ void initSystem(void)
     if (R_FAILED(pmDbgInit()))
         svcBreak(USERBREAK_PANIC);
 
-    if (R_FAILED(acInit()))
-        svcBreak(USERBREAK_PANIC);
+    // **** DO NOT init services that don't come from KIPs here ****
+    // Instead, init the service only where it's actually init (then deinit it).
 
     __libc_init_array();
 
