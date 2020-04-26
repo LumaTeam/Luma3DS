@@ -235,48 +235,6 @@ bool doLangEmu(Result *res, u32 *cmdbuf)
     return skip;
 }
 
-Result doPublishToProcessHook(Handle handle, u32 *cmdbuf)
-{
-    Result res = 0;
-    u32 pid;
-    bool terminateRosalina = cmdbuf[1] == 0x100 && cmdbuf[2] == 0; // cmdbuf[2] to check for well-formed requests
-    u32 savedCmdbuf[4];
-    memcpy(savedCmdbuf, cmdbuf, 16);
-
-    if(!terminateRosalina || GetProcessId(&pid, cmdbuf[3]) != 0)
-        terminateRosalina = false;
-    else
-    {
-        KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-        KProcess *process = KProcessHandleTable__ToKProcess(handleTable, cmdbuf[3]);
-        if((strcmp(codeSetOfProcess(process)->processName, "socket") == 0 && (rosalinaState & 2)) ||
-            strcmp(codeSetOfProcess(process)->processName, "pxi") == 0)
-            terminateRosalina = true;
-        else
-            terminateRosalina = false;
-        ((KAutoObject *)process)->vtable->DecrementReferenceCount((KAutoObject *)process);
-    }
-
-    if(terminateRosalina && nbSection0Modules == 6)
-    {
-        Handle rosalinaProcessHandle;
-        res = OpenProcess(&rosalinaProcessHandle, 5);
-        if(res == 0)
-        {
-            cmdbuf[0] = cmdbuf[0];
-            cmdbuf[1] = 0x100;
-            cmdbuf[2] = 0;
-            cmdbuf[3] = rosalinaProcessHandle;
-
-            res = SendSyncRequest(handle);
-            CloseHandle(rosalinaProcessHandle);
-            memcpy(cmdbuf, savedCmdbuf, 16);
-        }
-    }
-
-    return SendSyncRequest(handle);
-}
-
 bool doErrfThrowHook(u32 *cmdbuf)
 {
     // If fatalErrorInfo->type is "card removed" or "logged", returning from ERRF:Throw is a no-op

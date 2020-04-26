@@ -57,5 +57,4 @@ void SessionInfo_Add(KSession *session, const char *name);
 void SessionInfo_Remove(KSession *session);
 
 bool doLangEmu(Result *res, u32 *cmdbuf);
-Result doPublishToProcessHook(Handle handle, u32 *cmdbuf);
 bool doErrfThrowHook(u32 *cmdbuf);

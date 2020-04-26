@@ -65,6 +65,16 @@ static Result terminateProcessImpl(ProcessData *process, ExHeader_Info *exheader
     }
 }
 
+static void terminateProcessByIdChecked(u32 pid)
+{
+    ProcessData *process = ProcessList_FindProcessById(&g_manager.processList, pid);
+    if (process != NULL) {
+        ProcessData_SendTerminationNotification(process);
+    } else {
+        panic(0LL);
+    }
+}
+
 static Result commitPendingTerminations(s64 timeout)
 {
     // Wait for all of the processes that have received notification 0x100 to terminate
@@ -247,6 +257,8 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
 
     u64 dependencies[48];
     u32 numDeps = 0;
+    s64 numKips = 0;
+    svcGetSystemInfo(&numKips, 26, 0);
 
     ExHeader_Info *exheaderInfo = ExHeaderInfoHeap_New();
 
@@ -269,6 +281,7 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
     }
 
     ProcessList_Lock(&g_manager.processList);
+
     // Send notification 0x100 to the currently running application
     if (g_manager.runningApplicationData != NULL) {
         g_manager.runningApplicationData->flags &= ~PROCESSFLAG_DEPENDENCIES_LOADED;
@@ -302,20 +315,19 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
     commitPendingTerminations(timeoutTicks >= 0 ? ticksToNs(timeoutTicks) : 0LL);
     g_manager.waitingForTermination = false;
 
-    // Now, send termination notification to PXI (PID 4)
+    // Now, send termination notification to PXI (PID 4). Also do the same for Rosalina.
     assertSuccess(svcClearEvent(g_manager.allNotifiedTerminationEvent));
     g_manager.waitingForTermination = true;
-
     ProcessList_Lock(&g_manager.processList);
-    process = ProcessList_FindProcessById(&g_manager.processList, 4);
-    if (process != NULL) {
-        ProcessData_SendTerminationNotification(process);
-    } else {
-        panic(0LL);
+
+    if (numKips >= 6) {
+        terminateProcessByIdChecked(5); // Rosalina
     }
+    terminateProcessByIdChecked(4); // PXI
+
     ProcessList_Unlock(&g_manager.processList);
 
-    // Allow 1.5 extra seconds for PXI (approx 402167783 ticks)
+    // Allow 1.5 extra seconds for PXI and Rosalina (approx 402167783 ticks)
     timeoutTicks = dstTimePoint - svcGetSystemTick();
     commitPendingTerminations(1500 * 1000 * 1000LL + (timeoutTicks >= 0 ? ticksToNs(timeoutTicks) : 0LL));
     g_manager.waitingForTermination = false;

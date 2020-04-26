@@ -47,12 +47,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x10042:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && kernelVersion >= SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)
-                {
-                    res = doPublishToProcessHook(handle, cmdbuf);
-                    skip = true;
-                }
-                else if(info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncsOnce)
+                if(info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncsOnce)
                 {
                     cmdbuf[0] = 0x10040;
                     cmdbuf[1] = 0;
@@ -151,18 +146,6 @@ Result SendSyncRequestHook(Handle handle)
                     cmdbuf[1] = 0;
                     skip = true;
                 }
-                break;
-            }
-
-            case 0x4010042:
-            {
-                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && kernelVersion < SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)
-                {
-                    res = doPublishToProcessHook(handle, cmdbuf);
-                    skip = true;
-                }
-
                 break;
             }
 
