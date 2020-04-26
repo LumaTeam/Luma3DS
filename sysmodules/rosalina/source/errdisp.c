@@ -48,7 +48,7 @@ static char staticBuf[0x100 + 1] = {0};
 
 MyThread *errDispCreateThread(void)
 {
-    if(R_FAILED(MyThread_Create(&errDispThread, errDispThreadMain, errDispThreadStack, 0xD00, 0x18, CORE_SYSTEM)))
+    if(R_FAILED(MyThread_Create(&errDispThread, errDispThreadMain, errDispThreadStack, 0xD00, 55, CORE_SYSTEM)))
         svcBreak(USERBREAK_PANIC);
     return &errDispThread;
 }

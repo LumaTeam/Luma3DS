@@ -90,13 +90,14 @@ void exit(int rc)
     // TODO: make pm terminate rosalina
     __libc_fini_array();
 
-    acExit();
+    // Kernel will take care of it all
+    /*acExit();
     pmDbgExit();
     fsExit();
     svcCloseHandle(*fsRegGetSessionHandle());
     srvExit();
-
-    __sync_fini();
+    __sync_fini();*/
+    
     svcExitProcess();
 }
 

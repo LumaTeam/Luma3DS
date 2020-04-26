@@ -7,10 +7,12 @@ TaskRunner g_taskRunner;
 static MyThread taskRunnerThread;
 static u8 ALIGN(8) taskRunnerThreadStack[0x1000];
 
+extern bool terminationRequest;
+
 MyThread *taskRunnerCreateThread(void)
 {
     TaskRunner_Init();
-    MyThread_Create(&taskRunnerThread, TaskRunner_HandleTasks, taskRunnerThreadStack, THREAD_STACK_SIZE, 0x20, 1);
+    MyThread_Create(&taskRunnerThread, TaskRunner_HandleTasks, taskRunnerThreadStack, THREAD_STACK_SIZE, 58, 1);
     return &taskRunnerThread;
 }
 
@@ -32,7 +34,7 @@ void TaskRunner_RunTask(void (*task)(void *argdata), void *argdata, size_t argsi
 
 void TaskRunner_HandleTasks(void)
 {
-    for (;;) {
+    while (!terminationRequest) {
         LightEvent_Signal(&g_taskRunner.readyEvent);
         LightEvent_Wait(&g_taskRunner.parametersSetEvent);
         g_taskRunner.task(g_taskRunner.argStorage);
