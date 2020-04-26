@@ -7,7 +7,7 @@
 #include "service_manager.h"
 
 u32 config, multiConfig, bootConfig;
-bool isN3DS, needToInitSd, isSdMode;
+bool isN3DS, isSdMode;
 
 // MAKE SURE fsreg has been init before calling this
 static Result fsldrPatchPermissions(void)
@@ -38,13 +38,10 @@ static inline void loadCFWInfo(void)
 
     assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x201));
     isN3DS = (bool)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x202));
-    needToInitSd = (bool)out;
+    //assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x202));
+    //needToInitSd = (bool)out;
     assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x203));
     isSdMode = (bool)out;
-
-    IFile file;
-    if(needToInitSd) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 }
 
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error

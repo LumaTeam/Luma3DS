@@ -6,6 +6,35 @@
 #include "exheader_info_heap.h"
 #include "task_runner.h"
 
+static Result fsRegSetupPermissions(void)
+{
+    u32 pid;
+    Result res;
+    FS_ProgramInfo info;
+
+    ExHeader_Arm11StorageInfo storageInfo = {
+        .fs_access_info = FSACCESS_SDMC_RW,
+    };
+
+    info.programId = 0x0004013000001202LL; // PM's TID
+    info.mediaType = MEDIATYPE_NAND;
+
+    if(R_SUCCEEDED(res = svcGetProcessId(&pid, CUR_PROCESS_HANDLE)))
+        res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, &storageInfo);
+
+    return res;
+}
+
+void forceMountSdCard(void)
+{
+    FS_Archive sdmcArchive;
+
+    assertSuccess(fsRegSetupPermissions());
+    assertSuccess(fsInit());
+    assertSuccess(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")));
+    // No need to clean up things as we will firmlaunch straight away
+}
+
 static Result terminateUnusedDependencies(const u64 *dependencies, u32 numDeps)
 {
     ProcessData *process;
@@ -314,6 +343,16 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
     s64 timeoutTicks = dstTimePoint - svcGetSystemTick();
     commitPendingTerminations(timeoutTicks >= 0 ? ticksToNs(timeoutTicks) : 0LL);
     g_manager.waitingForTermination = false;
+
+    if (callerPid == (u32)-1) {
+        // On firmlaunch, try to force Process9 to mount the SD card to allow the Process9 firmlaunch patch to load boot.firm if needed
+        // Need to do that before we tell PXI to terminate
+        s64 out;
+        if(R_SUCCEEDED(svcGetSystemInfo(&out, 0x10000, 0x203)) && out != 0) {
+            // If boot.firm is on the SD card, then...
+            forceMountSdCard();
+        }
+    }
 
     // Now, send termination notification to PXI (PID 4). Also do the same for Rosalina.
     assertSuccess(svcClearEvent(g_manager.allNotifiedTerminationEvent));

@@ -6,7 +6,7 @@
 #include "hbldr.h"
 
 extern u32 config, multiConfig, bootConfig;
-extern bool isN3DS, needToInitSd, isSdMode;
+extern bool isN3DS, isSdMode;
 
 static u8 g_ret_buf[sizeof(ExHeader_Info)];
 static u64 g_cached_programHandle;
