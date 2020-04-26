@@ -97,7 +97,7 @@ void exit(int rc)
     svcCloseHandle(*fsRegGetSessionHandle());
     srvExit();
     __sync_fini();*/
-    
+
     svcExitProcess();
 }
 
@@ -163,10 +163,9 @@ static void handleTermNotification(u32 notificationId)
 
 static void handleNextApplicationDebuggedByForce(u32 notificationId)
 {
-    int dummy;
     (void)notificationId;
     // Following call needs to be async because pm -> Loader depends on rosalina hb:ldr, handled in this very thread.
-    TaskRunner_RunTask(debuggerFetchAndSetNextApplicationDebugHandleTask, &dummy, 0);
+    TaskRunner_RunTask(debuggerFetchAndSetNextApplicationDebugHandleTask, NULL, 0);
 }
 
 static const ServiceManagerServiceEntry services[] = {
@@ -203,6 +202,8 @@ int main(void)
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
+
+    TaskRunner_Terminate();
 
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(taskRunnerThread, -1LL);

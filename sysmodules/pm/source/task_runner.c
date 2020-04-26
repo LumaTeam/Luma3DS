@@ -4,6 +4,11 @@
 
 TaskRunner g_taskRunner;
 
+static void taskRunnerNoOpFunction(void *args)
+{
+    (void)args;
+}
+
 void TaskRunner_Init(void)
 {
     memset(&g_taskRunner, 0, sizeof(TaskRunner));
@@ -20,12 +25,23 @@ void TaskRunner_RunTask(void (*task)(void *argdata), void *argdata, size_t argsi
     LightEvent_Signal(&g_taskRunner.parametersSetEvent);
 }
 
+void TaskRunner_Terminate(void)
+{
+    g_taskRunner.shouldTerminate = true;
+    TaskRunner_RunTask(taskRunnerNoOpFunction, NULL, 0);
+}
+
 void TaskRunner_HandleTasks(void *p)
 {
     (void)p;
-    for (;;) {
+    while (!g_taskRunner.shouldTerminate) {
         LightEvent_Signal(&g_taskRunner.readyEvent);
         LightEvent_Wait(&g_taskRunner.parametersSetEvent);
         g_taskRunner.task(g_taskRunner.argStorage);
     }
+}
+
+void TaskRunner_WaitReady(void)
+{
+    LightEvent_Wait(&g_taskRunner.readyEvent);
 }
