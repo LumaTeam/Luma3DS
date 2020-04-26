@@ -7,7 +7,6 @@ This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE fo
 */
 
 #include <string.h>
-
 #include "PXI.h"
 #include "common.h"
 #include "MyThread.h"
@@ -100,9 +99,38 @@ static u8 ALIGN(8) receiverStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) senderStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) PXISRV11HandlerStack[THREAD_STACK_SIZE];
 
-// this is called before main
-void __appInit()
+Result __sync_init(void);
+Result __sync_fini(void);
+void __libc_fini_array(void);
+void __libc_init_array(void);
+
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
+
+// this is called after main exits
+void exit(int rc)
 {
+    (void)rc;
+
+    srvExit();
+    exitPXI();
+
+    svcCloseHandle(terminationRequestedEvent);
+    svcCloseHandle(sessionManager.sendAllBuffersToArm9Event);
+    svcCloseHandle(sessionManager.replySemaphore);
+    svcCloseHandle(sessionManager.PXISRV11CommandReceivedEvent);
+    svcCloseHandle(sessionManager.PXISRV11ReplySentEvent);
+
+    //__libc_fini_array();
+    __sync_fini();
+    svcExitProcess();
+}
+
+// this is called before main
+
+void initSystem(void)
+{
+    __sync_init();
+
     assertSuccess(svcCreateEvent(&terminationRequestedEvent, RESET_STICKY));
 
     assertSuccess(svcCreateEvent(&sessionManager.sendAllBuffersToArm9Event, RESET_ONESHOT));
@@ -117,46 +145,8 @@ void __appInit()
         if(R_FAILED(res) && res != (Result)0xD88007FA)
             svcBreak(USERBREAK_PANIC);
     }
-}
 
-// this is called after main exits
-void __appExit()
-{
-    srvExit();
-    exitPXI();
-
-    svcCloseHandle(terminationRequestedEvent);
-    svcCloseHandle(sessionManager.sendAllBuffersToArm9Event);
-    svcCloseHandle(sessionManager.replySemaphore);
-    svcCloseHandle(sessionManager.PXISRV11CommandReceivedEvent);
-    svcCloseHandle(sessionManager.PXISRV11ReplySentEvent);
-}
-
-// stubs for non-needed pre-main functions
-void __system_initSyscalls(){}
-
-
-Result __sync_init(void);
-Result __sync_fini(void);
-
-void __ctru_exit()
-{
-    void __libc_fini_array(void);
-
-    __libc_fini_array();
-    __appExit();
-    __sync_fini();
-    svcExitProcess();
-}
-
-void initSystem()
-{
-    void __libc_init_array(void);
-
-    __sync_init();
-    __system_initSyscalls();
-    __appInit();
-    __libc_init_array();
+    //__libc_init_array();
 }
 
 int main(void)

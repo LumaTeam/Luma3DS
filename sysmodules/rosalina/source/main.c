@@ -40,6 +40,8 @@
 
 #include "task_runner.h"
 
+bool isN3DS;
+
 static Result stealFsReg(void)
 {
     Result ret = 0;
@@ -73,11 +75,50 @@ static Result fsRegSetupPermissions(void)
     return res;
 }
 
-// this is called before main
-bool isN3DS;
-void __appInit()
+Result __sync_init(void);
+Result __sync_fini(void);
+void __libc_init_array(void);
+void __libc_fini_array(void);
+
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
+
+// this is called after main exits
+void exit(int rc)
 {
+    (void)rc;
+    // TODO: make pm terminate rosalina
+    __libc_fini_array();
+
+    acExit();
+    pmDbgExit();
+    fsExit();
+    svcCloseHandle(*fsRegGetSessionHandle());
+    srvExit();
+
+    __sync_fini();
+    svcExitProcess();
+}
+
+// this is called before main
+void initSystem(void)
+{
+    s64 out;
     Result res;
+    __sync_init();
+
+    isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
+
+    svcGetSystemInfo(&out, 0x10000, 0x100);
+    HBLDR_3DSX_TID = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x101);
+    menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
+
+    miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
+                                                                                  "Switch the hb. title to hblauncher_loader";
+
+    ProcessPatchesMenu_PatchUnpatchFSDirectly();
+
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
         res = srvInit();
@@ -93,50 +134,7 @@ void __appInit()
 
     if (R_FAILED(acInit()))
         svcBreak(USERBREAK_PANIC);
-}
 
-// this is called after main exits
-void __appExit()
-{
-    acExit();
-    pmDbgExit();
-    fsExit();
-    svcCloseHandle(*fsRegGetSessionHandle());
-    srvExit();
-}
-
-
-Result __sync_init(void);
-Result __sync_fini(void);
-void __libc_init_array(void);
-void __libc_fini_array(void);
-
-void __ctru_exit()
-{
-    __libc_fini_array();
-    __appExit();
-    __sync_fini();
-    svcExitProcess();
-}
-
-
-void initSystem()
-{
-    s64 out;
-    isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
-
-    svcGetSystemInfo(&out, 0x10000, 0x100);
-    HBLDR_3DSX_TID = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
-
-    svcGetSystemInfo(&out, 0x10000, 0x101);
-    menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
-
-    miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
-                                                                                  "Switch the hb. title to hblauncher_loader";
-
-    ProcessPatchesMenu_PatchUnpatchFSDirectly();
-    __sync_init();
-    __appInit();
     __libc_init_array();
 
     // ROSALINA HACKJOB BEGIN

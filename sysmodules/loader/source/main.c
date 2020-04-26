@@ -47,9 +47,23 @@ static inline void loadCFWInfo(void)
     if(needToInitSd) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 }
 
-// this is called before main
-void __appInit()
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
+
+// this is called after main exits
+void exit(int rc)
 {
+    (void)rc;
+    // Not supposed to terminate... kernel will clean up the handles if it does happen anyway
+    svcExitProcess();
+}
+
+void __sync_init();
+void __libc_init_array(void);
+
+// called before main
+void initSystem(void)
+{
+    __sync_init();
     loadCFWInfo();
 
     Result res;
@@ -71,42 +85,8 @@ void __appInit()
     assertSuccess(FSUSER_SetPriority(0));
 
     assertSuccess(pxiPmInit());
-}
 
-// this is called after main exits
-void __appExit()
-{
-    pxiPmExit();
-    //fsldrExit();
-    svcCloseHandle(*fsGetSessionHandle());
-    fsRegExit();
-    srvExit();
-}
-
-// stubs for non-needed pre-main functions
-void __sync_init();
-void __sync_fini();
-void __system_initSyscalls();
-
-void __ctru_exit()
-{
-    void __libc_fini_array(void);
-
-    __libc_fini_array();
-    __appExit();
-    __sync_fini();
-    svcExitProcess();
-}
-
-void initSystem()
-{
-    void __libc_init_array(void);
-
-    __sync_init();
-    __system_initSyscalls();
-    __appInit();
-
-    __libc_init_array();
+    //__libc_init_array();
 }
 
 static const ServiceManagerServiceEntry services[] = {
