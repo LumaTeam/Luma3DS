@@ -37,6 +37,7 @@
 #include "menus/miscellaneous.h"
 #include "menus/debugger.h"
 #include "menus/screen_filters.h"
+#include "menus/cheats.h"
 
 #include "task_runner.h"
 
@@ -192,6 +193,8 @@ int main(void)
 
     if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
+
+    Cheat_SeedRng(svcGetSystemTick());
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();

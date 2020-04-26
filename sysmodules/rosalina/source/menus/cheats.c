@@ -96,6 +96,7 @@ typedef struct CheatState
 CheatState cheat_state = { 0 };
 u8 cheatCount = 0;
 u64 cheatTitleInfo = -1ULL;
+u64 cheatRngState = 0;
 
 static inline u32* activeOffset()
 {
@@ -113,6 +114,12 @@ static inline u32* activeStorage(CheatDescription* desc)
 }
 
 char failureReason[64];
+
+static u32 Cheat_GetRandomNumber(void)
+{
+    cheatRngState = 0x5D588B656C078965ULL * cheatRngState + 0x0000000000269EC3ULL;
+    return (u32)(cheatRngState >> 32);
+}
 
 static bool Cheat_IsValidAddress(const Handle processHandle, u32 address, u32 size)
 {
@@ -1477,7 +1484,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         case 0xF:
                         {
                             u32 range = arg1 - (arg0 & 0xFFFFFF);
-                            u32 number = rand() % range;
+                            u32 number = Cheat_GetRandomNumber() % range;
                             *activeData() = (arg0 & 0xFFFFFF) + number;
                         }
                             break;
@@ -1860,6 +1867,11 @@ static u32 Cheat_GetCurrentTitleId(u64* titleId)
         return res;
     }
     return res;
+}
+
+void Cheat_SeedRng(u64 seed)
+{
+    cheatRngState = seed;
 }
 
 void Cheat_ApplyCheats(void)
