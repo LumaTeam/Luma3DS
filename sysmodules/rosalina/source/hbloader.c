@@ -279,7 +279,9 @@ void HBLDR_HandleCommands(void *ctx)
 
             memset(localcaps0->reslimits, 0, sizeof(localcaps0->reslimits));
 
-            localcaps0->reslimits[0] = 0x9E; // Stuff needed to run stuff on core1
+            // Set mode1 preemption mode for core1, max. 89% of CPU time (default 0, requires a APT_SetAppCpuTimeLimit call)
+            // See the big comment in sysmodules/pm/source/reslimit.c for technical details.
+            localcaps0->reslimits[0] = BIT(7) | 89;
 
             localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
             localcaps0->storage_info.no_romfs = true;
