@@ -84,7 +84,7 @@ void __libc_fini_array(void);
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 
 // this is called after main exits
-void exit(int rc)
+void __wrap_exit(int rc)
 {
     (void)rc;
     // TODO: make pm terminate rosalina

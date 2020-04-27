@@ -37,7 +37,7 @@ CFLAGS	:=	-std=gnu11 $(COMMON_FLAGS)
 CXXFLAGS	:= -fno-rtti -fno-exceptions -std=gnu++17 $(COMMON_FLAGS)
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map),--section-start,.text=0x14000000
+LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map),-wrap,exit,--section-start,.text=0x14000000
 
 LIBS	:=	-lctru
 

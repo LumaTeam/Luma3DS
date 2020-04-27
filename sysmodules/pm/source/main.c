@@ -19,7 +19,7 @@ static u8 ALIGN(8) exheaderInfoBuffer[6 * sizeof(ExHeader_Info)] = {0};
 static u8 ALIGN(8) threadStacks[2][THREAD_STACK_SIZE] = {0};
 
 // this is called after main exits
-void exit(int rc)
+void __wrap_exit(int rc)
 {
     (void)rc;
     // Not supposed to terminate... kernel will clean up the handles if it does happen anyway

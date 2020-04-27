@@ -27,7 +27,7 @@ static u8 ALIGN(4) serviceAccessListStaticBuffer[0x110];
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 
 // this is called after main exits
-void exit(int rc)
+void __wrap_exit(int rc)
 {
     (void)rc;
     // Not supposed to terminate... kernel will clean up the handles if it does happen anyway
