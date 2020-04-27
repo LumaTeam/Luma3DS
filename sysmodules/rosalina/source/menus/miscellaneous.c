@@ -288,7 +288,12 @@ void MiscellaneousMenu_InputRedirection(void)
                             res = (Result)inputRedirectionStartResult;
 
                         if(res != 0)
+                        {
+                            svcCloseHandle(inputRedirectionThreadStartedEvent);
                             InputRedirection_DoOrUndoPatches();
+                            inputRedirectionEnabled = false;
+                        }
+                        inputRedirectionStartResult = 0;
                     }
                 }
 

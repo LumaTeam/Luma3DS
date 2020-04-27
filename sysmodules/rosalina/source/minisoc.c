@@ -10,7 +10,8 @@
 #include <3ds/ipc.h>
 #include <3ds/os.h>
 #include <3ds/synchronization.h>
-#include "memory.h"
+#include <3ds/result.h>
+#include <string.h>
 
 s32 _net_convert_error(s32 sock_retval);
 
@@ -167,7 +168,7 @@ int socSocket(int domain, int type, int protocol)
     if(ret != 0)
     {
         //errno = SYNC_ERROR;
-        return ret;
+        return R_FAILED(ret) ? ret : -1;
     }
 
     ret = (int)cmdbuf[1];
@@ -389,7 +390,7 @@ int socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
     staticbufs[1] = saved_threadstorage[1];
 
     if(ret != 0) {
-        return ret;
+        return R_FAILED(ret) ? ret : -1;
     }
 
     ret = (int)cmdbuf[1];

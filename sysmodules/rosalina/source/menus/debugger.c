@@ -115,16 +115,18 @@ void DebuggerMenu_EnableDebugger(void)
             if(!done)
             {
                 res = GDB_InitializeServer(&gdbServer);
+                Handle handles[3] = { gdbServer.super.started_event, gdbServer.super.shall_terminate_event, terminationRequestEvent };
+                s32 idx;
                 if(R_SUCCEEDED(res))
                 {
                     debuggerCreateSocketThread();
                     debuggerCreateDebugThread();
-                    res = svcWaitSynchronization(gdbServer.super.started_event, 10 * 1000 * 1000 * 1000LL);
+                    res = svcWaitSynchronizationN(&idx, handles, 3, false, 10 * 1000 * 1000 * 1000LL);
+                    if(res == 0) res = gdbServer.super.init_result;
                 }
 
                 if(res != 0)
                     sprintf(buf, "Starting debugger... failed (0x%08lx).", (u32)res);
-
                 done = true;
             }
             if(res == 0)

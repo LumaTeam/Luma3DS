@@ -104,6 +104,11 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
         return res;
 
     int sock = socSocket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < -10000) {
+        // Socket services broken
+        return sock;
+    }
+
     struct sockaddr_in servAddr = {0}; // Server address data structure.
     NtpPacket packet = {0};
 

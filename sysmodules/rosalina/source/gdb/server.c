@@ -74,13 +74,14 @@ void GDB_DecrementServerReferenceCount(GDBServer *server)
 
 void GDB_RunServer(GDBServer *server)
 {
-    server_bind(&server->super, GDB_PORT_BASE);
-    server_bind(&server->super, GDB_PORT_BASE + 1);
-    server_bind(&server->super, GDB_PORT_BASE + 2);
+    Result res = server_bind(&server->super, GDB_PORT_BASE);
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 1);
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 2);
 
-    server_bind(&server->super, GDB_PORT_BASE + 3); // next application
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 3); // next application
 
-    server_run(&server->super);
+    if(R_SUCCEEDED(res))
+        server_run(&server->super);
 }
 
 void GDB_LockAllContexts(GDBServer *server)
