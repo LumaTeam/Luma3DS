@@ -32,6 +32,8 @@
 extern Menu sysconfigMenu;
 extern bool isConnectionForced;
 
+void SysConfigMenu_UpdateStatus(bool control);
+
 void SysConfigMenu_ToggleLEDs(void);
 void SysConfigMenu_ToggleWireless(void);
 void SysConfigMenu_TogglePowerButton(void);

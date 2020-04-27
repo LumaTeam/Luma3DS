@@ -151,7 +151,7 @@ void SysConfigMenu_ToggleWireless(void)
     while(!terminationRequest);
 }
 
-static void SysConfigMenu_UpdateStatus(bool control)
+void SysConfigMenu_UpdateStatus(bool control)
 {
     MenuItem *item = &sysconfigMenu.items[3];
 
@@ -170,8 +170,10 @@ static void SysConfigMenu_UpdateStatus(bool control)
 static bool SysConfigMenu_ForceWifiConnection(int slot)
 {
     char ssid[0x20 + 1] = {0};
+    isConnectionForced = false;
 
-    acInit();
+    if(R_FAILED(acInit()))
+        return false;
 
     acuConfig config = {0};
     ACU_CreateDefaultConfig(&config);
@@ -185,12 +187,8 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
     bool forcedConnection = false;
     if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
     {
-        if(R_SUCCEEDED(svcWaitSynchronization(connectEvent, -1)))
-        {
-            if(R_FAILED(ACU_GetSSID(ssid)))
-                ssid[0] = 0;
+        if(R_SUCCEEDED(svcWaitSynchronization(connectEvent, -1)) && R_SUCCEEDED(ACU_GetSSID(ssid)))
             forcedConnection = true;
-        }
     }
     svcCloseHandle(connectEvent);
 
@@ -199,6 +197,8 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
         isConnectionForced = true;
         SysConfigMenu_UpdateStatus(false);
     }
+    else
+        acExit();
 
     char infoString[80] = {0};
     u32 infoStringColor = forcedConnection ? COLOR_GREEN : COLOR_RED;
@@ -349,7 +349,7 @@ void SysConfigMenu_DisableForcedWifiConnection(void)
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Forced connection successfully disabled.");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Forced connection successfully disabled.\nNote: auto-connection may remain broken.");
 
         u32 pressed = waitInputWithTimeout(1000);
         if(pressed & BUTTON_B)
