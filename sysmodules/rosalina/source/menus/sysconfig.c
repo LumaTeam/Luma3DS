@@ -43,6 +43,8 @@ Menu sysconfigMenu = {
     }
 };
 
+bool isConnectionForced = false;
+
 void SysConfigMenu_ToggleLEDs(void)
 {
     Draw_Lock();
@@ -149,7 +151,23 @@ void SysConfigMenu_ToggleWireless(void)
     while(!terminationRequest);
 }
 
-static void SysConfigMenu_ForceWifiConnection(int slot)
+static void SysConfigMenu_UpdateStatus(bool control)
+{
+    MenuItem *item = &sysconfigMenu.items[3];
+
+    if(control)
+    {
+        item->title = "Control Wireless connection";
+        item->method = &SysConfigMenu_ControlWifi;
+    }
+    else
+    {
+        item->title = "Disable forced wireless connection";
+        item->method = &SysConfigMenu_DisableForcedWifiConnection;
+    }
+}
+
+static bool SysConfigMenu_ForceWifiConnection(int slot)
 {
     char ssid[0x20 + 1] = {0};
 
@@ -169,13 +187,18 @@ static void SysConfigMenu_ForceWifiConnection(int slot)
     {
         if(R_SUCCEEDED(svcWaitSynchronization(connectEvent, -1)))
         {
-            ACU_GetSSID(ssid);
+            if(R_FAILED(ACU_GetSSID(ssid)))
+                ssid[0] = 0;
             forcedConnection = true;
         }
     }
     svcCloseHandle(connectEvent);
 
-    acExit();
+    if(forcedConnection)
+    {
+        isConnectionForced = true;
+        SysConfigMenu_UpdateStatus(false);
+    }
 
     char infoString[80] = {0};
     u32 infoStringColor = forcedConnection ? COLOR_GREEN : COLOR_RED;
@@ -202,9 +225,11 @@ static void SysConfigMenu_ForceWifiConnection(int slot)
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & BUTTON_B)
-            return;
+            break;
     }
     while(!terminationRequest);
+
+    return forcedConnection;
 }
 
 void SysConfigMenu_TogglePowerButton(void)
@@ -273,7 +298,11 @@ void SysConfigMenu_ControlWifi(void)
 
         if(pressed & BUTTON_A)
         {
-            SysConfigMenu_ForceWifiConnection(slot);
+            if(SysConfigMenu_ForceWifiConnection(slot))
+            {
+                // Connection successfully forced, return from this menu to prevent ac handle refcount leakage.
+                break;
+            }
 
             Draw_Lock();
             Draw_ClearFramebuffer();
@@ -301,6 +330,29 @@ void SysConfigMenu_ControlWifi(void)
             slotString[(slot * 4) + 2] = '<';
         }
         else if(pressed & BUTTON_B)
+            return;
+    }
+    while(!terminationRequest);
+}
+
+void SysConfigMenu_DisableForcedWifiConnection(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    acExit();
+    SysConfigMenu_UpdateStatus(true);
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Forced connection successfully disabled.");
+
+        u32 pressed = waitInputWithTimeout(1000);
+        if(pressed & BUTTON_B)
             return;
     }
     while(!terminationRequest);
