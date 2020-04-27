@@ -1858,15 +1858,15 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
     memset(cheatPage, 0, 0x1000);
 }
 
-static u32 Cheat_GetCurrentTitleId(u64* titleId)
+static u32 Cheat_GetCurrentProcessAndTitleId(u64* titleId)
 {
     u32 pid;
     Result res = PMDBG_GetCurrentAppTitleIdAndPid(titleId, &pid);
     if (R_FAILED(res)) {
         *titleId = 0;
-        return res;
+        return 0xFFFFFFFF;
     }
-    return res;
+    return pid;
 }
 
 void Cheat_SeedRng(u64 seed)
@@ -1882,7 +1882,7 @@ void Cheat_ApplyCheats(void)
     }
 
     u64 titleId = 0;
-    u32 pid = Cheat_GetCurrentTitleId(&titleId);
+    u32 pid = Cheat_GetCurrentProcessAndTitleId(&titleId);
 
     if (!titleId)
     {
@@ -1908,7 +1908,7 @@ void Cheat_ApplyCheats(void)
 void RosalinaMenu_Cheats(void)
 {
     u64 titleId = 0;
-    u32 pid = Cheat_GetCurrentTitleId(&titleId);
+    u32 pid = Cheat_GetCurrentProcessAndTitleId(&titleId);
 
     if (titleId != 0)
     {
