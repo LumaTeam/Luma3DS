@@ -5,7 +5,7 @@ ENTRY(_start)
 MEMORY
 {
     vram                : ORIGIN = 0x18000000, LENGTH = 0x18180000 - 0x18000000 /* Up to the kernel builtins. */
-    main                : ORIGIN = 0x40000000, LENGTH = 1M
+    main                : ORIGIN = 0x70000000, LENGTH = 1M
 }
 
 PHDRS
@@ -15,7 +15,7 @@ PHDRS
 
 SECTIONS
 {
-    PROVIDE(__start__ = 0x40000000);
+    PROVIDE(__start__ = ORIGIN(main));
     . = ABSOLUTE(__start__);
 
     .text :

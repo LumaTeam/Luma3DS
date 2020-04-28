@@ -42,6 +42,8 @@
 #include "arm9_exception_handlers.h"
 #include "large_patches.h"
 
+#define K11EXT_VA         0x70000000
+
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *temp = memsearch(pos, "NCCH", size, 4);
@@ -134,7 +136,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     static const u8 patternHook3_4[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA}; //SGI0 setup code, etc.
 
     //Our kernel11 extension is initially loaded in VRAM
-    u32 kextTotalSize = *(u32 *)0x18000020 - 0x40000000;
+    u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
     u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
@@ -143,11 +145,11 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     hookVeneers[0] = 0xE51FF004; //ldr pc, [pc, #-8+4]
     hookVeneers[1] = 0x18000004;
     hookVeneers[2] = 0xE51FF004;
-    hookVeneers[3] = 0x40000000;
+    hookVeneers[3] = K11EXT_VA;
     hookVeneers[4] = 0xE51FF004;
-    hookVeneers[5] = 0x40000008;
+    hookVeneers[5] = K11EXT_VA + 8;
     hookVeneers[6] = 0xE51FF004;
-    hookVeneers[7] = 0x4000000C;
+    hookVeneers[7] = K11EXT_VA + 0xC;
 
     (*freeK11Space) += 32;
 
@@ -175,14 +177,14 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     off += 4;
     *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 24);
 
-    struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - 0x40000000 + 0x18000000);
+    struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - K11EXT_VA + 0x18000000);
     p->basePA = dstKextPA;
 
     for(u32 i = 0; i < 4; i++)
     {
         u32 *handlerPos = getKernel11HandlerVAPos(pos, arm11ExceptionsPage, baseK11VA, 1 + i);
         p->originalHandlers[i] = (void *)*handlerPos;
-        *handlerPos = 0x40000010 + 4 * i;
+        *handlerPos = K11EXT_VA + 0x10 + 4 * i;
     }
 
     struct CfwInfo *info = &p->info;
@@ -248,14 +250,14 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
 
     //Redirect enableUserExceptionHandlersForCPUExc (= true)
     for(off = arm11ExceptionsPage; *off != 0x96007F9; off++);
-    off[1] = 0x40000028;
+    off[1] = K11EXT_VA + 0x28;
 
     off = (u32 *)memsearch(pos, patternKThreadDebugReschedule, size, sizeof(patternKThreadDebugReschedule));
     if(off == NULL)
         return 1;
 
     off[-5] = 0xE51FF004;
-    off[-4] = 0x4000002C;
+    off[-4] = K11EXT_VA + 0x2C;
 
     return 0;
 }
