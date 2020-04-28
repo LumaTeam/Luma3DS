@@ -29,18 +29,18 @@ static inline void loadCFWInfo(void)
 {
     s64 out;
 
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 3));
+    if(svcGetSystemInfo(&out, 0x20000, 0) != 1) panic(0xDEADCAFE);
+
+    svcGetSystemInfo(&out, 0x10000, 3);
     config = (u32)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 4));
+    svcGetSystemInfo(&out, 0x10000, 4);
     multiConfig = (u32)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 5));
+    svcGetSystemInfo(&out, 0x10000, 5);
     bootConfig = (u32)out;
 
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x201));
+    svcGetSystemInfo(&out, 0x10000, 0x201);
     isN3DS = (bool)out;
-    //assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x202));
-    //needToInitSd = (bool)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x203));
+    svcGetSystemInfo(&out, 0x10000, 0x203);
     isSdMode = (bool)out;
 }
 
