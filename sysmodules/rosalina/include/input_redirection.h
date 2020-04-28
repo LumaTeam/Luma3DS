@@ -36,4 +36,5 @@ extern int inputRedirectionStartResult;
 
 MyThread *inputRedirectionCreateThread(void);
 void inputRedirectionThreadMain(void);
+Result InputRedirection_Disable(s64 timeout);
 Result InputRedirection_DoOrUndoPatches(void);

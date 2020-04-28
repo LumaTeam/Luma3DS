@@ -159,13 +159,29 @@ void inputRedirectionThreadMain(void)
     linger.l_linger = 0;
 
     socSetsockopt(sock, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
-
     socClose(sock);
+
     miniSocExit();
 }
 
 void hidCodePatchFunc(void);
 void irCodePatchFunc(void);
+
+Result InputRedirection_Disable(s64 timeout)
+{
+    if(!inputRedirectionEnabled)
+        return 0;
+
+    Result res = InputRedirection_DoOrUndoPatches();
+    if(R_FAILED(res))
+        return res;
+
+    inputRedirectionEnabled = false;
+    res = MyThread_Join(&inputRedirectionThread, timeout);
+    svcCloseHandle(inputRedirectionThreadStartedEvent);
+
+    return res;
+}
 
 Result InputRedirection_DoOrUndoPatches(void)
 {

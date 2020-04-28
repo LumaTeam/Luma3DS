@@ -84,6 +84,30 @@ void debuggerFetchAndSetNextApplicationDebugHandleTask(void *argdata)
     GDB_UnlockAllContexts(&gdbServer);
 }
 
+Result debuggerDisable(s64 timeout)
+{
+    Result res = 0;
+    bool initialized = gdbServer.referenceCount != 0;
+    if(initialized)
+    {
+        svcSignalEvent(gdbServer.super.shall_terminate_event);
+        server_kill_connections(&gdbServer.super);
+
+        res = MyThread_Join(&debuggerDebugThread, timeout);
+        if(res == 0)
+            res = MyThread_Join(&debuggerSocketThread, timeout);
+
+        Handle dummy = 0;
+        PMDBG_RunQueuedProcess(&dummy);
+        svcCloseHandle(dummy);
+        PMDBG_DebugNextApplicationByForce(false);
+        nextApplicationGdbCtx = NULL;
+        svcKernelSetState(0x10000, 2);
+    }
+
+    return res;
+}
+
 void DebuggerMenu_EnableDebugger(void)
 {
     bool done = false, alreadyEnabled = gdbServer.super.running;
@@ -144,26 +168,9 @@ void DebuggerMenu_EnableDebugger(void)
 void DebuggerMenu_DisableDebugger(void)
 {
     bool initialized = gdbServer.referenceCount != 0;
-    Result res = 0;
+
+    Result res = initialized ? debuggerDisable(2 * 1000 * 1000 * 1000LL) : 0;
     char buf[65];
-
-    if(initialized)
-    {
-        svcSignalEvent(gdbServer.super.shall_terminate_event);
-        server_kill_connections(&gdbServer.super);
-        //server_set_should_close_all(&gdbServer.super);
-
-        res = MyThread_Join(&debuggerDebugThread, 2 * 1000 * 1000 * 1000LL);
-        if(res == 0)
-            res = MyThread_Join(&debuggerSocketThread, 2 * 1000 * 1000 * 1000LL);
-
-        Handle dummy = 0;
-        PMDBG_RunQueuedProcess(&dummy);
-        svcCloseHandle(dummy);
-        PMDBG_DebugNextApplicationByForce(false);
-        nextApplicationGdbCtx = NULL;
-        svcKernelSetState(0x10000, 2);
-    }
 
     if(res != 0)
         sprintf(buf, "Failed to disable debugger (0x%08lx).", (u32)res);

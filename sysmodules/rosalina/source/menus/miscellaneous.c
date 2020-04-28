@@ -221,7 +221,6 @@ void MiscellaneousMenu_SaveSettings(void)
 
 void MiscellaneousMenu_InputRedirection(void)
 {
-    static MyThread *inputRedirectionThread = NULL;
     bool done = false;
 
     Result res;
@@ -231,11 +230,7 @@ void MiscellaneousMenu_InputRedirection(void)
 
     if(wasEnabled)
     {
-        res = InputRedirection_DoOrUndoPatches();
-        inputRedirectionEnabled = false;
-        res = MyThread_Join(inputRedirectionThread, 5 * 1000 * 1000 * 1000LL);
-        svcCloseHandle(inputRedirectionThreadStartedEvent);
-
+        res = InputRedirection_Disable(5 * 1000 * 1000 * 1000LL);
         if(res != 0)
             sprintf(buf, "Failed to stop InputRedirection (0x%08lx).", (u32)res);
         else
@@ -282,7 +277,7 @@ void MiscellaneousMenu_InputRedirection(void)
                     res = svcCreateEvent(&inputRedirectionThreadStartedEvent, RESET_STICKY);
                     if(R_SUCCEEDED(res))
                     {
-                        inputRedirectionThread = inputRedirectionCreateThread();
+                        inputRedirectionCreateThread();
                         res = svcWaitSynchronization(inputRedirectionThreadStartedEvent, 10 * 1000 * 1000 * 1000LL);
                         if(res == 0)
                             res = (Result)inputRedirectionStartResult;

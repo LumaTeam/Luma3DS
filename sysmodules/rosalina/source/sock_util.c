@@ -301,7 +301,8 @@ void server_kill_connections(struct sock_server *serv)
         socClose(fds[i].fd);
         fds[i].fd = -1;
 
-        serv->ctx_ptrs[i]->should_close = true;
+        if(serv->ctx_ptrs[i] != NULL)
+            serv->ctx_ptrs[i]->should_close = true;
     }
 }
 

@@ -38,6 +38,9 @@
 #include "menus/debugger.h"
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
+#include "menus/sysconfig.h"
+#include "input_redirection.h"
+#include "minisoc.h"
 
 #include "task_runner.h"
 
@@ -161,6 +164,26 @@ static void handleTermNotification(u32 notificationId)
     svcSignalEvent(terminationRequestEvent);
 }
 
+static void relinquishConnectionSessions(u32 notificationId)
+{
+    (void)notificationId;
+    // Might be subject to a race condition, but heh.
+
+    // Disable input redirection
+    InputRedirection_Disable(100 * 1000 * 1000LL);
+
+    // Ask the debugger to terminate in approx 2 * 100ms
+    debuggerDisable(100 * 1000 * 1000LL);
+
+    // Kill the ac session if needed
+    if(isConnectionForced)
+    {
+        acExit();
+        isConnectionForced = false;
+        SysConfigMenu_UpdateStatus(true);
+    }
+}
+
 static void handleNextApplicationDebuggedByForce(u32 notificationId)
 {
     (void)notificationId;
@@ -175,7 +198,9 @@ static const ServiceManagerServiceEntry services[] = {
 
 static const ServiceManagerNotificationEntry notifications[] = {
     { 0x100 , handleTermNotification                },
+    //{ 0x103 , relinquishConnectionSessions          }, // Sleep mode entry <=== causes issues
     { 0x1000, handleNextApplicationDebuggedByForce  },
+    { 0x1001, relinquishConnectionSessions          },
     { 0x000, NULL },
 };
 

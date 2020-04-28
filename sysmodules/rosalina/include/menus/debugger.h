@@ -32,6 +32,8 @@
 extern Menu debuggerMenu;
 
 void debuggerFetchAndSetNextApplicationDebugHandleTask(void *argdata);
+Result debuggerDisable(s64 timeout);
+
 void DebuggerMenu_EnableDebugger(void);
 void DebuggerMenu_DisableDebugger(void);
 void DebuggerMenu_DebugNextApplicationByForce(void);

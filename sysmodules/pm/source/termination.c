@@ -311,6 +311,11 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
 
     ProcessList_Lock(&g_manager.processList);
 
+    // Send custom notification to at least Rosalina to make it relinquish some non-KIP services handles, stop the debugger, etc.
+    if (numKips >= 6) {
+        notifySubscribers(0x1001);
+    }
+
     // Send notification 0x100 to the currently running application
     if (g_manager.runningApplicationData != NULL) {
         g_manager.runningApplicationData->flags &= ~PROCESSFLAG_DEPENDENCIES_LOADED;

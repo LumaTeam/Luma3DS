@@ -18,13 +18,10 @@
 #include <errno.h>
 
 #define SYNC_ERROR ENODEV
-
-extern Handle SOCU_handle;
-extern Handle socMemhandle;
-
 extern bool miniSocEnabled;
 
-Result miniSocInit();
+Result miniSocInit(void);
+Result miniSocExitDirect(void);
 Result miniSocExit(void);
 
 s32 _net_convert_error(s32 sock_retval);
