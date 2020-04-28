@@ -262,7 +262,10 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetMemRegions)
         goto end;
     }
 
-    while (address < 0x40000000 ///< Limit to check for regions
+    s64 TTBCR;
+    svcGetSystemInfo(&TTBCR, 0x10002, 0);
+
+    while (address < (1u << (32 - (u32)TTBCR)) ///< Limit to check for regions
         && posInBuffer < maxPosInBuffer
         && R_SUCCEEDED(svcQueryProcessMemory(&memi, &pagei, handle, address)))
     {
