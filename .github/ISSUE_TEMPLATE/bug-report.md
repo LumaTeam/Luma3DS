@@ -34,7 +34,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 
 **Luma3DS version:**
 
-[e.g. v10.1.2 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/0543c208fd154e6326ea5da8cbf66ffcbdef010c]
+[e.g. v10.1.3 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/0543c208fd154e6326ea5da8cbf66ffcbdef010c]
 
 **Luma3DS configuration/options:**
 
