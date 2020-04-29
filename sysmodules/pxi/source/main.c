@@ -98,6 +98,7 @@ static inline void exitPXI(void)
 static u8 ALIGN(8) receiverStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) senderStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) PXISRV11HandlerStack[THREAD_STACK_SIZE];
+static MyThread receiverThread = {0}, senderThread = {0}, PXISRV11HandlerThread = {0};
 
 Result __sync_init(void);
 Result __sync_fini(void);
@@ -152,7 +153,6 @@ void initSystem(void)
 int main(void)
 {
     Handle handles[10] = {0}; //notification handle + service handles
-    MyThread receiverThread = {0}, senderThread = {0}, PXISRV11HandlerThread = {0};
 
     for(u32 i = 0; i < 9; i++)
         assertSuccess(srvRegisterService(handles + 1 + i, serviceNames[i], 1));
