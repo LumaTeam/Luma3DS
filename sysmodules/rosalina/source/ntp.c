@@ -172,11 +172,8 @@ Result ntpSetTimeDate(const struct tm *localt)
     if (R_FAILED(res)) goto cleanup;
 
     // First, set the config RTC offset to 0
-    u8 rtcOff = 0;
-    u8 rtcOff2[8] = {0};
-    res = CFG_SetConfigInfoBlk4(1, 0x10000, &rtcOff);
-    if (R_FAILED(res)) goto cleanup;
-    res = CFG_SetConfigInfoBlk4(8, 0x30001, rtcOff2);
+    u8 rtcOff[8] = {0};
+    res = CFG_SetConfigInfoBlk4(8, 0x30001, rtcOff);
     if (R_FAILED(res)) goto cleanup;
 
     u8 yr = (u8)(localt->tm_year - 100);
