@@ -278,7 +278,8 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
         srcModuleSize = moduleList[nbModules].size = ((Cxi *)src)->ncch.contentSize * 0x200;
     }
 
-    if(firmType == NATIVE_FIRM && (ISN3DS || firmVersion >= 0x1D))
+    // SAFE_FIRM only for N3DS and only if ENABLESAFEFIRMROSALINA is on
+    if((firmType == NATIVE_FIRM || firmType == SAFE_FIRM) && (ISN3DS || firmVersion >= 0x1D))
     {
         //2) Merge that info with our own modules'
         for(u8 *src = (u8 *)0x18180000; memcmp(((Cxi *)src)->ncch.magic, "NCCH", 4) == 0; src += srcModuleSize)
@@ -303,7 +304,9 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
     //3) Read or copy the modules
     u8 *dst = firm->section[0].address;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
-    for(u32 i = 0, dstModuleSize, maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
+    // SAFE_FIRM only for N3DS and only if ENABLESAFEFIRMROSALINA is on
+    u32 maxModuleSize = (firmType == NATIVE_FIRM || firmType == SAFE_FIRM) ? 0x80000 : 0x600000;
+    for(u32 i = 0, dstModuleSize; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
         if(loadFromStorage)
         {
@@ -335,7 +338,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
         memcpy(dst, moduleList[i].src, dstModuleSize);
     }
 
-    //4) Patch NATIVE_FIRM if necessary
+    //4) Patch NATIVE_FIRM/SAFE_FIRM (N3DS) if necessary
     if(nbModules == 6)
     {
         if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, (u8 *)firm + firm->section[1].offset, firm->section[1].size) != 0)
@@ -521,6 +524,31 @@ u32 patch1x2xNativeAndSafeFirm(void)
     //Arm9 exception handlers
     ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
+
+    if(ISN3DS && CONFIG(ENABLESAFEFIRMROSALINA))
+    {
+        u8 *arm11Section1 = (u8 *)firm + firm->section[1].offset;
+        //Find the Kernel11 SVC table and handler, exceptions page and free space locations
+        u32 baseK11VA;
+        u8 *freeK11Space;
+        u32 *arm11SvcHandler,
+            *arm11ExceptionsPage,
+            *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+
+        ret += installK11Extension(arm11Section1, firm->section[1].size, false, baseK11VA, arm11ExceptionsPage, &freeK11Space);
+        ret += patchKernel11(arm11Section1, firm->section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage);
+
+        // Add some other patches to the mix, as we can now launch homebrew on SAFE_FIRM:
+
+        //Apply firmlaunch patches
+        ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+
+        ret += patchKernel9Panic(arm9Section, kernel9Size);
+        ret += patchP9AccessChecks(process9Offset, process9Size);
+
+        mergeSection0(NATIVE_FIRM, 0x45, false); // may change in the future
+        firm->section[0].size = 0;
+    }
 
     return ret;
 }

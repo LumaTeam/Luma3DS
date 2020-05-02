@@ -35,7 +35,8 @@ enum singleOptions
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHUNITINFO,
-    DISABLEARM11EXCHANDLERS
+    DISABLEARM11EXCHANDLERS,
+    ENABLESAFEFIRMROSALINA,
 };
 
 extern u32 config, multiConfig, bootConfig;

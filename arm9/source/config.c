@@ -95,6 +95,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
                                                "( ) Set developer UNITINFO",
                                                "( ) Disable Arm11 exception handlers",
+                                               "( ) Enable Rosalina on SAFE_FIRM",
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -193,7 +194,16 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Note: Disabling the exception handlers\n"
                                                  "will disqualify you from submitting\n"
                                                  "issues or bug reports to the Luma3DS\n"
-                                                 "GitHub repository!"
+                                                 "GitHub repository!",
+
+                                                 "Enables Rosalina, the kernel ext.\n"
+                                                 "and sysmodule reimplementations on\n"
+                                                 "SAFE_FIRM (New 3DS only).\n\n"
+                                                 "Also suppresses QTM error 0xF96183FE,\n"
+                                                 "allowing to use 8.1-11.3 N3DS on\n"
+                                                 "New 2DS XL consoles.\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -229,7 +239,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true }
+        { .visible = true },
+        { .visible  = ISN3DS },
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

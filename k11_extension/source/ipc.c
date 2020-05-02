@@ -246,24 +246,24 @@ bool doErrfThrowHook(u32 *cmdbuf)
     u8 *srcerrbuf = (u8 *)r0_to_r7_r12_usr[(spsr & 0x20) ? 4 : 6];
     const char *pname = codeSetOfProcess(currentCoreContext->objectContext.currentProcess)->processName;
 
-    static const struct
+    const struct
     {
         const char *name;
         Result errCode;
+        bool enabled;
     } errorCodesToIgnore[] =
     {
         /*
-            If you're getting this error, you have broken your head-tracking hardware,
-            and should uncomment the following line:
+            If you're getting this error, you may have broken your head-tracking hardware,
+            and you need to enable the qtm error bypass below:
         */
-        //{ "qtm", (Result)0xF96183FE },
-
-        { "", 0 }, // impossible case to ensure the array has at least 1 element
+        { "qtm", 0xF96183FEu, CONFIG(ENABLESAFEFIRMROSALINA)},
+        {   "",             0,                         false}, // impossible case to ensure the array has at least 1 element
     };
 
     for(u32 i = 0; i < sizeof(errorCodesToIgnore) / sizeof(errorCodesToIgnore[0]); i++)
     {
-        if(strcmp(pname, errorCodesToIgnore[i].name) == 0 && (Result)cmdbuf[2] == errorCodesToIgnore[i].errCode)
+        if(errorCodesToIgnore[i].enabled && strcmp(pname, errorCodesToIgnore[i].name) == 0 && (Result)cmdbuf[2] == errorCodesToIgnore[i].errCode)
         {
             srcerrbuf[0] = 5;
             cmdbuf[0] = 0x10040;
