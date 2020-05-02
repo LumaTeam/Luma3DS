@@ -29,7 +29,7 @@
 
 Result UnmapProcessMemoryEx(Handle processHandle, void *dst, u32 size)
 {
-    if(kernelVersion < SYSTEM_VERSION(2, 37, 0)) // < 6.x
+    if(GET_VERSION_MINOR(kernelVersion) < 37) // < 6.x
         return UnmapProcessMemory(processHandle, dst, size); // equivalent when size <= 64MB
 
     KProcessHwInfo *currentHwInfo = hwInfoOfProcess(currentCoreContext->objectContext.currentProcess);

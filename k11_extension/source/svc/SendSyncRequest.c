@@ -100,7 +100,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x50100:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && (strcmp(info->name, "srv:") == 0 || (kernelVersion < SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)))
+                if(info != NULL && (strcmp(info->name, "srv:") == 0 || (GET_VERSION_MINOR(kernelVersion) < 39 && strcmp(info->name, "srv:pm") == 0)))
                 {
                     char name[9] = { 0 };
                     memcpy(name, cmdbuf + 1, 8);

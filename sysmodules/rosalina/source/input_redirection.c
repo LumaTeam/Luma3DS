@@ -273,7 +273,7 @@ Result InputRedirection_DoOrUndoPatches(void)
     svcCloseHandle(processHandle);
 
     res = OpenProcessByName("ir", &processHandle);
-    if(R_SUCCEEDED(res) && osGetKernelVersion() >= SYSTEM_VERSION(2, 44, 6))
+    if(R_SUCCEEDED(res) && GET_VERSION_MINOR(osGetKernelVersion()) >= 44)
     {
         svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002); // only patch .text + .data
         svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);

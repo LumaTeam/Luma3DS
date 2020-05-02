@@ -78,6 +78,15 @@ typedef s32 Result;                 ///< Function result.
 #define SYSTEM_VERSION(major, minor, revision) \
     (((major)<<24)|((minor)<<16)|((revision)<<8))
 
+/// Retrieves the major version from a packed system version.
+#define GET_VERSION_MAJOR(version)    ((version) >>24)
+
+/// Retrieves the minor version from a packed system version.
+#define GET_VERSION_MINOR(version)    (((version)>>16)&0xFF)
+
+/// Retrieves the revision version from a packed system version.
+#define GET_VERSION_REVISION(version) (((version)>> 8)&0xFF)
+
 #define CUR_THREAD_HANDLE       0xFFFF8000
 #define CUR_PROCESS_HANDLE      0xFFFF8001
 

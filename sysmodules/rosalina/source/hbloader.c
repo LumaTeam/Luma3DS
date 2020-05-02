@@ -301,7 +301,7 @@ void HBLDR_HandleCommands(void *ctx)
             kcaps0->descriptors[0] = 0xFC000000 | (osGetKernelVersion() >> 16);
 
             u64 lastdep = sizeof(dependencyList)/8;
-            if (osGetFirmVersion() >= SYSTEM_VERSION(2,50,0)) // 9.6+ FIRM
+            if (GET_VERSION_MINOR(osGetKernelVersion()) >= 50) // 9.6+ FIRM
             {
                 exhi->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
                 strncpy((char*)&localcaps0->service_access[0x20], "nfc:u", 8);
