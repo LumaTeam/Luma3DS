@@ -131,7 +131,7 @@ void Draw_ClearFramebuffer(void)
 
 void Draw_SetupFramebuffer(void)
 {
-    while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1);
+    while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT) & 1);
 
     svcFlushEntireDataCache();
     memcpy(framebufferCache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
