@@ -208,7 +208,7 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     TRY(registerProgram(&programHandle, programInfo, programInfoUpdate));
 
     res = LOADER_GetProgramInfo(exheaderInfo, programHandle);
-    res = R_SUCCEEDED(res) && exheaderInfo->aci.local_caps.core_info.core_version != SYSCOREVER ? (Result)0xC8A05800 : res;
+    res = R_SUCCEEDED(res) && SYSCOREVER == 2 && exheaderInfo->aci.local_caps.core_info.core_version != SYSCOREVER ? (Result)0xC8A05800 : res;
 
     if (R_FAILED(res)) {
         LOADER_UnregisterProgram(programHandle);

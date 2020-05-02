@@ -15,5 +15,5 @@ bool isTitleLaunchPrevented(u64 titleId)
     s64 numKips = 0;
 
     svcGetSystemInfo(&numKips, 26, 0);
-    return numKips >= 6 && (titleId & ~N3DS_TID_BIT) == 0x0004003000008A02ULL; // ErrDisp
+    return numKips >= 6 && (titleId & ~(N3DS_TID_MASK | 1)) == 0x0004003000008A02ULL; // ErrDisp
 }
