@@ -740,7 +740,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         }
     }
 
-    else if((progId & ~0xF0000001ULL) == 0x0004013000001702LL) //CFG, SAFE_MODE CFG
+    else if((progId & ~0xF0000001ULL) == 0x0004013000001702LL) //CFG, SAFE_FIRM CFG
     {
         static const u8 pattern[] = {
             0x06, 0x46, 0x10, 0x48
@@ -826,7 +826,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    else if(progId == 0x0004013000001A02LL) //DSP
+    else if((progId & ~0xF0000001ULL) == 0x0004013000001A02LL) //DSP, SAFE_FIRM DSP
     {
         static const u8 pattern[] = {
             0xE3, 0x10, 0x10, 0x80, 0xE2
