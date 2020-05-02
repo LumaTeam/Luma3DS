@@ -73,7 +73,7 @@ bool rosalinaThreadLockPredicate(KThread *thread)
         return false;
 
     u64 titleId = codeSetOfProcess(process)->titleId;
-    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
+    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)(titleId & ~0xF0000001); // clear N3DS and SAFE_FIRM bits
     return
         ((rosalinaState & 1) && idOfProcess(process) >= nbSection0Modules &&
         (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))));
