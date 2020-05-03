@@ -541,7 +541,8 @@ u32 patch1x2xNativeAndSafeFirm(void)
         // Add some other patches to the mix, as we can now launch homebrew on SAFE_FIRM:
 
         //Apply firmlaunch patches
-        ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+        //Or don't, this makes usm not work
+        //ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
         ret += patchKernel9Panic(arm9Section, kernel9Size);
         ret += patchP9AccessChecks(process9Offset, process9Size);
