@@ -102,7 +102,6 @@ u32 nbSection0Modules;
 Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,
                                          u32 coreID, u32 priority, bool disableUponReceipt, bool levelHighActive);
 InterruptManager *interruptManager;
-KBaseInterruptEvent *customInterruptEvent;
 
 void (*initFPU)(void);
 void (*mcuReboot)(void);

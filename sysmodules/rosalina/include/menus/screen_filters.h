@@ -30,7 +30,7 @@
 
 extern Menu screenFiltersMenu;
 
-int screenFiltersCurrentTemperature;
+extern int screenFiltersCurrentTemperature;
 
 void screenFiltersSetDisabled(void);
 void screenFiltersReduceBlueLevel1(void);
