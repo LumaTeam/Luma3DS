@@ -111,8 +111,10 @@ void RosalinaMenu_Reboot(void)
 
         if(pressed & BUTTON_A)
         {
-            APT_HardwareResetAsync();
             menuLeave();
+            ptmSysmInit();
+            PTMSYSM_RebootAsync(4 * 1000 * 1000 * 1000LL); // Kill everything after 4s (value used by PM on firmlaunch)
+            ptmSysmExit();
         } else if(pressed & BUTTON_B)
             return;
     }
@@ -139,7 +141,9 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
         if(pressed & BUTTON_A)
         {
             menuLeave();
-            srvPublishToSubscriber(0x203, 0);
+            ptmSysmInit();
+            PTMSYSM_ShutdownAsync(4 * 1000 * 1000 * 1000LL); // Kill everything after 4s (value used by PM on firmlaunch)
+            ptmSysmExit();
         }
         else if(pressed & BUTTON_B)
             return;
