@@ -308,7 +308,7 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
     }
 }
 
-void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool left, u32 y)
+void Draw_ConvertFrameBufferLines(u8 *buf, u32 startingLine, u32 numLines, bool top, bool left)
 {
     GSPGPU_FramebufferFormats fmt = top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
     u32 width = top ? 400 : 320;
@@ -318,6 +318,9 @@ void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool left, u32 y)
     u32 pa = Draw_GetCurrentFramebufferAddress(top, left);
     u8 *addr = (u8 *)PA_PTR(pa);
 
-    for(u32 x = 0; x < width; x++)
-        Draw_ConvertPixelToBGR8(line + x * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
+    for (u32 y = startingLine; y < startingLine + numLines; y++)
+    {
+        for(u32 x = 0; x < width; x++)
+            Draw_ConvertPixelToBGR8(buf + (x + width * y) * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
+    }
 }

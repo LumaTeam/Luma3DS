@@ -171,7 +171,7 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, bool top, bool left)
     Draw_CreateBitmapHeader(framebufferCache, dimX, 240);
     buf += 54;
 
-    u32 n = 0;
+    u32 y = 0;
     // Our buffer might be smaller than the size of the screenshot...
     while (remaining != 0)
     {
@@ -179,14 +179,14 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, bool top, bool left)
         u32 available = (u32)(framebufferCacheEnd - buf);
         u32 size = available < remaining ? available : remaining;
         u32 nlines = size / lineSize;
-        for (u32 y = 0; y < nlines; y++)
-            Draw_ConvertFrameBufferLine(buf + lineSize * y, top, left, y);
+        Draw_ConvertFrameBufferLines(buf, y, nlines, top, left);
 
         s64 t1 = svcGetSystemTick();
         timeSpentConvertingScreenshot += t1 - t0;
-        TRY(IFile_Write(file, &total, framebufferCache, (n == 0 ? 54 : 0) + lineSize * nlines, 0)); // don't forget to write the header
+        TRY(IFile_Write(file, &total, framebufferCache, (y == 0 ? 54 : 0) + lineSize * nlines, 0)); // don't forget to write the header
         timeSpentWritingScreenshot += svcGetSystemTick() - t1;
 
+        y += nlines;
         remaining -= lineSize * nlines;
         buf = framebufferCache;
     }
