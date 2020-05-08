@@ -32,6 +32,9 @@
 #include "memory.h"
 #include "menu.h"
 #include "utils.h"
+#include "csvc.h"
+
+#define KERNPA2VA(a)            ((a) + (GET_VERSION_MINOR(osGetKernelVersion()) < 44 ? 0xD0000000 : 0xC0000000))
 
 static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
 static u32 framebufferCacheSize;
@@ -55,7 +58,7 @@ void Draw_Unlock(void)
 
 void Draw_DrawCharacter(u32 posX, u32 posY, u32 color, char character)
 {
-    volatile u16 *const fb = (volatile u16 *const)FB_BOTTOM_VRAM_ADDR;
+    u16 *const fb = (u16 *)FB_BOTTOM_VRAM_ADDR;
 
     s32 y;
     for(y = 0; y < 10; y++)
@@ -308,19 +311,34 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
     }
 }
 
-void Draw_ConvertFrameBufferLines(u8 *buf, u32 startingLine, u32 numLines, bool top, bool left)
+typedef struct FrameBufferConvertArgs {
+    u8 *buf;
+    u8 startingLine;
+    u8 numLines;
+    bool top;
+    bool left;
+} FrameBufferConvertArgs;
+
+static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *args)
 {
-    GSPGPU_FramebufferFormats fmt = top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
-    u32 width = top ? 400 : 320;
-    u8 formatSizes[] = { 4, 3, 2, 2, 2 };
-    u32 stride = top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
+    static const u8 formatSizes[] = { 4, 3, 2, 2, 2 };
 
-    u32 pa = Draw_GetCurrentFramebufferAddress(top, left);
-    u8 *addr = (u8 *)PA_PTR(pa);
+    GSPGPU_FramebufferFormats fmt = args->top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
+    u32 width = args->top ? 400 : 320;
+    u32 stride = args->top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
 
-    for (u32 y = startingLine; y < startingLine + numLines; y++)
+    u32 pa = Draw_GetCurrentFramebufferAddress(args->top, args->left);
+    u8 *addr = (u8 *)KERNPA2VA(pa);
+
+    for (u32 y = args->startingLine; y < args->startingLine + args->numLines; y++)
     {
         for(u32 x = 0; x < width; x++)
-            Draw_ConvertPixelToBGR8(buf + (x + width * y) * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
+            Draw_ConvertPixelToBGR8(args->buf + (x + width * y) * 3 , addr + x * stride + y * formatSizes[fmt], fmt);
     }
+}
+
+void Draw_ConvertFrameBufferLines(u8 *buf, u32 startingLine, u32 numLines, bool top, bool left)
+{
+    FrameBufferConvertArgs args = { buf, (u8)startingLine, (u8)numLines, top, left };
+    svcCustomBackdoor(Draw_ConvertFrameBufferLinesKernel, &args);
 }

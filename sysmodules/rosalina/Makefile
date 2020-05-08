@@ -130,6 +130,8 @@ $(OUTPUT).elf	:	$(OFILES)
 	@$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
 	@$(NM) -CSn $@ > $(notdir $*.lst)
 
+draw.o: CFLAGS += -O3
+
 $(OFILES_SRC)	: $(HFILES_BIN)
 
 #---------------------------------------------------------------------------------
