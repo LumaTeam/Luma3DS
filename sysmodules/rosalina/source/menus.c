@@ -151,9 +151,9 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
     while(!terminationRequest);
 }
 
-extern u8 framebufferCache[FB_BOTTOM_SIZE];
 void RosalinaMenu_TakeScreenshot(void)
 {
+    u8 *framebufferCache = (u8 *)Draw_GetFramebufferCache();
 #define TRY(expr) if(R_FAILED(res = (expr))) goto end;
 
     u64 total;
@@ -280,8 +280,6 @@ end:
     IFile_Close(&file);
     svcFlushEntireDataCache();
     Draw_SetupFramebuffer();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
     Draw_Unlock();
 
     do

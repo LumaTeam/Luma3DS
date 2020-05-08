@@ -57,6 +57,8 @@
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
+#define FB_SCREENSHOT_SIZE          (52 + 400 * 240 * 2)
+
 
 #define SCREEN_BOT_WIDTH  320
 #define SCREEN_BOT_HEIGHT 240
@@ -72,6 +74,8 @@
 
 #define DRAW_MAX_FORMATTED_STRING_SIZE  512
 
+void Draw_Init(void);
+
 void Draw_Lock(void);
 void Draw_Unlock(void);
 
@@ -81,7 +85,11 @@ u32 Draw_DrawFormattedString(u32 posX, u32 posY, u32 color, const char *fmt, ...
 
 void Draw_FillFramebuffer(u32 value);
 void Draw_ClearFramebuffer(void);
-void Draw_SetupFramebuffer(void);
+u32 Draw_AllocateFramebufferCache(void);
+void Draw_FreeFramebufferCache(void);
+void *Draw_GetFramebufferCache(void);
+u32 Draw_GetFramebufferCacheSize(void);
+u32 Draw_SetupFramebuffer(void);
 void Draw_RestoreFramebuffer(void);
 void Draw_FlushFramebuffer(void);
 u32 Draw_GetCurrentFramebufferAddress(bool top, bool left);

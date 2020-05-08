@@ -41,6 +41,7 @@
 #include "menus/sysconfig.h"
 #include "input_redirection.h"
 #include "minisoc.h"
+#include "draw.h"
 
 #include "task_runner.h"
 
@@ -219,6 +220,7 @@ int main(void)
     if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
 
+    Draw_Init();
     Cheat_SeedRng(svcGetSystemTick());
 
     MyThread *menuThread = menuCreateThread();

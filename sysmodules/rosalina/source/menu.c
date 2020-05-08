@@ -175,30 +175,39 @@ void menuThreadMain(void)
     }
 }
 
-static s32 menuRefCount = 0;
+static u32 menuRefCount = 0;
 void menuEnter(void)
 {
-    if(AtomicPostIncrement(&menuRefCount) == 0)
+    Draw_Lock();
+    if(menuRefCount++ == 0)
     {
         svcKernelSetState(0x10000, 1);
         svcSleepThread(5 * 1000 * 100LL);
+        if (Draw_AllocateFramebufferCache() == 0)
+        {
+            // Oops
+            menuRefCount = 0;
+            svcKernelSetState(0x10000, 1);
+            svcSleepThread(5 * 1000 * 100LL);
+        }
+
         Draw_SetupFramebuffer();
-        Draw_ClearFramebuffer();
     }
+    Draw_Unlock();
 }
 
 void menuLeave(void)
 {
     svcSleepThread(50 * 1000 * 1000);
 
-    if(AtomicDecrement(&menuRefCount) == 0)
+    Draw_Lock();
+    if(--menuRefCount == 0)
     {
-        Draw_Lock();
-        Draw_FlushFramebuffer();
         Draw_RestoreFramebuffer();
-        Draw_Unlock();
+        Draw_FreeFramebufferCache();
         svcKernelSetState(0x10000, 1);
     }
+    Draw_Unlock();
 }
 
 static void menuDraw(Menu *menu, u32 selected)

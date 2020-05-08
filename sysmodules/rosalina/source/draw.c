@@ -33,21 +33,18 @@
 #include "menu.h"
 #include "utils.h"
 
-u8 framebufferCache[FB_BOTTOM_SIZE];
-
 static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
-
+static u32 framebufferCacheSize;
+static void *framebufferCache;
 static RecursiveLock lock;
+
+void Draw_Init(void)
+{
+    RecursiveLock_Init(&lock);
+}
 
 void Draw_Lock(void)
 {
-    static bool lockInitialized = false;
-    if(!lockInitialized)
-    {
-        RecursiveLock_Init(&lock);
-        lockInitialized = true;
-    }
-
     RecursiveLock_Lock(&lock);
 }
 
@@ -129,34 +126,78 @@ void Draw_ClearFramebuffer(void)
     Draw_FillFramebuffer(0);
 }
 
-void Draw_SetupFramebuffer(void)
+u32 Draw_AllocateFramebufferCache(void)
+{
+    // Try to see how much we can allocate...
+    // Can't use fbs in FCRAM when Home Menu is active (AXI config related maybe?)
+    u32 addr = 0x0D000000;
+    u32 tmp;
+    u32 minSize = (FB_BOTTOM_SIZE + 0xFFF) & ~0xFFF;
+    u32 maxSize = (FB_SCREENSHOT_SIZE + 0xFFF) & ~0xFFF;
+    u32 remaining = (u32)osGetMemRegionFree(MEMREGION_SYSTEM);
+    u32 size = remaining < maxSize ? remaining : maxSize;
+ 
+    if (size < minSize || R_FAILED(svcControlMemory(&tmp, addr, 0, size, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE)))
+    {
+        framebufferCache = NULL;
+        framebufferCacheSize = 0;
+    }
+    else
+    {
+        framebufferCache = (u32 *)addr;
+        framebufferCacheSize = size;
+    }
+
+    return framebufferCacheSize;
+}
+
+void Draw_FreeFramebufferCache(void)
+{
+    u32 tmp;
+    svcControlMemory(&tmp, (u32)framebufferCache, 0, framebufferCacheSize, MEMOP_FREE, 0);
+    framebufferCacheSize = 0;
+    framebufferCache = NULL;
+}
+
+void *Draw_GetFramebufferCache(void)
+{
+    return framebufferCache;
+}
+
+u32 Draw_GetFramebufferSize(void)
+{
+    return framebufferCacheSize;
+}
+
+u32 Draw_SetupFramebuffer(void)
 {
     while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1);
 
-    svcFlushEntireDataCache();
+    Draw_FlushFramebuffer();
     memcpy(framebufferCache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
     gpuSavedFramebufferAddr1 = GPU_FB_BOTTOM_ADDR_1;
     gpuSavedFramebufferAddr2 = GPU_FB_BOTTOM_ADDR_2;
     gpuSavedFramebufferFormat = GPU_FB_BOTTOM_FMT;
     gpuSavedFramebufferStride = GPU_FB_BOTTOM_STRIDE;
 
     GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
-    GPU_FB_BOTTOM_FMT = (GPU_FB_BOTTOM_FMT & ~7) | 2;
+    GPU_FB_BOTTOM_FMT = (GPU_FB_BOTTOM_FMT & ~7) | GSP_RGB565_OES;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
 
-    Draw_FlushFramebuffer();
+    return framebufferCacheSize;
 }
 
 void Draw_RestoreFramebuffer(void)
 {
     memcpy(FB_BOTTOM_VRAM_ADDR, framebufferCache, FB_BOTTOM_SIZE);
+    Draw_FlushFramebuffer();
 
     GPU_FB_BOTTOM_ADDR_1 = gpuSavedFramebufferAddr1;
     GPU_FB_BOTTOM_ADDR_2 = gpuSavedFramebufferAddr2;
     GPU_FB_BOTTOM_FMT = gpuSavedFramebufferFormat;
     GPU_FB_BOTTOM_STRIDE = gpuSavedFramebufferStride;
-
-    Draw_FlushFramebuffer();
 }
 
 void Draw_FlushFramebuffer(void)

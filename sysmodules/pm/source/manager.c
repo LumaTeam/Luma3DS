@@ -38,7 +38,10 @@ void Manager_RegisterKips(void)
         process->flags = PROCESSFLAG_KIP;
         process->terminationStatus = TERMSTATUS_RUNNING;
 
-        assertSuccess(svcSetProcessResourceLimits(processHandle, g_manager.reslimits[RESLIMIT_CATEGORY_OTHER]));
+        if (i < 5) {
+            // Exempt rosalina from being resource-limited at all
+            assertSuccess(svcSetProcessResourceLimits(processHandle, g_manager.reslimits[RESLIMIT_CATEGORY_OTHER]));
+        }
     }
 
     ProcessList_Unlock(&g_manager.processList);
