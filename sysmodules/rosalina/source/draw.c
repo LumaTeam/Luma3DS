@@ -333,7 +333,10 @@ static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *arg
     for (u32 y = args->startingLine; y < args->startingLine + args->numLines; y++)
     {
         for(u32 x = 0; x < width; x++)
+        {
+            __builtin_prefetch(addr + x * stride + y * formatSizes[fmt], 0, 3);
             Draw_ConvertPixelToBGR8(args->buf + (x + width * y) * 3 , addr + x * stride + y * formatSizes[fmt], fmt);
+        }
     }
 }
 
