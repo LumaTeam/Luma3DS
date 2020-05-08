@@ -164,7 +164,7 @@ void *Draw_GetFramebufferCache(void)
     return framebufferCache;
 }
 
-u32 Draw_GetFramebufferSize(void)
+u32 Draw_GetFramebufferCacheSize(void)
 {
     return framebufferCacheSize;
 }

@@ -57,7 +57,7 @@
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
-#define FB_SCREENSHOT_SIZE          (52 + 400 * 240 * 2)
+#define FB_SCREENSHOT_SIZE          (52 + 400 * 240 * 3)
 
 
 #define SCREEN_BOT_WIDTH  320
