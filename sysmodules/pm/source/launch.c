@@ -219,18 +219,18 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     if (IS_N3DS && APPMEMTYPE == 6 && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
         u32 limitMb;
         SystemMode n3dsSystemMode = exheaderInfo->aci.local_caps.core_info.n3ds_system_mode;
-        if ((launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) || n3dsSystemMode == SYSMODE_O3DS_PROD) {
-            if ((launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) & PMLAUNCHFLAG_FORCE_USE_O3DS_MAX_APP_MEM) {
-                limitMb = 96;
-            } else {
-                switch (exheaderInfo->aci.local_caps.core_info.o3ds_system_mode) {
-                    case SYSMODE_O3DS_PROD: limitMb = 64; break;
-                    case SYSMODE_DEV1:      limitMb = 96; break;
-                    case SYSMODE_DEV2:      limitMb = 80; break;
-                    default:                limitMb = 0;  break;
-                }
+        bool forceO3dsAppMem = (launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) != 0;
+        if (forceO3dsAppMem && (launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_MAX_APP_MEM) != 0) {
+            setAppMemLimit(96 << 20);
+        } else if (forceO3dsAppMem || n3dsSystemMode == SYSMODE_O3DS_PROD) {
+            switch (exheaderInfo->aci.local_caps.core_info.o3ds_system_mode) {
+                case SYSMODE_O3DS_PROD: limitMb = 64; break;
+                case SYSMODE_DEV1:      limitMb = 96; break;
+                case SYSMODE_DEV2:      limitMb = 80; break;
+                default:                limitMb = 0;  break;
             }
 
+            // Can be 0:
             setAppMemLimit(limitMb << 20);
         }
     }
