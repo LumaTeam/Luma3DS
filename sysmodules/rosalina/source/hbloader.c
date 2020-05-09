@@ -38,6 +38,7 @@
 
 #define MAP_BASE                0x10000000
 #define SYSCOREVER              (*(vu32 *)0x1FF80010)
+#define APPMEMTYPE              (*(vu32 *)0x1FF80030)
 
 extern GDBContext *nextApplicationGdbCtx;
 extern GDBServer gdbServer;
@@ -305,11 +306,13 @@ void HBLDR_HandleCommands(void *ctx)
             localcaps0->core_info.core_version = SYSCOREVER;
             localcaps0->core_info.use_cpu_clockrate_804MHz = false;
             localcaps0->core_info.enable_l2c = false;
-            localcaps0->core_info.n3ds_system_mode = SYSMODE_N3DS_PROD;
             localcaps0->core_info.ideal_processor = 0;
             localcaps0->core_info.affinity_mask = BIT(0);
-            localcaps0->core_info.o3ds_system_mode = SYSMODE_O3DS_PROD;
             localcaps0->core_info.priority = 0x30;
+
+            u32 appmemtype = APPMEMTYPE;
+            localcaps0->core_info.o3ds_system_mode = appmemtype < 6 ? (SystemMode)appmemtype : SYSMODE_O3DS_PROD;
+            localcaps0->core_info.n3ds_system_mode = appmemtype >= 6 ? (SystemMode)(appmemtype - 6 + 1) : SYSMODE_N3DS_PROD;
 
             memset(localcaps0->reslimits, 0, sizeof(localcaps0->reslimits));
 
