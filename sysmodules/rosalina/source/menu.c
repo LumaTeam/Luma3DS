@@ -175,7 +175,7 @@ void menuThreadMain(void)
     }
 }
 
-static u32 menuRefCount = 0;
+static s32 menuRefCount = 0;
 void menuEnter(void)
 {
     Draw_Lock();

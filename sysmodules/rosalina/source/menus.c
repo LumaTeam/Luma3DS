@@ -111,8 +111,9 @@ void RosalinaMenu_Reboot(void)
 
         if(pressed & BUTTON_A)
         {
-            APT_HardwareResetAsync();
             menuLeave();
+            APT_HardwareResetAsync();
+            return;
         } else if(pressed & BUTTON_B)
             return;
     }
@@ -140,6 +141,7 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
         {
             menuLeave();
             srvPublishToSubscriber(0x203, 0);
+            return;
         }
         else if(pressed & BUTTON_B)
             return;
