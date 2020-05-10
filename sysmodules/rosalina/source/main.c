@@ -135,7 +135,7 @@ void initSystem(void)
     if (R_FAILED(stealFsReg()) || R_FAILED(fsRegSetupPermissions()) || R_FAILED(fsInit()))
         svcBreak(USERBREAK_PANIC);
 
-    if (R_FAILED(pmDbgInit()))
+    if (R_FAILED(pmAppInit()) || R_FAILED(pmDbgInit()))
         svcBreak(USERBREAK_PANIC);
 
     // **** DO NOT init services that don't come from KIPs here ****
@@ -192,6 +192,12 @@ static void handleNextApplicationDebuggedByForce(u32 notificationId)
     TaskRunner_RunTask(debuggerFetchAndSetNextApplicationDebugHandleTask, NULL, 0);
 }
 
+static void handleRestartHbAppNotification(u32 notificationId)
+{
+    (void)notificationId;
+    TaskRunner_RunTask(HBLDR_RestartHbApplication, NULL, 0);
+}
+
 static const ServiceManagerServiceEntry services[] = {
     { "hb:ldr", 2, HBLDR_HandleCommands, true },
     { NULL },
@@ -202,6 +208,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     //{ 0x103 , relinquishConnectionSessions          }, // Sleep mode entry <=== causes issues
     { 0x1000, handleNextApplicationDebuggedByForce  },
     { 0x2000, relinquishConnectionSessions          },
+    { 0x3000, handleRestartHbAppNotification        },
     { 0x000, NULL },
 };
 

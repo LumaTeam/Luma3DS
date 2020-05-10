@@ -1860,12 +1860,16 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
 
 static u32 Cheat_GetCurrentProcessAndTitleId(u64* titleId)
 {
+    FS_ProgramInfo programInfo;
     u32 pid;
-    Result res = PMDBG_GetCurrentAppTitleIdAndPid(titleId, &pid);
+    u32 launchFlags;
+    Result res = PMDBG_GetCurrentAppInfo(&programInfo, &pid, &launchFlags);
     if (R_FAILED(res)) {
         *titleId = 0;
         return 0xFFFFFFFF;
     }
+
+    *titleId = programInfo.programId;
     return pid;
 }
 

@@ -52,7 +52,7 @@ void initSystem()
 }
 
 static const ServiceManagerServiceEntry services[] = {
-    { "pm:app",  3, pmAppHandleCommands,  false },
+    { "pm:app",  4, pmAppHandleCommands,  false },
     { "pm:dbg",  2, pmDbgHandleCommands,  false },
     { NULL },
 };

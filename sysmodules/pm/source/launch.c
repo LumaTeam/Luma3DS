@@ -56,10 +56,12 @@ static Result loadWithoutDependencies(Handle *outDebug, ProcessData **outProcess
     process->pid = pid;
     process->titleId = exheaderInfo->aci.local_caps.title_id;;
     process->programHandle = programHandle;
+    process->launchFlags = launchFlags; // not in official PM
     process->flags = 0; // will be filled later
     process->terminatedNotificationVariation = (launchFlags & 0xF0) >> 4;
     process->terminationStatus = TERMSTATUS_RUNNING;
     process->refcount = 1;
+    process->mediaType = programInfo->mediaType; // not in official PM
 
     ProcessList_Unlock(&g_manager.processList);
     svcSignalEvent(g_manager.newProcessEvent);
@@ -133,6 +135,11 @@ static Result loadWithDependencies(Handle *outDebug, ProcessData **outProcessDat
 
     if (numUnique > 0) {
         process->flags |= PROCESSFLAG_DEPENDENCIES_LOADED;
+    }
+
+    if (launchFlags & PMLAUNCHFLAGEXT_FAKE_DEPENDENCY_LOADING) {
+        // See no evil
+        numUnique = 0;
     }
 
     /*

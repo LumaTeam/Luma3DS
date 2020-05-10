@@ -21,3 +21,4 @@ extern Manager g_manager;
 void Manager_Init(void *procBuf, size_t numProc);
 void Manager_RegisterKips(void);
 Result UnregisterProcess(u64 titleId);
+Result PrepareToChainloadHomebrew(u64 titleId);

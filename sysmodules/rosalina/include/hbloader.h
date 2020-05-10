@@ -33,4 +33,5 @@
 #define HBLDR_DEFAULT_3DSX_TID  0x000400000D921E00ULL
 #define HBLDR_3DSX_TID          (*(vu64 *)0x1FF81100)
 
+void HBLDR_RestartHbApplication(void *p);
 void HBLDR_HandleCommands(void *ctx);

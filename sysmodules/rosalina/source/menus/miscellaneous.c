@@ -52,16 +52,17 @@ Menu miscellaneousMenu = {
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
     Result res;
-    u64 titleId = 0;
     char failureReason[64];
 
     if(HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID)
     {
+        FS_ProgramInfo progInfo;
         u32 pid;
-        res = PMDBG_GetCurrentAppTitleIdAndPid(&titleId, &pid);
+        u32 launchFlags;
+        res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
         if(R_SUCCEEDED(res))
         {
-            HBLDR_3DSX_TID = titleId;
+            HBLDR_3DSX_TID = progInfo.programId;
             miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else

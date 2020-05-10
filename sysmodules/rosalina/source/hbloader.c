@@ -178,6 +178,31 @@ static u16 *u16_strncpy(u16 *dest, const u16 *src, u32 size)
     return dest;
 }
 
+void HBLDR_RestartHbApplication(void *p)
+{
+    (void)p;
+    // Don't crash if we fail
+
+    FS_ProgramInfo programInfo;
+    u32 pid;
+    u32 launchFlags;
+
+    Result res = PMDBG_GetCurrentAppInfo(&programInfo, &pid, &launchFlags);
+    if (R_FAILED(res)) return;
+    res = PMDBG_PrepareToChainloadHomebrew(programInfo.programId);
+    if (R_FAILED(res)) return;
+    res = PMAPP_TerminateCurrentApplication(3 * 1000 * 1000 *1000LL); // 3s, like what NS uses
+    if (R_FAILED(res)) return;
+    if (R_SUCCEEDED(res))
+    {
+        do
+        {
+            svcSleepThread(100 * 1000 * 1000LL);
+            res = PMAPP_LaunchTitle(&programInfo, PMLAUNCHFLAGEXT_FAKE_DEPENDENCY_LOADING | launchFlags);
+        } while (res == (Result)0xC8A05BF0);
+    }
+}
+
 void HBLDR_HandleCommands(void *ctx)
 {
     (void)ctx;

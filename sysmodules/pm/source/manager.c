@@ -69,3 +69,27 @@ Result UnregisterProcess(u64 titleId)
     ProcessList_Unlock(&g_manager.processList);
     return 0;
 }
+
+Result PrepareToChainloadHomebrew(u64 titleId)
+{
+    // Note: I'm allowing this command to be called for non-applications, maybe that'll be useful
+    // in the future...
+
+    ProcessData *foundProcess = NULL;
+    Result res;
+    ProcessList_Lock(&g_manager.processList);
+    foundProcess = ProcessList_FindProcessByTitleId(&g_manager.processList, titleId & ~N3DS_TID_MASK);
+    if (foundProcess != NULL) {
+        // Clear the "notify on termination, don't cleanup" flag, so that for ex. APT isn't notified & no need for UnregisterProcess,
+        // and the "dependencies loaded" flag, so that the dependencies aren't killed (for ex. when
+        // booting hbmenu instead of Home Menu, in which case the same title is going to be launched...)
+
+        foundProcess->flags &= ~(PROCESSFLAG_DEPENDENCIES_LOADED | PROCESSFLAG_NOTIFY_TERMINATION);
+        res = 0;
+    } else {
+        res = MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
+    }
+
+    ProcessList_Unlock(&g_manager.processList);
+    return res;
+}
