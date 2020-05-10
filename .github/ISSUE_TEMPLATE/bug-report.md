@@ -11,7 +11,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 --
 -- Also check the Wiki (https://github.com/AuroraWright/Luma3DS/wiki) before making an issue.
 --
--- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: https://3ds.hacks.guide/troubleshooting
+-- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: use https://github.com/MechanicalDragon0687/TWLFix-CFW and update your system.
 -- If you're using an emu/redNAND try installing anything on it to sysNAND.
 -- Please make sure to read "Enable game patching" https://github.com/AuroraWright/Luma3DS/wiki/Options-and-usage before posting any issues about the "Enable game patching" option(s).
 --
@@ -34,7 +34,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 
 **Luma3DS version:**
 
-[e.g. v10.1.3 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/0543c208fd154e6326ea5da8cbf66ffcbdef010c]
+[e.g. v10.1.3 stable or if using non-releases specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/0543c208fd154e6326ea5da8cbf66ffcbdef010c]
 
 **Luma3DS configuration/options:**
 
