@@ -45,7 +45,8 @@
 #define BUTTON_X          (1 << 10)
 #define BUTTON_Y          (1 << 11)
 
-#define DEFAULT_MENU_COMBO  (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)
+#define DEFAULT_MENU_COMBO      (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)
+#define DIRECTIONAL_KEYS        (BUTTON_DOWN | BUTTON_UP | BUTTON_LEFT | BUTTON_RIGHT)
 
 #define CORE_APPLICATION  0
 #define CORE_SYSTEM       1
@@ -75,10 +76,10 @@ extern Handle terminationRequestEvent;
 
 extern u32 menuCombo;
 
-u32 waitInputWithTimeout(u32 msec);
+u32 waitInputWithTimeout(s32 msec);
 u32 waitInput(void);
 
-u32 waitComboWithTimeout(u32 msec);
+u32 waitComboWithTimeout(s32 msec);
 u32 waitCombo(void);
 
 MyThread *menuCreateThread(void);

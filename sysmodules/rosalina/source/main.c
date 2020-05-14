@@ -111,6 +111,7 @@ void initSystem(void)
     s64 out;
     Result res;
     __sync_init();
+    mappableInit(0x10000000, 0x14000000);
 
     isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
 
@@ -156,16 +157,14 @@ void initSystem(void)
 
 bool terminationRequest = false;
 Handle terminationRequestEvent;
+extern bool isHidInitialized;
 
 static void handleTermNotification(u32 notificationId)
 {
     (void)notificationId;
-    // Termination request
-    terminationRequest = true;
-    svcSignalEvent(terminationRequestEvent);
 }
 
-static void relinquishConnectionSessions(u32 notificationId)
+static void handlePreTermNotification(u32 notificationId)
 {
     (void)notificationId;
     // Might be subject to a race condition, but heh.
@@ -183,6 +182,13 @@ static void relinquishConnectionSessions(u32 notificationId)
         isConnectionForced = false;
         SysConfigMenu_UpdateStatus(true);
     }
+
+    if (isHidInitialized)
+        hidExit();
+
+    // Termination request
+    terminationRequest = true;
+    svcSignalEvent(terminationRequestEvent);
 }
 
 static void handleNextApplicationDebuggedByForce(u32 notificationId)
@@ -205,9 +211,9 @@ static const ServiceManagerServiceEntry services[] = {
 
 static const ServiceManagerNotificationEntry notifications[] = {
     { 0x100 , handleTermNotification                },
-    //{ 0x103 , relinquishConnectionSessions          }, // Sleep mode entry <=== causes issues
+    //{ 0x103 , handlePreTermNotification          }, // Sleep mode entry <=== causes issues
     { 0x1000, handleNextApplicationDebuggedByForce  },
-    { 0x2000, relinquishConnectionSessions          },
+    { 0x2000, handlePreTermNotification          },
     { 0x3000, handleRestartHbAppNotification        },
     { 0x000, NULL },
 };
@@ -240,6 +246,7 @@ int main(void)
     TaskRunner_Terminate();
 
     MyThread_Join(menuThread, -1LL);
+
     MyThread_Join(taskRunnerThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
 

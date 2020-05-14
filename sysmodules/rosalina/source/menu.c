@@ -36,92 +36,76 @@
 #include "menus/cheats.h"
 #include "minisoc.h"
 
-u32 waitInputWithTimeout(u32 msec)
+bool isHidInitialized = false;
+
+// libctru redefinition:
+
+bool hidShouldUseIrrst(void)
 {
-    bool pressedKey = false;
-    u32 key = 0;
-    u32 n = 0;
+    // ir:rst exposes only two sessions :(
+    return false;
+}
 
-    //Wait for no keys to be pressed
-    while(HID_PAD && !terminationRequest && (msec == 0 || n < msec))
-    {
-        svcSleepThread(1 * 1000 * 1000LL);
-        n++;
-    }
+static u32 convertHidKeys(u32 keys)
+{
+    u32 buttons = keys & 0xFFF;
 
-    if(terminationRequest || (msec != 0 && n >= msec))
-        return 0;
+    // Transform Circle Pad and C-stick into directional keys
+    if (keys & KEY_LEFT) buttons |= BUTTON_LEFT;
+    if (keys & KEY_RIGHT) buttons |= BUTTON_RIGHT;
+    if (keys & KEY_UP) buttons |= BUTTON_UP;
+    if (keys & KEY_DOWN) buttons |= BUTTON_DOWN;
+
+    return buttons;
+}
+
+u32 waitInputWithTimeout(s32 msec)
+{
+    s32 n = 0;
+    u32 keys;
 
     do
     {
-        //Wait for a key to be pressed
-        while(!HID_PAD && !terminationRequest && (msec == 0 || n < msec))
-        {
-            svcSleepThread(1 * 1000 * 1000LL);
-            n++;
-        }
+        svcSleepThread(1 * 1000 * 1000LL);
+        if (!isHidInitialized || terminationRequest) break;
+        n += 1;
 
-        if(terminationRequest || (msec != 0 && n >= msec))
-            return 0;
+        hidScanInput();
+        keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
+    } while (keys == 0 && !terminationRequest && isHidInitialized && n < msec);
 
-        key = HID_PAD;
 
-        //Make sure it's pressed
-        for(u32 i = 0x26000; i > 0; i --)
-        {
-            if(key != HID_PAD) break;
-            if(i == 1) pressedKey = true;
-        }
-    }
-    while(!pressedKey);
-
-    return key;
+    return keys;
 }
 
 u32 waitInput(void)
 {
-    return waitInputWithTimeout(0);
+    return waitInputWithTimeout(-1);
 }
 
-u32 waitComboWithTimeout(u32 msec)
+u32 waitComboWithTimeout(s32 msec)
 {
-    u32 key = 0;
-    u32 n = 0;
+    s32 n = 0;
+    u32 keys;
 
-    //Wait for no keys to be pressed
-    while(HID_PAD && !terminationRequest && (msec == 0 || n < msec))
-    {
-        svcSleepThread(1 * 1000 * 1000LL);
-        n++;
-    }
-
-    if(terminationRequest || (msec != 0 && n >= msec))
-        return 0;
+    hidScanInput();
+    keys = convertHidKeys(hidKeysHeld());
 
     do
     {
         svcSleepThread(1 * 1000 * 1000LL);
-        n++;
+        if (!isHidInitialized || terminationRequest) break;
+        n += 1;
+        hidScanInput();
+        keys = convertHidKeys(hidKeysHeld());
+    } while (keys == 0 && !terminationRequest && isHidInitialized && n < msec);
 
-        u32 tempKey = HID_PAD;
-
-        for(u32 i = 0x26000; i > 0; i--)
-        {
-            if(tempKey != HID_PAD) break;
-            if(i == 1) key = tempKey;
-        }
-    }
-    while((!key || HID_PAD) && !terminationRequest && (msec == 0 || n < msec));
-
-    if(terminationRequest || (msec != 0 && n >= msec))
-        return 0;
-
-    return key;
+    return keys;
 }
 
 u32 waitCombo(void)
 {
-    return waitComboWithTimeout(0);
+    return waitComboWithTimeout(-1);
 }
 
 static MyThread menuThread;
@@ -149,28 +133,26 @@ void menuThreadMain(void)
     else
         N3DSMenu_UpdateStatus();
 
-    bool isAcURegistered = false;
+    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
+        svcSleepThread(500 * 1000 * 1000LL);
+
+    hidInit(); // assume this doesn't fail
+    hidSetRepeatParameters(250, 100);
+    isHidInitialized = true;
 
     while(!terminationRequest)
     {
-        if((HID_PAD & menuCombo) == menuCombo)
-        {
-            if (!isAcURegistered)
-                isAcURegistered = R_SUCCEEDED(srvIsServiceRegistered(&isAcURegistered, "ac:u"))
-                    && isAcURegistered;
+        u32 keys = waitComboWithTimeout(1);
+        Cheat_ApplyCheats();
 
-            if (isAcURegistered)
-            {
-                menuEnter();
-                if(isN3DS) N3DSMenu_UpdateStatus();
-                menuShow(&rosalinaMenu);
-                menuLeave();
-            }
-        }
-        else
+        if((keys & menuCombo) == menuCombo)
         {
-            Cheat_ApplyCheats();
+            menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            menuShow(&rosalinaMenu);
+            menuLeave();
         }
+
         svcSleepThread(50 * 1000 * 1000LL);
     }
 }
