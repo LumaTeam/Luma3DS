@@ -37,6 +37,7 @@
 #include "memory.h"
 #include "screen.h"
 #include "i2c.h"
+#include "itcm.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 extern u8 __itcm_start__[], __itcm_lma__[], __itcm_bss_start__[], __itcm_end__[];
@@ -117,6 +118,7 @@ void main(int argc, char **argv, u32 magicWord)
     memcpy(__itcm_start__, __itcm_lma__, __itcm_bss_start__ - __itcm_start__);
     memset(__itcm_bss_start__, 0, __itcm_end__ - __itcm_bss_start__);
     I2C_init();
+
     if(isInvalidLoader) error("Launched using an unsupported loader.");
 
     installArm9Handlers();
@@ -157,6 +159,9 @@ void main(int argc, char **argv, u32 magicWord)
     }
 
     detectAndProcessExceptionDumps();
+
+    // Writes plaintext OTP to ITCM, if OTP exists
+    if (getFileSize(OTP_PATH)) patchITCM();
 
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
