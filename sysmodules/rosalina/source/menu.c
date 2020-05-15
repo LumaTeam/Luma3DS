@@ -61,7 +61,7 @@ u32 waitInputWithTimeout(s32 msec)
     {
         svcSleepThread(1 * 1000 * 1000LL);
         Draw_Lock();
-        if (!isHidInitialized || terminationRequest)
+        if (!isHidInitialized || menuShouldExit)
         {
             keys = 0;
             Draw_Unlock();
@@ -72,7 +72,7 @@ u32 waitInputWithTimeout(s32 msec)
         hidScanInput();
         keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
         Draw_Unlock();
-    } while (keys == 0 && !terminationRequest && isHidInitialized && (msec < 0 || n < msec));
+    } while (keys == 0 && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec));
 
 
     return keys;
@@ -89,7 +89,7 @@ static u32 scanHeldKeys(void)
 
     Draw_Lock();
 
-    if (!isHidInitialized || terminationRequest)
+    if (!isHidInitialized || menuShouldExit)
         keys = 0;
     else
     {
@@ -108,13 +108,13 @@ u32 waitComboWithTimeout(s32 msec)
     u32 tempKeys = 0;
 
     // Wait for nothing to be pressed
-    while (scanHeldKeys() != 0 && !terminationRequest && isHidInitialized && (msec < 0 || n < msec))
+    while (scanHeldKeys() != 0 && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec))
     {
         svcSleepThread(1 * 1000 * 1000LL);
         n++;
     }
 
-    if (terminationRequest || !isHidInitialized || !(msec < 0 || n < msec))
+    if (menuShouldExit || !isHidInitialized || !(msec < 0 || n < msec))
         return 0;
 
     do
@@ -130,7 +130,7 @@ u32 waitComboWithTimeout(s32 msec)
             if (i == 1) keys = tempKeys;
         }
     }
-    while((keys == 0 || scanHeldKeys() != 0) && !terminationRequest && isHidInitialized && (msec < 0 || n < msec));
+    while((keys == 0 || scanHeldKeys() != 0) && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec));
 
     return keys;
 }
@@ -171,8 +171,11 @@ void menuThreadMain(void)
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;
 
-    while(!terminationRequest)
+    while(!preTerminationRequested)
     {
+        if (menuShouldExit)
+            continue;
+
         Cheat_ApplyCheats();
 
         if((scanHeldKeys() & menuCombo) == menuCombo)
@@ -191,8 +194,9 @@ static s32 menuRefCount = 0;
 void menuEnter(void)
 {
     Draw_Lock();
-    if(menuRefCount++ == 0)
+    if(!menuShouldExit && menuRefCount == 0)
     {
+        menuRefCount++;
         svcKernelSetState(0x10000, 1);
         svcSleepThread(5 * 1000 * 100LL);
         if (Draw_AllocateFramebufferCache() == 0)
@@ -372,5 +376,5 @@ void menuShow(Menu *root)
         menuDraw(currentMenu, selectedItem);
         Draw_Unlock();
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }

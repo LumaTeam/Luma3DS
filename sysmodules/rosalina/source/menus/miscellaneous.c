@@ -95,7 +95,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
@@ -161,7 +161,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_SaveSettings(void)
@@ -227,7 +227,7 @@ void MiscellaneousMenu_SaveSettings(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_InputRedirection(void)
@@ -327,7 +327,7 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_SyncTimeDate(void)
@@ -368,7 +368,7 @@ void MiscellaneousMenu_SyncTimeDate(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & (KEY_A | KEY_B)) && !terminationRequest);
+    while(!(input & (KEY_A | KEY_B)) && !menuShouldExit);
 
     if (input & KEY_B)
         return;
@@ -410,6 +410,6 @@ void MiscellaneousMenu_SyncTimeDate(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & KEY_B) && !terminationRequest);
+    while(!(input & KEY_B) && !menuShouldExit);
 
 }

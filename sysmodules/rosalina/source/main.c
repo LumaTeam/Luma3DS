@@ -155,8 +155,9 @@ void initSystem(void)
     srvSetBlockingPolicy(true); // GetServiceHandle nonblocking if service port is full
 }
 
-bool terminationRequest = false;
-Handle terminationRequestEvent;
+bool menuShouldExit = false;
+bool preTerminationRequested = false;
+Handle preTerminationEvent;
 extern bool isHidInitialized;
 
 static void handleTermNotification(u32 notificationId)
@@ -188,8 +189,9 @@ static void handlePreTermNotification(u32 notificationId)
         hidExit();
 
     // Termination request
-    terminationRequest = true;
-    svcSignalEvent(terminationRequestEvent);
+    menuShouldExit = true;
+    preTerminationRequested = true;
+    svcSignalEvent(preTerminationEvent);
     Draw_Unlock();
 }
 
@@ -232,7 +234,7 @@ int main(void)
     bufPtrs[2] = IPC_Desc_StaticBuffer(sizeof(ldrArgvBuf), 1);
     bufPtrs[3] = (u32)ldrArgvBuf;
 
-    if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
+    if(R_FAILED(svcCreateEvent(&preTerminationEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
 
     Draw_Init();

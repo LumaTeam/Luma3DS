@@ -89,7 +89,7 @@ void RosalinaMenu_ShowCredits(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void RosalinaMenu_Reboot(void)
@@ -117,7 +117,7 @@ void RosalinaMenu_Reboot(void)
         } else if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }
 
 void RosalinaMenu_PowerOff(void) // Soft shutdown.
@@ -146,7 +146,7 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
         else if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }
 
 
@@ -310,7 +310,7 @@ end:
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 
 #undef TRY
 }

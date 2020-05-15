@@ -78,7 +78,7 @@ void SysConfigMenu_ToggleLEDs(void)
         else if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }
 
 void SysConfigMenu_ToggleWireless(void)
@@ -148,7 +148,7 @@ void SysConfigMenu_ToggleWireless(void)
         else if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }
 
 void SysConfigMenu_UpdateStatus(bool control)
@@ -227,7 +227,7 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
         if(pressed & KEY_B)
             break;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 
     return forcedConnection;
 }
@@ -270,7 +270,7 @@ void SysConfigMenu_TogglePowerButton(void)
         else if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }
 
 void SysConfigMenu_ControlWifi(void)
@@ -332,7 +332,7 @@ void SysConfigMenu_ControlWifi(void)
         else if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }
 
 void SysConfigMenu_DisableForcedWifiConnection(void)
@@ -355,5 +355,5 @@ void SysConfigMenu_DisableForcedWifiConnection(void)
         if(pressed & KEY_B)
             return;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }

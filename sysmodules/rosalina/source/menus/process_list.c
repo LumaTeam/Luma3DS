@@ -197,7 +197,7 @@ end:
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & KEY_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 
 #undef TRY
 }
@@ -568,7 +568,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 if(menus[menuMode].selected >= menus[menuMode].max)
                     menus[menuMode].selected = menus[menuMode].max - 1;
             }
-            while(!terminationRequest);
+            while(!menuShouldExit);
 
             clearMenu();
         }
@@ -685,7 +685,7 @@ void RosalinaMenu_ProcessList(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
-        if(terminationRequest)
+        if(menuShouldExit)
             break;
 
         u32 pressed;
@@ -698,7 +698,7 @@ void RosalinaMenu_ProcessList(void)
             if(memcmp(infos, infosPrev, sizeof(infos)) != 0)
                 break;
         }
-        while(pressed == 0 && !terminationRequest);
+        while(pressed == 0 && !menuShouldExit);
 
         if(pressed & KEY_B)
             break;
@@ -728,5 +728,5 @@ void RosalinaMenu_ProcessList(void)
         pagePrev = page;
         page = selected / PROCESSES_PER_MENU_PAGE;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }

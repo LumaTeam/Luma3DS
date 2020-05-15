@@ -113,7 +113,7 @@ void inputRedirectionThreadMain(void)
 
     char buf[20];
     u32 oldSpecialButtons = 0, specialButtons = 0;
-    while(inputRedirectionEnabled && !terminationRequest)
+    while(inputRedirectionEnabled && !preTerminationRequested)
     {
         struct pollfd pfd;
         pfd.fd = sock;

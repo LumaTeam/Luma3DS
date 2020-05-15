@@ -1944,7 +1944,7 @@ void RosalinaMenu_Cheats(void)
 
             Draw_FlushFramebuffer();
             Draw_Unlock();
-        } while (!(waitInput() & KEY_B) && !terminationRequest);
+        } while (!(waitInput() & KEY_B) && !menuShouldExit);
     }
     else
     {
@@ -1982,14 +1982,14 @@ void RosalinaMenu_Cheats(void)
             Draw_FlushFramebuffer();
             Draw_Unlock();
 
-            if (terminationRequest) break;
+            if (menuShouldExit) break;
 
             u32 pressed;
             do
             {
                 pressed = waitInputWithTimeout(50);
                 if (pressed != 0) break;
-            } while (pressed == 0 && !terminationRequest);
+            } while (pressed == 0 && !menuShouldExit);
 
             if (pressed & KEY_B)
                 break;
@@ -2025,7 +2025,7 @@ void RosalinaMenu_Cheats(void)
 
             pagePrev = page;
             page = selected / CHEATS_PER_MENU_PAGE;
-        } while (!terminationRequest);
+        } while (!menuShouldExit);
     }
 
 }
