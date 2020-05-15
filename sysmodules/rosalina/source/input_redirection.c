@@ -29,6 +29,7 @@
 #include "utils.h" // for makeArmBranch
 #include "minisoc.h"
 #include "input_redirection.h"
+#include "process_patches.h"
 #include "menus.h"
 #include "memory.h"
 

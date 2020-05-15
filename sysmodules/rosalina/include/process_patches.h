@@ -29,4 +29,4 @@
 #include <3ds/types.h>
 #include "menu.h"
 
-void ProcessPatchesMenu_PatchUnpatchFSDirectly(void);
+Result OpenProcessByName(const char *name, Handle *h);

@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include "menus/process_list.h"
+#include "process_patches.h"
 #include "memory.h"
 #include "csvc.h"
 #include "draw.h"

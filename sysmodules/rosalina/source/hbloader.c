@@ -346,7 +346,7 @@ void HBLDR_HandleCommands(void *ctx)
             // See the big comment in sysmodules/pm/source/reslimit.c for technical details.
             localcaps0->reslimits[0] = BIT(7) | 89;
 
-            localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
+            //localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
             localcaps0->storage_info.no_romfs = true;
             localcaps0->storage_info.use_extended_savedata_access = true; // Whatever
 

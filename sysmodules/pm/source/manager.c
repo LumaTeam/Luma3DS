@@ -7,6 +7,21 @@
 
 Manager g_manager;
 
+static void giveAllFsArchiveAccessToKip(u32 pid, u64 tid)
+{
+    static const ExHeader_Arm11StorageInfo storageInfo = {
+        .fs_access_info = 0xFFFFFFFF,
+    };
+    static const u64 programHandle = 0xFFFF000000000000LL;
+
+    FS_ProgramInfo info = {
+        .programId = tid,
+        .mediaType = MEDIATYPE_NAND,
+    };
+
+    assertSuccess(FSREG_Register(pid, programHandle, &info, &storageInfo));
+}
+
 void Manager_Init(void *procBuf, size_t numProc)
 {
     memset(&g_manager, 0, sizeof(Manager));
@@ -34,7 +49,7 @@ void Manager_RegisterKips(void)
         process->handle = processHandle;
         process->pid = i;
         process->refcount = 1;
-        process->titleId = 0x0004000100001000ULL; // note: same TID for all builtins
+        process->titleId = 0x0004000100001000ULL; // note: same internal TID for all builtins
         process->flags = PROCESSFLAG_KIP;
         process->terminationStatus = TERMSTATUS_RUNNING;
 
@@ -43,8 +58,14 @@ void Manager_RegisterKips(void)
             assertSuccess(svcSetProcessResourceLimits(processHandle, g_manager.reslimits[RESLIMIT_CATEGORY_OTHER]));
         }
     }
-
     ProcessList_Unlock(&g_manager.processList);
+
+    // Give full archive access to us (PM) and Rosalina (real PIDs don't matter, they just have to be unique (?))
+    // Loader doesn't depend on PM and has its own fs:REG handle so it must do it itself.
+    giveAllFsArchiveAccessToKip(2, 0x0004013000001202LL); // PM
+    if (numKips > 5) {
+        giveAllFsArchiveAccessToKip(5, 0x0004013000006902LL); // Rosalina
+    }
 }
 
 Result UnregisterProcess(u64 titleId)
