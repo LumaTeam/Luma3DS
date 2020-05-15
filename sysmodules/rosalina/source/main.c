@@ -183,12 +183,14 @@ static void handlePreTermNotification(u32 notificationId)
         SysConfigMenu_UpdateStatus(true);
     }
 
+    Draw_Lock();
     if (isHidInitialized)
         hidExit();
 
     // Termination request
     terminationRequest = true;
     svcSignalEvent(terminationRequestEvent);
+    Draw_Unlock();
 }
 
 static void handleNextApplicationDebuggedByForce(u32 notificationId)

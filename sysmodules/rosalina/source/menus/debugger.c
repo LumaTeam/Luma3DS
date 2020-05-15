@@ -162,7 +162,7 @@ void DebuggerMenu_EnableDebugger(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 void DebuggerMenu_DisableDebugger(void)
@@ -183,7 +183,7 @@ void DebuggerMenu_DisableDebugger(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 void DebuggerMenu_DebugNextApplicationByForce(void)
@@ -232,7 +232,7 @@ void DebuggerMenu_DebugNextApplicationByForce(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 void debuggerSocketThreadMain(void)

@@ -95,13 +95,25 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
 {
-    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y" };
-    for(s32 i = 11; i >= 0; i--)
+    static const char *keys[] = {
+        "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y",
+        "?", "?",
+        "ZL", "ZR",
+        "?", "?", "?", "?",
+        "Touch",
+        "?", "?", "?",
+        "CStick Right", "CStick Left", "CStick Up", "CStick Down",
+        "CPad Right", "CPad Left", "CPad Up", "CPad Down",
+    };
+
+    char *outOrig = out;
+    out[0] = 0;
+    for(s32 i = 31; i >= 0; i--)
     {
         if(combo & (1 << i))
         {
@@ -111,12 +123,13 @@ static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
         }
     }
 
-    out[-1] = 0;
+    if (out != outOrig)
+        out[-1] = 0;
 }
 
 void MiscellaneousMenu_ChangeMenuCombo(void)
 {
-    char comboStrOrig[64], comboStr[64];
+    char comboStrOrig[128], comboStr[128];
     u32 posY;
 
     Draw_Lock();
@@ -131,9 +144,6 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
 
     posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "The current menu combo is:  %s", comboStrOrig);
     posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo:");
-
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
 
     menuCombo = waitCombo();
     MiscellaneousMenu_ConvertComboToString(comboStr, menuCombo);
@@ -151,7 +161,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 void MiscellaneousMenu_SaveSettings(void)
@@ -217,7 +227,7 @@ void MiscellaneousMenu_SaveSettings(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 void MiscellaneousMenu_InputRedirection(void)
@@ -317,7 +327,7 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !terminationRequest);
 }
 
 void MiscellaneousMenu_SyncTimeDate(void)
@@ -351,16 +361,16 @@ void MiscellaneousMenu_SyncTimeDate(void)
 
         input = waitInput();
 
-        if(input & BUTTON_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
-        if(input & BUTTON_RIGHT) utcOffset = (utcOffset + 1) % 24;
-        if(input & BUTTON_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
-        if(input & BUTTON_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
+        if(input & KEY_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
+        if(input & KEY_RIGHT) utcOffset = (utcOffset + 1) % 24;
+        if(input & KEY_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
+        if(input & KEY_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & (BUTTON_A | BUTTON_B)) && !terminationRequest);
+    while(!(input & (KEY_A | KEY_B)) && !terminationRequest);
 
-    if (input & BUTTON_B)
+    if (input & KEY_B)
         return;
 
     utcOffset -= 12;
@@ -400,6 +410,6 @@ void MiscellaneousMenu_SyncTimeDate(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & BUTTON_B) && !terminationRequest);
+    while(!(input & KEY_B) && !terminationRequest);
 
 }

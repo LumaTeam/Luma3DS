@@ -66,7 +66,7 @@ void SysConfigMenu_ToggleLEDs(void)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & BUTTON_A)
+        if(pressed & KEY_A)
         {
             mcuHwcInit();
             u8 result;
@@ -75,7 +75,7 @@ void SysConfigMenu_ToggleLEDs(void)
             MCUHWC_WriteRegister(0x28, &result, 1);
             mcuHwcExit();
         }
-        else if(pressed & BUTTON_B)
+        else if(pressed & KEY_B)
             return;
     }
     while(!terminationRequest);
@@ -139,13 +139,13 @@ void SysConfigMenu_ToggleWireless(void)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & BUTTON_A && nwmRunning)
+        if(pressed & KEY_A && nwmRunning)
         {
             nwmExtInit();
             NWMEXT_ControlWirelessEnabled(!wireless);
             nwmExtExit();
         }
-        else if(pressed & BUTTON_B)
+        else if(pressed & KEY_B)
             return;
     }
     while(!terminationRequest);
@@ -224,7 +224,7 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & BUTTON_B)
+        if(pressed & KEY_B)
             break;
     }
     while(!terminationRequest);
@@ -259,7 +259,7 @@ void SysConfigMenu_TogglePowerButton(void)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & BUTTON_A)
+        if(pressed & KEY_A)
         {
             mcuHwcInit();
             MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
@@ -267,7 +267,7 @@ void SysConfigMenu_TogglePowerButton(void)
             MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
             mcuHwcExit();
         }
-        else if(pressed & BUTTON_B)
+        else if(pressed & KEY_B)
             return;
     }
     while(!terminationRequest);
@@ -296,7 +296,7 @@ void SysConfigMenu_ControlWifi(void)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & BUTTON_A)
+        if(pressed & KEY_A)
         {
             if(SysConfigMenu_ForceWifiConnection(slot))
             {
@@ -309,7 +309,7 @@ void SysConfigMenu_ControlWifi(void)
             Draw_FlushFramebuffer();
             Draw_Unlock();
         }
-        else if(pressed & BUTTON_LEFT)
+        else if(pressed & KEY_LEFT)
         {
             slotString[slot * 4] = ' ';
             slotString[(slot * 4) + 2] = ' ';
@@ -319,7 +319,7 @@ void SysConfigMenu_ControlWifi(void)
             slotString[slot * 4] = '>';
             slotString[(slot * 4) + 2] = '<';
         }
-        else if(pressed & BUTTON_RIGHT)
+        else if(pressed & KEY_RIGHT)
         {
             slotString[slot * 4] = ' ';
             slotString[(slot * 4) + 2] = ' ';
@@ -329,7 +329,7 @@ void SysConfigMenu_ControlWifi(void)
             slotString[slot * 4] = '>';
             slotString[(slot * 4) + 2] = '<';
         }
-        else if(pressed & BUTTON_B)
+        else if(pressed & KEY_B)
             return;
     }
     while(!terminationRequest);
@@ -352,7 +352,7 @@ void SysConfigMenu_DisableForcedWifiConnection(void)
         Draw_DrawString(10, 30, COLOR_WHITE, "Forced connection successfully disabled.\nNote: auto-connection may remain broken.");
 
         u32 pressed = waitInputWithTimeout(1000);
-        if(pressed & BUTTON_B)
+        if(pressed & KEY_B)
             return;
     }
     while(!terminationRequest);

@@ -46,17 +46,10 @@ bool hidShouldUseIrrst(void)
     return false;
 }
 
-static u32 convertHidKeys(u32 keys)
+static inline u32 convertHidKeys(u32 keys)
 {
-    u32 buttons = keys & 0xFFF;
-
-    // Transform Circle Pad and C-stick into directional keys
-    if (keys & KEY_LEFT) buttons |= BUTTON_LEFT;
-    if (keys & KEY_RIGHT) buttons |= BUTTON_RIGHT;
-    if (keys & KEY_UP) buttons |= BUTTON_UP;
-    if (keys & KEY_DOWN) buttons |= BUTTON_DOWN;
-
-    return buttons;
+    // Nothing to do yet
+    return keys;
 }
 
 u32 waitInputWithTimeout(s32 msec)
@@ -67,12 +60,19 @@ u32 waitInputWithTimeout(s32 msec)
     do
     {
         svcSleepThread(1 * 1000 * 1000LL);
-        if (!isHidInitialized || terminationRequest) break;
-        n += 1;
+        Draw_Lock();
+        if (!isHidInitialized || terminationRequest)
+        {
+            keys = 0;
+            Draw_Unlock();
+            break;
+        }
+        n++;
 
         hidScanInput();
         keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
-    } while (keys == 0 && !terminationRequest && isHidInitialized && n < msec);
+        Draw_Unlock();
+    } while (keys == 0 && !terminationRequest && isHidInitialized && (msec < 0 || n < msec));
 
 
     return keys;
@@ -83,22 +83,54 @@ u32 waitInput(void)
     return waitInputWithTimeout(-1);
 }
 
+static u32 scanHeldKeys(void)
+{
+    u32 keys;
+
+    Draw_Lock();
+
+    if (!isHidInitialized || terminationRequest)
+        keys = 0;
+    else
+    {
+        hidScanInput();
+        keys = convertHidKeys(hidKeysHeld());
+    }
+
+    Draw_Unlock();
+    return keys;
+}
+
 u32 waitComboWithTimeout(s32 msec)
 {
     s32 n = 0;
-    u32 keys;
+    u32 keys = 0;
+    u32 tempKeys = 0;
 
-    hidScanInput();
-    keys = convertHidKeys(hidKeysHeld());
+    // Wait for nothing to be pressed
+    while (scanHeldKeys() != 0 && !terminationRequest && isHidInitialized && (msec < 0 || n < msec))
+    {
+        svcSleepThread(1 * 1000 * 1000LL);
+        n++;
+    }
+
+    if (terminationRequest || !isHidInitialized || !(msec < 0 || n < msec))
+        return 0;
 
     do
     {
         svcSleepThread(1 * 1000 * 1000LL);
-        if (!isHidInitialized || terminationRequest) break;
-        n += 1;
-        hidScanInput();
-        keys = convertHidKeys(hidKeysHeld());
-    } while (keys == 0 && !terminationRequest && isHidInitialized && n < msec);
+        n++;
+
+        tempKeys = scanHeldKeys();
+
+        for (u32 i = 0x10000; i > 0; i--)
+        {
+            if (tempKeys != scanHeldKeys()) break;
+            if (i == 1) keys = tempKeys;
+        }
+    }
+    while((keys == 0 || scanHeldKeys() != 0) && !terminationRequest && isHidInitialized && (msec < 0 || n < msec));
 
     return keys;
 }
@@ -137,15 +169,13 @@ void menuThreadMain(void)
         svcSleepThread(500 * 1000 * 1000LL);
 
     hidInit(); // assume this doesn't fail
-    hidSetRepeatParameters(250, 100);
     isHidInitialized = true;
 
     while(!terminationRequest)
     {
-        u32 keys = waitComboWithTimeout(1);
         Cheat_ApplyCheats();
 
-        if((keys & menuCombo) == menuCombo)
+        if((scanHeldKeys() & menuCombo) == menuCombo)
         {
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
@@ -268,14 +298,25 @@ void menuShow(Menu *root)
     Draw_Lock();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
+    hidSetRepeatParameters(0, 0);
     menuDraw(currentMenu, selectedItem);
     Draw_Unlock();
+
+    bool menuComboReleased = false;
 
     do
     {
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & BUTTON_A)
+        if(!menuComboReleased && (scanHeldKeys() & menuCombo) != menuCombo)
+        {
+            menuComboReleased = true;
+            Draw_Lock();
+            hidSetRepeatParameters(200, 100);
+            Draw_Unlock();
+        }
+
+        if(pressed & KEY_A)
         {
             Draw_Lock();
             Draw_ClearFramebuffer();
@@ -301,7 +342,7 @@ void menuShow(Menu *root)
             Draw_FlushFramebuffer();
             Draw_Unlock();
         }
-        else if(pressed & BUTTON_B)
+        else if(pressed & KEY_B)
         {
             Draw_Lock();
             Draw_ClearFramebuffer();
@@ -316,12 +357,12 @@ void menuShow(Menu *root)
             else
                 break;
         }
-        else if(pressed & BUTTON_DOWN)
+        else if(pressed & KEY_DOWN)
         {
             if(++selectedItem >= currentMenu->nbItems)
                 selectedItem = 0;
         }
-        else if(pressed & BUTTON_UP)
+        else if(pressed & KEY_UP)
         {
             if(selectedItem-- <= 0)
                 selectedItem = currentMenu->nbItems - 1;
