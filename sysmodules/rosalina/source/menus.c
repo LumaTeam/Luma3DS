@@ -185,7 +185,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y to revert the GSP patch and exit.\n\n");
 
             posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * very high values might damage your screens\n");
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * avoid using values far higher than the presets.\n");
             posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * normal brightness mngmt. is now broken on N3DS.\nYou'll need to press Y to revert");
         }
         else
