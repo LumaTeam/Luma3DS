@@ -30,3 +30,4 @@
 #include "menu.h"
 
 Result OpenProcessByName(const char *name, Handle *h);
+Result PatchProcessByName(const char *name, Result (*func)(u32 size));

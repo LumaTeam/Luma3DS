@@ -60,6 +60,7 @@ typedef struct Menu {
     MenuItem items[0x40];
 } Menu;
 
+extern bool isN3DS;
 extern bool menuShouldExit;
 extern bool preTerminationRequested;
 extern Handle preTerminationEvent;

@@ -59,7 +59,7 @@ Result OpenProcessByName(const char *name, Handle *h)
     return 0;
 }
 
-/*static u32 ProcessPatchesMenu_PatchUnpatchProcessByName(const char *name, Result (*func)(u32 size))
+Result PatchProcessByName(const char *name, Result (*func)(u32 size))
 {
     Result res;
     Handle processHandle;
@@ -75,4 +75,4 @@ Result OpenProcessByName(const char *name, Handle *h)
 
     svcUnmapProcessMemoryEx(processHandle, 0x00100000, textTotalRoundedSize);
     return res;
-}*/
+}

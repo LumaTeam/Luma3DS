@@ -151,7 +151,6 @@ MyThread *menuCreateThread(void)
     return &menuThread;
 }
 
-extern bool isN3DS;
 u32 menuCombo;
 
 void menuThreadMain(void)
@@ -159,7 +158,7 @@ void menuThreadMain(void)
     if(!isN3DS)
     {
         rosalinaMenu.nbItems--;
-        for(u32 i = 6; i <= rosalinaMenu.nbItems; i++)
+        for(u32 i = 7; i <= rosalinaMenu.nbItems; i++)
             rosalinaMenu.items[i] = rosalinaMenu.items[i+1];
     }
     else

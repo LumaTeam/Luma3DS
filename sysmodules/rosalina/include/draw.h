@@ -54,6 +54,9 @@
 #define GPU_TRANSFER_CNT            REG32(0x10400C18)
 #define GPU_CMDLIST_CNT             REG32(0x104018F0)
 
+#define LCD_TOP_BRIGHTNESS          REG32(0x10202240)
+#define LCD_BOT_BRIGHTNESS          REG32(0x10202A40)
+
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
