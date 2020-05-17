@@ -62,3 +62,7 @@ static inline bool isServiceUsable(const char *name)
     bool r;
     return R_SUCCEEDED(srvIsServiceRegistered(&r, name)) && r;
 }
+
+void formatMemoryPermission(char *outbuf, MemPerm perm);
+void formatUserMemoryState(char *outbuf, MemState state);
+u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);

@@ -55,9 +55,43 @@ Menu rosalinaMenu = {
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+        { "Debug info", METHOD, .method = &RosalinaMenu_ShowDebugInfo, .visibility = &rosalinaMenuShouldShowDebugInfo },
         {},
     }
 };
+
+bool rosalinaMenuShouldShowDebugInfo(void)
+{
+    return false;
+}
+
+void RosalinaMenu_ShowDebugInfo(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    char memoryMap[512];
+    formatMemoryMapOfProcess(memoryMap, 511, CUR_PROCESS_HANDLE);
+
+    s64 kextAddrSize;
+    svcGetSystemInfo(&kextAddrSize, 0x10000, 0x300);
+    u32 kextPa = (u32)((u64)kextAddrSize >> 32);
+    u32 kextSize = (u32)kextAddrSize;
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Debug info");
+
+        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, memoryMap);
+        Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Kernel ext PA: %08lx - %08lx\n", kextPa, kextPa + kextSize);
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
+}
 
 void RosalinaMenu_ShowCredits(void)
 {

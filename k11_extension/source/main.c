@@ -271,6 +271,7 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     memcpy(L1MMUTableAddrs, (const void *)p->L1MMUTableAddrs, 16);
     exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
     cfwInfo = p->cfwInfo;
+    kextBasePa = p->basePA;
 
     memcpy(originalHandlers + 1, p->originalHandlers, 16);
     void **arm11SvcTable = (void**)originalHandlers[2];
