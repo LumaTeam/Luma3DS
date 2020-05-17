@@ -39,13 +39,13 @@
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 5,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = &MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
         { "Sync time and date via NTP", METHOD, .method = &MiscellaneousMenu_SyncTimeDate },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
+        {},
     }
 };
 

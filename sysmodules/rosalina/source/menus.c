@@ -42,7 +42,6 @@
 
 Menu rosalinaMenu = {
     "Rosalina menu",
-    .nbItems = 12,
     {
         { "Take screenshot", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "Change screen brightness", METHOD, .method = &RosalinaMenu_ChangeScreenBrightness },
@@ -51,11 +50,12 @@ Menu rosalinaMenu = {
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Screen filters...", MENU, .menu = &screenFiltersMenu },
-        { "New 3DS menu...", MENU, .menu = &N3DSMenu },
+        { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
-        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits }
+        { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
+        {},
     }
 };
 

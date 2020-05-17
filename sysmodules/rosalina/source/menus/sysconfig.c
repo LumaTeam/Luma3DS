@@ -34,12 +34,12 @@
 
 Menu sysconfigMenu = {
     "System configuration menu",
-    .nbItems = 4,
     {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
+        {},
     }
 };
 

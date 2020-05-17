@@ -41,9 +41,11 @@
 #define CORE_SYSTEM       1
 
 typedef enum MenuItemAction {
-    METHOD,
-    MENU
+    MENU_END = 0,
+    METHOD = 1,
+    MENU = 2,
 } MenuItemAction;
+
 typedef struct MenuItem {
     const char *title;
 
@@ -52,12 +54,14 @@ typedef struct MenuItem {
         struct Menu *menu;
         void (*method)(void);
     };
+
+    bool (*visibility)(void);
 } MenuItem;
+
 typedef struct Menu {
     const char *title;
 
-    u32 nbItems;
-    MenuItem items[0x40];
+    MenuItem items[16];
 } Menu;
 
 extern bool isN3DS;
@@ -72,6 +76,9 @@ u32 waitInput(void);
 
 u32 waitComboWithTimeout(s32 msec);
 u32 waitCombo(void);
+
+bool menuCheckN3ds(void);
+u32 menuCountItems(const Menu *menu);
 
 MyThread *menuCreateThread(void);
 void menuEnter(void);

@@ -144,6 +144,28 @@ static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[0x1000];
 static u8 batteryLevel = 255;
 
+static inline u32 menuAdvanceCursor(u32 pos, u32 numItems, s32 displ)
+{
+    return (pos + numItems + displ) % numItems;
+}
+
+static inline bool menuItemIsHidden(const MenuItem *item)
+{
+    return item->visibility != NULL && !item->visibility();
+}
+
+bool menuCheckN3ds(void)
+{
+    return isN3DS;
+}
+
+u32 menuCountItems(const Menu *menu)
+{
+    u32 n;
+    for (n = 0; menu->items[n].action_type != MENU_END; n++);
+    return n;
+}
+
 MyThread *menuCreateThread(void)
 {
     if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0x1000, 52, CORE_SYSTEM)))
@@ -155,13 +177,7 @@ u32 menuCombo;
 
 void menuThreadMain(void)
 {
-    if(!isN3DS)
-    {
-        rosalinaMenu.nbItems--;
-        for(u32 i = 7; i <= rosalinaMenu.nbItems; i++)
-            rosalinaMenu.items[i] = rosalinaMenu.items[i+1];
-    }
-    else
+    if(isN3DS)
         N3DSMenu_UpdateStatus();
 
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
@@ -257,13 +273,17 @@ static void menuDraw(Menu *menu, u32 selected)
         sprintf(versionString, "v%lu.%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
 
     Draw_DrawString(10, 10, COLOR_TITLE, menu->title);
+    u32 numItems = menuCountItems(menu);
+    u32 dispY = 0;
 
-    for(u32 i = 0; i < 15; i++)
+    for(u32 i = 0; i < numItems; i++)
     {
-        if(i >= menu->nbItems)
-            break;
-        Draw_DrawString(30, 30 + i * SPACING_Y, COLOR_WHITE, menu->items[i].title);
-        Draw_DrawCharacter(10, 30 + i * SPACING_Y, COLOR_TITLE, i == selected ? '>' : ' ');
+        if (menuItemIsHidden(&menu->items[i]))
+            continue;
+
+        Draw_DrawString(30, 30 + dispY, COLOR_WHITE, menu->items[i].title);
+        Draw_DrawCharacter(10, 30 + dispY, COLOR_TITLE, i == selected ? '>' : ' ');
+        dispY += SPACING_Y;
     }
 
     if(miniSocEnabled)
@@ -298,6 +318,10 @@ void menuShow(Menu *root)
     Menu *previousMenus[0x80];
     u32 previousSelectedItems[0x80];
 
+    u32 numItems = menuCountItems(currentMenu);
+    if (menuItemIsHidden(&currentMenu->items[selectedItem]))
+        selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
+
     Draw_Lock();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
@@ -310,6 +334,7 @@ void menuShow(Menu *root)
     do
     {
         u32 pressed = waitInputWithTimeout(1000);
+        numItems = menuCountItems(currentMenu);
 
         if(!menuComboReleased && (scanHeldKeys() & menuCombo) != menuCombo)
         {
@@ -338,6 +363,9 @@ void menuShow(Menu *root)
                     currentMenu = currentMenu->items[selectedItem].menu;
                     selectedItem = 0;
                     break;
+                default:
+                    __builtin_trap(); // oops
+                    break;
             }
 
             Draw_Lock();
@@ -362,13 +390,15 @@ void menuShow(Menu *root)
         }
         else if(pressed & KEY_DOWN)
         {
-            if(++selectedItem >= currentMenu->nbItems)
-                selectedItem = 0;
+            selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
+            if (menuItemIsHidden(&currentMenu->items[selectedItem]))
+                selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
         }
         else if(pressed & KEY_UP)
         {
-            if(selectedItem-- <= 0)
-                selectedItem = currentMenu->nbItems - 1;
+            selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
+            if (menuItemIsHidden(&currentMenu->items[selectedItem]))
+                selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
         }
 
         Draw_Lock();

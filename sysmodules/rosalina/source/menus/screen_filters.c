@@ -91,7 +91,6 @@ void applyColorSettings(color_setting_t* cs)
 
 Menu screenFiltersMenu = {
     "Screen filters menu",
-    .nbItems = 6,
     {
         { "Disable", METHOD, .method = &screenFiltersSetDisabled },
         { "Reduce blue light (level 1)", METHOD, .method = &screenFiltersReduceBlueLevel1 },
@@ -99,6 +98,7 @@ Menu screenFiltersMenu = {
         { "Reduce blue light (level 3)", METHOD, .method = &screenFiltersReduceBlueLevel3 },
         { "Reduce blue light (level 4)", METHOD, .method = &screenFiltersReduceBlueLevel4 },
         { "Reduce blue light (level 5)", METHOD, .method = &screenFiltersReduceBlueLevel5 },
+        {},
     }
 };
 

@@ -38,11 +38,11 @@
 
 Menu debuggerMenu = {
     "Debugger options menu",
-    .nbItems = 3,
     {
         { "Enable debugger",                        METHOD, .method = &DebuggerMenu_EnableDebugger  },
         { "Disable debugger",                       METHOD, .method = &DebuggerMenu_DisableDebugger },
         { "Force-debug next application at launch", METHOD, .method = &DebuggerMenu_DebugNextApplicationByForce },
+        {},
     }
 };
 
