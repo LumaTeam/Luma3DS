@@ -442,7 +442,7 @@ u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
     off32 += 2;
     off32[1] = off32[0] + modulesSize;
     for(; *off32 != section0size; off32++);
-    *off32 += ((modulesSize + 0x1FF) >> 9) << 9;
+    *off32 = ((modulesSize + 0x1FF) >> 9) << 9;
 
     off = memsearch(pos, modulePidPattern, size, 4);
 
