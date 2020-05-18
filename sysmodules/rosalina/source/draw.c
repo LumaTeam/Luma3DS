@@ -140,7 +140,7 @@ u32 Draw_AllocateFramebufferCache(void)
     u32 remaining = (u32)osGetMemRegionFree(MEMREGION_SYSTEM);
     u32 size = remaining < maxSize ? remaining : maxSize;
  
-    if (size < minSize || R_FAILED(svcControlMemory(&tmp, addr, 0, size, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE)))
+    if (size < minSize || R_FAILED(svcControlMemoryEx(&tmp, addr, 0, size, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READ | MEMPERM_WRITE, true)))
     {
         framebufferCache = NULL;
         framebufferCacheSize = 0;

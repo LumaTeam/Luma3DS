@@ -139,8 +139,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     static const u8 patternHook3_4[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA}; //SGI0 setup code, etc.
 
     //Our kernel11 extension is initially loaded in VRAM
-    //u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
-    u32 stolenSystemMemRegionSize = ISN3DS ? 0 : 0 << 10; // no need to steal any mem on N3DS. Currently, everything fits in BASE on O3DS too (?)
+    u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
+    u32 stolenSystemMemRegionSize = kextTotalSize; // no need to steal any more mem on N3DS. Currently, everything fits in BASE on O3DS too (?)
     u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - stolenSystemMemRegionSize; // start of BASE memregion (note: linear heap ---> <--- the rest)
 
     u32 *hookVeneers = (u32 *)*freeK11Space;

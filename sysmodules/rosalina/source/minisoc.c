@@ -12,6 +12,7 @@
 #include <3ds/synchronization.h>
 #include <3ds/result.h>
 #include <string.h>
+#include "csvc.h"
 
 s32 miniSocRefCount = 0;
 static u32 socContextAddr = 0x08000000;
@@ -75,7 +76,7 @@ Result miniSocInit(void)
     ret = srvGetServiceHandle(&miniSocHandle, "soc:U");
     if(ret != 0) goto cleanup;
 
-    ret = svcControlMemory(&tmp, socContextAddr, 0, socContextSize, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+    ret = svcControlMemoryEx(&tmp, socContextAddr, 0, socContextSize, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READ | MEMPERM_WRITE, true);
     if(ret != 0) goto cleanup;
 
     socContextAddr = tmp;
