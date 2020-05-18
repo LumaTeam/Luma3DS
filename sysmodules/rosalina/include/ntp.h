@@ -30,4 +30,4 @@
 #include <time.h>
 
 Result ntpGetTimeStamp(time_t *outTimestamp);
-Result ntpSetTimeDate(const struct tm *localt);
+Result ntpSetTimeDate(time_t timestamp);

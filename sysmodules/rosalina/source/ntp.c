@@ -40,18 +40,6 @@
 #define NTP_IP              MAKE_IPV4(51, 137, 137, 111) // time.windows.com
 #endif
 
-typedef struct RtcTime {
-        // From 3dbrew
-        u8 seconds;
-        u8 minutes;
-        u8 hours;
-        u8 dayofweek;
-        u8 dayofmonth;
-        u8 month;
-        u8 year;
-        u8 leapcount;
-} RtcTime;
-
 // From https://github.com/lettier/ntpclient/blob/master/source/c/main.c
 
 typedef struct NtpPacket
@@ -83,17 +71,6 @@ typedef struct NtpPacket
     u32 txTm_f;         // 32 bits. Transmit time-stamp fraction of a second.
 
 } NtpPacket;            // Total: 384 bits or 48 bytes.
-
-void rtcToBcd(u8 *out, const RtcTime *in)
-{
-    memcpy(out, in, 8);
-    for (u32 i = 0; i < 8; i++)
-    {
-        u8 units = out[i] % 10;
-        u8 tens = (out[i] - units) / 10;
-        out[i] = (tens << 4) | units;
-    }
-}
 
 Result ntpGetTimeStamp(time_t *outTimestamp)
 {
@@ -162,42 +139,33 @@ cleanup:
     return res;
 }
 
-Result ntpSetTimeDate(const struct tm *localt)
+Result ntpSetTimeDate(time_t timestamp)
 {
-    Result res = mcuHwcInit();
+    Result res = ptmSysmInit();
     if (R_FAILED(res)) return res;
 
-
     res = cfguInit();
-    if (R_FAILED(res)) goto cleanup;
+    if (R_FAILED(res))
+    {
+        ptmSysmExit();
+        return res;
+    }
 
     // First, set the config RTC offset to 0
     u8 rtcOff[8] = {0};
     res = CFG_SetConfigInfoBlk4(8, 0x30001, rtcOff);
     if (R_FAILED(res)) goto cleanup;
 
-    u8 yr = (u8)(localt->tm_year - 100);
     // Update the RTC
-    u8 bcd[8];
-    RtcTime lt = {
-        .seconds    = (u8)localt->tm_sec,
-        .minutes    = (u8)localt->tm_min,
-        .hours      = (u8)localt->tm_hour,
-        .dayofweek  = (u8)localt->tm_wday,
-        .dayofmonth = (u8)localt->tm_mday,
-        .month      = (u8)(localt->tm_mon + 1),
-        .year       = yr,
-        .leapcount  = 0,
-    };
-    rtcToBcd(bcd, &lt);
-
-    res = MCUHWC_WriteRegister(0x30, bcd, 7);
+    // 946684800 is the timestamp of 01/01/2000 00:00 relative to the Unix Epoch
+    s64 msY2k = (timestamp - 946684800) * 1000;
+    res = PTMSYSM_SetRtcTime(msY2k);
     if (R_FAILED(res)) goto cleanup;
 
     // Save the config changes
     res = CFG_UpdateConfigSavegame();
     cleanup:
-    mcuHwcExit();
+    ptmSysmExit();
     cfguExit();
     return res;
 }
