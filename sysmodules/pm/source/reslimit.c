@@ -243,7 +243,10 @@ static ReslimitValues *fixupReslimitValues(void)
 {
     // In order: APPLICATION, SYS_APPLET, LIB_APPLET, OTHER
     // Fixup "commit" reslimit
-    u32 sysmemalloc = SYSMEMALLOC + getKExtSize();
+
+    // Note: we lie in the reslimit and make as if neither KExt nor Roslina existed, to avoid breakage
+
+    u32 sysmemalloc = SYSMEMALLOC + (hasKExt() ? getStolenSystemMemRegionSize() : 0);
     ReslimitValues *values = !IS_N3DS ? g_o3dsReslimitValues : g_n3dsReslimitValues;
 
     static const u32 minAppletMemAmount = 0x1200000;

@@ -110,6 +110,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     struct KExtParameters
     {
         u32 basePA;
+        u32 stolenSystemMemRegionSize;
         void *originalHandlers[4];
         u32 L1MMUTableAddrs[4];
 
@@ -136,8 +137,9 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     static const u8 patternHook3_4[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA}; //SGI0 setup code, etc.
 
     //Our kernel11 extension is initially loaded in VRAM
-    u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
-    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
+    //u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
+    u32 stolenSystemMemRegionSize = ISN3DS ? 0 : 0 << 10; // no need to steal any mem on N3DS. Currently, everything fits in BASE on O3DS too (?)
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - stolenSystemMemRegionSize; // start of BASE memregion (note: linear heap ---> <--- the rest)
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
@@ -179,6 +181,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
     struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - K11EXT_VA + 0x18000000);
     p->basePA = dstKextPA;
+    p->stolenSystemMemRegionSize = stolenSystemMemRegionSize;
 
     for(u32 i = 0; i < 4; i++)
     {

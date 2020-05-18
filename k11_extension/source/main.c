@@ -37,6 +37,7 @@
 struct KExtParameters
 {
     u32 basePA;
+    u32 stolenSystemMemRegionSize;
     void *originalHandlers[4];
     u32 L1MMUTableAddrs[4];
 
@@ -261,7 +262,14 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     u32 TTBCR_;
     s64 nb;
 
-    layout->systemSize -= __end__ - __start__;
+    cfwInfo = p->cfwInfo;
+    kextBasePa = p->basePA;
+    stolenSystemMemRegionSize = p->stolenSystemMemRegionSize;
+
+    u32 kextSize = (u32)(__end__ - __start__);
+    layout->systemSize -= stolenSystemMemRegionSize;
+    layout->baseAddr = layout->baseAddr - stolenSystemMemRegionSize + kextSize;
+    layout->baseSize = layout->baseSize + stolenSystemMemRegionSize - kextSize;
     fcramLayout = *layout;
     coreCtxs = ctxs;
 
@@ -270,8 +278,6 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     isN3DS = getNumberOfCores() == 4;
     memcpy(L1MMUTableAddrs, (const void *)p->L1MMUTableAddrs, 16);
     exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
-    cfwInfo = p->cfwInfo;
-    kextBasePa = p->basePA;
 
     memcpy(originalHandlers + 1, p->originalHandlers, 16);
     void **arm11SvcTable = (void**)originalHandlers[2];

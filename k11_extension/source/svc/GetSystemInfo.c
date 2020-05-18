@@ -82,6 +82,10 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     *out = (s64)(((u64)kextBasePa << 32) | (u64)(__end__ - __start__));
                     break;
 
+                case 0x301: // stolen SYSTEM memory size
+                    *out = stolenSystemMemRegionSize;
+                    break;
+
                 default:
                     *out = 0;
                     res = 0xF8C007F4; // not implemented

@@ -62,7 +62,7 @@ Menu rosalinaMenu = {
 
 bool rosalinaMenuShouldShowDebugInfo(void)
 {
-    return false;
+    return true;
 }
 
 void RosalinaMenu_ShowDebugInfo(void)
