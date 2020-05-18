@@ -114,6 +114,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
         void *originalHandlers[4];
         u32 L1MMUTableAddrs[4];
 
+        volatile bool done;
+
         struct CfwInfo
         {
             char magic[4];
@@ -181,6 +183,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
     struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - K11EXT_VA + 0x18000000);
     p->basePA = dstKextPA;
+    p->done = false;
     p->stolenSystemMemRegionSize = stolenSystemMemRegionSize;
 
     for(u32 i = 0; i < 4; i++)
