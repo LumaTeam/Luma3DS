@@ -184,16 +184,6 @@ static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
         u64 originaltitleId = exheaderInfo->aci.local_caps.title_id;
         if(CONFIG(PATCHGAMES) && loadTitleExheaderInfo(exheaderInfo->aci.local_caps.title_id, exheaderInfo))
             exheaderInfo->aci.local_caps.title_id = originaltitleId;
-
-        if(isN3DS)
-        {
-            u32 cpuSetting = MULTICONFIG(NEWCPU);
-
-            if(cpuSetting & 0x1)
-                exheaderInfo->aci.local_caps.core_info.use_cpu_clockrate_804MHz = true;
-            if(cpuSetting & 0x2)
-                exheaderInfo->aci.local_caps.core_info.enable_l2c = true;
-        }
     }
 
     return res;

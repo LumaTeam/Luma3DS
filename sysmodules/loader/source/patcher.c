@@ -698,6 +698,28 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             if(ret == 0 || (ret == 1 && progVer > 0xB)) goto error;
         }
 
+        if(isN3DS)
+        {
+            u32 cpuSetting = MULTICONFIG(NEWCPU);
+
+            if(cpuSetting != 0)
+            {
+                static const u8 pattern[] = {
+                    0x0C, 0x00, 0x94, 0x15
+                };
+
+                u32 *off = (u32 *)memsearch(code, pattern, textSize, sizeof(pattern));
+
+                if(off == NULL) goto error;
+
+                //Patch N3DS CPU Clock and L2 cache setting
+                *(off - 4) = *(off - 3);
+                *(off - 3) = *(off - 1);
+                memmove(off - 1, off, 16);
+                *(off + 3) = 0xE3800000 | cpuSetting;
+            }
+        }
+
         if(progVer > 0x12)
         {
             static const u8 pattern[] = {
