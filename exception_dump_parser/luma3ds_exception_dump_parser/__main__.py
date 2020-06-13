@@ -79,7 +79,7 @@ def hexdump(addr, src, length=16, sep='.' ):
                 text += chr(c)
             else:
                 text += sep
-        result.append(('%08x:  %-'+str(length*(2+1)+1)+'s  |%s|') % (addr + i, hexa, text))
+        result.append(('%08x:  %-'+str(length*(2+1)+1)+'s  |%s|') % (int(addr + i), hexa, text))
 
     return '\n'.join(result)
 
