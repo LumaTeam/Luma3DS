@@ -323,7 +323,7 @@ static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *arg
 {
     static const u8 formatSizes[] = { 4, 3, 2, 2, 2 };
 
-    GSPGPU_FramebufferFormat fmt = args->top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
+    GSPGPU_FramebufferFormats fmt = args->top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
     u32 width = args->top ? 400 : 320;
     u32 stride = args->top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
 
