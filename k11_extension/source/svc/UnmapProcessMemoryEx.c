@@ -29,6 +29,9 @@
 
 Result UnmapProcessMemoryEx(Handle processHandle, void *dst, u32 size)
 {
+    if (GET_VERSION_MINOR(kernelVersion) < 37) // < 6.x
+        return UnmapProcessMemory(processHandle, dst, size); // equivalent when size <= 64MB
+
     Result          res = 0;
     u32             sizeInPage = size >> 12;
     KLinkedList     list;

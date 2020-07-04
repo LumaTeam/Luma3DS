@@ -71,8 +71,11 @@ extern Handle preTerminationEvent;
 
 extern u32 menuCombo;
 
-u32     waitInputWithTimeout(u32 msec);
-u32     waitInput(void);
+u32 waitInputWithTimeout(s32 msec);
+u32 waitInput(void);
+
+u32 waitComboWithTimeout(s32 msec);
+u32 waitCombo(void);
 
 bool menuCheckN3ds(void);
 u32 menuCountItems(const Menu *menu);
