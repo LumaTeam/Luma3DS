@@ -196,14 +196,14 @@ void    menuThreadMain(void)
         if (menuShouldExit)
             continue;
 
-            else
-            {
-                menuEnter();
-                if(isN3DS) N3DSMenu_UpdateStatus();
-                PluginLoader__UpdateMenu();
-                menuShow(&rosalinaMenu);
-                menuLeave();
-            }
+        if ((scanHeldKeys() & menuCombo) == menuCombo)
+        {
+            menuEnter();
+            if(isN3DS) N3DSMenu_UpdateStatus();
+            PluginLoader__UpdateMenu();
+            menuShow(&rosalinaMenu);
+            menuLeave();
+        }
         
 
         // Check for home button on O3DS Mode3 with plugin loaded
