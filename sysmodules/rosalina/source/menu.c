@@ -53,7 +53,7 @@ static inline u32 convertHidKeys(u32 keys)
     return keys;
 }
 
-u32 waitInputWithTimeout(u32 msec)
+u32 waitInputWithTimeout(s32 msec)
 {
     s32 n = 0;
     u32 keys;
