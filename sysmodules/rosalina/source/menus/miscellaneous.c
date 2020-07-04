@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -33,36 +33,37 @@
 #include "hbloader.h"
 #include "plgloader.h"
 #include "fmt.h"
-#include "utils.h" // for makeARMBranch
+#include "utils.h" // for makeArmBranch
 #include "minisoc.h"
 #include "ifile.h"
 #include "pmdbgext.h"
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 5,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = &MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
         { "Sync time and date via NTP", METHOD, .method = &MiscellaneousMenu_SyncTimeDate },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
+        {},
     }
 };
 
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
     Result res;
-    u64 titleId = 0;
     char failureReason[64];
 
     if(HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID)
     {
+        FS_ProgramInfo progInfo;
         u32 pid;
-        res = PMDBG_GetCurrentAppTitleIdAndPid(&titleId, &pid);
+        u32 launchFlags;
+        res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
         if(R_SUCCEEDED(res))
         {
-            HBLDR_3DSX_TID = titleId;
+            HBLDR_3DSX_TID = progInfo.programId;
             miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else
@@ -95,13 +96,25 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
 {
-    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y" };
-    for(s32 i = 11; i >= 0; i--)
+    static const char *keys[] = {
+        "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y",
+        "?", "?",
+        "ZL", "ZR",
+        "?", "?", "?", "?",
+        "Touch",
+        "?", "?", "?",
+        "CStick Right", "CStick Left", "CStick Up", "CStick Down",
+        "CPad Right", "CPad Left", "CPad Up", "CPad Down",
+    };
+
+    char *outOrig = out;
+    out[0] = 0;
+    for(s32 i = 31; i >= 0; i--)
     {
         if(combo & (1 << i))
         {
@@ -111,12 +124,13 @@ static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
         }
     }
 
-    out[-1] = 0;
+    if (out != outOrig)
+        out[-1] = 0;
 }
 
 void MiscellaneousMenu_ChangeMenuCombo(void)
 {
-    char comboStrOrig[64], comboStr[64];
+    char comboStrOrig[128], comboStr[128];
     u32 posY;
 
     Draw_Lock();
@@ -131,9 +145,6 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
 
     posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "The current menu combo is:  %s", comboStrOrig);
     posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo:");
-
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
 
     menuCombo = waitCombo();
     MiscellaneousMenu_ConvertComboToString(comboStr, menuCombo);
@@ -151,7 +162,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 Result  SaveSettings(void)
@@ -228,12 +239,11 @@ void MiscellaneousMenu_SaveSettings(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_InputRedirection(void)
 {
-    static MyThread *inputRedirectionThread = NULL;
     bool done = false;
 
     Result res;
@@ -243,11 +253,7 @@ void MiscellaneousMenu_InputRedirection(void)
 
     if(wasEnabled)
     {
-        res = InputRedirection_DoOrUndoPatches();
-        inputRedirectionEnabled = false;
-        res = MyThread_Join(inputRedirectionThread, 5 * 1000 * 1000 * 1000LL);
-        svcCloseHandle(inputRedirectionThreadStartedEvent);
-
+        res = InputRedirection_Disable(5 * 1000 * 1000 * 1000LL);
         if(res != 0)
             sprintf(buf, "Failed to stop InputRedirection (0x%08lx).", (u32)res);
         else
@@ -294,13 +300,18 @@ void MiscellaneousMenu_InputRedirection(void)
                     res = svcCreateEvent(&inputRedirectionThreadStartedEvent, RESET_STICKY);
                     if(R_SUCCEEDED(res))
                     {
-                        inputRedirectionThread = inputRedirectionCreateThread();
+                        inputRedirectionCreateThread();
                         res = svcWaitSynchronization(inputRedirectionThreadStartedEvent, 10 * 1000 * 1000 * 1000LL);
                         if(res == 0)
                             res = (Result)inputRedirectionStartResult;
 
                         if(res != 0)
+                        {
+                            svcCloseHandle(inputRedirectionThreadStartedEvent);
                             InputRedirection_DoOrUndoPatches();
+                            inputRedirectionEnabled = false;
+                        }
+                        inputRedirectionStartResult = 0;
                     }
                 }
 
@@ -328,7 +339,7 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_SyncTimeDate(void)
@@ -342,12 +353,12 @@ void MiscellaneousMenu_SyncTimeDate(void)
     bool isSocURegistered;
 
     time_t t;
-    struct tm localt = {0};
 
     res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
     cantStart = R_FAILED(res) || !isSocURegistered;
 
     int utcOffset = 12;
+	int utcOffsetMinute = 0;
     int absOffset;
     do
     {
@@ -356,20 +367,21 @@ void MiscellaneousMenu_SyncTimeDate(void)
 
         absOffset = utcOffset - 12;
         absOffset = absOffset < 0 ? -absOffset : absOffset;
-        posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d", utcOffset < 12 ? '-' : '+', absOffset);
-        posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Use DPAD Left/Right to change offset.\nPress A when done.") + SPACING_Y;
+        posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d%02d", utcOffset < 12 ? '-' : '+', absOffset, utcOffsetMinute);
+        posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Use DPAD Left/Right to change hour offset.\nUse DPAD Up/Down to change minute offset.\nPress A when done.") + SPACING_Y;
 
         input = waitInput();
 
-        if(input & BUTTON_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
-        if(input & BUTTON_RIGHT) utcOffset = (utcOffset + 1) % 24;
-
+        if(input & KEY_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
+        if(input & KEY_RIGHT) utcOffset = (utcOffset + 1) % 24;
+        if(input & KEY_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
+        if(input & KEY_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & (BUTTON_A | BUTTON_B)) && !terminationRequest);
+    while(!(input & (KEY_A | KEY_B)) && !menuShouldExit);
 
-    if (input & BUTTON_B)
+    if (input & KEY_B)
         return;
 
     utcOffset -= 12;
@@ -383,8 +395,8 @@ void MiscellaneousMenu_SyncTimeDate(void)
         if(R_SUCCEEDED(res))
         {
             t += 3600 * utcOffset;
-            gmtime_r(&t, &localt);
-            res = ntpSetTimeDate(&localt);
+            t += 60 * utcOffsetMinute;
+            res = ntpSetTimeDate(t);
         }
     }
 
@@ -408,6 +420,6 @@ void MiscellaneousMenu_SyncTimeDate(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & BUTTON_B) && !terminationRequest);
+    while(!(input & KEY_B) && !menuShouldExit);
 
 }

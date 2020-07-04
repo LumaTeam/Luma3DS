@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1u << 31)
 #define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(addr, false))
 
-static inline u32 makeARMBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
+static inline u32 makeArmBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
 {
     u32 instrBase = link ? 0xEB000000 : 0xEA000000;
     u32 off = (u32)((const u8 *)dst - ((const u8 *)src + 8)); // the PC is always two instructions ahead of the one being executed
@@ -41,7 +41,7 @@ static inline u32 makeARMBranch(const void *src, const void *dst, bool link) // 
     return instrBase | ((off >> 2) & 0xFFFFFF);
 }
 
-static inline void *decodeARMBranch(const void *src)
+static inline void *decodeArmBranch(const void *src)
 {
     u32 instr = *(const u32 *)src;
     s32 off = (instr & 0xFFFFFF) << 2;
@@ -50,8 +50,8 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-// For ARM prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
-static inline u32 computeARMFrameSize(const u32 *prolog)
+// For Arm prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
+static inline u32 computeArmFrameSize(const u32 *prolog)
 {
     const u32 *off;
 

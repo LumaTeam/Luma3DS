@@ -6,6 +6,15 @@
 #include "exheader_info_heap.h"
 #include "task_runner.h"
 
+void forceMountSdCard(void)
+{
+    FS_Archive sdmcArchive;
+
+    assertSuccess(fsInit());
+    assertSuccess(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")));
+    // No need to clean up things as we will firmlaunch straight away
+}
+
 static Result terminateUnusedDependencies(const u64 *dependencies, u32 numDeps)
 {
     ProcessData *process;
@@ -62,6 +71,16 @@ static Result terminateProcessImpl(ProcessData *process, ExHeader_Info *exheader
     } else {
         ProcessData_SendTerminationNotification(process);
         return 0;
+    }
+}
+
+static void terminateProcessByIdChecked(u32 pid)
+{
+    ProcessData *process = ProcessList_FindProcessById(&g_manager.processList, pid);
+    if (process != NULL) {
+        ProcessData_SendTerminationNotification(process);
+    } else {
+        panic(0LL);
     }
 }
 
@@ -247,6 +266,8 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
 
     u64 dependencies[48];
     u32 numDeps = 0;
+    s64 numKips = 0;
+    svcGetSystemInfo(&numKips, 26, 0);
 
     ExHeader_Info *exheaderInfo = ExHeaderInfoHeap_New();
 
@@ -269,6 +290,12 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
     }
 
     ProcessList_Lock(&g_manager.processList);
+
+    // Send custom notification to at least Rosalina to make it relinquish some non-KIP services handles, stop the debugger, etc.
+    if (numKips >= 6) {
+        notifySubscribers(0x2000);
+    }
+
     // Send notification 0x100 to the currently running application
     if (g_manager.runningApplicationData != NULL) {
         g_manager.runningApplicationData->flags &= ~PROCESSFLAG_DEPENDENCIES_LOADED;
@@ -302,20 +329,29 @@ ProcessData *terminateAllProcesses(u32 callerPid, s64 timeout)
     commitPendingTerminations(timeoutTicks >= 0 ? ticksToNs(timeoutTicks) : 0LL);
     g_manager.waitingForTermination = false;
 
-    // Now, send termination notification to PXI (PID 4)
+    if (callerPid == (u32)-1) {
+        // On firmlaunch, try to force Process9 to mount the SD card to allow the Process9 firmlaunch patch to load boot.firm if needed
+        // Need to do that before we tell PXI to terminate
+        s64 out;
+        if(R_SUCCEEDED(svcGetSystemInfo(&out, 0x10000, 0x203)) && out != 0) {
+            // If boot.firm is on the SD card, then...
+            forceMountSdCard();
+        }
+    }
+
+    // Now, send termination notification to PXI (PID 4). Also do the same for Rosalina.
     assertSuccess(svcClearEvent(g_manager.allNotifiedTerminationEvent));
     g_manager.waitingForTermination = true;
-
     ProcessList_Lock(&g_manager.processList);
-    process = ProcessList_FindProcessById(&g_manager.processList, 4);
-    if (process != NULL) {
-        ProcessData_SendTerminationNotification(process);
-    } else {
-        panic(0LL);
+
+    if (numKips >= 6) {
+        terminateProcessByIdChecked(5); // Rosalina
     }
+    terminateProcessByIdChecked(4); // PXI
+
     ProcessList_Unlock(&g_manager.processList);
 
-    // Allow 1.5 extra seconds for PXI (approx 402167783 ticks)
+    // Allow 1.5 extra seconds for PXI and Rosalina (approx 402167783 ticks)
     timeoutTicks = dstTimePoint - svcGetSystemTick();
     commitPendingTerminations(1500 * 1000 * 1000LL + (timeoutTicks >= 0 ? ticksToNs(timeoutTicks) : 0LL));
     g_manager.waitingForTermination = false;

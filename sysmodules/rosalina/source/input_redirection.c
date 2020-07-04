@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,10 @@
 
 #include <3ds.h>
 #include <arpa/inet.h>
-#include "utils.h" // for makeARMBranch
+#include "utils.h" // for makeArmBranch
 #include "minisoc.h"
 #include "input_redirection.h"
+#include "process_patches.h"
 #include "menus.h"
 #include "memory.h"
 #include "sleep.h"
@@ -57,27 +58,51 @@ int inputRedirectionStartResult;
 void inputRedirectionThreadMain(void)
 {
     Result res = 0;
+    inputRedirectionStartResult = 0;
+
     res = miniSocInit();
     if(R_FAILED(res))
+    {
+        // Socket services broken
+        inputRedirectionStartResult = res;
+
+        miniSocExit();
+        // Still signal the event
+        svcSignalEvent(inputRedirectionThreadStartedEvent);
         return;
+    }
 
     int sock = socSocket(AF_INET, SOCK_DGRAM, 0);
-    while(sock == -1)
+    u32 tries = 15;
+    while(sock == -1 && --tries > 0)
     {
-        svcSleepThread(1000 * 0000 * 0000LL);
+        svcSleepThread(100 * 1000 * 1000LL);
         sock = socSocket(AF_INET, SOCK_DGRAM, 0);
+    }
+
+    if (sock < -10000 || tries == 0) {
+        // Socket services broken
+        inputRedirectionStartResult = -1;
+
+        miniSocExit();
+        // Still signal the event
+        svcSignalEvent(inputRedirectionThreadStartedEvent);
+        return;
     }
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(4950);
-    saddr.sin_addr.s_addr = gethostid();
+    saddr.sin_addr.s_addr = socGethostid();
     res = socBind(sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
     if(res != 0)
     {
         socClose(sock);
         miniSocExit();
         inputRedirectionStartResult = res;
+
+        // Still signal the event
+        svcSignalEvent(inputRedirectionThreadStartedEvent);
         return;
     }
 
@@ -91,7 +116,7 @@ void inputRedirectionThreadMain(void)
 
     char buf[20];
     u32 oldSpecialButtons = 0, specialButtons = 0;
-    while(inputRedirectionEnabled && !terminationRequest)
+    while(inputRedirectionEnabled && !preTerminationRequested)
     {
         struct pollfd pfd;
         pfd.fd = sock;
@@ -108,7 +133,7 @@ void inputRedirectionThreadMain(void)
         int pollres = socPoll(&pfd, 1, 10);
         if(pollres > 0 && (pfd.revents & POLLIN))
         {
-            int n = soc_recvfrom(sock, buf, 20, 0, NULL, 0);
+            int n = socRecvfrom(sock, buf, 20, 0, NULL, 0);
             if(n < 0)
                 break;
             else if(n < 12)
@@ -134,20 +159,39 @@ void inputRedirectionThreadMain(void)
                     srvPublishToSubscriber(0x203, 0);
             }
         }
+        else if(pollres < -10000)
+            break;
     }
 
+    inputRedirectionEnabled = false;
     struct linger linger;
     linger.l_onoff = 1;
     linger.l_linger = 0;
 
     socSetsockopt(sock, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
-
     socClose(sock);
+
     miniSocExit();
 }
 
 void hidCodePatchFunc(void);
 void irCodePatchFunc(void);
+
+Result InputRedirection_Disable(s64 timeout)
+{
+    if(!inputRedirectionEnabled)
+        return 0;
+
+    Result res = InputRedirection_DoOrUndoPatches();
+    if(R_FAILED(res))
+        return res;
+
+    inputRedirectionEnabled = false;
+    res = MyThread_Join(&inputRedirectionThread, timeout);
+    svcCloseHandle(inputRedirectionThreadStartedEvent);
+
+    return res;
+}
 
 Result InputRedirection_DoOrUndoPatches(void)
 {
@@ -156,6 +200,8 @@ Result InputRedirection_DoOrUndoPatches(void)
     Handle processHandle;
 
     Result res = OpenProcessByName("hid", &processHandle);
+    static bool hidPatched = false;
+    static bool irPatched = false;
 
     if(R_SUCCEEDED(res))
     {
@@ -182,11 +228,12 @@ Result InputRedirection_DoOrUndoPatches(void)
             static u32 *hidRegPatchOffsets[2];
             static u32 *hidPatchJumpLoc;
 
-            if(inputRedirectionEnabled)
+            if(hidPatched)
             {
                 memcpy(hidRegPatchOffsets[0], &hidOrigRegisterAndValue, sizeof(hidOrigRegisterAndValue));
                 memcpy(hidRegPatchOffsets[1], &hidOrigRegisterAndValue, sizeof(hidOrigRegisterAndValue));
                 memcpy(hidPatchJumpLoc, &hidOrigCode, sizeof(hidOrigCode));
+                hidPatched = false;
             }
             else
             {
@@ -227,6 +274,7 @@ Result InputRedirection_DoOrUndoPatches(void)
 
                 *off = *off2 = hidDataPhys;
                 memcpy(off3, &hidHook, sizeof(hidHook));
+                hidPatched = true;
             }
         }
 
@@ -235,7 +283,7 @@ Result InputRedirection_DoOrUndoPatches(void)
     svcCloseHandle(processHandle);
 
     res = OpenProcessByName("ir", &processHandle);
-    if(R_SUCCEEDED(res) && osGetKernelVersion() >= SYSTEM_VERSION(2, 44, 6))
+    if(R_SUCCEEDED(res) && GET_VERSION_MINOR(osGetKernelVersion()) >= 44)
     {
         svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002); // only patch .text + .data
         svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
@@ -273,7 +321,7 @@ Result InputRedirection_DoOrUndoPatches(void)
 
             static u32 *irHookLoc, *irWaitSyncLoc, *irCppFlagLoc;
 
-            if(inputRedirectionEnabled)
+            if(irPatched)
             {
                 memcpy(irHookLoc, &irOrigReadingCode, sizeof(irOrigReadingCode));
                 if(useOldSyncCode)
@@ -281,6 +329,8 @@ Result InputRedirection_DoOrUndoPatches(void)
                 else
                     memcpy(irWaitSyncLoc, &irOrigWaitSyncCode, sizeof(irOrigWaitSyncCode));
                 memcpy(irCppFlagLoc, &irOrigCppFlagCode, sizeof(irOrigCppFlagCode));
+
+                irPatched = false;
             }
             else
             {
@@ -324,7 +374,7 @@ Result InputRedirection_DoOrUndoPatches(void)
                     return -6;
                 }
 
-                *(void **)(irCodePhys + 8) = decodeARMBranch(off + 4);
+                *(void **)(irCodePhys + 8) = decodeArmBranch(off + 4);
                 *(void **)(irCodePhys + 12) = (void*)irDataPhys;
 
                 irHookLoc = off;
@@ -340,6 +390,8 @@ Result InputRedirection_DoOrUndoPatches(void)
 
                 // This NOPs out a flag check in ir:user's CPP emulation
                 *irCppFlagLoc = 0xE3150000; // tst r5, #0
+
+                irPatched = true;
             }
         }
 

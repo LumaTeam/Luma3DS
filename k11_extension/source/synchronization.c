@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ bool rosalinaThreadLockPredicate(KThread *thread)
         return false;
 
     u64 titleId = codeSetOfProcess(process)->titleId;
-    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
+    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)(titleId & ~0xF0000001); // clear N3DS and SAFE_FIRM bits
     return
         ((rosalinaState & 1) && idOfProcess(process) >= nbSection0Modules &&
         (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))));

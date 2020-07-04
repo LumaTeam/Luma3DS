@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -47,12 +47,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x10042:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && kernelVersion >= SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)
-                {
-                    res = doPublishToProcessHook(handle, cmdbuf);
-                    skip = true;
-                }
-                else if(info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncsOnce)
+                if(info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncsOnce)
                 {
                     cmdbuf[0] = 0x10040;
                     cmdbuf[1] = 0;
@@ -105,7 +100,7 @@ Result SendSyncRequestHook(Handle handle)
             case 0x50100:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && (strcmp(info->name, "srv:") == 0 || (kernelVersion < SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)))
+                if(info != NULL && (strcmp(info->name, "srv:") == 0 || (GET_VERSION_MINOR(kernelVersion) < 39 && strcmp(info->name, "srv:pm") == 0)))
                 {
                     char name[9] = { 0 };
                     memcpy(name, cmdbuf + 1, 8);
@@ -151,18 +146,6 @@ Result SendSyncRequestHook(Handle handle)
                     cmdbuf[1] = 0;
                     skip = true;
                 }
-                break;
-            }
-
-            case 0x4010042:
-            {
-                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
-                if(info != NULL && kernelVersion < SYSTEM_VERSION(2, 39, 4) && strcmp(info->name, "srv:pm") == 0)
-                {
-                    res = doPublishToProcessHook(handle, cmdbuf);
-                    skip = true;
-                }
-
                 break;
             }
 

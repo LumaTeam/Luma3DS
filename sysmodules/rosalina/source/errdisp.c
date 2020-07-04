@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -32,7 +32,19 @@
 #include "fmt.h"
 #include "ifile.h"
 
+extern Handle preTerminationEvent;
+static MyThread errDispThread;
+static u8 ALIGN(8) errDispThreadStack[0xD00];
+
 static char userString[0x100 + 1] = {0};
+static char staticBuf[0x100 + 1] = {0};
+
+MyThread *errDispCreateThread(void)
+{
+    if(R_FAILED(MyThread_Create(&errDispThread, errDispThreadMain, errDispThreadStack, 0xD00, 55, CORE_SYSTEM)))
+        svcBreak(USERBREAK_PANIC);
+    return &errDispThread;
+}
 
 static inline u32 ERRF_DisplayRegisterValue(u32 posX, u32 posY, const char *name, u32 value)
 {
@@ -42,6 +54,11 @@ static inline u32 ERRF_DisplayRegisterValue(u32 posX, u32 posY, const char *name
 static inline int ERRF_FormatRegisterValue(char *out, const char *name, u32 value)
 {
     return sprintf(out, "%-9s %08lx", name, value);
+}
+
+static inline void ERRF_GetErrInfo(ERRF_FatalErrInfo* info, u32* in, u32 size)
+{
+    memcpy(info, in, size);
 }
 
 static int ERRF_FormatError(char *out, ERRF_FatalErrInfo *info)
@@ -148,7 +165,7 @@ static int ERRF_FormatError(char *out, ERRF_FatalErrInfo *info)
             desc = "The System Memory has been damaged.";
             break;
         case ERRF_ERRTYPE_FAILURE:
-            info->data.failure_mesg[0x60] = 0; // make sure the last byte in the IPC buffer is NULL
+            info->data.failure_mesg[0x5F] = 0; // make sure the last byte in the IPC buffer is NULL
             desc = info->data.failure_mesg;
             break;
         default:
@@ -219,18 +236,18 @@ static Result ERRF_SaveErrorToFile(ERRF_FatalErrInfo *info)
     return res;
 }
 
-void ERRF_HandleCommands(void *ctx)
+void ERRF_HandleCommands(void)
 {
-    (void)ctx;
     u32 *cmdbuf = getThreadCommandBuffer();
+    ERRF_FatalErrInfo info;
 
     switch(cmdbuf[0] >> 16)
     {
         case 1: // Throw
         {
-            ERRF_FatalErrInfo *info = (ERRF_FatalErrInfo *)(cmdbuf + 1);
-            ERRF_SaveErrorToFile(info);
-            if(info->type != ERRF_ERRTYPE_LOGGED || info->procId == 0)
+            ERRF_GetErrInfo(&info, (cmdbuf + 1), sizeof(ERRF_FatalErrInfo));
+            ERRF_SaveErrorToFile(&info);
+            if(!menuShouldExit && (info.type != ERRF_ERRTYPE_LOGGED || info.procId == 0))
             {
                 menuEnter();
 
@@ -238,7 +255,7 @@ void ERRF_HandleCommands(void *ctx)
                 Draw_ClearFramebuffer();
                 Draw_FlushFramebuffer();
 
-                ERRF_DisplayError(info);
+                ERRF_DisplayError(&info);
 
                 /*
                 If we ever wanted to return:
@@ -252,26 +269,98 @@ void ERRF_HandleCommands(void *ctx)
                 __builtin_unreachable();
             }
 
-            cmdbuf[0] = 0x10040;
+            cmdbuf[0] = IPC_MakeHeader(1, 1, 0);
             cmdbuf[1] = 0;
             break;
         }
 
         case 2: // SetUserString
         {
-            if(cmdbuf[0] != 0x20042 || (cmdbuf[2] & 0x3C0F) != 2)
+            if(cmdbuf[0] != IPC_MakeHeader(2, 1, 2) || (cmdbuf[2] & 0x3C0F) != 2)
             {
-                cmdbuf[0] = 0x40;
+                cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
                 cmdbuf[1] = 0xD9001830;
             }
             else
             {
-                cmdbuf[0] = 0x20040;
-                u32 sz = cmdbuf[1] <= 0x100 ? sz : 0x100;
+                u32 sz = cmdbuf[1] <= 0x100 ? cmdbuf[1] : 0x100;
                 memcpy(userString, cmdbuf + 3, sz);
                 userString[sz] = 0;
+
+                cmdbuf[0] = IPC_MakeHeader(2, 1, 0);
+                cmdbuf[1] = 0;
             }
             break;
         }
     }
+}
+
+void errDispThreadMain(void)
+{
+    Handle handles[3];
+    Handle serverHandle, clientHandle, sessionHandle = 0;
+
+    u32 replyTarget = 0;
+    s32 index;
+
+    Result res;
+    u32 *cmdbuf = getThreadCommandBuffer();
+    u32 *sbuf = getThreadStaticBuffers();
+
+    sbuf[0] = IPC_Desc_StaticBuffer(0x100, 0);
+    sbuf[1] = (u32)staticBuf;
+
+    assertSuccess(svcCreatePort(&serverHandle, &clientHandle, "err:f", 1));
+
+    do
+    {
+        handles[0] = preTerminationEvent;
+        handles[1] = serverHandle;
+        handles[2] = sessionHandle;
+
+        if(replyTarget == 0) // k11
+            cmdbuf[0] = 0xFFFF0000;
+        res = svcReplyAndReceive(&index, handles, 1 + (sessionHandle == 0 ? 1 : 2), replyTarget);
+
+        if(R_FAILED(res))
+        {
+            if((u32)res == 0xC920181A) // session closed by remote
+            {
+                svcCloseHandle(sessionHandle);
+                sessionHandle = 0;
+                replyTarget = 0;
+            }
+
+            else
+                svcBreak(USERBREAK_PANIC);
+        }
+
+        else
+        {
+            if (index == 0)
+            {
+                break;
+            }
+            else if(index == 1)
+            {
+                Handle session;
+                assertSuccess(svcAcceptSession(&session, serverHandle));
+
+                if(sessionHandle == 0)
+                    sessionHandle = session;
+                else
+                    svcCloseHandle(session);
+            }
+            else
+            {
+                ERRF_HandleCommands();
+                replyTarget = sessionHandle;
+            }
+        }
+    }
+    while(!preTerminationRequested);
+
+    svcCloseHandle(sessionHandle);
+    svcCloseHandle(clientHandle);
+    svcCloseHandle(serverHandle);
 }

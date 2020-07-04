@@ -1,7 +1,7 @@
 
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -33,8 +33,12 @@
 extern Menu rosalinaMenu;
 
 void RosalinaMenu_TakeScreenshot(void);
+void RosalinaMenu_ChangeScreenBrightness(void);
 void RosalinaMenu_ShowCredits(void);
 void RosalinaMenu_ProcessList(void);
 void RosalinaMenu_PowerOff(void);
 void RosalinaMenu_Reboot(void);
 void RosalinaMenu_Cheats(void);
+
+bool rosalinaMenuShouldShowDebugInfo(void);
+void RosalinaMenu_ShowDebugInfo(void);

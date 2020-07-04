@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -16,8 +16,8 @@
 #include "sock_util.h"
 #include "sleep.h"
 
-extern Handle terminationRequestEvent;
-extern bool terminationRequest;
+extern Handle preTerminationEvent;
+extern bool preTerminationRequested;
 
 // soc's poll function is odd, and doesn't like -1 as fd.
 // so this compacts everything together
@@ -103,29 +103,36 @@ Result server_init(struct sock_server *serv)
     return svcCreateEvent(&serv->shall_terminate_event, RESET_STICKY);
 }
 
-void server_bind(struct sock_server *serv, u16 port)
+Result server_bind(struct sock_server *serv, u16 port)
 {
     int server_sockfd;
-    Handle handles[2] = { terminationRequestEvent, serv->shall_terminate_event };
+    Handle handles[2] = { preTerminationEvent, serv->shall_terminate_event };
     s32 idx = -1;
     server_sockfd = socSocket(AF_INET, SOCK_STREAM, 0);
-    int res;
 
-    while(server_sockfd == -1)
+    int res;
+    u32 tries = 15;
+    while(server_sockfd == -1 && --tries > 0)
     {
         if(svcWaitSynchronizationN(&idx, handles, 2, false, 100 * 1000 * 1000LL) == 0)
-            return;
+            return -1;
 
         server_sockfd = socSocket(AF_INET, SOCK_STREAM, 0);
+    }
+
+    if (server_sockfd < -10000 || tries == 0) {
+        // Socket services broken
+        serv->init_result = -1;
+        svcSignalEvent(serv->shall_terminate_event);
+        return -1;
     }
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
-    saddr.sin_addr.s_addr = gethostid();
+    saddr.sin_addr.s_addr = socGethostid();
 
     res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
-
     if(res == 0)
     {
         res = socListen(server_sockfd, 2);
@@ -145,11 +152,20 @@ void server_bind(struct sock_server *serv, u16 port)
             serv->ctx_ptrs[idx] = new_ctx;
         }
     }
+
+    if (res != 0) {
+        // Socket services broken
+        serv->init_result = res;
+        svcSignalEvent(serv->shall_terminate_event);
+        return res;
+    }
+
+    return 0;
 }
 
 static bool server_should_exit(struct sock_server *serv)
 {
-    return svcWaitSynchronization(serv->shall_terminate_event, 0) == 0 || svcWaitSynchronization(terminationRequestEvent, 0) == 0;
+    return svcWaitSynchronization(serv->shall_terminate_event, 0) == 0 || svcWaitSynchronization(preTerminationEvent, 0) == 0;
 }
 
 void server_run(struct sock_server *serv)
@@ -158,7 +174,7 @@ void server_run(struct sock_server *serv)
 
     serv->running = true;
     svcSignalEvent(serv->started_event);
-    while(serv->running && !terminationRequest)
+    while(serv->running && !preTerminationRequested)
     {
         if(server_should_exit(serv))
             goto abort_connections;
@@ -181,7 +197,7 @@ void server_run(struct sock_server *serv)
 
         int pollres = socPoll(fds, serv->nfds, 50);
 
-        if(server_should_exit(serv))
+        if(server_should_exit(serv) || pollres < -10000)
             goto abort_connections;
 
         for(nfds_t i = 0; pollres > 0 && i < serv->nfds; i++)
@@ -266,6 +282,7 @@ abort_connections:
     server_kill_connections(serv);
     serv->running = false;
     svcClearEvent(serv->started_event);
+    svcSignalEvent(serv->shall_terminate_event);
 }
 
 void server_set_should_close_all(struct sock_server *serv)
@@ -294,7 +311,8 @@ void server_kill_connections(struct sock_server *serv)
         socClose(fds[i].fd);
         fds[i].fd = -1;
 
-        serv->ctx_ptrs[i]->should_close = true;
+        if(serv->ctx_ptrs[i] != NULL)
+            serv->ctx_ptrs[i]->should_close = true;
     }
 }
 

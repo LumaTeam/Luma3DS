@@ -1,5 +1,5 @@
 # 3ds_pxi
-Open source replacement of the ARM11 PXI system module.
+Open source replacement of the Arm11 PXI system module.
 This is licensed under the MIT license.
 
 # Usage

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -18,13 +18,10 @@
 #include <errno.h>
 
 #define SYNC_ERROR ENODEV
-
-extern Handle SOCU_handle;
-extern Handle socMemhandle;
-
 extern bool miniSocEnabled;
 
-Result miniSocInit();
+Result miniSocInit(void);
+Result miniSocExitDirect(void);
 Result miniSocExit(void);
 
 s32 _net_convert_error(s32 sock_retval);
@@ -37,10 +34,17 @@ int socConnect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int socPoll(struct pollfd *fds, nfds_t nfds, int timeout);
 int socSetsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 int socClose(int sockfd);
+long socGethostid(void);
 
-ssize_t soc_recv(int sockfd, void *buf, size_t len, int flags);
-ssize_t soc_send(int sockfd, const void *buf, size_t len, int flags);
+ssize_t socRecvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
+ssize_t socSendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);
 
-// actually provided by ctrulib
-ssize_t soc_recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
-ssize_t soc_sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);
+static inline ssize_t socRecv(int sockfd, void *buf, size_t len, int flags)
+{
+    return socRecvfrom(sockfd, buf, len, flags, NULL, 0);
+}
+
+static inline ssize_t socSend(int sockfd, const void *buf, size_t len, int flags)
+{
+    return socSendto(sockfd, buf, len, flags, NULL, 0);
+}

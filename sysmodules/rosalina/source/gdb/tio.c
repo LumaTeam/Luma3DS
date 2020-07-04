@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -85,38 +85,38 @@
 typedef u32 gdbhio_time_t;
 typedef int gdbhio_mode_t;
 
-struct gdbhio_stat {
-    unsigned int  st_dev;      /* device */
-    unsigned int  st_ino;      /* inode */
-    gdbhio_mode_t st_mode;     /* protection */
-    unsigned int  st_nlink;    /* number of hard links */
-    unsigned int  st_uid;      /* user ID of owner */
-    unsigned int  st_gid;      /* group ID of owner */
-    unsigned int  st_rdev;     /* device type (if inode device) */
-    u64 st_size;     /* total size, in bytes */
-    u64 st_blksize;  /* blocksize for filesystem I/O */
-    u64 st_blocks;   /* number of blocks allocated */
-    gdbhio_time_t        st_atime;    /* time of last access */
-    gdbhio_time_t        st_mtime;    /* time of last modification */
-    gdbhio_time_t        st_ctime;    /* time of last change */
+struct PACKED ALIGN(4) gdbhio_stat {
+    u32  gst_dev;               /* device */
+    u32  gst_ino;               /* inode */
+    gdbhio_mode_t gst_mode;     /* protection */
+    u32 gst_nlink;              /* number of hard links */
+    u32 gst_uid;                /* user ID of owner */
+    u32 gst_gid;                /* group ID of owner */
+    u32 gst_rdev;               /* device type (if inode device) */
+    u64 gst_size;               /* total size, in bytes */
+    u64 gst_blksize;            /* blocksize for filesystem I/O */
+    u64 gst_blocks;             /* number of blocks allocated */
+    gdbhio_time_t gst_atime;    /* time of last access */
+    gdbhio_time_t gst_mtime;    /* time of last modification */
+    gdbhio_time_t gst_ctime;    /* time of last change */
 };
 
 static void GDB_TioMakeStructStat(struct gdbhio_stat *out, const struct gdbhio_stat *in)
 {
     memset(out, 0, sizeof(struct gdbhio_stat));
-    out->st_dev = __builtin_bswap32(in->st_dev);
-    out->st_ino = __builtin_bswap32(in->st_ino);
-    out->st_mode = __builtin_bswap32(in->st_dev);
-    out->st_nlink = __builtin_bswap32(in->st_nlink);
-    out->st_uid = __builtin_bswap32(in->st_uid);
-    out->st_gid = __builtin_bswap32(in->st_gid);
-    out->st_rdev = __builtin_bswap32(in->st_rdev);
-    out->st_size = __builtin_bswap64(in->st_size);
-    out->st_blksize = __builtin_bswap64(in->st_blksize);
-    out->st_blocks = __builtin_bswap64(in->st_blocks);
-    out->st_atime = __builtin_bswap32(in->st_atime);
-    out->st_mtime = __builtin_bswap32(in->st_mtime);
-    out->st_ctime = __builtin_bswap32(in->st_ctime);
+    out->gst_dev = __builtin_bswap32(in->gst_dev);
+    out->gst_ino = __builtin_bswap32(in->gst_ino);
+    out->gst_mode = __builtin_bswap32(in->gst_dev);
+    out->gst_nlink = __builtin_bswap32(in->gst_nlink);
+    out->gst_uid = __builtin_bswap32(in->gst_uid);
+    out->gst_gid = __builtin_bswap32(in->gst_gid);
+    out->gst_rdev = __builtin_bswap32(in->gst_rdev);
+    out->gst_size = __builtin_bswap64(in->gst_size);
+    out->gst_blksize = __builtin_bswap64(in->gst_blksize);
+    out->gst_blocks = __builtin_bswap64(in->gst_blocks);
+    out->gst_atime = __builtin_bswap32(in->gst_atime);
+    out->gst_mtime = __builtin_bswap32(in->gst_mtime);
+    out->gst_ctime = __builtin_bswap32(in->gst_ctime);
 }
 
 // Inspired from https://github.com/smealum/ctrulib/blob/master/libctru/source/sdmc_dev.c
@@ -408,8 +408,8 @@ GDB_DECLARE_TIO_HANDLER(Stat)
 
         if (err == 0)
         {
-            gdbSt.st_nlink = 1;
-            gdbSt.st_mode = GDBHIO_S_IFREG | GDBHIO_S_IRUSR | GDBHIO_S_IWUSR |
+            gdbSt.gst_nlink = 1;
+            gdbSt.gst_mode = GDBHIO_S_IFREG | GDBHIO_S_IRUSR | GDBHIO_S_IWUSR |
             GDBHIO_S_IRGRP | GDBHIO_S_IWGRP | GDBHIO_S_IROTH | GDBHIO_S_IWOTH;
         }
     }
@@ -419,8 +419,8 @@ GDB_DECLARE_TIO_HANDLER(Stat)
         if (err == 0)
         {
             FSDIR_Close(dirHandle);
-            gdbSt.st_nlink = 1;
-            gdbSt.st_mode = GDBHIO_S_IFDIR | GDBHIO_S_IRWXU | GDBHIO_S_IRWXG | GDBHIO_S_IRWXO;
+            gdbSt.gst_nlink = 1;
+            gdbSt.gst_mode = GDBHIO_S_IFDIR | GDBHIO_S_IRWXU | GDBHIO_S_IRWXG | GDBHIO_S_IRWXO;
         }
     }
 

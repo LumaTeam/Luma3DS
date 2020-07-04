@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -33,4 +33,5 @@
 #define HBLDR_DEFAULT_3DSX_TID  0x000400000D921E00ULL
 #define HBLDR_3DSX_TID          (*(vu64 *)0x1FF81100)
 
+void HBLDR_RestartHbApplication(void *p);
 void HBLDR_HandleCommands(void *ctx);

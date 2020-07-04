@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -30,4 +30,4 @@
 #include <time.h>
 
 Result ntpGetTimeStamp(time_t *outTimestamp);
-Result ntpSetTimeDate(const struct tm *localt);
+Result ntpSetTimeDate(time_t timestamp);

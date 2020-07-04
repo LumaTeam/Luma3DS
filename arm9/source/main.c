@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -226,11 +226,21 @@ void main(int argc, char **argv, u32 magicWord)
     }
 
     u32 pinMode = MULTICONFIG(PIN);
+    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
     bool pinExists = pinMode != 0 && verifyPin(pinMode);
 
-    //If no configuration file exists or SELECT is held or if booted from NTRCARD, load configuration menu
-    bool shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
+    /* If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo or the configuration menu button
+       (if not already pressed, for the latter) */
+    if(pinExists && !shouldLoadConfigMenu)
+    {
+        while(HID_PAD & PIN_BUTTONS);
+        wait(2000ULL);
 
+        //Update pressed buttons
+        pressed = HID_PAD;
+    }
+
+    shouldLoadConfigMenu = needConfig == CREATE_CONFIGURATION || ((pressed & (BUTTON_SELECT | BUTTON_L1)) == BUTTON_SELECT);
     if(shouldLoadConfigMenu)
     {
         configMenu(pinExists, pinMode);
@@ -246,13 +256,6 @@ void main(int argc, char **argv, u32 magicWord)
 
         isSafeMode = true;
         needToInitSd = true;
-
-        //If the PIN has been verified, wait to make it easier to press the SAFE_MODE combo
-        if(pinExists && !shouldLoadConfigMenu)
-        {
-            while(HID_PAD & PIN_BUTTONS);
-            wait(2000ULL);
-        }
 
         goto boot;
     }
@@ -271,7 +274,19 @@ void main(int argc, char **argv, u32 magicWord)
     else if((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
             (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
-    if(splashMode == 2) loadSplash();
+    if(splashMode == 2 && loadSplash()) pressed = HID_PAD;
+
+    //Check SAFE_MODE combo again
+    if(!CFG_BOOTENV && pressed == SAFE_MODE)
+    {
+        nandType = FIRMWARE_SYSNAND;
+        firmSource = FIRMWARE_SYSNAND;
+
+        isSafeMode = true;
+        needToInitSd = true;
+
+        goto boot;
+    }
 
     //If booting from CTRNAND, always use SysNAND
     if(!isSdMode) nandType = FIRMWARE_SYSNAND;

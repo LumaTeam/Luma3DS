@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -42,6 +42,8 @@
 #include "arm9_exception_handlers.h"
 #include "large_patches.h"
 
+#define K11EXT_VA         0x70000000
+
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *temp = memsearch(pos, "NCCH", size, 4);
@@ -79,8 +81,8 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     return arm11SvcTable;
 }
 
-// For ARM prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
-static inline u32 computeARMFrameSize(const u32 *prolog)
+// For Arm prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
+static inline u32 computeArmFrameSize(const u32 *prolog)
 {
     const u32 *off;
 
@@ -108,8 +110,11 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     struct KExtParameters
     {
         u32 basePA;
+        u32 stolenSystemMemRegionSize;
         void *originalHandlers[4];
         u32 L1MMUTableAddrs[4];
+
+        volatile bool done;
 
         struct CfwInfo
         {
@@ -135,8 +140,9 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     static const u8 patternHook3_4[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA}; //SGI0 setup code, etc.
 
     //Our kernel11 extension is initially loaded in VRAM
-    u32 kextTotalSize = *(u32 *)0x18000020 - 0x40000000;
-    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
+    u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
+    u32 stolenSystemMemRegionSize = kextTotalSize; // no need to steal any more mem on N3DS. Currently, everything fits in BASE on O3DS too (?)
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - stolenSystemMemRegionSize; // start of BASE memregion (note: linear heap ---> <--- the rest)
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
@@ -144,11 +150,11 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     hookVeneers[0] = 0xE51FF004; //ldr pc, [pc, #-8+4]
     hookVeneers[1] = 0x18000004;
     hookVeneers[2] = 0xE51FF004;
-    hookVeneers[3] = 0x40000000;
+    hookVeneers[3] = K11EXT_VA;
     hookVeneers[4] = 0xE51FF004;
-    hookVeneers[5] = 0x40000008;
+    hookVeneers[5] = K11EXT_VA + 8;
     hookVeneers[6] = 0xE51FF004;
-    hookVeneers[7] = 0x4000000C;
+    hookVeneers[7] = K11EXT_VA + 0xC;
 
     (*freeK11Space) += 32;
 
@@ -176,14 +182,16 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     off += 4;
     *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase + 24);
 
-    struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - 0x40000000 + 0x18000000);
+    struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - K11EXT_VA + 0x18000000);
     p->basePA = dstKextPA;
+    p->done = false;
+    p->stolenSystemMemRegionSize = stolenSystemMemRegionSize;
 
     for(u32 i = 0; i < 4; i++)
     {
         u32 *handlerPos = getKernel11HandlerVAPos(pos, arm11ExceptionsPage, baseK11VA, 1 + i);
         p->originalHandlers[i] = (void *)*handlerPos;
-        *handlerPos = 0x40000010 + 4 * i;
+        *handlerPos = K11EXT_VA + 0x10 + 4 * i;
     }
 
     struct CfwInfo *info = &p->info;
@@ -236,7 +244,7 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
     */
     for(off = (u32 *)ControlMemoryPos; (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
     off -= 2;
-    *off = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)ControlMemoryPos)); // ldr r0, [sp, #(frameSize + 8)]
+    *off = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeArmFrameSize((u32 *)ControlMemoryPos)); // ldr r0, [sp, #(frameSize + 8)]
 
     //Patch DebugActiveProcess
     for(off = (u32 *)(pos + (arm11SvcTable[0x60] - baseK11VA)); *off != 0xE3110001; off++);
@@ -254,14 +262,14 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
 
     //Redirect enableUserExceptionHandlersForCPUExc (= true)
     for(off = arm11ExceptionsPage; *off != 0x96007F9; off++);
-    off[1] = 0x40000028;
+    off[1] = K11EXT_VA + 0x28;
 
     off = (u32 *)memsearch(pos, patternKThreadDebugReschedule, size, sizeof(patternKThreadDebugReschedule));
     if(off == NULL)
         return 1;
 
     off[-5] = 0xE51FF004;
-    off[-4] = 0x4000002C;
+    off[-4] = K11EXT_VA + 0x2C;
 
     return 0;
 }
@@ -318,7 +326,7 @@ u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 
     off -= 0x13;
 
-    //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
+    //Firmlaunch function offset - offset in BLX opcode (A4-16 - Arm DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
 
     //Put the fOpen offset in the right location
@@ -440,7 +448,7 @@ u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
     off32 += 2;
     off32[1] = off32[0] + modulesSize;
     for(; *off32 != section0size; off32++);
-    *off32 += ((modulesSize + 0x1FF) >> 9) << 9;
+    *off32 = ((modulesSize + 0x1FF) >> 9) << 9;
 
     off = memsearch(pos, modulePidPattern, size, 4);
 

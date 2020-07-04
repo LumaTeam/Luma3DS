@@ -1,5 +1,5 @@
 // License for this file: ctrulib's license
-// Copyright AuroraWright, TuxSH 2019
+// Copyright AuroraWright, TuxSH 2019-2020
 
 #include <string.h>
 #include <3ds/types.h>
@@ -10,15 +10,16 @@
 #include <3ds/services/pmdbg.h>
 #include <3ds/ipc.h>
 
-Result PMDBG_GetCurrentAppTitleIdAndPid(u64 *outTitleId, u32 *outPid)
+Result PMDBG_GetCurrentAppInfo(FS_ProgramInfo *outProgramInfo, u32 *outPid, u32 *outLaunchFlags)
 {
     Result ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
     cmdbuf[0] = IPC_MakeHeader(0x100, 0, 0);
     if(R_FAILED(ret = svcSendSyncRequest(*pmDbgGetSessionHandle()))) return ret;
 
-    memcpy(outTitleId, cmdbuf + 2, 8);
-    *outPid = cmdbuf[4];
+    memcpy(outProgramInfo, cmdbuf + 2, sizeof(FS_ProgramInfo));
+    *outPid = cmdbuf[6];
+    *outLaunchFlags = cmdbuf[7];
     return cmdbuf[1];
 }
 
@@ -45,5 +46,18 @@ Result PMDBG_LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInf
     if(R_FAILED(ret = svcSendSyncRequest(*pmDbgGetSessionHandle()))) return ret;
 
     *outDebug = cmdbuf[3];
+    return (Result)cmdbuf[1];
+}
+
+Result PMDBG_PrepareToChainloadHomebrew(u64 titleId)
+{
+    Result ret = 0;
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = IPC_MakeHeader(0x103, 2, 0);
+    memcpy(&cmdbuf[1], &titleId, 8);
+
+    if(R_FAILED(ret = svcSendSyncRequest(*pmDbgGetSessionHandle()))) return ret;
+
     return (Result)cmdbuf[1];
 }

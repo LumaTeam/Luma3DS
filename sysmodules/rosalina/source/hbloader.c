@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -36,7 +36,8 @@
 #include "gdb/server.h"
 #include "pmdbgext.h"
 
-#define MAP_BASE 0x10000000
+#define SYSCOREVER              (*(vu32 *)0x1FF80010)
+#define APPMEMTYPE              (*(vu32 *)0x1FF80030)
 
 extern GDBContext *nextApplicationGdbCtx;
 extern GDBServer gdbServer;
@@ -77,16 +78,13 @@ static const char serviceList[32][8] =
     "y2r:u",
 };
 
-static const u64 dependencyList[] =
+static const u64 dependencyListNativeFirm[] =
 {
     0x0004013000002402LL, //ac
     0x0004013000001502LL, //am
-    0x0004013000003402LL, //boss
-    0x0004013000001602LL, //camera
     0x0004013000001702LL, //cfg
     0x0004013000001802LL, //codec
     0x0004013000002702LL, //csnd
-    0x0004013000002802LL, //dlp
     0x0004013000001A02LL, //dsp
     0x0004013000001B02LL, //gpio
     0x0004013000001C02LL, //gsp
@@ -95,23 +93,55 @@ static const u64 dependencyList[] =
     0x0004013000001E02LL, //i2c
     0x0004013000003302LL, //ir
     0x0004013000001F02LL, //mcu
-    0x0004013000002002LL, //mic
-    0x0004013000002B02LL, //ndm
-    0x0004013000003502LL, //news
     0x0004013000002C02LL, //nim
     0x0004013000002D02LL, //nwm
     0x0004013000002102LL, //pdn
     0x0004013000003102LL, //ps
     0x0004013000002202LL, //ptm
-    0x0004013000003702LL, //ro
     0x0004013000002E02LL, //socket
     0x0004013000002302LL, //spi
     0x0004013000002F02LL, //ssl
+
+    // Not present on SAFE_FIRM:
+    0x0004013000003402LL, //boss
+    0x0004013000001602LL, //camera
+    0x0004013000002802LL, //dlp
+    0x0004013000002002LL, //mic
+    0x0004013000002B02LL, //ndm
+    0x0004013000003502LL, //news
+    0x0004013000003702LL, //ro
+};
+
+static const u64 dependencyListSafeFirm[] =
+{
+    0x0004013000002403LL, //ac
+    0x0004013000001503LL, //am
+    0x0004013000001703LL, //cfg
+    0x0004013000001803LL, //codec
+    0x0004013000002703LL, //csnd
+    0x0004013000001A03LL, //dsp
+    0x0004013000001B03LL, //gpio
+    0x0004013000001C03LL, //gsp
+    0x0004013000001D03LL, //hid
+    0x0004013000002903LL, //http
+    0x0004013000001E03LL, //i2c
+    0x0004013000003303LL, //ir
+    0x0004013000001F03LL, //mcu
+    0x0004013000002C03LL, //nim
+    0x0004013000002D03LL, //nwm
+    0x0004013000002103LL, //pdn
+    0x0004013000003103LL, //ps
+    0x0004013000002203LL, //ptm
+    0x0004013000002E03LL, //socket
+    0x0004013000002303LL, //spi
+    0x0004013000002F03LL, //ssl
+
+    0x0004013000003203LL, //friends (wouldn't be launched otherwise)
 };
 
 static const u32 kernelCaps[] =
 {
-    0xFC00022C, // Kernel release version: 8.0 (necessary for using the new linear mapping)
+    0xFC00022C, // Kernel release version 8.0 is necessary for using the new linear mapping. Modified below.
     0xFF81FF50, // RW static mapping: 0x1FF50000
     0xFF81FF58, // RW static mapping: 0x1FF58000
     0xFF81FF70, // RW static mapping: 0x1FF70000
@@ -133,6 +163,31 @@ static u16 *u16_strncpy(u16 *dest, const u16 *src, u32 size)
         dest[i++] = 0;
 
     return dest;
+}
+
+void HBLDR_RestartHbApplication(void *p)
+{
+    (void)p;
+    // Don't crash if we fail
+
+    FS_ProgramInfo programInfo;
+    u32 pid;
+    u32 launchFlags;
+
+    Result res = PMDBG_GetCurrentAppInfo(&programInfo, &pid, &launchFlags);
+    if (R_FAILED(res)) return;
+    res = PMDBG_PrepareToChainloadHomebrew(programInfo.programId);
+    if (R_FAILED(res)) return;
+    res = PMAPP_TerminateCurrentApplication(3 * 1000 * 1000 *1000LL); // 3s, like what NS uses
+    if (R_FAILED(res)) return;
+    if (R_SUCCEEDED(res))
+    {
+        do
+        {
+            svcSleepThread(100 * 1000 * 1000LL);
+            res = PMAPP_LaunchTitle(&programInfo, PMLAUNCHFLAGEXT_FAKE_DEPENDENCY_LOADING | launchFlags);
+        } while (res == (Result)0xC8A05BF0);
+    }
 }
 
 void HBLDR_HandleCommands(void *ctx)
@@ -181,8 +236,10 @@ void HBLDR_HandleCommands(void *ctx)
                 break;
             }
 
+            // note: mappableFree doesn't do anything
             u32 tmp = 0;
-            res = svcControlMemoryEx(&tmp, MAP_BASE, 0, totalSize, MEMOP_ALLOC | flags, MEMPERM_READ | MEMPERM_WRITE, true);
+            u32 *addr = mappableAlloc(totalSize);
+            res = svcControlMemoryEx(&tmp, (u32)addr, 0, totalSize, MEMOP_ALLOC | flags, MEMPERM_READ | MEMPERM_WRITE, true);
             if (R_FAILED(res))
             {
                 IFile_Close(&file);
@@ -190,12 +247,12 @@ void HBLDR_HandleCommands(void *ctx)
                 break;
             }
 
-            Handle hCodeset = Ldr_CodesetFrom3dsx(name, (u32*)MAP_BASE, baseAddr, &file, tid);
+            Handle hCodeset = Ldr_CodesetFrom3dsx(name, addr, baseAddr, &file, tid);
             IFile_Close(&file);
 
             if (!hCodeset)
             {
-                svcControlMemory(&tmp, MAP_BASE, 0, totalSize, MEMOP_FREE, 0);
+                svcControlMemory(&tmp, (u32)addr, 0, totalSize, MEMOP_FREE, 0);
                 error(cmdbuf, MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_LDR, RD_NOT_FOUND));
                 break;
             }
@@ -252,28 +309,36 @@ void HBLDR_HandleCommands(void *ctx)
             memcpy(exhi->sci.codeset_info.name, "3dsx_app", 8);
             memcpy(&exhi->sci.codeset_info.stack_size, &stacksize, 4);
             memset(&exhi->sci.dependencies, 0, sizeof(exhi->sci.dependencies));
-            memcpy(exhi->sci.dependencies, dependencyList, sizeof(dependencyList));
+
+            if (SYSCOREVER == 2)
+                memcpy(exhi->sci.dependencies, dependencyListNativeFirm, sizeof(dependencyListNativeFirm));
+            else if (SYSCOREVER == 3)
+                memcpy(exhi->sci.dependencies, dependencyListSafeFirm, sizeof(dependencyListSafeFirm));
 
             ExHeader_Arm11SystemLocalCapabilities* localcaps0 = &exhi->aci.local_caps;
 
-            localcaps0->core_info.core_version = 2;
+            localcaps0->core_info.core_version = SYSCOREVER;
             localcaps0->core_info.use_cpu_clockrate_804MHz = false;
             localcaps0->core_info.enable_l2c = false;
-            localcaps0->core_info.n3ds_system_mode = SYSMODE_N3DS_PROD;
             localcaps0->core_info.ideal_processor = 0;
             localcaps0->core_info.affinity_mask = BIT(0);
-            localcaps0->core_info.o3ds_system_mode = SYSMODE_O3DS_PROD;
             localcaps0->core_info.priority = 0x30;
+
+            u32 appmemtype = APPMEMTYPE;
+            localcaps0->core_info.o3ds_system_mode = appmemtype < 6 ? (SystemMode)appmemtype : SYSMODE_O3DS_PROD;
+            localcaps0->core_info.n3ds_system_mode = appmemtype >= 6 ? (SystemMode)(appmemtype - 6 + 1) : SYSMODE_N3DS_PROD;
 
             memset(localcaps0->reslimits, 0, sizeof(localcaps0->reslimits));
 
-            localcaps0->reslimits[0] = 0x9E; // Stuff needed to run stuff on core1
+            // Set mode1 preemption mode for core1, max. 89% of CPU time (default 0, requires a APT_SetAppCpuTimeLimit call)
+            // See the big comment in sysmodules/pm/source/reslimit.c for technical details.
+            localcaps0->reslimits[0] = BIT(7) | 89;
 
-            localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
+            //localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
             localcaps0->storage_info.no_romfs = true;
             localcaps0->storage_info.use_extended_savedata_access = true; // Whatever
 
-            /* We have a patched SM, so whatever... */
+            // We have a patched SM, so whatever...
             memset(localcaps0->service_access, 0, sizeof(localcaps0->service_access));
             memcpy(localcaps0->service_access, serviceList, sizeof(serviceList));
 
@@ -283,9 +348,12 @@ void HBLDR_HandleCommands(void *ctx)
             memset(kcaps0->descriptors, 0xFF, sizeof(kcaps0->descriptors));
             memcpy(kcaps0->descriptors, kernelCaps, sizeof(kernelCaps));
 
-            u64 lastdep = sizeof(dependencyList)/8;
-            if (osGetFirmVersion() >= SYSTEM_VERSION(2,50,0)) // 9.6+ FIRM
+            // Set kernel release version to the current kernel version
+            kcaps0->descriptors[0] = 0xFC000000 | (osGetKernelVersion() >> 16);
+
+            if (GET_VERSION_MINOR(osGetKernelVersion()) >= 50 && SYSCOREVER == 2) // 9.6+ NFIRM
             {
+                u64 lastdep = sizeof(dependencyListNativeFirm)/8;
                 exhi->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
                 strncpy((char*)&localcaps0->service_access[0x20], "nfc:u", 8);
                 s64 dummy = 0;

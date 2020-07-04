@@ -2,12 +2,11 @@
 main.c
     (De)initialization stuff. It's also here where sessions are being accepted.
 
-(c) TuxSH, 2016-2017
+(c) TuxSH, 2016-2020
 This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE for details).
 */
 
 #include <string.h>
-
 #include "PXI.h"
 #include "common.h"
 #include "MyThread.h"
@@ -99,10 +98,40 @@ static inline void exitPXI(void)
 static u8 ALIGN(8) receiverStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) senderStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) PXISRV11HandlerStack[THREAD_STACK_SIZE];
+static MyThread receiverThread = {0}, senderThread = {0}, PXISRV11HandlerThread = {0};
+
+Result __sync_init(void);
+Result __sync_fini(void);
+void __libc_fini_array(void);
+void __libc_init_array(void);
+
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
+
+// this is called after main exits
+void __wrap_exit(int rc)
+{
+    (void)rc;
+
+    srvExit();
+    exitPXI();
+
+    svcCloseHandle(terminationRequestedEvent);
+    svcCloseHandle(sessionManager.sendAllBuffersToArm9Event);
+    svcCloseHandle(sessionManager.replySemaphore);
+    svcCloseHandle(sessionManager.PXISRV11CommandReceivedEvent);
+    svcCloseHandle(sessionManager.PXISRV11ReplySentEvent);
+
+    //__libc_fini_array();
+    __sync_fini();
+    svcExitProcess();
+}
 
 // this is called before main
-void __appInit()
+
+void initSystem(void)
 {
+    __sync_init();
+
     assertSuccess(svcCreateEvent(&terminationRequestedEvent, RESET_STICKY));
 
     assertSuccess(svcCreateEvent(&sessionManager.sendAllBuffersToArm9Event, RESET_ONESHOT));
@@ -117,52 +146,13 @@ void __appInit()
         if(R_FAILED(res) && res != (Result)0xD88007FA)
             svcBreak(USERBREAK_PANIC);
     }
-}
 
-// this is called after main exits
-void __appExit()
-{
-    srvExit();
-    exitPXI();
-
-    svcCloseHandle(terminationRequestedEvent);
-    svcCloseHandle(sessionManager.sendAllBuffersToArm9Event);
-    svcCloseHandle(sessionManager.replySemaphore);
-    svcCloseHandle(sessionManager.PXISRV11CommandReceivedEvent);
-    svcCloseHandle(sessionManager.PXISRV11ReplySentEvent);
-}
-
-// stubs for non-needed pre-main functions
-void __system_initSyscalls(){}
-
-
-Result __sync_init(void);
-Result __sync_fini(void);
-
-void __ctru_exit()
-{
-    void __libc_fini_array(void);
-
-    __libc_fini_array();
-    __appExit();
-    __sync_fini();
-    svcExitProcess();
-}
-
-void initSystem()
-{
-    void __libc_init_array(void);
-
-    __sync_init();
-    __system_initSyscalls();
-    __appInit();
-    __libc_init_array();
+    //__libc_init_array();
 }
 
 int main(void)
 {
     Handle handles[10] = {0}; //notification handle + service handles
-    MyThread receiverThread = {0}, senderThread = {0}, PXISRV11HandlerThread = {0};
 
     for(u32 i = 0; i < 9; i++)
         assertSuccess(srvRegisterService(handles + 1 + i, serviceNames[i], 1));

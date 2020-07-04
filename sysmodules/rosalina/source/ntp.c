@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -30,25 +30,15 @@
 #include "utils.h"
 #include "minisoc.h"
 
-#define NUM2BCD(n)  ((n<99) ? (((n/10)*0x10)|(n%10)) : 0x99)
+#define NUM2BCD(n)          ((n<99) ? (((n/10)*0x10)|(n%10)) : 0x99)
 
 #define NTP_TIMESTAMP_DELTA 2208988800ull
 
-#ifndef NTP_IP
-#define NTP_IP 0xD8EF2300
-#endif
+#define MAKE_IPV4(a,b,c,d)  ((a) << 24 | (b) << 16 | (c) << 8 | (d))
 
-typedef struct RtcTime {
-        // From 3dbrew
-        u8 seconds;
-        u8 minutes;
-        u8 hours;
-        u8 dayofweek;
-        u8 dayofmonth;
-        u8 month;
-        u8 year;
-        u8 leapcount;
-} RtcTime;
+#ifndef NTP_IP
+#define NTP_IP              MAKE_IPV4(51, 137, 137, 111) // time.windows.com
+#endif
 
 // From https://github.com/lettier/ntpclient/blob/master/source/c/main.c
 
@@ -82,17 +72,6 @@ typedef struct NtpPacket
 
 } NtpPacket;            // Total: 384 bits or 48 bytes.
 
-void rtcToBcd(u8 *out, const RtcTime *in)
-{
-    memcpy(out, in, 8);
-    for (u32 i = 0; i < 8; i++)
-    {
-        u8 units = out[i] % 10;
-        u8 tens = (out[i] - units) / 10;
-        out[i] = (tens << 4) | units;
-    }
-}
-
 Result ntpGetTimeStamp(time_t *outTimestamp)
 {
     Result res = 0;
@@ -102,6 +81,11 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
         return res;
 
     int sock = socSocket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < -10000) {
+        // Socket services broken
+        return sock;
+    }
+
     struct sockaddr_in servAddr = {0}; // Server address data structure.
     NtpPacket packet = {0};
 
@@ -113,7 +97,7 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
 
     // Copy the server's IP address to the server address structure.
 
-    servAddr.sin_addr.s_addr = htonl(NTP_IP); // 216.239.35.0 time1.google.com
+    servAddr.sin_addr.s_addr = htonl(NTP_IP);
     // Convert the port number integer to network big-endian style and save it to the server address structure.
 
     servAddr.sin_port = htons(123);
@@ -123,10 +107,10 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
     if(socConnect(sock, (struct sockaddr *)&servAddr, sizeof(struct sockaddr_in)) < 0)
         goto cleanup;
 
-    if(soc_send(sock, &packet, sizeof(NtpPacket), 0) < 0)
+    if(socSend(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
 
-    if(soc_recv(sock, &packet, sizeof(NtpPacket), 0) < 0)
+    if(socRecv(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
 
     res = 0;
@@ -155,45 +139,33 @@ cleanup:
     return res;
 }
 
-Result ntpSetTimeDate(const struct tm *localt)
+Result ntpSetTimeDate(time_t timestamp)
 {
-    Result res = mcuHwcInit();
+    Result res = ptmSysmInit();
     if (R_FAILED(res)) return res;
 
-
     res = cfguInit();
-    if (R_FAILED(res)) goto cleanup;
+    if (R_FAILED(res))
+    {
+        ptmSysmExit();
+        return res;
+    }
 
     // First, set the config RTC offset to 0
-    u8 rtcOff = 0;
-    u8 rtcOff2[8] = {0};
-    res = CFG_SetConfigInfoBlk4(1, 0x10000, &rtcOff);
-    if (R_FAILED(res)) goto cleanup;
-    res = CFG_SetConfigInfoBlk4(8, 0x30001, rtcOff2);
+    u8 rtcOff[8] = {0};
+    res = CFG_SetConfigInfoBlk4(8, 0x30001, rtcOff);
     if (R_FAILED(res)) goto cleanup;
 
-    u8 yr = (u8)(localt->tm_year - 100);
     // Update the RTC
-    u8 bcd[8];
-    RtcTime lt = {
-        .seconds    = (u8)localt->tm_sec,
-        .minutes    = (u8)localt->tm_min,
-        .hours      = (u8)localt->tm_hour,
-        .dayofweek  = (u8)localt->tm_wday,
-        .dayofmonth = (u8)localt->tm_mday,
-        .month      = (u8)(localt->tm_mon + 1),
-        .year       = yr,
-        .leapcount  = 0,
-    };
-    rtcToBcd(bcd, &lt);
-
-    res = MCUHWC_WriteRegister(0x30, bcd, 7);
+    // 946684800 is the timestamp of 01/01/2000 00:00 relative to the Unix Epoch
+    s64 msY2k = (timestamp - 946684800) * 1000;
+    res = PTMSYSM_SetRtcTime(msY2k);
     if (R_FAILED(res)) goto cleanup;
 
     // Save the config changes
     res = CFG_UpdateConfigSavegame();
     cleanup:
-    mcuHwcExit();
+    ptmSysmExit();
     cfguExit();
     return res;
 }

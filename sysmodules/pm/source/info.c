@@ -129,16 +129,21 @@ Result GetTitleExHeaderFlags(ExHeader_Arm11CoreInfo *outCoreInfo, ExHeader_Syste
     return res;
 }
 
-Result GetCurrentAppTitleIdAndPid(u64 *outTitleId, u32 *outPid)
+Result GetCurrentAppInfo(FS_ProgramInfo *outProgramInfo, u32 *outPid, u32 *outLaunchFlags)
 {
     ProcessList_Lock(&g_manager.processList);
     Result res;
+
+    memset(outProgramInfo, 0, sizeof(FS_ProgramInfo));
     if (g_manager.runningApplicationData != NULL) {
-        *outTitleId = g_manager.runningApplicationData->titleId;
-        *outPid = g_manager.runningApplicationData->pid;
+        ProcessData *app = g_manager.runningApplicationData;
+        outProgramInfo->programId = app->titleId;
+        outProgramInfo->mediaType = app->mediaType;
+        *outPid = app->pid;
+        *outLaunchFlags = app->launchFlags;
         res = 0;
     } else {
-        *outTitleId = 0;
+        *outPid = 0;
         res = MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
     }
     ProcessList_Unlock(&g_manager.processList);

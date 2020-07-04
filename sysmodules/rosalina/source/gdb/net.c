@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -177,7 +177,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
     memcpy(backupbuf, ctx->buffer, ctx->latestSentPacketSize);
     memset(ctx->buffer, 0, sizeof(ctx->buffer));
 
-    int r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+    int r = socRecv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
     if(r < 1)
         return -1;
     if(ctx->buffer[0] == '+') // GDB sometimes acknowleges TCP acknowledgment packets (yes...). IDA does it properly
@@ -186,20 +186,20 @@ int GDB_ReceivePacket(GDBContext *ctx)
             return -1;
 
         // Consume it
-        r = soc_recv(ctx->super.sockfd, ctx->buffer, 1, 0);
+        r = socRecv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             return -1;
 
         ctx->buffer[0] = 0;
 
-        r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+        r = socRecv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
 
         if(r == -1)
             goto packet_error;
     }
     else if(ctx->buffer[0] == '-')
     {
-        soc_send(ctx->super.sockfd, backupbuf, ctx->latestSentPacketSize, 0);
+        socSend(ctx->super.sockfd, backupbuf, ctx->latestSentPacketSize, 0);
         return 0;
     }
     int maxlen = r > (int)sizeof(ctx->buffer) ? (int)sizeof(ctx->buffer) : r;
@@ -215,7 +215,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
         else
         {
             u8 checksum;
-            r = soc_recv(ctx->super.sockfd, ctx->buffer, 3 + pos - ctx->buffer, 0);
+            r = socRecv(ctx->super.sockfd, ctx->buffer, 3 + pos - ctx->buffer, 0);
             if(r != 3 + pos - ctx->buffer || GDB_DecodeHex(&checksum, pos + 1, 1) != 1)
                 goto packet_error;
             else if(GDB_ComputeChecksum(ctx->buffer + 1, pos - ctx->buffer - 1) != checksum)
@@ -227,7 +227,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
     }
     else if(ctx->buffer[0] == '\x03')
     {
-        r = soc_recv(ctx->super.sockfd, ctx->buffer, 1, 0);
+        r = socRecv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             goto packet_error;
 
@@ -236,7 +236,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
 
     if(!(ctx->flags & GDB_FLAG_NOACK))
     {
-        int r2 = soc_send(ctx->super.sockfd, "+", 1, 0);
+        int r2 = socSend(ctx->super.sockfd, "+", 1, 0);
         if(r2 != 1)
             return -1;
     }
@@ -252,7 +252,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
 packet_error:
     if(!(ctx->flags & GDB_FLAG_NOACK))
     {
-        r = soc_send(ctx->super.sockfd, "-", 1, 0);
+        r = socSend(ctx->super.sockfd, "-", 1, 0);
         if(r != 1)
             return -1;
         else
@@ -264,7 +264,7 @@ packet_error:
 
 static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
 {
-    int r = soc_send(ctx->super.sockfd, ctx->buffer, len, 0);
+    int r = socSend(ctx->super.sockfd, ctx->buffer, len, 0);
 
     if(r > 0)
         ctx->latestSentPacketSize = r;

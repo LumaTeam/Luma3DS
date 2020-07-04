@@ -3,6 +3,7 @@
 #include "launch.h"
 #include "info.h"
 #include "util.h"
+#include "manager.h"
 
 void pmDbgHandleCommands(void *ctx)
 {
@@ -11,10 +12,10 @@ void pmDbgHandleCommands(void *ctx)
     u32 cmdhdr = cmdbuf[0];
 
     FS_ProgramInfo programInfo;
-    Handle debug;
-
     u64 titleId;
+    Handle debug;
     u32 pid;
+    u32 launchFlags;
 
     switch (cmdhdr >> 16) {
         case 1:
@@ -40,12 +41,11 @@ void pmDbgHandleCommands(void *ctx)
 
         // Custom
         case 0x100:
-            titleId = 0;
-            pid = 0xFFFFFFFF;
-            cmdbuf[1] = GetCurrentAppTitleIdAndPid(&titleId, &pid);
-            cmdbuf[0] = IPC_MakeHeader(0x100, 4, 0);
-            memcpy(cmdbuf + 2, &titleId, 8);
-            cmdbuf[4] = pid;
+            cmdbuf[1] = GetCurrentAppInfo(&programInfo, &pid, &launchFlags);
+            cmdbuf[0] = IPC_MakeHeader(0x100, 7, 0);
+            memcpy(cmdbuf + 2, &programInfo, sizeof(FS_ProgramInfo));
+            cmdbuf[6] = pid;
+            cmdbuf[7] = launchFlags;
             break;
         case 0x101:
             cmdbuf[1] = DebugNextApplicationByForce(cmdbuf[1] != 0);
@@ -59,7 +59,11 @@ void pmDbgHandleCommands(void *ctx)
             cmdbuf[2] = IPC_Desc_MoveHandles(1);
             cmdbuf[3] = debug;
             break;
-
+        case 0x103:
+            memcpy(&titleId, cmdbuf + 1, 8);
+            cmdbuf[1] = PrepareToChainloadHomebrew(titleId);
+            cmdbuf[0] = IPC_MakeHeader(0x103, 1, 0);
+            break;
         default:
             cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
             cmdbuf[1] = 0xD900182F;

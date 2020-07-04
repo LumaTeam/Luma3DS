@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -599,11 +599,11 @@ void kernel9Loader(Arm9Bin *arm9Section)
     __attribute__((aligned(4))) u8 arm9BinCtr[AES_BLOCK_SIZE];
     memcpy(arm9BinCtr, arm9Section->ctr, sizeof(arm9BinCtr));
 
-    //Decrypt ARM9 binary
+    //Decrypt Arm9 binary
     aes_use_keyslot(arm9BinSlot);
     aes(startOfArm9Bin, startOfArm9Bin, arm9SectionSize / AES_BLOCK_SIZE, arm9BinCtr, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-    if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the ARM9 binary.");
+    if(*startOfArm9Bin != 0x47704770 && *startOfArm9Bin != 0xB0862000) error("Failed to decrypt the Arm9 binary.");
 }
 
 void computePinHash(u8 *outbuf, const u8 *inbuf)
@@ -612,7 +612,7 @@ void computePinHash(u8 *outbuf, const u8 *inbuf)
                                    cipherText[AES_BLOCK_SIZE];
 
     sdmmc_get_cid(1, (u32 *)cid);
-    aes_use_keyslot(0x04); //Console-unique keyslot whose keys are set by the ARM9 bootROM
+    aes_use_keyslot(0x04); //Console-unique keyslot whose keys are set by the Arm9 bootROM
     aes(cipherText, inbuf, 1, cid, AES_CBC_ENCRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     sha(outbuf, cipherText, sizeof(cipherText), SHA_256_MODE);
 }

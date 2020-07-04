@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -38,11 +38,11 @@
 
 Menu debuggerMenu = {
     "Debugger options menu",
-    .nbItems = 3,
     {
         { "Enable debugger",                        METHOD, .method = &DebuggerMenu_EnableDebugger  },
         { "Disable debugger",                       METHOD, .method = &DebuggerMenu_DisableDebugger },
         { "Force-debug next application at launch", METHOD, .method = &DebuggerMenu_DebugNextApplicationByForce },
+        {},
     }
 };
 
@@ -84,6 +84,30 @@ void debuggerFetchAndSetNextApplicationDebugHandleTask(void *argdata)
     GDB_UnlockAllContexts(&gdbServer);
 }
 
+Result debuggerDisable(s64 timeout)
+{
+    Result res = 0;
+    bool initialized = gdbServer.referenceCount != 0;
+    if(initialized)
+    {
+        svcSignalEvent(gdbServer.super.shall_terminate_event);
+        server_kill_connections(&gdbServer.super);
+
+        res = MyThread_Join(&debuggerDebugThread, timeout);
+        if(res == 0)
+            res = MyThread_Join(&debuggerSocketThread, timeout);
+
+        Handle dummy = 0;
+        PMDBG_RunQueuedProcess(&dummy);
+        svcCloseHandle(dummy);
+        PMDBG_DebugNextApplicationByForce(false);
+        nextApplicationGdbCtx = NULL;
+        svcKernelSetState(0x10000, 2);
+    }
+
+    return res;
+}
+
 void DebuggerMenu_EnableDebugger(void)
 {
     bool done = false, alreadyEnabled = gdbServer.super.running;
@@ -115,16 +139,18 @@ void DebuggerMenu_EnableDebugger(void)
             if(!done)
             {
                 res = GDB_InitializeServer(&gdbServer);
+                Handle handles[3] = { gdbServer.super.started_event, gdbServer.super.shall_terminate_event, preTerminationEvent };
+                s32 idx;
                 if(R_SUCCEEDED(res))
                 {
                     debuggerCreateSocketThread();
                     debuggerCreateDebugThread();
-                    res = svcWaitSynchronization(gdbServer.super.started_event, 10 * 1000 * 1000 * 1000LL);
+                    res = svcWaitSynchronizationN(&idx, handles, 3, false, 5 * 1000 * 1000 * 1000LL);
+                    if(res == 0) res = gdbServer.super.init_result;
                 }
 
                 if(res != 0)
                     sprintf(buf, "Starting debugger... failed (0x%08lx).", (u32)res);
-
                 done = true;
             }
             if(res == 0)
@@ -136,32 +162,15 @@ void DebuggerMenu_EnableDebugger(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void DebuggerMenu_DisableDebugger(void)
 {
     bool initialized = gdbServer.referenceCount != 0;
-    Result res = 0;
+
+    Result res = initialized ? debuggerDisable(2 * 1000 * 1000 * 1000LL) : 0;
     char buf[65];
-
-    if(initialized)
-    {
-        svcSignalEvent(gdbServer.super.shall_terminate_event);
-        server_kill_connections(&gdbServer.super);
-        //server_set_should_close_all(&gdbServer.super);
-
-        res = MyThread_Join(&debuggerDebugThread, 2 * 1000 * 1000 * 1000LL);
-        if(res == 0)
-            res = MyThread_Join(&debuggerSocketThread, 2 * 1000 * 1000 * 1000LL);
-
-        Handle dummy = 0;
-        PMDBG_RunQueuedProcess(&dummy);
-        svcCloseHandle(dummy);
-        PMDBG_DebugNextApplicationByForce(false);
-        nextApplicationGdbCtx = NULL;
-        svcKernelSetState(0x10000, 2);
-    }
 
     if(res != 0)
         sprintf(buf, "Failed to disable debugger (0x%08lx).", (u32)res);
@@ -174,7 +183,7 @@ void DebuggerMenu_DisableDebugger(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void DebuggerMenu_DebugNextApplicationByForce(void)
@@ -223,7 +232,7 @@ void DebuggerMenu_DebugNextApplicationByForce(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void debuggerSocketThreadMain(void)

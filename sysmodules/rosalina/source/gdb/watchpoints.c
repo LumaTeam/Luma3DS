@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -12,7 +12,7 @@
 #include <errno.h>
 
 /*
-    There are only 2 Watchpoint Register Pairs on MPCORE ARM11 CPUs,
+    There are only 2 Watchpoint Register Pairs on MPCORE Arm11 CPUs,
     and only 2 Breakpoint Register Pairs with context ID capabilities (BRP4-5) as well.
 
     We'll reserve and use all 4 of them

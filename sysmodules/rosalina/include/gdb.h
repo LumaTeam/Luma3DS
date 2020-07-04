@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -18,14 +18,14 @@
 
 #define MAX_DEBUG           3
 #define MAX_DEBUG_THREAD    127
-#define MAX_BREAKPOINT      256
+#define MAX_BREAKPOINT      64
 
 #define MAX_TIO_OPEN_FILE   32
 
 // 512+24 is the ideal size as IDA will try to read exactly 0x100 bytes at a time. Add 4 to this, for $#<checksum>, see below.
 // IDA seems to want additional bytes as well.
 // 1024 is fine enough to put all regs in the 'T' stop reply packets
-#define GDB_BUF_LEN 2048
+#define GDB_BUF_LEN 1024
 
 #define GDB_HANDLER(name)           GDB_Handle##name
 #define GDB_QUERY_HANDLER(name)     GDB_HANDLER(Query##name)

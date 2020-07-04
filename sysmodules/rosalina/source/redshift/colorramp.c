@@ -19,7 +19,7 @@
 */
 
 #include <stdint.h>
-#include <math.h>
+//#include <math.h>
 
 #include "redshift/redshift.h"
 
@@ -282,8 +282,10 @@ interpolate_color(float a, const float *c1, const float *c2, float *c)
 }
 
 /* Helper macro used in the fill functions */
-#define F(Y, C)  pow((Y) * setting->brightness * \
-		     white_point[C], 1.0/setting->gamma[C])
+#define F(Y, C)  ((Y) * white_point[C])
+
+/*#define F(Y, C)  pow((Y) * setting->brightness * \
+		     white_point[C], 1.0/setting->gamma[C])*/
 
 void
 colorramp_fill(uint16_t *gamma_r, uint16_t *gamma_g, uint16_t *gamma_b,

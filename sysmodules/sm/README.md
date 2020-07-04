@@ -1,5 +1,5 @@
 # 3ds_sm
-Open source replacement of the ARM11 SM system module.
+Open source replacement of the Arm11 SM system module.
 This is licensed under the MIT license.
 
 # Usage

@@ -11,7 +11,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 --
 -- Also check the Wiki (https://github.com/AuroraWright/Luma3DS/wiki) before making an issue.
 --
--- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: https://3ds.hacks.guide/troubleshooting
+-- For GBA/DSiWare/DS/AGB_FIRM/TWL_FIRM problems: use https://github.com/MechanicalDragon0687/TWLFix-CFW and update your system.
 -- If you're using an emu/redNAND try installing anything on it to sysNAND.
 -- Please make sure to read "Enable game patching" https://github.com/AuroraWright/Luma3DS/wiki/Options-and-usage before posting any issues about the "Enable game patching" option(s).
 --
@@ -25,7 +25,8 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 
 **SysNAND version (+emu/redNAND version if applicable):**
 
-[e.g. 11.6.0-39U SysNAND, 11.6.0-39J EmuNAND]
+[e.g. 11.13.0-45U SysNAND, 11.13.0-45E EmuNAND]
+<!--You can check which version you're on in System Settings. It will be on the bottom right of the top screen.-->
 
 **Entrypoint (How/what you're using to boot Luma3DS):**
 
@@ -33,9 +34,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 
 **Luma3DS version:**
 
-[e.g. 8.1.1 stable or if using nightly/hourly specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/9570e6cbeca53128433abbf5e3473cb8a07fe69e]
-<!--You can check which version you're on in System Settings. It will be on the bottom right of the top screen.-->
-
+[e.g. v10.1.3 stable or if using non-releases specify the commit like this https://github.com/AuroraWright/Luma3DS/commit/0543c208fd154e6326ea5da8cbf66ffcbdef010c]
 
 **Luma3DS configuration/options:**
 
@@ -71,11 +70,11 @@ Show NAND or user string in System Settings: ( )
 
 Show GBA boot screen in patched AGB_FIRM: ( )
 
-Patch ARM9 access: ( )
+Patch Arm9 access: ( )
 
 Set developer UNITINFO: ( )
 
-Disable ARM11 exception handlers: ( )
+Disable Arm11 exception handlers: ( )
 
 --
 
@@ -95,6 +94,6 @@ Disable ARM11 exception handlers: ( )
 
 
 **Dump file:**
-<!--If the issue leads to a crash you must uncheck the "Disable ARM11 exception handlers" option.
+<!--If the issue leads to a crash you must uncheck the "Disable Arm11 exception handlers" option.
 -- The error message will tell you where the dump is.
 -- Zip the dmp file and drag & drop it below.-->

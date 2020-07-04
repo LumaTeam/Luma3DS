@@ -1,5 +1,6 @@
 #include <3ds.h>
 #include "patcher.h"
+#include "bps_patcher.h"
 #include "memory.h"
 #include "strings.h"
 #include "romfsredir.h"
@@ -369,7 +370,7 @@ bool loadTitleExheaderInfo(u64 progId, ExHeader_Info *exheaderInfo)
 
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(ExHeader_Info) || fileSize != sizeof(ExHeader)) goto error;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || (fileSize != sizeof(ExHeader_Info) && fileSize != sizeof(ExHeader))) goto error;
     else
     {
         u64 total;
@@ -469,12 +470,12 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 
         ((buf[11] >= '0' && buf[11] <= '9') || (buf[11] >= 'a' && buf[11] <= 'f') || (buf[11] >= 'A' && buf[11] <= 'F')))
     {
         if     (buf[10] >= '0' && buf[10] <= '9') *stateId = 16 * (buf[10] - '0');
-        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a');
-        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A');
+        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a' + 10);
+        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A' + 10);
 
         if     (buf[11] >= '0' && buf[11] <= '9') *stateId += buf[11] - '0';
-        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a';
-        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A';
+        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a' + 10;
+        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A' + 10;
 
         *mask |= 8;
     }
@@ -503,7 +504,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset = 0,
         pathOffset = 0,
-        pathAddress;
+        pathAddress = 0xDEADCAFE;
 
     if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
@@ -739,7 +740,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         }
     }
 
-    else if(progId == 0x0004013000001702LL) //CFG
+    else if((progId & ~0xF0000001ULL) == 0x0004013000001702LL) //CFG, SAFE_FIRM CFG
     {
         static const u8 pattern[] = {
             0x06, 0x46, 0x10, 0x48
@@ -825,7 +826,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    else if(progId == 0x0004013000001A02LL) //DSP
+    else if((progId & ~0xF0000001ULL) == 0x0004013000001A02LL) //DSP, SAFE_FIRM DSP
     {
         static const u8 pattern[] = {
             0xE3, 0x10, 0x10, 0x80, 0xE2
@@ -845,6 +846,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     if(CONFIG(PATCHGAMES))
     {
+        if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
         if(!applyCodeIpsPatch(progId, code, size)) goto error;
 
         if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)

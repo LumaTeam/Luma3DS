@@ -1,6 +1,6 @@
 /*
  *   This file is part of Luma3DS
- *   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+ *   Copyright (C) 2016-2020 Aurora Wright, TuxSH
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,15 +33,10 @@
 #include "utils.h"
 #include "fmt.h"
 #include "ifile.h"
+#include "pmdbgext.h"
 
 #define MAKE_QWORD(hi,low) \
     ((u64) ((((u64)(hi)) << 32) | (low)))
-
-typedef struct CheatProcessInfo
-{
-    u32 pid;
-    u64 titleId;
-} CheatProcessInfo;
 
 typedef struct CheatDescription
 {
@@ -69,36 +64,6 @@ typedef struct BufferedFile
 CheatDescription* cheats[1024] = { 0 };
 u8 cheatBuffer[32768] = { 0 };
 u8 cheatPage[0x1000] = { 0 };
-
-static CheatProcessInfo cheatinfo[0x40] = { 0 };
-
-static s32 Cheats_FetchProcessInfo(void)
-{
-    u32 pidList[0x40];
-    s32 processAmount;
-
-    s64 sa, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
-
-    svcGetProcessList(&processAmount, pidList, 0x40);
-
-    for (s32 i = 0; i < processAmount; i++)
-    {
-        Handle processHandle;
-        Result res = svcOpenProcess(&processHandle, pidList[i]);
-        if (R_FAILED(res)) continue;
-
-        cheatinfo[i].pid = pidList[i];
-        svcGetProcessInfo((s64 *) &cheatinfo[i].titleId, processHandle, 0x10001);
-        svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002);
-        svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
-        svcGetProcessInfo(&dataTotalRoundedSize, processHandle, 0x10004);
-        svcGetProcessInfo(&sa, processHandle, 0x10005);
-
-        svcCloseHandle(processHandle);
-    }
-
-    return processAmount;
-}
 
 typedef struct CheatState
 {
@@ -131,6 +96,7 @@ typedef struct CheatState
 CheatState cheat_state = { 0 };
 u8 cheatCount = 0;
 u64 cheatTitleInfo = -1ULL;
+u64 cheatRngState = 0;
 
 static inline u32* activeOffset()
 {
@@ -148,6 +114,12 @@ static inline u32* activeStorage(CheatDescription* desc)
 }
 
 char failureReason[64];
+
+static u32 Cheat_GetRandomNumber(void)
+{
+    cheatRngState = 0x5D588B656C078965ULL * cheatRngState + 0x0000000000269EC3ULL;
+    return (u32)(cheatRngState >> 32);
+}
 
 static bool Cheat_IsValidAddress(const Handle processHandle, u32 address, u32 size)
 {
@@ -168,7 +140,7 @@ static u8 ReadWriteBuffer8 = 0;
 static bool Cheat_Write8(const Handle processHandle, u32 offset, u8 value)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
         cheatPage[addr - 0x01E81000] = value;
         return true;
@@ -184,7 +156,7 @@ static bool Cheat_Write8(const Handle processHandle, u32 offset, u8 value)
 static bool Cheat_Write16(const Handle processHandle, u32 offset, u16 value)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 2 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
     {
         *(u16*)(cheatPage + addr - 0x01E81000) = value;
         return true;
@@ -200,7 +172,7 @@ static bool Cheat_Write16(const Handle processHandle, u32 offset, u16 value)
 static bool Cheat_Write32(const Handle processHandle, u32 offset, u32 value)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 4 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 3 < 0x01E82000)
     {
         *(u32*)(cheatPage + addr - 0x01E81000) = value;
         return true;
@@ -216,7 +188,7 @@ static bool Cheat_Write32(const Handle processHandle, u32 offset, u32 value)
 static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr < 0x01E82000)
     {
         *retValue = cheatPage[addr - 0x01E81000];
         return true;
@@ -233,7 +205,7 @@ static bool Cheat_Read8(const Handle processHandle, u32 offset, u8* retValue)
 static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 2 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 1 < 0x01E82000)
     {
         *retValue = *(u16*)(cheatPage + addr - 0x01E81000);
         return true;
@@ -250,7 +222,7 @@ static bool Cheat_Read16(const Handle processHandle, u32 offset, u16* retValue)
 static bool Cheat_Read32(const Handle processHandle, u32 offset, u32* retValue)
 {
     u32 addr = *activeOffset() + offset;
-    if (addr >= 0x01E81000 && addr + 4 < 0x01E82000)
+    if (addr >= 0x01E81000 && addr + 3 < 0x01E82000)
     {
         *retValue = *(u32*)(cheatPage + addr - 0x01E81000);
         return true;
@@ -1512,7 +1484,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         case 0xF:
                         {
                             u32 range = arg1 - (arg0 & 0xFFFFFF);
-                            u32 number = rand() % range;
+                            u32 number = Cheat_GetRandomNumber() % range;
                             *activeData() = (arg0 & 0xFFFFFF) + number;
                         }
                             break;
@@ -1886,33 +1858,24 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
     memset(cheatPage, 0, 0x1000);
 }
 
-static u32 Cheat_GetCurrentPID(u64* titleId)
+static u32 Cheat_GetCurrentProcessAndTitleId(u64* titleId)
 {
-    s32 processAmount = Cheats_FetchProcessInfo();
-
-    s32 index = -1;
-
-    for (s32 i = 0; i < processAmount; i++)
-    {
-
-        if (((u32) (cheatinfo[i].titleId >> 32)) == 0x00040010 || ((u32) (cheatinfo[i].titleId >> 32) == 0x00040000))
-        {
-            index = i;
-
-            break;
-        }
-    }
-
-    if (index != -1)
-    {
-        *titleId = cheatinfo[index].titleId;
-        return cheatinfo[index].pid;
-    }
-    else
-    {
+    FS_ProgramInfo programInfo;
+    u32 pid;
+    u32 launchFlags;
+    Result res = PMDBG_GetCurrentAppInfo(&programInfo, &pid, &launchFlags);
+    if (R_FAILED(res)) {
         *titleId = 0;
         return 0xFFFFFFFF;
     }
+
+    *titleId = programInfo.programId;
+    return pid;
+}
+
+void Cheat_SeedRng(u64 seed)
+{
+    cheatRngState = seed;
 }
 
 void Cheat_ApplyCheats(void)
@@ -1923,7 +1886,7 @@ void Cheat_ApplyCheats(void)
     }
 
     u64 titleId = 0;
-    u32 pid = Cheat_GetCurrentPID(&titleId);
+    u32 pid = Cheat_GetCurrentProcessAndTitleId(&titleId);
 
     if (!titleId)
     {
@@ -1949,7 +1912,7 @@ void Cheat_ApplyCheats(void)
 void RosalinaMenu_Cheats(void)
 {
     u64 titleId = 0;
-    u32 pid = Cheat_GetCurrentPID(&titleId);
+    u32 pid = Cheat_GetCurrentProcessAndTitleId(&titleId);
 
     if (titleId != 0)
     {
@@ -1981,7 +1944,7 @@ void RosalinaMenu_Cheats(void)
 
             Draw_FlushFramebuffer();
             Draw_Unlock();
-        } while (!(waitInput() & BUTTON_B) && !terminationRequest);
+        } while (!(waitInput() & KEY_B) && !menuShouldExit);
     }
     else
     {
@@ -2019,18 +1982,18 @@ void RosalinaMenu_Cheats(void)
             Draw_FlushFramebuffer();
             Draw_Unlock();
 
-            if (terminationRequest) break;
+            if (menuShouldExit) break;
 
             u32 pressed;
             do
             {
                 pressed = waitInputWithTimeout(50);
                 if (pressed != 0) break;
-            } while (pressed == 0 && !terminationRequest);
+            } while (pressed == 0 && !menuShouldExit);
 
-            if (pressed & BUTTON_B)
+            if (pressed & KEY_B)
                 break;
-            else if ((pressed & BUTTON_A) && R_SUCCEEDED(r))
+            else if ((pressed & KEY_A) && R_SUCCEEDED(r))
             {
                 if (cheats[selected]->active)
                 {
@@ -2041,13 +2004,13 @@ void RosalinaMenu_Cheats(void)
                     r = Cheat_MapMemoryAndApplyCheat(pid, cheats[selected]);
                 }
             }
-            else if (pressed & BUTTON_DOWN)
+            else if (pressed & KEY_DOWN)
                 selected++;
-            else if (pressed & BUTTON_UP)
+            else if (pressed & KEY_UP)
                 selected--;
-            else if (pressed & BUTTON_LEFT)
+            else if (pressed & KEY_LEFT)
                 selected -= CHEATS_PER_MENU_PAGE;
-            else if (pressed & BUTTON_RIGHT)
+            else if (pressed & KEY_RIGHT)
             {
                 if (selected + CHEATS_PER_MENU_PAGE < cheatCount)
                     selected += CHEATS_PER_MENU_PAGE;
@@ -2062,7 +2025,7 @@ void RosalinaMenu_Cheats(void)
 
             pagePrev = page;
             page = selected / CHEATS_PER_MENU_PAGE;
-        } while (!terminationRequest);
+        } while (!menuShouldExit);
     }
 
 }

@@ -1,7 +1,7 @@
 /*
 main.c
 
-(c) TuxSH, 2017
+(c) TuxSH, 2017-2020
 This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for details).
 */
 
@@ -24,10 +24,27 @@ static ProcessData processDataPool[64];
 
 static u8 ALIGN(4) serviceAccessListStaticBuffer[0x110];
 
-void __appInit(void)
-{
-    s64 out;
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 
+// this is called after main exits
+void __wrap_exit(int rc)
+{
+    (void)rc;
+    // Not supposed to terminate... kernel will clean up the handles if it does happen anyway
+    svcExitProcess();
+}
+
+void __sync_init();
+// void __libc_init_array(void);
+
+// Called before main
+void initSystem(void)
+{
+    __sync_init();
+
+    //__libc_init_array();
+
+    s64 out;
     u32 *staticBuffers = getThreadStaticBuffers();
     staticBuffers[0] = IPC_Desc_StaticBuffer(0x110, 0);
     staticBuffers[1] = (u32)serviceAccessListStaticBuffer;
@@ -38,28 +55,6 @@ void __appInit(void)
 
     buildList(&freeSessionDataList, sessionDataPool, sizeof(sessionDataPool) / sizeof(SessionData), sizeof(SessionData));
     buildList(&freeProcessDataList, processDataPool, sizeof(processDataPool) / sizeof(ProcessData), sizeof(ProcessData));
-}
-
-
-// this is called after main exits
-void __appExit(void){}
-
-void __system_allocateHeaps(void){}
-
-void __system_initSyscalls(void){}
-
-Result __sync_init(void);
-Result __sync_fini(void);
-
-void __ctru_exit(void){}
-
-void initSystem(void)
-{
-    void __libc_init_array(void);
-    __sync_init();
-    __system_allocateHeaps();
-    __appInit();
-    __libc_init_array();
 }
 
 int main(void)

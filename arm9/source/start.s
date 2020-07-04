@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ _start:
     ldr r1, =0xFFF0001B @ fff00000 16k  | dtcm
     ldr r2, =0x01FF801D @ 01ff8000 32k  | itcm
     ldr r3, =0x08000027 @ 08000000 1M   | arm9 mem
-    ldr r4, =0x10000029 @ 10000000 2M   | io mem (ARM9 / first 2MB)
+    ldr r4, =0x10000029 @ 10000000 2M   | io mem (Arm9 / first 2MB)
     ldr r5, =0x20000035 @ 20000000 128M | fcram
     ldr r6, =0x1FF00027 @ 1FF00000 1M   | dsp / axi wram
     ldr r7, =0x1800002D @ 18000000 8M   | vram (+ 2MB)
@@ -153,11 +153,11 @@ disableMpuAndJumpToEntrypoints:
     bic r0, #(1<<0)            @ - MPU disable
     mcr p15, 0, r0, c1, c0, 0  @ write control register
 
-    @ Set the ARM11 entrypoint
+    @ Set the Arm11 entrypoint
     mov r0, #0x20000000
     str r7, [r0, #-4]
 
-    @ Jump to the ARM9 entrypoint
+    @ Jump to the Arm9 entrypoint
     mov r0, r4
     mov r1, r5
     ldr r2, =0x3BEEF

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -94,7 +94,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
                                                "( ) Set developer UNITINFO",
-                                               "( ) Disable ARM11 exception handlers",
+                                               "( ) Disable Arm11 exception handlers",
+                                               "( ) Enable Rosalina on SAFE_FIRM",
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -189,11 +190,20 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "are doing!",
 
                                                  "Disables the fatal error exception\n"
-                                                 "handlers for the ARM11 CPU.\n\n"
+                                                 "handlers for the Arm11 CPU.\n\n"
                                                  "Note: Disabling the exception handlers\n"
                                                  "will disqualify you from submitting\n"
                                                  "issues or bug reports to the Luma3DS\n"
-                                                 "GitHub repository!"
+                                                 "GitHub repository!",
+
+                                                 "Enables Rosalina, the kernel ext.\n"
+                                                 "and sysmodule reimplementations on\n"
+                                                 "SAFE_FIRM (New 3DS only).\n\n"
+                                                 "Also suppresses QTM error 0xF96183FE,\n"
+                                                 "allowing to use 8.1-11.3 N3DS on\n"
+                                                 "New 2DS XL consoles.\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -229,7 +239,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true }
+        { .visible = true },
+        { .visible  = ISN3DS },
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

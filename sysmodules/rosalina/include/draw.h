@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -54,9 +54,14 @@
 #define GPU_TRANSFER_CNT            REG32(0x10400C18)
 #define GPU_CMDLIST_CNT             REG32(0x104018F0)
 
+#define LCD_TOP_BRIGHTNESS          REG32(0x10202240)
+#define LCD_BOT_BRIGHTNESS          REG32(0x10202A40)
+
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
+#define FB_SCREENSHOT_SIZE          (52 + 400 * 240 * 3)
+
 
 #define SCREEN_BOT_WIDTH  320
 #define SCREEN_BOT_HEIGHT 240
@@ -73,19 +78,27 @@
 
 #define DRAW_MAX_FORMATTED_STRING_SIZE  512
 
+void Draw_Init(void);
+
 void Draw_Lock(void);
 void Draw_Unlock(void);
 
 void Draw_DrawCharacter(u32 posX, u32 posY, u32 color, char character);
 u32 Draw_DrawString(u32 posX, u32 posY, u32 color, const char *string);
+
+__attribute__((format(printf,4,5)))
 u32 Draw_DrawFormattedString(u32 posX, u32 posY, u32 color, const char *fmt, ...);
 
 void Draw_FillFramebuffer(u32 value);
 void Draw_ClearFramebuffer(void);
-void Draw_SetupFramebuffer(void);
+u32 Draw_AllocateFramebufferCache(void);
+void Draw_FreeFramebufferCache(void);
+void *Draw_GetFramebufferCache(void);
+u32 Draw_GetFramebufferCacheSize(void);
+u32 Draw_SetupFramebuffer(void);
 void Draw_RestoreFramebuffer(void);
 void Draw_FlushFramebuffer(void);
 u32 Draw_GetCurrentFramebufferAddress(bool top, bool left);
 
 void Draw_CreateBitmapHeader(u8 *dst, u32 width, u32 heigth);
-void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool left, u32 y);
+void Draw_ConvertFrameBufferLines(u8 *buf, u32 startingLine, u32 numLines, bool top, bool left);

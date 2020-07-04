@@ -1,7 +1,7 @@
 /*
 notifications.c
 
-(c) TuxSH, 2017
+(c) TuxSH, 2017-2020
 This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for details).
 */
 
@@ -109,7 +109,7 @@ Result ReceiveNotification(SessionData *sessionData, u32 *notificationId)
 
     if(processData == NULL || !processData->notificationEnabled || processData->nbPendingNotifications == 0)
     {
-        if(processData->nbPendingNotifications)
+        if(processData != NULL && processData->nbPendingNotifications)
             *notificationId = 0;
         return 0xD8806404;
     }

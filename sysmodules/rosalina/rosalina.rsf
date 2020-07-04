@@ -21,7 +21,7 @@ AccessControlInfo:
   IdealProcessor                : 1
   AffinityMask                  : 3
 
-  Priority                      : 20
+  Priority                      : 25 # 55
 
   DisableDebug                  : false
   EnableForceDebug              : true
@@ -37,7 +37,7 @@ AccessControlInfo:
   CoreVersion                   : 2
   DescVersion                   : 2
 
-  MemoryType                    : System      # Application / System / Base
+  MemoryType                    : Base      # Application / System / Base
   HandleTableSize: 150
 
   MemoryMapping:

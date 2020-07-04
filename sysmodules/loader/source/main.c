@@ -7,7 +7,7 @@
 #include "service_manager.h"
 
 u32 config, multiConfig, bootConfig;
-bool isN3DS, needToInitSd, isSdMode;
+bool isN3DS, isSdMode;
 
 // MAKE SURE fsreg has been init before calling this
 static Result fsldrPatchPermissions(void)
@@ -29,27 +29,38 @@ static inline void loadCFWInfo(void)
 {
     s64 out;
 
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 3));
+    if(svcGetSystemInfo(&out, 0x20000, 0) != 1) panic(0xDEADCAFE);
+
+    svcGetSystemInfo(&out, 0x10000, 3);
     config = (u32)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 4));
+    svcGetSystemInfo(&out, 0x10000, 4);
     multiConfig = (u32)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 5));
+    svcGetSystemInfo(&out, 0x10000, 5);
     bootConfig = (u32)out;
 
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x201));
+    svcGetSystemInfo(&out, 0x10000, 0x201);
     isN3DS = (bool)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x202));
-    needToInitSd = (bool)out;
-    assertSuccess(svcGetSystemInfo(&out, 0x10000, 0x203));
+    svcGetSystemInfo(&out, 0x10000, 0x203);
     isSdMode = (bool)out;
-
-    IFile file;
-    if(needToInitSd) fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ); //Init SD card if SAFE_MODE is being booted
 }
 
-// this is called before main
-void __appInit()
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
+
+// this is called after main exits
+void __wrap_exit(int rc)
 {
+    (void)rc;
+    // Not supposed to terminate... kernel will clean up the handles if it does happen anyway
+    svcExitProcess();
+}
+
+void __sync_init();
+void __libc_init_array(void);
+
+// called before main
+void initSystem(void)
+{
+    __sync_init();
     loadCFWInfo();
 
     Result res;
@@ -71,42 +82,8 @@ void __appInit()
     assertSuccess(FSUSER_SetPriority(0));
 
     assertSuccess(pxiPmInit());
-}
 
-// this is called after main exits
-void __appExit()
-{
-    pxiPmExit();
-    //fsldrExit();
-    svcCloseHandle(*fsGetSessionHandle());
-    fsRegExit();
-    srvExit();
-}
-
-// stubs for non-needed pre-main functions
-void __sync_init();
-void __sync_fini();
-void __system_initSyscalls();
-
-void __ctru_exit()
-{
-    void __libc_fini_array(void);
-
-    __libc_fini_array();
-    __appExit();
-    __sync_fini();
-    svcExitProcess();
-}
-
-void initSystem()
-{
-    void __libc_init_array(void);
-
-    __sync_init();
-    __system_initSyscalls();
-    __appInit();
-
-    __libc_init_array();
+    //__libc_init_array();
 }
 
 static const ServiceManagerServiceEntry services[] = {

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -68,10 +68,11 @@ typedef struct sock_server
     sock_free_func free;
 
     Handle shall_terminate_event;
+    Result init_result;
 } sock_server;
 
 Result server_init(struct sock_server *serv);
-void server_bind(struct sock_server *serv, u16 port);
+Result server_bind(struct sock_server *serv, u16 port);
 void server_run(struct sock_server *serv);
 void server_kill_connections(struct sock_server *serv);
 void server_set_should_close_all(struct sock_server *serv);

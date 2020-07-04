@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -77,6 +77,15 @@ typedef s32 Result;                 ///< Function result.
 /// Packs a system version from its components.
 #define SYSTEM_VERSION(major, minor, revision) \
     (((major)<<24)|((minor)<<16)|((revision)<<8))
+
+/// Retrieves the major version from a packed system version.
+#define GET_VERSION_MAJOR(version)    ((version) >>24)
+
+/// Retrieves the minor version from a packed system version.
+#define GET_VERSION_MINOR(version)    (((version)>>16)&0xFF)
+
+/// Retrieves the revision version from a packed system version.
+#define GET_VERSION_REVISION(version) (((version)>> 8)&0xFF)
 
 #define CUR_THREAD_HANDLE       0xFFFF8000
 #define CUR_PROCESS_HANDLE      0xFFFF8001

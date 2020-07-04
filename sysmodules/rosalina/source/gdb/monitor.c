@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -9,15 +9,15 @@
 #include "gdb/net.h"
 #include "gdb/debug.h"
 
-extern Handle terminationRequestEvent;
-extern bool terminationRequest;
+extern Handle preTerminationEvent;
+extern bool preTerminationRequested;
 
 void GDB_RunMonitor(GDBServer *server)
 {
     Handle handles[3 + MAX_DEBUG];
     Result r = 0;
 
-    handles[0] = terminationRequestEvent;
+    handles[0] = preTerminationEvent;
     handles[1] = server->super.shall_terminate_event;
     handles[2] = server->statusUpdated;
 
@@ -81,5 +81,5 @@ void GDB_RunMonitor(GDBServer *server)
             RecursiveLock_Unlock(&ctx->lock);
         }
     }
-    while(!terminationRequest && server->super.running);
+    while(!preTerminationRequested && server->super.running);
 }

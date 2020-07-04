@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS.
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
@@ -74,13 +74,14 @@ void GDB_DecrementServerReferenceCount(GDBServer *server)
 
 void GDB_RunServer(GDBServer *server)
 {
-    server_bind(&server->super, GDB_PORT_BASE);
-    server_bind(&server->super, GDB_PORT_BASE + 1);
-    server_bind(&server->super, GDB_PORT_BASE + 2);
+    Result res = server_bind(&server->super, GDB_PORT_BASE);
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 1);
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 2);
 
-    server_bind(&server->super, GDB_PORT_BASE + 3); // next application
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 3); // next application
 
-    server_run(&server->super);
+    if(R_SUCCEEDED(res))
+        server_run(&server->super);
 }
 
 void GDB_LockAllContexts(GDBServer *server)
@@ -136,9 +137,9 @@ GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPo
     {
         ctx->flags |= GDB_FLAG_SELECTED;
         ctx->localPort = port;
+        ctx->parent = server;
     }
 
-    ctx->parent = server;
     GDB_UnlockAllContexts(server);
     return ctx;
 }

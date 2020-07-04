@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2019 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 
 #define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 2
-#define CONFIG_VERSIONMINOR 3
+#define CONFIG_VERSIONMINOR 4
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -60,7 +60,8 @@ enum singleOptions
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHUNITINFO,
-    DISABLEARM11EXCHANDLERS
+    DISABLEARM11EXCHANDLERS,
+    ENABLESAFEFIRMROSALINA,
 };
 
 typedef enum ConfigurationStatus
