@@ -5,6 +5,7 @@
 This edition of **Luma3DS** allows the loading of **.3GX plugins** in Luma3DS, which are otherwise officially unsupported.
 
 
+#
 ### How to install this Edition
 1. download the latest `boot.firm` from [the releases page](https://github.com/mind-overflow/Luma3DS-3GX/releases/latest)
 2. put the downloaded `boot.firm` file in the `root` directory of your SD card (`sd:/boot.firm`), overwriting the official Luma3DS `boot.firm`.
@@ -15,6 +16,7 @@ This edition of **Luma3DS** allows the loading of **.3GX plugins** in Luma3DS, w
 
 You successfully installed the 3GX Plugin Loader! Now, proceed to the next step to learn how to install and enable 3GX plugins.
 
+#
 ### How to install 3GX plugins
 Plugins have to be installed in the `sd:/luma/plugins` folder.
 Usually, you need to put your specific plugin in the `<TITLEID>` subdirectory, eg: `sd:/luma/plugins/<TITLEID>/<filename>.3gx`.
@@ -28,6 +30,7 @@ So:
 
 Now you know how to install 3GX plugins! Proceed to the next step to learn how how to enable 3GX plugins.
 
+#
 ### How to enable 3GX plugins
 1. when booted, press `L + D-Pad Down + Select` to open the Rosalina menu.
 2. Press `D-Pad Down` again until `Plugin Loader`, is selected, then press `A` and set it to `[Enabled]`.
@@ -35,6 +38,7 @@ Now you know how to install 3GX plugins! Proceed to the next step to learn how h
 Done! You learned to install the 3GX Plugin loader, install 3GX Plugins and enable them. Now, simply launch the game you want to play and press `SELECT` to open up the 3GX menu!
 
 
+#
 ### Luma3DS introduction
 **Luma3DS** is a program to patch the system software of (New) Nintendo (2)3DS handheld consoles "on the fly", adding features such as per-game language settings, debugging capabilities for developers, and removing restrictions enforced by Nintendo such as the region lock.
 
