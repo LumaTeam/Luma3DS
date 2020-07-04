@@ -590,7 +590,7 @@ void        PluginLoader__ThreadMain(void)
 
         SetKernelConfigurationMemoryFlag(g_process != 0);
 
-    } while(!terminationRequest);
+    } while(!preTerminationRequested);
 
     svcCloseHandle(sessionHandle);
     svcCloseHandle(clientHandle);

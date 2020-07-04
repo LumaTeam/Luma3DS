@@ -126,7 +126,7 @@ void inputRedirectionThreadMain(void)
         if (Sleep__Status())
         {
             while (!Wifi__IsConnected()
-                    && inputRedirectionEnabled && !terminationRequest)
+                    && inputRedirectionEnabled && !preTerminationRequested)
                 svcSleepThread(1000000000ULL);
         }
 

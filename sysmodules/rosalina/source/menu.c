@@ -53,7 +53,7 @@ static inline u32 convertHidKeys(u32 keys)
     return keys;
 }
 
-u32 waitInputWithTimeout(s32 msec)
+u32 waitInputWithTimeout(u32 msec)
 {
     s32 n = 0;
     u32 keys;
@@ -204,14 +204,7 @@ void    menuThreadMain(void)
                 menuShow(&rosalinaMenu);
                 menuLeave();
             }
-        }
-        else
-        {
-            menuEnter();
-            if(isN3DS) N3DSMenu_UpdateStatus();
-            menuShow(&rosalinaMenu);
-            menuLeave();
-        }
+        
 
         // Check for home button on O3DS Mode3 with plugin loaded
         if (homeBtnPressed != 0)
@@ -450,7 +443,7 @@ void    DispMessage(const char *title, const char *message)
     do
     {
         keys = waitComboWithTimeout(1000);
-    }while (!terminationRequest && !(keys & BUTTON_B));
+    }while (!preTerminationRequested && !(keys & KEY_B));
 
     Draw_Unlock(); ///< Keep it locked until we exit the message
     menuLeave();
@@ -478,7 +471,7 @@ u32    DispErrMessage(const char *title, const char *message, const Result error
     do
     {
         keys = waitComboWithTimeout(1000);
-    }while (!terminationRequest && !(keys & BUTTON_B));
+    }while (!preTerminationRequested && !(keys & KEY_B));
 
     Draw_Unlock();  ///< Keep it locked until we exit the message
     menuLeave();
@@ -505,12 +498,12 @@ u32     DispWarningOnHome(void)
     do
     {
         keys = waitComboWithTimeout(1000);
-    }while (!terminationRequest && !(keys & BUTTON_B));
+    }while (!preTerminationRequested && !(keys & KEY_B));
 
     Draw_Unlock(); ///< Keep it locked until we exit the message
     menuLeave();
 
-    return (keys & BUTTON_UP) > 0;
+    return (keys & KEY_UP) > 0;
 }
 
 
@@ -564,17 +557,17 @@ void    DisplayPluginMenu(u32   *cmdbuf)
         // Wait for input
         u32 pressed = waitInput();
 
-        if (pressed & BUTTON_A)
+        if (pressed & KEY_A)
             states[cursor] = !states[cursor];
 
-        if (pressed & BUTTON_B)
+        if (pressed & KEY_B)
             break;
 
-        if (pressed & BUTTON_DOWN)
+        if (pressed & KEY_DOWN)
             if (++cursor >= nbItems)
                 cursor = 0;
 
-        if (pressed & BUTTON_UP)
+        if (pressed & KEY_UP)
             if (--cursor >= nbItems)
                 cursor = nbItems - 1;
 

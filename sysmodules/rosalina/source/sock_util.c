@@ -191,7 +191,7 @@ void server_run(struct sock_server *serv)
         if (Sleep__Status())
         {
             while (!Wifi__IsConnected()
-                    && serv->running && !terminationRequest)
+                    && serv->running && !preTerminationRequested)
                 svcSleepThread(1000000000ULL);
         }
 
