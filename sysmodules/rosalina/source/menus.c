@@ -293,18 +293,20 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
 static s64 timeSpentConvertingScreenshot = 0;
 static s64 timeSpentWritingScreenshot = 0;
 
-static Result RosalinaMenu_WriteScreenshot(IFile *file, bool top, bool left)
+static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, bool left)
 {
     u64 total;
     Result res = 0;
-    u32 dimX = top ? 400 : 320;
-    u32 lineSize = 3 * dimX;
+    u32 lineSize = 3 * width;
     u32 remaining = lineSize * 240;
+
+    TRY(Draw_AllocateFramebufferCacheForScreenshot(remaining));
+
     u8 *framebufferCache = (u8 *)Draw_GetFramebufferCache();
     u8 *framebufferCacheEnd = framebufferCache + Draw_GetFramebufferCacheSize();
 
     u8 *buf = framebufferCache;
-    Draw_CreateBitmapHeader(framebufferCache, dimX, 240);
+    Draw_CreateBitmapHeader(framebufferCache, width, 240);
     buf += 54;
 
     u32 y = 0;
@@ -315,7 +317,7 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, bool top, bool left)
         u32 available = (u32)(framebufferCacheEnd - buf);
         u32 size = available < remaining ? available : remaining;
         u32 nlines = size / lineSize;
-        Draw_ConvertFrameBufferLines(buf, y, nlines, top, left);
+        Draw_ConvertFrameBufferLines(buf, width, y, nlines, top, left);
 
         s64 t1 = svcGetSystemTick();
         timeSpentConvertingScreenshot += t1 - t0;
@@ -326,7 +328,10 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, bool top, bool left)
         remaining -= lineSize * nlines;
         buf = framebufferCache;
     }
-    end: return res;
+    end:
+
+    Draw_FreeFramebufferCache();
+    return res;
 }
 
 void RosalinaMenu_TakeScreenshot(void)
@@ -350,8 +355,15 @@ void RosalinaMenu_TakeScreenshot(void)
     archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
     Draw_Lock();
     Draw_RestoreFramebuffer();
+    Draw_FreeFramebufferCache();
 
     svcFlushEntireDataCache();
+
+    bool is3d;
+    u32 topWidth, bottomWidth; // actually Y-dim
+
+    Draw_GetCurrentScreenInfo(&bottomWidth, &is3d, false);
+    Draw_GetCurrentScreenInfo(&topWidth, &is3d, true);
 
     res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
     if(R_SUCCEEDED(res))
@@ -407,24 +419,28 @@ void RosalinaMenu_TakeScreenshot(void)
 
     sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top.bmp", year, month, days, hours, minutes, seconds, milliseconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-    TRY(RosalinaMenu_WriteScreenshot(&file, true, true));
+    TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, true));
     TRY(IFile_Close(&file));
 
     sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_bot.bmp", year, month, days, hours, minutes, seconds, milliseconds);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-    TRY(RosalinaMenu_WriteScreenshot(&file, false, true));
+    TRY(RosalinaMenu_WriteScreenshot(&file, bottomWidth, false, true));
     TRY(IFile_Close(&file));
 
-    if((GPU_FB_TOP_FMT & 0x20) && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
+    if(is3d && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
     {
         sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top_right.bmp", year, month, days, hours, minutes, seconds, milliseconds);
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-        TRY(RosalinaMenu_WriteScreenshot(&file, true, false));
+        TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, false));
         TRY(IFile_Close(&file));
     }
 
 end:
     IFile_Close(&file);
+
+    if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
+        __builtin_trap(); // We're f***ed if this happens
+
     svcFlushEntireDataCache();
     Draw_SetupFramebuffer();
     Draw_Unlock();

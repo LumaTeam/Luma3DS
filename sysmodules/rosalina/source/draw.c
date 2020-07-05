@@ -129,18 +129,19 @@ void Draw_ClearFramebuffer(void)
     Draw_FillFramebuffer(0);
 }
 
-u32 Draw_AllocateFramebufferCache(void)
+Result Draw_AllocateFramebufferCache(u32 size)
 {
-    // Try to see how much we can allocate...
     // Can't use fbs in FCRAM when Home Menu is active (AXI config related maybe?)
     u32 addr = 0x0D000000;
     u32 tmp;
-    u32 minSize = (FB_BOTTOM_SIZE + 0xFFF) & ~0xFFF;
-    u32 maxSize = (FB_SCREENSHOT_SIZE + 0xFFF) & ~0xFFF;
-    u32 remaining = (u32)osGetMemRegionFree(MEMREGION_SYSTEM);
-    u32 size = remaining < maxSize ? remaining : maxSize;
- 
-    if (size < minSize || R_FAILED(svcControlMemoryEx(&tmp, addr, 0, size, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READ | MEMPERM_WRITE, true)))
+
+    size = (size + 0xFFF) >> 12 << 12; // round-up
+
+    if (framebufferCache != NULL)
+        __builtin_trap();
+
+    Result res = svcControlMemoryEx(&tmp, addr, 0, size, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READWRITE, true);
+    if (R_FAILED(res))
     {
         framebufferCache = NULL;
         framebufferCacheSize = 0;
@@ -151,13 +152,21 @@ u32 Draw_AllocateFramebufferCache(void)
         framebufferCacheSize = size;
     }
 
-    return framebufferCacheSize;
+    return res;
+}
+
+Result Draw_AllocateFramebufferCacheForScreenshot(u32 size)
+{
+    u32 remaining = (u32)osGetMemRegionFree(MEMREGION_SYSTEM);
+    u32 sz = remaining < size ? remaining : size;
+    return Draw_AllocateFramebufferCache(sz);
 }
 
 void Draw_FreeFramebufferCache(void)
 {
     u32 tmp;
-    svcControlMemory(&tmp, (u32)framebufferCache, 0, framebufferCacheSize, MEMOP_FREE, 0);
+    if (framebufferCache != NULL)
+        svcControlMemory(&tmp, (u32)framebufferCache, 0, framebufferCacheSize, MEMOP_FREE, 0);
     framebufferCacheSize = 0;
     framebufferCache = NULL;
 }
@@ -180,13 +189,19 @@ u32 Draw_SetupFramebuffer(void)
     memcpy(framebufferCache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
+
+    u32 format = GPU_FB_BOTTOM_FMT;
+
     gpuSavedFramebufferAddr1 = GPU_FB_BOTTOM_ADDR_1;
     gpuSavedFramebufferAddr2 = GPU_FB_BOTTOM_ADDR_2;
-    gpuSavedFramebufferFormat = GPU_FB_BOTTOM_FMT;
+    gpuSavedFramebufferFormat = format;
     gpuSavedFramebufferStride = GPU_FB_BOTTOM_STRIDE;
 
+    format = (format & ~7) | GSP_RGB565_OES;
+    format |= 3 << 8; // set VRAM bits
+
     GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
-    GPU_FB_BOTTOM_FMT = (GPU_FB_BOTTOM_FMT & ~7) | GSP_RGB565_OES;
+    GPU_FB_BOTTOM_FMT = format;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
 
     return framebufferCacheSize;
@@ -205,7 +220,7 @@ void Draw_RestoreFramebuffer(void)
 
 void Draw_FlushFramebuffer(void)
 {
-    svcFlushProcessDataCache(CUR_PROCESS_HANDLE, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
+    svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (u32)FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
 }
 
 u32 Draw_GetCurrentFramebufferAddress(bool top, bool left)
@@ -223,6 +238,21 @@ u32 Draw_GetCurrentFramebufferAddress(bool top, bool left)
             return top ? GPU_FB_TOP_LEFT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1;
         else
             return top ? GPU_FB_TOP_RIGHT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1;
+    }
+}
+
+void Draw_GetCurrentScreenInfo(u32 *width, bool *is3d, bool top)
+{
+    if (top)
+    {
+        bool isNormal2d = (GPU_FB_TOP_FMT & BIT(6)) != 0;
+        *is3d = (GPU_FB_TOP_FMT & BIT(5)) != 0;
+        *width = !(*is3d) && !isNormal2d ? 800 : 400;
+    }
+    else
+    {
+        *is3d = false;
+        *width = 320;
     }
 }
 
@@ -313,6 +343,7 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
 
 typedef struct FrameBufferConvertArgs {
     u8 *buf;
+    u32 width;
     u8 startingLine;
     u8 numLines;
     bool top;
@@ -324,7 +355,7 @@ static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *arg
     static const u8 formatSizes[] = { 4, 3, 2, 2, 2 };
 
     GSPGPU_FramebufferFormat fmt = args->top ? (GSPGPU_FramebufferFormat)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormat)(GPU_FB_BOTTOM_FMT & 7);
-    u32 width = args->top ? 400 : 320;
+    u32 width = args->width;
     u32 stride = args->top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
 
     u32 pa = Draw_GetCurrentFramebufferAddress(args->top, args->left);
@@ -340,8 +371,8 @@ static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *arg
     }
 }
 
-void Draw_ConvertFrameBufferLines(u8 *buf, u32 startingLine, u32 numLines, bool top, bool left)
+void Draw_ConvertFrameBufferLines(u8 *buf, u32 width, u32 startingLine, u32 numLines, bool top, bool left)
 {
-    FrameBufferConvertArgs args = { buf, (u8)startingLine, (u8)numLines, top, left };
+    FrameBufferConvertArgs args = { buf, width, (u8)startingLine, (u8)numLines, top, left };
     svcCustomBackdoor(Draw_ConvertFrameBufferLinesKernel, &args);
 }
