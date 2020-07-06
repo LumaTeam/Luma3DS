@@ -228,15 +228,15 @@ void menuEnter(void)
         menuRefCount++;
         svcKernelSetState(0x10000, 1);
         svcSleepThread(5 * 1000 * 100LL);
-        if (Draw_AllocateFramebufferCache() == 0)
+        if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
         {
             // Oops
             menuRefCount = 0;
             svcKernelSetState(0x10000, 1);
             svcSleepThread(5 * 1000 * 100LL);
         }
-
-        Draw_SetupFramebuffer();
+        else
+            Draw_SetupFramebuffer();
     }
     Draw_Unlock();
 }
