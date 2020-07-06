@@ -118,7 +118,6 @@ void *svcHook(u8 *pageEnd)
 
                 KEvent* event = (KEvent *)KProcessHandleTable__ToKAutoObject(handleTableOfProcess(currentProcess),
                                                             KPROCESS_GET_RVALUE(currentProcess, resumeProcessExitEvent));
-                WaitSynchronization1(NULL, currentCoreContext->objectContext.currentThread, (KSynchronizationObject *)event, 10000000000ULL);
                 ((KAutoObject *)event)->vtable->DecrementReferenceCount((KAutoObject *)event);
             }
             return officialSVCs[0x3];
