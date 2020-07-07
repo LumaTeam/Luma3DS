@@ -103,6 +103,9 @@ void initSystem(void)
     if (R_FAILED(fsInit()))
         svcBreak(USERBREAK_PANIC);
 
+    if (R_FAILED(FSUSER_SetPriority(-16)))
+        svcBreak(USERBREAK_PANIC);
+
     // **** DO NOT init services that don't come from KIPs here ****
     // Instead, init the service only where it's actually init (then deinit it).
 
