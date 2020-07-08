@@ -1,39 +1,150 @@
 /*
-*   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   This file is part of Luma3DS.
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
+*   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
 
+#define _GNU_SOURCE // for strchrnul
 #include "gdb/debug.h"
+#include "gdb/server.h"
 #include "gdb/verbose.h"
 #include "gdb/net.h"
 #include "gdb/thread.h"
 #include "gdb/mem.h"
+#include "gdb/hio.h"
 #include "gdb/watchpoints.h"
 #include "fmt.h"
 
 #include <stdlib.h>
 #include <signal.h>
+#include "pmdbgext.h"
+
+static void GDB_DetachImmediatelyExtended(GDBContext *ctx)
+{
+    // detach immediately
+    RecursiveLock_Lock(&ctx->lock);
+    ctx->state = GDB_STATE_DETACHING;
+
+    svcClearEvent(ctx->processAttachedEvent);
+    ctx->eventToWaitFor = ctx->processAttachedEvent;
+
+    svcClearEvent(ctx->parent->statusUpdateReceived);
+    svcSignalEvent(ctx->parent->statusUpdated);
+    RecursiveLock_Unlock(&ctx->lock);
+
+    svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
+
+    RecursiveLock_Lock(&ctx->lock);
+    GDB_DetachFromProcess(ctx);
+    ctx->flags &= GDB_FLAG_PROC_RESTART_MASK;
+    RecursiveLock_Unlock(&ctx->lock);
+}
+
+GDB_DECLARE_VERBOSE_HANDLER(Run)
+{
+    // Note: only titleId [mediaType [launchFlags]] is supported, and the launched title shouldn't rely on APT
+    // all 3 parameters should be hex-encoded.
+
+    // Extended remote only
+    if (!(ctx->flags & GDB_FLAG_EXTENDED_REMOTE))
+        return GDB_ReplyErrno(ctx, EPERM);
+
+    u64 titleId;
+    u32 mediaType = MEDIATYPE_NAND;
+    u32 launchFlags = PMLAUNCHFLAG_LOAD_DEPENDENCIES;
+
+    char args[3][32] = {{0}};
+    char *pos = ctx->commandData;
+    for (u32 i = 0; i < 3 && *pos != 0; i++)
+    {
+        char *pos2 = strchrnul(pos, ';');
+        u32 dist = pos2 - pos;
+        if (dist < 2)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+        if (dist % 2 == 1)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        if (dist / 2 > 16) // buffer overflow check
+            return GDB_ReplyErrno(ctx, EINVAL);
+
+        u32 n = GDB_DecodeHex(args[i], pos, dist / 2);
+        if (n == 0)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+        pos = *pos2 == 0 ? pos2 : pos2 + 1;
+    }
+
+    if (args[0][0] == 0)
+        return GDB_ReplyErrno(ctx, EINVAL); // first arg mandatory
+
+    if (GDB_ParseIntegerList64(&titleId, args[0], 1, 0, 0, 16, false) == NULL)
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    if (args[1][0] != 0 && (GDB_ParseIntegerList(&mediaType, args[1], 1, 0, 0, 16, true) == NULL || mediaType >= 0x100))
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    if (args[2][0] != 0 && GDB_ParseIntegerList(&launchFlags, args[2], 1, 0, 0, 16, true) == NULL)
+        return GDB_ReplyErrno(ctx, EINVAL);
+
+    FS_ProgramInfo progInfo;
+    progInfo.mediaType = (FS_MediaType)mediaType;
+    progInfo.programId = titleId;
+
+    RecursiveLock_Lock(&ctx->lock);
+    Result r = GDB_CreateProcess(ctx, &progInfo, launchFlags);
+
+    if (R_FAILED(r))
+    {
+        if(ctx->debug != 0)
+            GDB_DetachImmediatelyExtended(ctx);
+        RecursiveLock_Unlock(&ctx->lock);
+        return GDB_ReplyErrno(ctx, EPERM);
+    }
+
+    RecursiveLock_Unlock(&ctx->lock);
+    return R_SUCCEEDED(r) ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_ReplyErrno(ctx, EPERM);
+}
+
+GDB_DECLARE_HANDLER(Restart)
+{
+    // Note: removed from gdb
+    // Extended remote only & process must have been created
+    if (!(ctx->flags & GDB_FLAG_EXTENDED_REMOTE) || !(ctx->flags & GDB_FLAG_CREATED))
+        return GDB_ReplyErrno(ctx, EPERM);
+
+    FS_ProgramInfo progInfo = ctx->launchedProgramInfo;
+    u32 launchFlags = ctx->launchedProgramLaunchFlags;
+
+    ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        GDB_DetachImmediatelyExtended(ctx);
+    
+    RecursiveLock_Lock(&ctx->lock);
+    Result r = GDB_CreateProcess(ctx, &progInfo, launchFlags);
+    if (R_FAILED(r) && ctx->debug != 0)
+        GDB_DetachImmediatelyExtended(ctx);
+    RecursiveLock_Unlock(&ctx->lock);
+    return 0;
+}
+
+GDB_DECLARE_VERBOSE_HANDLER(Attach)
+{
+    // Extended remote only
+    if (!(ctx->flags & GDB_FLAG_EXTENDED_REMOTE))
+        return GDB_ReplyErrno(ctx, EPERM);
+
+    u32 pid;
+    if(GDB_ParseHexIntegerList(&pid, ctx->commandData, 1, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    RecursiveLock_Lock(&ctx->lock);
+    ctx->pid = pid;
+    Result r = GDB_AttachToProcess(ctx);
+    if(R_FAILED(r))
+        GDB_DetachImmediatelyExtended(ctx);
+    RecursiveLock_Unlock(&ctx->lock);
+    return R_SUCCEEDED(r) ? GDB_SendStopReply(ctx, &ctx->latestDebugEvent) : GDB_ReplyErrno(ctx, EPERM);
+}
 
 /*
     Since we can't select particular threads to continue (and that's uncompliant behavior):
@@ -43,14 +154,19 @@
 
 GDB_DECLARE_HANDLER(Detach)
 {
-    ctx->state = GDB_STATE_CLOSING;
+    ctx->state = GDB_STATE_DETACHING;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        GDB_DetachImmediatelyExtended(ctx);
     return GDB_ReplyOk(ctx);
 }
 
 GDB_DECLARE_HANDLER(Kill)
 {
-    ctx->state = GDB_STATE_CLOSING;
+    ctx->state = GDB_STATE_DETACHING;
     ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        GDB_DetachImmediatelyExtended(ctx);
+
     return 0;
 }
 
@@ -65,7 +181,7 @@ GDB_DECLARE_HANDLER(Break)
     }
 }
 
-static void GDB_ContinueExecution(GDBContext *ctx)
+void GDB_ContinueExecution(GDBContext *ctx)
 {
     ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
     svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
@@ -153,7 +269,15 @@ GDB_DECLARE_VERBOSE_HANDLER(Continue)
 
 GDB_DECLARE_HANDLER(GetStopReason)
 {
-    return GDB_SendStopReply(ctx, &ctx->latestDebugEvent);
+    if (ctx->processEnded && ctx->processExited) {
+        return GDB_SendPacket(ctx, "W00", 3);
+    } else if (ctx->processEnded && !ctx->processExited) {
+        return GDB_SendPacket(ctx, "X0f", 3);
+    } else if (ctx->debug == 0) {
+        return GDB_SendPacket(ctx, "W00", 3);
+    } else {
+        return GDB_SendStopReply(ctx, &ctx->latestDebugEvent);
+    }
 }
 
 static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
@@ -163,7 +287,7 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     s64 dummy;
     u32 core;
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, threadId, THREADCONTEXT_CONTROL_ALL);
-    int n = sprintf(out, "T%02xthread:%x;", sig, threadId);
+    int n = sprintf(out, "T%02xthread:%lx;", sig, threadId);
 
     if(R_FAILED(r))
         return n;
@@ -171,12 +295,12 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     r = svcGetDebugThreadParam(&dummy, &core, ctx->debug, ctx->currentThreadId, DBGTHREAD_PARAMETER_CPU_CREATOR); // Creator = "first ran, and running the thread"
 
     if(R_SUCCEEDED(r))
-        n += sprintf(out + n, "core:%x;", core);
+        n += sprintf(out + n, "core:%lx;", core);
 
     for(u32 i = 0; i <= 12; i++)
-        n += sprintf(out + n, "%x:%08x;", i, __builtin_bswap32(regs.cpu_registers.r[i]));
+        n += sprintf(out + n, "%lx:%08lx;", i, __builtin_bswap32(regs.cpu_registers.r[i]));
 
-    n += sprintf(out + n, "d:%08x;e:%08x;f:%08x;19:%08x;",
+    n += sprintf(out + n, "d:%08lx;e:%08lx;f:%08lx;19:%08lx;",
         __builtin_bswap32(regs.cpu_registers.sp), __builtin_bswap32(regs.cpu_registers.lr), __builtin_bswap32(regs.cpu_registers.pc),
         __builtin_bswap32(regs.cpu_registers.cpsr));
 
@@ -184,10 +308,10 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     {
         u64 val;
         memcpy(&val, &regs.fpu_registers.d[i], 8);
-        n += sprintf(out + n, "%x:%016llx;", 26 + i, __builtin_bswap64(val));
+        n += sprintf(out + n, "%lx:%016llx;", 26 + i, __builtin_bswap64(val));
     }
 
-    n += sprintf(out + n, "2a:%08x;2b:%08x;", __builtin_bswap32(regs.fpu_registers.fpscr), __builtin_bswap32(regs.fpu_registers.fpexc));
+    n += sprintf(out + n, "2a:%08lx;2b:%08lx;", __builtin_bswap32(regs.fpu_registers.fpscr), __builtin_bswap32(regs.fpu_registers.fpexc));
 
     return n;
 }
@@ -196,12 +320,19 @@ void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
 {
     switch(info->type)
     {
+        case DBGEVENT_ATTACH_PROCESS:
+        {
+            ctx->pid = info->attach_process.process_id;
+            break;
+        }
+
         case DBGEVENT_ATTACH_THREAD:
         {
             if(ctx->nbThreads == MAX_DEBUG_THREAD)
                 svcBreak(USERBREAK_ASSERT);
             else
             {
+                ++ctx->totalNbCreatedThreads;
                 ctx->threadInfos[ctx->nbThreads].id = info->thread_id;
                 ctx->threadInfos[ctx->nbThreads++].tls = info->attach_thread.thread_local_storage;
             }
@@ -244,6 +375,8 @@ void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
                 info->flags = 1;
                 info->syscall.syscall = sz;
             }
+            else if (info->output_string.string_size == 0)
+                GDB_FetchPackedHioRequest(ctx, info->output_string.string_addr);
 
             break;
         }
@@ -286,7 +419,14 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_ATTACH_THREAD:
         {
-            if(info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)
+            if((ctx->flags & GDB_FLAG_ATTACHED_AT_START) && ctx->totalNbCreatedThreads == 1)
+            {
+                // Main thread created
+                ctx->currentThreadId = info->thread_id;
+                GDB_ParseCommonThreadInfo(buffer, ctx, SIGINT);
+                return GDB_SendFormattedPacket(ctx, "%s", buffer);
+            }
+            else if(info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)
                 break; // Dismissed
             else
             {
@@ -301,7 +441,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
             {
                 // no signal, SIGTERM, SIGQUIT (process exited), SIGTERM (process terminated)
                 static int threadExitRepliesSigs[] = { 0, SIGTERM, SIGQUIT, SIGTERM };
-                return GDB_SendFormattedPacket(ctx, "w%02x;%x", threadExitRepliesSigs[(u32)info->exit_thread.reason], info->thread_id);
+                return GDB_SendFormattedPacket(ctx, "w%02x;%lx", threadExitRepliesSigs[(u32)info->exit_thread.reason], info->thread_id);
             }
             break;
         }
@@ -365,13 +505,14 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                                 GDB_SendDebugString(ctx, "Warning: unknown watchpoint encountered!\n");
 
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%s%swatch:%08x;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
+                            return GDB_SendFormattedPacket(ctx, "%s%swatch:%08lx;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
                             break;
                         }
 
                         default:
                             break;
                     }
+                    break;
                 }
 
                 case EXCEVENT_USER_BREAK:
@@ -432,25 +573,34 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_OUTPUT_STRING:
         {
-            u32 addr = info->output_string.string_addr;
-            u32 remaining = info->output_string.string_size;
-            u32 sent = 0;
-            int total = 0;
-            while(remaining > 0)
+            // Regular "output string"
+            if (!GDB_IsHioInProgress(ctx))
             {
-                u32 pending = (GDB_BUF_LEN - 1) / 2;
-                pending = pending < remaining ? pending : remaining;
+                u32 addr = info->output_string.string_addr;
+                u32 remaining = info->output_string.string_size;
+                u32 sent = 0;
+                int total = 0;
+                while(remaining > 0)
+                {
+                    u32 pending = (GDB_BUF_LEN - 1) / 2;
+                    pending = pending < remaining ? pending : remaining;
 
-                int res = GDB_SendMemory(ctx, "O", 1, addr + sent, pending);
-                if(res < 0 || (u32) res != 5 + 2 * pending)
-                    break;
+                    int res = GDB_SendMemory(ctx, "O", 1, addr + sent, pending);
+                    if(res < 0 || (u32) res != 5 + 2 * pending)
+                        break;
 
-                sent += pending;
-                remaining -= pending;
-                total += res;
+                    sent += pending;
+                    remaining -= pending;
+                    total += res;
+                }
+
+                return total;
+            }
+            else // HIO
+            {
+                return GDB_SendCurrentHioRequest(ctx);
             }
 
-            return total;
         }
         default:
             break;
@@ -465,7 +615,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 */
 int GDB_HandleDebugEvents(GDBContext *ctx)
 {
-    if(ctx->state == GDB_STATE_CLOSING)
+    if(ctx->state == GDB_STATE_DETACHING)
         return -1;
 
     DebugEventInfo info;
@@ -477,11 +627,11 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
     GDB_PreprocessDebugEvent(ctx, &info);
 
     int ret = 0;
-    bool continueAutomatically = info.type == DBGEVENT_OUTPUT_STRING || info.type == DBGEVENT_ATTACH_PROCESS ||
+    bool continueAutomatically = (info.type == DBGEVENT_OUTPUT_STRING  && !GDB_IsHioInProgress(ctx)) ||
+                                info.type == DBGEVENT_ATTACH_PROCESS ||
                                 (info.type == DBGEVENT_ATTACH_THREAD && (info.attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)) ||
                                 (info.type == DBGEVENT_EXIT_THREAD && (info.exit_thread.reason >= EXITTHREAD_EVENT_EXIT_PROCESS || !ctx->catchThreadEvents)) ||
                                 info.type == DBGEVENT_EXIT_PROCESS || !(info.flags & 1);
-
 
     if(continueAutomatically)
     {

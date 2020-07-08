@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
+#include <string.h>
 
 #include "svc/KernelSetState.h"
 #include "synchronization.h"
 #include "ipc.h"
 #include "debug.h"
-#include "memory.h"
 
 #define MAX_DEBUG 3
 
@@ -104,14 +104,26 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
                 __ldrex((s32 *)&rosalinaState);
             }
             while(__strex((s32 *)&rosalinaState, (s32)(rosalinaState ^ varg1)));
+            __dmb();
 
             if(rosalinaState & 2)
                 hasStartedRosalinaNetworkFuncsOnce = true;
 
-            if(rosalinaState & 1)
-                rosalinaLockAllThreads();
-            else if(varg1 & 1)
-                rosalinaUnlockAllThreads();
+            // 1: all applet/app/gsp/dsp... threads 4: hid/ir
+            if(varg1 & 1)
+            {
+                if (rosalinaState & 1)
+                    rosalinaLockThreads(1);
+                else
+                    rosalinaUnlockThreads(1);
+            }
+            if(varg1 & 4)
+            {
+                if (rosalinaState & 4)
+                    rosalinaLockThreads(4);
+                else
+                    rosalinaUnlockThreads(4);
+            }
 
             break;
         }

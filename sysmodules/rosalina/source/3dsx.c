@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -261,7 +261,7 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
     // Create the codeset
     CodeSetInfo csinfo;
     memset(&csinfo, 0, sizeof(csinfo));
-    strncpy((char*)csinfo.name, name, 8);
+    memcpy(csinfo.name, name, 8);
     csinfo.program_id      = tid;
     csinfo.text_addr       = d.segAddrs[0];
     csinfo.text_size       = d.segSizes[0] >> 12;

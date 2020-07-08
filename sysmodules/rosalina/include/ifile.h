@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ typedef struct
 } IFile;
 
 Result IFile_Open(IFile *file, FS_ArchiveID archiveId, FS_Path archivePath, FS_Path filePath, u32 flags);
+Result IFile_OpenFromArchive(IFile *file, FS_Archive archive, FS_Path filePath, u32 flags);
 Result IFile_Close(IFile *file);
 Result IFile_GetSize(IFile *file, u64 *size);
 Result IFile_Read(IFile *file, u64 *total, void *buffer, u32 len);

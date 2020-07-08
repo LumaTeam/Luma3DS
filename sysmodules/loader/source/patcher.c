@@ -1,9 +1,9 @@
 #include <3ds.h>
 #include "patcher.h"
+#include "bps_patcher.h"
 #include "memory.h"
 #include "strings.h"
-#include "fsldr.h"
-#include "../build/bundled.h"
+#include "romfsredir.h"
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
 {
@@ -44,12 +44,12 @@ static bool dirCheck(FS_ArchiveID archiveId, const char *path)
     FS_Path dirPath = {PATH_ASCII, strnlen(path, 255) + 1, path},
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
-    if(R_FAILED(FSLDR_OpenArchive(&archive, archiveId, archivePath))) ret = false;
+    if(R_FAILED(FSUSER_OpenArchive(&archive, archiveId, archivePath))) ret = false;
     else
     {
-        ret = R_SUCCEEDED(FSLDR_OpenDirectory(&handle, archive, dirPath));
+        ret = R_SUCCEEDED(FSUSER_OpenDirectory(&handle, archive, dirPath));
         if(ret) FSDIR_Close(handle);
-        FSLDR_CloseArchive(archive);
+        FSUSER_CloseArchive(archive);
     }
 
     return ret;
@@ -204,7 +204,7 @@ static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u3
         roundedDataSize = ((dataSize + 4095) & 0xFFFFF000);
 
     //First check for sufficient padding at the end of the .text segment
-    if(roundedTextSize - size >= romfsredir_bin_size) *payloadOffset = size;
+    if(roundedTextSize - size >= romfsRedirPatchSize) *payloadOffset = size;
     else
     {
         //If there isn't enough padding look for the "throwFatalError" function to replace
@@ -356,10 +356,10 @@ error:
     while(true);
 }
 
-bool loadTitleExheader(u64 progId, exheader_header *exheader)
+bool loadTitleExheaderInfo(u64 progId, ExHeader_Info *exheaderInfo)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/exheader.bin"
-       If it exists it should be a decrypted exheader */
+       If it exists it should be a decrypted exheader / exheader info */
 
     char path[] = "/luma/titles/0000000000000000/exheader.bin";
     progIdToStr(path + 28, progId);
@@ -370,12 +370,12 @@ bool loadTitleExheader(u64 progId, exheader_header *exheader)
 
     u64 fileSize;
 
-    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize != sizeof(exheader_header)) goto error;
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || (fileSize != sizeof(ExHeader_Info) && fileSize != sizeof(ExHeader))) goto error;
     else
     {
         u64 total;
 
-        if(R_FAILED(IFile_Read(&file, &total, exheader, fileSize)) || total != fileSize) goto error;
+        if(R_FAILED(IFile_Read(&file, &total, exheaderInfo, sizeof(ExHeader_Info))) || total != sizeof(ExHeader_Info)) goto error;
     }
 
     IFile_Close(&file);
@@ -470,12 +470,12 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 
         ((buf[11] >= '0' && buf[11] <= '9') || (buf[11] >= 'a' && buf[11] <= 'f') || (buf[11] >= 'A' && buf[11] <= 'F')))
     {
         if     (buf[10] >= '0' && buf[10] <= '9') *stateId = 16 * (buf[10] - '0');
-        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a');
-        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A');
+        else if(buf[10] >= 'a' && buf[10] <= 'f') *stateId = 16 * (buf[10] - 'a' + 10);
+        else if(buf[10] >= 'A' && buf[10] <= 'F') *stateId = 16 * (buf[10] - 'A' + 10);
 
         if     (buf[11] >= '0' && buf[11] <= '9') *stateId += buf[11] - '0';
-        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a';
-        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A';
+        else if(buf[11] >= 'a' && buf[11] <= 'f') *stateId += buf[11] - 'a' + 10;
+        else if(buf[11] >= 'A' && buf[11] <= 'F') *stateId += buf[11] - 'A' + 10;
 
         *mask |= 8;
     }
@@ -504,7 +504,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
         fsOpenFileDirectly = 0xFFFFFFFF,
         payloadOffset = 0,
         pathOffset = 0,
-        pathAddress;
+        pathAddress = 0xDEADCAFE;
 
     if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
@@ -528,43 +528,18 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
     //Setup the payload
     u8 *payload = code + payloadOffset;
-    memcpy(payload, romfsredir_bin, romfsredir_bin_size);
 
-    //Insert symbols in the payload
-    u32 *payload32 = (u32 *)payload;
-    for(u32 i = 0; i < romfsredir_bin_size / 4; i++)
-    {
-        switch(payload32[i])
-        {
-            case 0xdead0000:
-                payload32[i] = *(u32 *)(code + fsOpenFileDirectly);
-                break;
-            case 0xdead0001:
-                payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsOpenFileDirectly + 4);
-                break;
-            case 0xdead0002:
-                payload32[i] = *(u32 *)(code + fsTryOpenFile);
-                break;
-            case 0xdead0003:
-                payload32[i] = MAKE_BRANCH(payloadOffset + i * 4, fsTryOpenFile + 4);
-                break;
-            case 0xdead0004:
-                payload32[i] = pathAddress;
-                break;
-            case 0xdead0005:
-                payload32[i] = 0x100000 + fsMountArchive;
-                break;
-            case 0xdead0006:
-                payload32[i] = 0x100000 + fsRegisterArchive;
-                break;
-            case 0xdead0007:
-                payload32[i] = archiveId;
-                break;
-            case 0xdead0008:
-                memcpy(payload32 + i, updateRomFsMounts[updateRomFsIndex], 4);
-                break;
-        }
-    }
+    romfsRedirPatchSubstituted1 = *(u32 *)(code + fsOpenFileDirectly);
+    romfsRedirPatchHook1 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook1 - (u32)romfsRedirPatch, fsOpenFileDirectly + 4);
+    romfsRedirPatchSubstituted2 = *(u32 *)(code + fsTryOpenFile);
+    romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
+    romfsRedirPatchCustomPath = pathAddress;
+    romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
+    romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
+    romfsRedirPatchArchiveId = archiveId;
+    memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMounts[updateRomFsIndex], 4);
+
+    memcpy(payload, romfsRedirPatch, romfsRedirPatchSize);
 
     memcpy(code + pathOffset, "lf:", 3);
     memcpy(code + pathOffset + 3, path, sizeof(path));
@@ -740,7 +715,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 //Patch N3DS CPU Clock and L2 cache setting
                 *(off - 4) = *(off - 3);
                 *(off - 3) = *(off - 1);
-                memcpy(off - 1, off, 16);
+                memmove(off - 1, off, 16);
                 *(off + 3) = 0xE3800000 | cpuSetting;
             }
         }
@@ -761,22 +736,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             for(end = start + 8; *(u32 *)end != 0xCC010000; end += 8)
                 if(end >= roStart + roSize - 12) goto error;
 
-            memset32(start, 0, end - start);
-        }
-
-        s64 nbSection0Modules;
-        svcGetSystemInfo(&nbSection0Modules, 26, 0);
-
-        if(nbSection0Modules == 6)
-        {
-            // Makes ErrDisp to not start up
-            static const u64 errDispTid = 0x0004003000008A02ULL;
-            u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
-            *(errDispTidLoc - 6) = 0xE3A00000; // mov r0, #0
+            memset(start, 0, end - start);
         }
     }
 
-    else if(progId == 0x0004013000001702LL) //CFG
+    else if((progId & ~0xF0000001ULL) == 0x0004013000001702LL) //CFG, SAFE_FIRM CFG
     {
         static const u8 pattern[] = {
             0x06, 0x46, 0x10, 0x48
@@ -862,7 +826,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    else if(progId == 0x0004013000001A02LL) //DSP
+    else if((progId & ~0xF0000001ULL) == 0x0004013000001A02LL) //DSP, SAFE_FIRM DSP
     {
         static const u8 pattern[] = {
             0xE3, 0x10, 0x10, 0x80, 0xE2
@@ -882,6 +846,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     if(CONFIG(PATCHGAMES))
     {
+        if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
         if(!applyCodeIpsPatch(progId, code, size)) goto error;
 
         if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)

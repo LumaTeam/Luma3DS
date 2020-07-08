@@ -1,7 +1,7 @@
 /*
 srv.h
 
-(c) TuxSH, 2017
+(c) TuxSH, 2017-2020
 This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for details).
 */
 
@@ -19,7 +19,7 @@ Result srvHandleCommands(SessionData *sessionData)
     {
         case 1: // RegisterClient
         {
-            if(cmdbuf[0] == IPC_MakeHeader(1, 0, 2) && cmdbuf[1] == IPC_Desc_CurProcessHandle())
+            if(cmdbuf[0] == IPC_MakeHeader(1, 0, 2) && cmdbuf[1] == IPC_Desc_CurProcessId())
             {
                 sessionData->pid = cmdbuf[2];
                 cmdbuf[0] = IPC_MakeHeader(1, 1, 0);

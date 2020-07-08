@@ -1,27 +1,8 @@
 /*
-*   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   This file is part of Luma3DS.
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
+*   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
 
 #include "gdb/thread.h"
@@ -163,7 +144,7 @@ GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
     if(ctx->currentThreadId == 0)
         ctx->currentThreadId = GDB_GetCurrentThread(ctx);
 
-    return ctx->currentThreadId != 0 ? GDB_SendFormattedPacket(ctx, "QC%x", ctx->currentThreadId) : GDB_ReplyErrno(ctx, EPERM);
+    return ctx->currentThreadId != 0 ? GDB_SendFormattedPacket(ctx, "QC%lx", ctx->currentThreadId) : GDB_ReplyErrno(ctx, EPERM);
 }
 
 static void GDB_GenerateThreadListData(GDBContext *ctx)
@@ -187,7 +168,7 @@ static void GDB_GenerateThreadListData(GDBContext *ctx)
     char *bufptr = ctx->threadListData;
 
     for(u32 i = 0; i < nbAliveThreads; i++)
-        bufptr += sprintf(bufptr, i == (nbAliveThreads - 1) ? "%x" : "%x,", aliveThreadIds[i]);
+        bufptr += sprintf(bufptr, i == (nbAliveThreads - 1) ? "%lx" : "%lx,", aliveThreadIds[i]);
 }
 
 static int GDB_SendThreadData(GDBContext *ctx)
@@ -277,27 +258,27 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
     if(val == 65)
         sThreadDynamicPriority[0] = 0;
     else
-        sprintf(sThreadDynamicPriority, "dynamic prio.: %d, ", (s32)val);
+        sprintf(sThreadDynamicPriority, "dynamic prio.: %ld, ", (s32)val);
 
     r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_PRIORITY);
     if(R_FAILED(r))
         sThreadStaticPriority[0] = 0;
     else
-        sprintf(sThreadStaticPriority, "static prio.: %d, ", (s32)val);
+        sprintf(sThreadStaticPriority, "static prio.: %ld, ", (s32)val);
 
     r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_IDEAL);
     if(R_FAILED(r))
         sCoreIdeal[0] = 0;
     else
-        sprintf(sCoreIdeal, "ideal core: %u, ", val);
+        sprintf(sCoreIdeal, "ideal core: %lu, ", val);
 
     r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_CREATOR); // Creator = "first ran, and running the thread"
     if(R_FAILED(r))
         sCoreCreator[0] = 0;
     else
-        sprintf(sCoreCreator, "running on core %u", val);
+        sprintf(sCoreCreator, "running on core %lu", val);
 
-    n = sprintf(buf, "TLS: 0x%08x%s%s%s%s%s", tls, sStatus, sThreadDynamicPriority, sThreadStaticPriority,
+    n = sprintf(buf, "TLS: 0x%08lx%s%s%s%s%s", tls, sStatus, sThreadDynamicPriority, sThreadStaticPriority,
                 sCoreIdeal, sCoreCreator);
 
     return GDB_SendHexPacket(ctx, buf, (u32)n);
@@ -324,5 +305,5 @@ GDB_DECLARE_QUERY_HANDLER(GetTLSAddr)
     if(tls == 0)
         return GDB_ReplyErrno(ctx, EINVAL);
 
-    return GDB_SendFormattedPacket(ctx, "%08x", tls + offset);
+    return GDB_SendFormattedPacket(ctx, "%08lx", tls + offset);
 }

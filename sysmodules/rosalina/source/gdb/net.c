@@ -1,27 +1,8 @@
 /*
-*   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   This file is part of Luma3DS.
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
+*   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
 
 #include "gdb/net.h"
@@ -75,12 +56,36 @@ u32 GDB_DecodeHex(void *dst, const char *src, u32 len)
     return (!ok) ? i - 1 : i;
 }
 
+u32 GDB_EscapeBinaryData(u32 *encodedCount, void *dst, const void *src, u32 len, u32 maxLen)
+{
+    u8 *dst8 = (u8 *)dst;
+    const u8 *src8 = (const u8 *)src;
+
+    maxLen = maxLen >= len ? len : maxLen;
+
+    while((uintptr_t)dst8 < (uintptr_t)dst + maxLen)
+    {
+        if(*src8 == '$' || *src8 == '#' || *src8 == '}' || *src8 == '*')
+        {
+            if ((uintptr_t)dst8 + 1 >= (uintptr_t)dst + maxLen)
+                break;
+            *dst8++ = '}';
+            *dst8++ = *src8++ ^ 0x20;
+        }
+        else
+            *dst8++ = *src8++;
+    }
+
+    *encodedCount = dst8 - (u8 *)dst;
+    return src8 - (u8 *)src;
+}
+
 u32 GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
 {
     u8 *dst8 = (u8 *)dst;
     const u8 *src8 = (const u8 *)src;
 
-    for(u32 i = 0; i < len; i++)
+    while((uintptr_t)src8 < (uintptr_t)src + len)
     {
         if(*src8 == '}')
         {
@@ -125,9 +130,45 @@ const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, ch
     return pos;
 }
 
+const char *GDB_ParseIntegerList64(u64 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix)
+{
+    const char *pos = src;
+    const char *endpos;
+    bool ok;
+
+    for(u32 i = 0; i < nb; i++)
+    {
+        u64 n = xstrtoull(pos, (char **)&endpos, (int) base, allowPrefix, &ok);
+        if(!ok || endpos == pos)
+            return NULL;
+
+        if(i != nb - 1)
+        {
+            if(*endpos != sep)
+                return NULL;
+            pos = endpos + 1;
+        }
+        else
+        {
+            if(*endpos != lastSep && *endpos != 0)
+                return NULL;
+            pos = endpos;
+        }
+
+        dst[i] = n;
+    }
+
+    return pos;
+}
+
 const char *GDB_ParseHexIntegerList(u32 *dst, const char *src, u32 nb, char lastSep)
 {
     return GDB_ParseIntegerList(dst, src, nb, ',', lastSep, 16, false);
+}
+
+const char *GDB_ParseHexIntegerList64(u64 *dst, const char *src, u32 nb, char lastSep)
+{
+    return GDB_ParseIntegerList64(dst, src, nb, ',', lastSep, 16, false);
 }
 
 int GDB_ReceivePacket(GDBContext *ctx)
@@ -136,29 +177,29 @@ int GDB_ReceivePacket(GDBContext *ctx)
     memcpy(backupbuf, ctx->buffer, ctx->latestSentPacketSize);
     memset(ctx->buffer, 0, sizeof(ctx->buffer));
 
-    int r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+    int r = socRecv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
     if(r < 1)
         return -1;
     if(ctx->buffer[0] == '+') // GDB sometimes acknowleges TCP acknowledgment packets (yes...). IDA does it properly
     {
-        if(ctx->state == GDB_STATE_NOACK)
+        if(ctx->flags & GDB_FLAG_NOACK)
             return -1;
 
         // Consume it
-        r = soc_recv(ctx->super.sockfd, ctx->buffer, 1, 0);
+        r = socRecv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             return -1;
 
         ctx->buffer[0] = 0;
 
-        r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+        r = socRecv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
 
         if(r == -1)
             goto packet_error;
     }
     else if(ctx->buffer[0] == '-')
     {
-        soc_send(ctx->super.sockfd, backupbuf, ctx->latestSentPacketSize, 0);
+        socSend(ctx->super.sockfd, backupbuf, ctx->latestSentPacketSize, 0);
         return 0;
     }
     int maxlen = r > (int)sizeof(ctx->buffer) ? (int)sizeof(ctx->buffer) : r;
@@ -174,7 +215,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
         else
         {
             u8 checksum;
-            r = soc_recv(ctx->super.sockfd, ctx->buffer, 3 + pos - ctx->buffer, 0);
+            r = socRecv(ctx->super.sockfd, ctx->buffer, 3 + pos - ctx->buffer, 0);
             if(r != 3 + pos - ctx->buffer || GDB_DecodeHex(&checksum, pos + 1, 1) != 1)
                 goto packet_error;
             else if(GDB_ComputeChecksum(ctx->buffer + 1, pos - ctx->buffer - 1) != checksum)
@@ -186,29 +227,32 @@ int GDB_ReceivePacket(GDBContext *ctx)
     }
     else if(ctx->buffer[0] == '\x03')
     {
-        r = soc_recv(ctx->super.sockfd, ctx->buffer, 1, 0);
+        r = socRecv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             goto packet_error;
 
         ctx->commandEnd = ctx->buffer;
     }
 
-    if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_NOACK)
+    if(!(ctx->flags & GDB_FLAG_NOACK))
     {
-        int r2 = soc_send(ctx->super.sockfd, "+", 1, 0);
+        int r2 = socSend(ctx->super.sockfd, "+", 1, 0);
         if(r2 != 1)
             return -1;
     }
 
-    if(ctx->state == GDB_STATE_NOACK_SENT)
-        ctx->state = GDB_STATE_NOACK;
+    if(ctx->noAckSent)
+    {
+        ctx->flags |= GDB_FLAG_NOACK;
+        ctx->noAckSent = false;
+    }
 
     return r;
 
 packet_error:
-    if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_NOACK)
+    if(!(ctx->flags & GDB_FLAG_NOACK))
     {
-        r = soc_send(ctx->super.sockfd, "-", 1, 0);
+        r = socSend(ctx->super.sockfd, "-", 1, 0);
         if(r != 1)
             return -1;
         else
@@ -220,7 +264,7 @@ packet_error:
 
 static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
 {
-    int r = soc_send(ctx->super.sockfd, ctx->buffer, len, 0);
+    int r = socSend(ctx->super.sockfd, ctx->buffer, len, 0);
 
     if(r > 0)
         ctx->latestSentPacketSize = r;
@@ -276,7 +320,7 @@ int GDB_SendStreamData(GDBContext *ctx, const char *streamData, u32 offset, u32 
 
     if((forceEmptyLast && offset >= totalSize) || (!forceEmptyLast && offset + length >= totalSize))
     {
-        length = totalSize - offset;
+        length = offset >= totalSize ? 0 : totalSize - offset;
         buf[0] = 'l';
         memcpy(buf + 1, streamData + offset, length);
         return GDB_SendPacket(ctx, buf, 1 + length);
@@ -291,8 +335,8 @@ int GDB_SendStreamData(GDBContext *ctx, const char *streamData, u32 offset, u32 
 
 int GDB_SendDebugString(GDBContext *ctx, const char *fmt, ...) // unsecure
 {
-    if(ctx->state == GDB_STATE_CLOSING || !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
-        return 0;
+    /*if(ctx->state == GDB_STATE_DETACHING || !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
+        return 0;*/
 
     char formatted[(GDB_BUF_LEN - 1) / 2 + 1];
     ctx->buffer[0] = '$';

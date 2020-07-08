@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -36,17 +36,23 @@ void executeFunctionOnCores(SGI0Handler_t func, u8 targetList, u8 targetListFilt
 
 void KScheduler__TriggerCrossCoreInterrupt(KScheduler *this);
 void KThread__DebugReschedule(KThread *this, bool lock);
-bool rosalinaThreadLockPredicate(KThread *thread);
+
+bool rosalinaThreadLockPredicate(KThread *thread, u32 mask);
 void rosalinaRescheduleThread(KThread *thread, bool lock);
-void rosalinaLockThread(KThread *thread);
-void rosalinaLockAllThreads(void);
-void rosalinaUnlockAllThreads(void);
+
+void rosalinaLockThreads(u32 mask);
+void rosalinaUnlockThreads(u32 mask);
 
 // Taken from ctrulib:
 
 static inline void __dsb(void)
 {
 	__asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 4" :: [val] "r" (0) : "memory");
+}
+
+static inline void __dmb(void)
+{
+    __asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 5" :: [val] "r" (0) : "memory");
 }
 
 static inline void __clrex(void)

@@ -1,12 +1,11 @@
 #include <3ds.h>
 #include "ifile.h"
-#include "fsldr.h"
 
 Result IFile_Open(IFile *file, FS_ArchiveID archiveId, FS_Path archivePath, FS_Path filePath, u32 flags)
 {
   Result res;
 
-  res = FSLDR_OpenFileDirectly(&file->handle, archiveId, archivePath, filePath, flags, 0);
+  res = FSUSER_OpenFileDirectly(&file->handle, archiveId, archivePath, filePath, flags, 0);
   file->pos = 0;
   file->size = 0;
   return res;

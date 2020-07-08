@@ -2,12 +2,11 @@
 MyThread.c:
     Small threading library, based off ctrulib.
 
-(c) TuxSH, 2016-2017
+(c) TuxSH, 2016-2020
 This is part of 3ds_pxi, which is licensed under the MIT license (see LICENSE for details).
 */
 
 #include "MyThread.h"
-#include "memory.h"
 
 static void _thread_begin(void* arg)
 {

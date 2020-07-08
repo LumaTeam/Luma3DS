@@ -21,7 +21,7 @@ AccessControlInfo:
   IdealProcessor                : 1
   AffinityMask                  : 3
 
-  Priority                      : 20
+  Priority                      : 25 # 55
 
   DisableDebug                  : false
   EnableForceDebug              : true
@@ -37,7 +37,7 @@ AccessControlInfo:
   CoreVersion                   : 2
   DescVersion                   : 2
 
-  MemoryType                    : System      # Application / System / Base
+  MemoryType                    : Base      # Application / System / Base
   HandleTableSize: 150
 
   MemoryMapping:
@@ -52,6 +52,8 @@ AccessControlInfo:
     KernelSetState: 124
 
   InterruptNumbers:
+    - 0x60 # Shell opened
+
   ServiceAccessControl:
     - fs:USER # Not strictly needed as rosalina has access to everything, it's rather to avoid a makerom warning
   FileSystemAccess:

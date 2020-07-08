@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
-.section .text.start
+.section .text.start, "ax", %progbits
 .balign 4
 .global _start
 _start:
@@ -49,6 +49,8 @@ start:
     str r1, [r4, #0x8]
 
     push {r0-r12, lr}
+
+    bl __libc_init_array
 
     sub r0, r4, #8
     sub r1, r8, #0x8000

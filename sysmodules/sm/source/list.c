@@ -1,12 +1,11 @@
 /*
 list.c
 
-(c) TuxSH, 2017
+(c) TuxSH, 2017-2020
 This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for details).
 */
 
 #include "list.h"
-#include "memory.h"
 #include "common.h"
 
 struct ListBase;

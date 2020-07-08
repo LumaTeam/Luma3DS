@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #pragma once
 
 #include <3ds/svc.h>
+#include <3ds/srv.h>
 #include <3ds/result.h>
 #include "csvc.h"
 
@@ -39,7 +40,7 @@
 
 #define REG32(addr)             (*(vu32 *)(PA_PTR(addr)))
 
-static inline u32 makeARMBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
+static inline u32 makeArmBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
 {
     u32 instrBase = link ? 0xEB000000 : 0xEA000000;
     u32 off = (u32)((const u8 *)dst - ((const u8 *)src + 8)); // the PC is always two instructions ahead of the one being executed
@@ -47,7 +48,7 @@ static inline u32 makeARMBranch(const void *src, const void *dst, bool link) // 
     return instrBase | ((off >> 2) & 0xFFFFFF);
 }
 
-static inline void *decodeARMBranch(const void *src)
+static inline void *decodeArmBranch(const void *src)
 {
     u32 instr = *(const u32 *)src;
     s32 off = (instr & 0xFFFFFF) << 2;
@@ -56,4 +57,12 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-Result OpenProcessByName(const char *name, Handle *h);
+static inline bool isServiceUsable(const char *name)
+{
+    bool r;
+    return R_SUCCEEDED(srvIsServiceRegistered(&r, name)) && r;
+}
+
+void formatMemoryPermission(char *outbuf, MemPerm perm);
+void formatUserMemoryState(char *outbuf, MemState state);
+u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);

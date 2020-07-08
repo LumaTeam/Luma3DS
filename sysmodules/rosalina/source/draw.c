@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -32,22 +32,22 @@
 #include "memory.h"
 #include "menu.h"
 #include "utils.h"
+#include "csvc.h"
 
-u8 framebufferCache[FB_BOTTOM_SIZE];
+#define KERNPA2VA(a)            ((a) + (GET_VERSION_MINOR(osGetKernelVersion()) < 44 ? 0xD0000000 : 0xC0000000))
 
 static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
-
+static u32 framebufferCacheSize;
+static void *framebufferCache;
 static RecursiveLock lock;
+
+void Draw_Init(void)
+{
+    RecursiveLock_Init(&lock);
+}
 
 void Draw_Lock(void)
 {
-    static bool lockInitialized = false;
-    if(!lockInitialized)
-    {
-        RecursiveLock_Init(&lock);
-        lockInitialized = true;
-    }
-
     RecursiveLock_Lock(&lock);
 }
 
@@ -58,7 +58,7 @@ void Draw_Unlock(void)
 
 void Draw_DrawCharacter(u32 posX, u32 posY, u32 color, char character)
 {
-    volatile u16 *const fb = (volatile u16 *const)FB_BOTTOM_VRAM_ADDR;
+    u16 *const fb = (u16 *)FB_BOTTOM_VRAM_ADDR;
 
     s32 y;
     for(y = 0; y < 10; y++)
@@ -75,28 +75,35 @@ void Draw_DrawCharacter(u32 posX, u32 posY, u32 color, char character)
     }
 }
 
+
 u32 Draw_DrawString(u32 posX, u32 posY, u32 color, const char *string)
 {
-    for(u32 i = 0, line_i = 0; i < ((u32) strlen(string)); i++)
-    {
-        if(string[i] == '\n')
+    for(u32 i = 0, line_i = 0; i < strlen(string); i++)
+        switch(string[i])
         {
-            posY += SPACING_Y;
-            line_i = 0;
-            continue;
-        }
-        else if(line_i >= (SCREEN_BOT_WIDTH - posX) / SPACING_X)
-        {
-            // Make sure we never get out of the screen.
-            posY += SPACING_Y;
-            line_i = 0;
-            if(string[i] == ' ')
-                continue; // Spaces at the start look weird
-        }
+            case '\n':
+                posY += SPACING_Y;
+                line_i = 0;
+                break;
 
-        Draw_DrawCharacter(posX + line_i * SPACING_X, posY, color, string[i]);
-        line_i++;
-    }
+            case '\t':
+                line_i += 2;
+                break;
+
+            default:
+                //Make sure we never get out of the screen
+                if(line_i >= ((SCREEN_BOT_WIDTH) - posX) / SPACING_X)
+                {
+                    posY += SPACING_Y;
+                    line_i = 1; //Little offset so we know the same string continues
+                    if(string[i] == ' ') break; //Spaces at the start look weird
+                }
+
+                Draw_DrawCharacter(posX + line_i * SPACING_X, posY, color, string[i]);
+
+                line_i++;
+                break;
+        }
 
     return posY;
 }
@@ -114,7 +121,7 @@ u32 Draw_DrawFormattedString(u32 posX, u32 posY, u32 color, const char *fmt, ...
 
 void Draw_FillFramebuffer(u32 value)
 {
-    memset32(FB_BOTTOM_VRAM_ADDR, value, FB_BOTTOM_SIZE);
+    memset(FB_BOTTOM_VRAM_ADDR, value, FB_BOTTOM_SIZE);
 }
 
 void Draw_ClearFramebuffer(void)
@@ -122,39 +129,98 @@ void Draw_ClearFramebuffer(void)
     Draw_FillFramebuffer(0);
 }
 
-void Draw_SetupFramebuffer(void)
+Result Draw_AllocateFramebufferCache(u32 size)
+{
+    // Can't use fbs in FCRAM when Home Menu is active (AXI config related maybe?)
+    u32 addr = 0x0D000000;
+    u32 tmp;
+
+    size = (size + 0xFFF) >> 12 << 12; // round-up
+
+    if (framebufferCache != NULL)
+        __builtin_trap();
+
+    Result res = svcControlMemoryEx(&tmp, addr, 0, size, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READWRITE, true);
+    if (R_FAILED(res))
+    {
+        framebufferCache = NULL;
+        framebufferCacheSize = 0;
+    }
+    else
+    {
+        framebufferCache = (u32 *)addr;
+        framebufferCacheSize = size;
+    }
+
+    return res;
+}
+
+Result Draw_AllocateFramebufferCacheForScreenshot(u32 size)
+{
+    u32 remaining = (u32)osGetMemRegionFree(MEMREGION_SYSTEM);
+    u32 sz = remaining < size ? remaining : size;
+    return Draw_AllocateFramebufferCache(sz);
+}
+
+void Draw_FreeFramebufferCache(void)
+{
+    u32 tmp;
+    if (framebufferCache != NULL)
+        svcControlMemory(&tmp, (u32)framebufferCache, 0, framebufferCacheSize, MEMOP_FREE, 0);
+    framebufferCacheSize = 0;
+    framebufferCache = NULL;
+}
+
+void *Draw_GetFramebufferCache(void)
+{
+    return framebufferCache;
+}
+
+u32 Draw_GetFramebufferCacheSize(void)
+{
+    return framebufferCacheSize;
+}
+
+u32 Draw_SetupFramebuffer(void)
 {
     while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1);
 
-    svcFlushEntireDataCache();
+    Draw_FlushFramebuffer();
     memcpy(framebufferCache, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+
+    u32 format = GPU_FB_BOTTOM_FMT;
+
     gpuSavedFramebufferAddr1 = GPU_FB_BOTTOM_ADDR_1;
     gpuSavedFramebufferAddr2 = GPU_FB_BOTTOM_ADDR_2;
-    gpuSavedFramebufferFormat = GPU_FB_BOTTOM_FMT;
+    gpuSavedFramebufferFormat = format;
     gpuSavedFramebufferStride = GPU_FB_BOTTOM_STRIDE;
 
+    format = (format & ~7) | GSP_RGB565_OES;
+    format |= 3 << 8; // set VRAM bits
+
     GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
-    GPU_FB_BOTTOM_FMT = (GPU_FB_BOTTOM_FMT & ~7) | 2;
+    GPU_FB_BOTTOM_FMT = format;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
 
-    Draw_FlushFramebuffer();
+    return framebufferCacheSize;
 }
 
 void Draw_RestoreFramebuffer(void)
 {
     memcpy(FB_BOTTOM_VRAM_ADDR, framebufferCache, FB_BOTTOM_SIZE);
+    Draw_FlushFramebuffer();
 
     GPU_FB_BOTTOM_ADDR_1 = gpuSavedFramebufferAddr1;
     GPU_FB_BOTTOM_ADDR_2 = gpuSavedFramebufferAddr2;
     GPU_FB_BOTTOM_FMT = gpuSavedFramebufferFormat;
     GPU_FB_BOTTOM_STRIDE = gpuSavedFramebufferStride;
-
-    Draw_FlushFramebuffer();
 }
 
 void Draw_FlushFramebuffer(void)
 {
-    svcFlushProcessDataCache(CUR_PROCESS_HANDLE, FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
+    svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (u32)FB_BOTTOM_VRAM_ADDR, FB_BOTTOM_SIZE);
 }
 
 u32 Draw_GetCurrentFramebufferAddress(bool top, bool left)
@@ -172,6 +238,21 @@ u32 Draw_GetCurrentFramebufferAddress(bool top, bool left)
             return top ? GPU_FB_TOP_LEFT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1;
         else
             return top ? GPU_FB_TOP_RIGHT_ADDR_1 : GPU_FB_BOTTOM_ADDR_1;
+    }
+}
+
+void Draw_GetCurrentScreenInfo(u32 *width, bool *is3d, bool top)
+{
+    if (top)
+    {
+        bool isNormal2d = (GPU_FB_TOP_FMT & BIT(6)) != 0;
+        *is3d = (GPU_FB_TOP_FMT & BIT(5)) != 0;
+        *width = !(*is3d) && !isNormal2d ? 800 : 400;
+    }
+    else
+    {
+        *is3d = false;
+        *width = 320;
     }
 }
 
@@ -196,7 +277,7 @@ void Draw_CreateBitmapHeader(u8 *dst, u32 width, u32 heigth)
     Draw_WriteUnaligned(dst + 0x22, 3 * width * heigth, 4);
 }
 
-static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_FramebufferFormats srcFormat)
+static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_FramebufferFormat srcFormat)
 {
     u8 red, green, blue;
     switch(srcFormat)
@@ -260,16 +341,38 @@ static inline void Draw_ConvertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Frameb
     }
 }
 
-void Draw_ConvertFrameBufferLine(u8 *line, bool top, bool left, u32 y)
+typedef struct FrameBufferConvertArgs {
+    u8 *buf;
+    u32 width;
+    u8 startingLine;
+    u8 numLines;
+    bool top;
+    bool left;
+} FrameBufferConvertArgs;
+
+static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *args)
 {
-    GSPGPU_FramebufferFormats fmt = top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_FMT & 7);
-    u32 width = top ? 400 : 320;
-    u8 formatSizes[] = { 4, 3, 2, 2, 2 };
-    u32 stride = top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
+    static const u8 formatSizes[] = { 4, 3, 2, 2, 2 };
 
-    u32 pa = Draw_GetCurrentFramebufferAddress(top, left);
-    u8 *addr = (u8 *)PA_PTR(pa);
+    GSPGPU_FramebufferFormat fmt = args->top ? (GSPGPU_FramebufferFormat)(GPU_FB_TOP_FMT & 7) : (GSPGPU_FramebufferFormat)(GPU_FB_BOTTOM_FMT & 7);
+    u32 width = args->width;
+    u32 stride = args->top ? GPU_FB_TOP_STRIDE : GPU_FB_BOTTOM_STRIDE;
 
-    for(u32 x = 0; x < width; x++)
-        Draw_ConvertPixelToBGR8(line + x * 3 , addr + x * stride + y * formatSizes[(u8)fmt], fmt);
+    u32 pa = Draw_GetCurrentFramebufferAddress(args->top, args->left);
+    u8 *addr = (u8 *)KERNPA2VA(pa);
+
+    for (u32 y = args->startingLine; y < args->startingLine + args->numLines; y++)
+    {
+        for(u32 x = 0; x < width; x++)
+        {
+            __builtin_prefetch(addr + x * stride + y * formatSizes[fmt], 0, 3);
+            Draw_ConvertPixelToBGR8(args->buf + (x + width * y) * 3 , addr + x * stride + y * formatSizes[fmt], fmt);
+        }
+    }
+}
+
+void Draw_ConvertFrameBufferLines(u8 *buf, u32 width, u32 startingLine, u32 numLines, bool top, bool left)
+{
+    FrameBufferConvertArgs args = { buf, width, (u8)startingLine, (u8)numLines, top, left };
+    svcCustomBackdoor(Draw_ConvertFrameBufferLinesKernel, &args);
 }

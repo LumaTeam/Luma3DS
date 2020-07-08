@@ -1,71 +1,149 @@
-rwildcard = $(foreach d, $(wildcard $1*), $(filter $(subst *, %, $2), $d) $(call rwildcard, $d/, $2))
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
 
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
+TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
-name := $(shell basename $(CURDIR))
+#---------------------------------------------------------------------------------
+# TARGET is the name of the output
+# BUILD is the directory where object files & intermediate files will be placed
+# SOURCES is a list of directories containing source code
+# DATA is a list of directories containing data files
+# INCLUDES is a list of directories containing header files
+#---------------------------------------------------------------------------------
+TARGET		:=	$(notdir $(CURDIR))
+BUILD		:=	build
+SOURCES		:=	source
+DATA		:=	data
+INCLUDES	:=	include
 
-dir_source := source
-dir_patches := patches
-dir_build := build
-dir_out := ../../$(dir_build)
+#---------------------------------------------------------------------------------
+# options for code generation
+#---------------------------------------------------------------------------------
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+DEFINES :=	-DARM11 -D_3DS
 
-LIBS := -lctru
-LIBDIRS	:= $(CTRULIB)
-LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+COMMON_FLAGS = -g -Wall -Wextra -Werror -O2 -mword-relocations \
+			-fomit-frame-pointer -ffunction-sections -fdata-sections \
+			$(ARCH) $(DEFINES) $(INCLUDE)
 
-INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
+CFLAGS	:=	-std=gnu11 $(COMMON_FLAGS)
 
-ASFLAGS := -mcpu=mpcore -mfloat-abi=hard
-CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -std=c11 -O2 -ffast-math $(INCLUDE) -DARM11 -D_3DS
-LDFLAGS := -specs=3dsx.specs $(ASFLAGS) -Wl,--section-start,.text=0x14000000
+CXXFLAGS	:= -fno-rtti -fno-exceptions -std=gnu++17 $(COMMON_FLAGS)
 
-objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
-          $(call rwildcard, $(dir_source), *.s *.c))
+ASFLAGS	:=	-g $(ARCH)
+LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map),-wrap,exit,--section-start,.text=0x14000000
 
-bundled = $(dir_build)/romfsredir.bin.o
+LIBS	:=	-lctru
 
-define bin2o
-	bin2s $< | $(AS) -o $(@)
-endef
+#---------------------------------------------------------------------------------
+# list of directories containing libraries, this must be the top level containing
+# include and lib
+#---------------------------------------------------------------------------------
+LIBDIRS	:=	$(CTRULIB)
 
-.PHONY: all
-all: $(dir_out)/$(name).cxi
 
-.PHONY: clean
+#---------------------------------------------------------------------------------
+# no real need to edit anything past this point unless you need to add additional
+# rules for different file extensions
+#---------------------------------------------------------------------------------
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+#---------------------------------------------------------------------------------
+
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
+export TOPDIR	:=	$(CURDIR)
+
+export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+
+export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+
+CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+#---------------------------------------------------------------------------------
+# use CXX for linking C++ projects, CC for standard C
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(CPPFILES)),)
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CC)
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CXX)
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
+
+export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES))
+export OFILES_SRC	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+export OFILES 		:=	$(OFILES_BIN) $(OFILES_SRC)
+export HFILES_BIN	:=	$(addsuffix .h,$(subst .,_,$(BINFILES)))
+
+export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+
+.PHONY: $(BUILD) clean all
+
+#---------------------------------------------------------------------------------
+all: $(BUILD)
+
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+#---------------------------------------------------------------------------------
 clean:
-	@rm -rf $(dir_build)
+	@echo clean ...
+	@rm -fr $(BUILD) $(TARGET).cxi $(TARGET).elf
 
-.PRECIOUS: $(dir_build)/%.bin
 
-$(dir_out)/$(name).cxi: $(dir_build)/$(name).elf
-	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
+#---------------------------------------------------------------------------------
+else
+.PHONY:	all
 
-$(dir_build)/$(name).elf: $(bundled) $(objects)
-	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
+DEPENDS	:=	$(OFILES:.o=.d)
 
-$(dir_build)/%.bin.o: $(dir_build)/%.bin
+#---------------------------------------------------------------------------------
+# main targets
+#---------------------------------------------------------------------------------
+all	:	$(OUTPUT).cxi
+
+$(OUTPUT).cxi	:	$(OUTPUT).elf $(OUTPUT).rsf
+	@makerom -f ncch -rsf $(word 2,$^) -nocodepadding -o $@ -elf $<
+	@echo built ... $(notdir $@)
+
+$(OUTPUT).elf	:	$(OFILES)
+
+memory.o	:	CFLAGS += -O3
+
+%.elf: $(OFILES)
+	@echo linking $(notdir $@)
+	@$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
+	@$(NM) -CSn $@ > $(notdir $*.lst)
+
+$(OFILES_SRC)	: $(HFILES_BIN)
+
+#---------------------------------------------------------------------------------
+# you need a rule like this for each extension you use as binary data
+#---------------------------------------------------------------------------------
+%.bin.o	%_bin.h :	%.bin
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
 	@$(bin2o)
 
-$(dir_build)/%.bin: $(dir_patches)/%.s
-	@mkdir -p "$(@D)"
-	@armips $<
+-include $(DEPENDS)
 
-$(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
-
-$(dir_build)/bundled.h: $(bundled)
-	@$(foreach f, $(bundled),\
-	echo "extern const u8" `(echo $(basename $(notdir $(f))) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
-	echo "extern const u32" `(echo $(basename $(notdir $(f)))| sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
-	)
-
-$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/bundled.h
-	@mkdir -p "$(@D)"
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-
-$(dir_build)/%.o: $(dir_source)/%.s
-	@mkdir -p "$(@D)"
-	$(COMPILE.s) $(OUTPUT_OPTION) $<
+#---------------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------------

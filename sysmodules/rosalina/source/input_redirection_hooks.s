@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 @ Hooks mainly written by Stary (PoC originally by Shiny Quagsire)
 
-.section .rodata
+.section .rodata.input_redirection_hook, "a", %progbits
 .balign 4
 .arm
 

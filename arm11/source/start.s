@@ -1,5 +1,5 @@
 @   This file is part of Luma3DS
-@   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+@   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 @
 @   This program is free software: you can redistribute it and/or modify
 @   it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 @         or requiring that modified versions of such material be marked in
 @         reasonable ways as different from the original version.
 
-.section .text.start
+.section .text.start, "ax", %progbits
 .align 4
 .global _start
 .type   _start, %function
@@ -53,20 +53,25 @@ start:
     mcr p15, 0, r0, c7, c7, 0
     mcr p15, 0, r0, c7, c10, 4
 
-    @ Clear BSS
-    ldr r0, =__bss_start
-    mov r1, #0
-    ldr r2, =__bss_end
-    sub r2, r0
-    bl memset32
-
     ldr sp, =__stack_top__
+    mov fp, #0
+
+    @ Clear BSS
+    ldr r0, =__bss_start__
+    mov r1, #0
+    ldr r2, =__bss_end__
+    sub r2, r0
+    bl memset
+
+    @ Call the init array
+    bl __libc_init_array
+
     b main
 
 .global prepareForFirmlaunch
 .type   prepareForFirmlaunch, %function
 prepareForFirmlaunch:
-    str r0, [r1]            @ tell ARM9 we're done
+    str r0, [r1]            @ tell Arm9 we're done
     mov r0, #0x20000000
 
     _wait_for_core0_entrypoint_loop:

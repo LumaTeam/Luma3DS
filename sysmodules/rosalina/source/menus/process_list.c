@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include "menus/process_list.h"
+#include "process_patches.h"
 #include "memory.h"
 #include "csvc.h"
 #include "draw.h"
@@ -52,9 +53,16 @@ extern GDBServer gdbServer;
 static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *info)
 {
     const char *checkbox;
-    u32 id;
-    for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
-    checkbox = !gdbServer.super.running ? "" : (id < MAX_DEBUG ? "(x) " : "( ) ");
+    GDBContext *ctx = NULL;
+
+    if(gdbServer.super.running)
+    {
+        GDB_LockAllContexts(&gdbServer);
+        ctx = GDB_FindAllocatedContextByPid(&gdbServer, info->pid);
+        checkbox = ctx != NULL ? "(x) " : "( ) ";
+    }
+    else
+        checkbox = "";
 
     char commentBuf[23 + 1] = { 0 }; // exactly the size of "Remote: 255.255.255.255"
     memset(commentBuf, ' ', 23);
@@ -62,22 +70,24 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
     if(info->isZombie)
         memcpy(commentBuf, "Zombie", 7);
 
-    else if(gdbServer.super.running && id < MAX_DEBUG)
+    else if(gdbServer.super.running && ctx != NULL)
     {
-        if(gdbServer.ctxs[id].state >= GDB_STATE_CONNECTED && gdbServer.ctxs[id].state < GDB_STATE_CLOSING)
+        if(ctx->state >= GDB_STATE_ATTACHED && ctx->state < GDB_STATE_DETACHING)
         {
-            u8 *addr = (u8 *)&gdbServer.ctxs[id].super.addr_in.sin_addr;
+            u8 *addr = (u8 *)&ctx->super.addr_in.sin_addr;
             checkbox = "(A) ";
             sprintf(commentBuf, "Remote: %hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         }
-        else
+        else if ((ctx->flags & GDB_FLAG_SELECTED) && (ctx->localPort >= GDB_PORT_BASE && ctx->localPort < GDB_PORT_BASE + MAX_DEBUG))
         {
             checkbox = "(W) ";
-            sprintf(commentBuf, "Port: %d", GDB_PORT_BASE + id);
+            sprintf(commentBuf, "Port: %hu", ctx->localPort);
         }
     }
 
-    return sprintf(out, "%s%-4u    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
+    if (gdbServer.super.running)
+        GDB_UnlockAllContexts(&gdbServer);
+    return sprintf(out, "%s%-4lu    %-8.8s    %s", checkbox, info->pid, info->name, commentBuf); // Theoritically PIDs are 32-bit ints, but we'll only justify 4 digits
 }
 
 static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
@@ -95,7 +105,7 @@ static void ProcessListMenu_DumpMemory(const char *name, void *start, u32 size)
     IFile file;
     Result res;
 
-    char filename[64] = {0};
+    char filename[100] = {0};
 
     FS_Archive archive;
     FS_ArchiveID archiveId;
@@ -188,7 +198,7 @@ end:
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 
 #undef TRY
 }
@@ -253,7 +263,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 u32 max;
             } MenuData;
 
-            bool editing;
+            bool editing = false;
 
             MenuData menus[MENU_MODE_MAX] = {0};
             int menuMode = MENU_MODE_NORMAL;
@@ -484,21 +494,21 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                 u32 pressed = waitInputWithTimeout(1000);
 
-                if(pressed & BUTTON_A)
+                if(pressed & KEY_A)
                     editing = !editing;
-                else if(pressed & BUTTON_X)
+                else if(pressed & KEY_X)
                 {
                     if(checkMode(MENU_MODE_GOTO))
                         finishJumping();
                     else
                         gotoAddress = __builtin_bswap32(((u32)menus[MENU_MODE_NORMAL].buf) + menus[MENU_MODE_NORMAL].selected);
                 }
-                else if(pressed & BUTTON_Y)
+                else if(pressed & KEY_Y)
                 {
                     if(checkMode(MENU_MODE_SEARCH))
                         finishSearching();
                 }
-                else if(pressed & BUTTON_SELECT)
+                else if(pressed & KEY_SELECT)
                 {
                     clearMenu();
                     ProcessListMenu_DumpMemory(info->name, menus[MENU_MODE_NORMAL].buf, menus[MENU_MODE_NORMAL].max);
@@ -508,35 +518,35 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 if(editing)
                 {
                     // Edit the highlighted byte
-                    if(pressed & BUTTON_LEFT)
+                    if(pressed & KEY_LEFT)
                         selectedByteAdd0x10();
-                    else if(pressed & BUTTON_RIGHT)
+                    else if(pressed & KEY_RIGHT)
                         selectedByteSub0x10();
-                    else if(pressed & BUTTON_UP)
+                    else if(pressed & KEY_UP)
                         selectedByteIncrement();
-                    else if(pressed & BUTTON_DOWN)
+                    else if(pressed & KEY_DOWN)
                         selectedByteDecrement();
                 }
                 else
                 {
                     // Move the cursor
-                    if(pressed & BUTTON_LEFT)
+                    if(pressed & KEY_LEFT)
                         selectedMoveLeft();
-                    else if(pressed & BUTTON_RIGHT)
+                    else if(pressed & KEY_RIGHT)
                         selectedMoveRight();
-                    else if(pressed & BUTTON_UP)
+                    else if(pressed & KEY_UP)
                         selectedMoveUp();
-                    else if(pressed & BUTTON_DOWN)
+                    else if(pressed & KEY_DOWN)
                         selectedMoveDown();
 
-                    else if(pressed & BUTTON_L1)
+                    else if(pressed & KEY_L)
                     {
                         if(menuMode == MENU_MODE_NORMAL)
                             viewHeap();
                         else if(menuMode == MENU_MODE_SEARCH)
                             searchPatternReduce();
                     }
-                    else if(pressed & BUTTON_R1)
+                    else if(pressed & KEY_R)
                     {
                         if(menuMode == MENU_MODE_NORMAL)
                             viewCode();
@@ -545,7 +555,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     }
                 }
 
-                if(pressed & BUTTON_B) // go back to the list, or the simple viewer
+                if(pressed & KEY_B) // go back to the list, or the simple viewer
                 {
                     if(menuMode != MENU_MODE_NORMAL)
                     {
@@ -559,7 +569,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 if(menus[menuMode].selected >= menus[menuMode].max)
                     menus[menuMode].selected = menus[menuMode].max - 1;
             }
-            while(!terminationRequest);
+            while(!menuShouldExit);
 
             clearMenu();
         }
@@ -581,14 +591,13 @@ static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
         return;
     }
 
-    u32 id;
-    for(id = 0; id < MAX_DEBUG && (!(gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED) || gdbServer.ctxs[id].pid != info->pid); id++);
+    GDB_LockAllContexts(&gdbServer);
+    GDBContext *ctx = NULL;
+    ctx = GDB_FindAllocatedContextByPid(&gdbServer, info->pid);
 
-    GDBContext *ctx = &gdbServer.ctxs[id];
-
-    if(id < MAX_DEBUG)
+    if(ctx != NULL)
     {
-        if(ctx->flags & GDB_FLAG_USED)
+        if((ctx->flags & GDB_FLAG_USED) && (ctx->flags & GDB_FLAG_SELECTED))
         {
             RecursiveLock_Lock(&ctx->lock);
             ctx->super.should_close = true;
@@ -597,25 +606,22 @@ static inline void ProcessListMenu_HandleSelected(const ProcessInfo *info)
             while(ctx->super.should_close)
                 svcSleepThread(12 * 1000 * 1000LL);
         }
-        else
+        else if ((ctx->flags & GDB_FLAG_SELECTED) &&  (ctx->localPort >= GDB_PORT_BASE && ctx->localPort < GDB_PORT_BASE + MAX_DEBUG))
         {
             RecursiveLock_Lock(&ctx->lock);
             ctx->flags &= ~GDB_FLAG_SELECTED;
+            ctx->localPort = 0;
             RecursiveLock_Unlock(&ctx->lock);
         }
     }
     else
     {
-        for(id = 0; id < MAX_DEBUG && gdbServer.ctxs[id].flags & GDB_FLAG_SELECTED; id++);
-        if(id < MAX_DEBUG)
-        {
-            ctx = &gdbServer.ctxs[id];
-            RecursiveLock_Lock(&ctx->lock);
+        GDBContext *ctx = GDB_SelectAvailableContext(&gdbServer, GDB_PORT_BASE, GDB_PORT_BASE + MAX_DEBUG);
+        if (ctx != NULL)
             ctx->pid = info->pid;
-            ctx->flags |= GDB_FLAG_SELECTED;
-            RecursiveLock_Unlock(&ctx->lock);
-        }
     }
+
+    GDB_UnlockAllContexts(&gdbServer);
 }
 
 s32 ProcessListMenu_FetchInfo(void)
@@ -661,7 +667,7 @@ void RosalinaMenu_ProcessList(void)
         if(gdbServer.super.running)
         {
             char ipBuffer[17];
-            u32 ip = gethostid();
+            u32 ip = socGethostid();
             u8 *addr = (u8 *)&ip;
             int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
             Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
@@ -680,7 +686,7 @@ void RosalinaMenu_ProcessList(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
-        if(terminationRequest)
+        if(menuShouldExit)
             break;
 
         u32 pressed;
@@ -693,19 +699,19 @@ void RosalinaMenu_ProcessList(void)
             if(memcmp(infos, infosPrev, sizeof(infos)) != 0)
                 break;
         }
-        while(pressed == 0 && !terminationRequest);
+        while(pressed == 0 && !menuShouldExit);
 
-        if(pressed & BUTTON_B)
+        if(pressed & KEY_B)
             break;
-        else if(pressed & BUTTON_A)
+        else if(pressed & KEY_A)
             ProcessListMenu_HandleSelected(&infos[selected]);
-        else if(pressed & BUTTON_DOWN)
+        else if(pressed & KEY_DOWN)
             selected++;
-        else if(pressed & BUTTON_UP)
+        else if(pressed & KEY_UP)
             selected--;
-        else if(pressed & BUTTON_LEFT)
+        else if(pressed & KEY_LEFT)
             selected -= PROCESSES_PER_MENU_PAGE;
-        else if(pressed & BUTTON_RIGHT)
+        else if(pressed & KEY_RIGHT)
         {
             if(selected + PROCESSES_PER_MENU_PAGE < processAmount)
                 selected += PROCESSES_PER_MENU_PAGE;
@@ -723,5 +729,5 @@ void RosalinaMenu_ProcessList(void)
         pagePrev = page;
         page = selected / PROCESSES_PER_MENU_PAGE;
     }
-    while(!terminationRequest);
+    while(!menuShouldExit);
 }

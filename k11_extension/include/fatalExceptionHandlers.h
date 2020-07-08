@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ void undefinedInstructionHandler(void);
 void prefetchAbortHandler(void);
 void dataAbortHandler(void);
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     u32 magic[2];
     u16 versionMinor, versionMajor;

@@ -1,34 +1,20 @@
 /*
-*   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   This file is part of Luma3DS.
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
+*   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
+
+#include <3ds/os.h>
 
 #include "gdb/xfer.h"
 #include "gdb/net.h"
-#include "../../build/xml_data.h"
-#include <3ds/os.h>
 #include "fmt.h"
+
+#include "osdata_cfw_version_template_xml.h"
+#include "osdata_memory_template_xml.h"
+#include "osdata_xml.h"
+#include "target_xml.h"
 
 struct
 {
@@ -45,7 +31,7 @@ GDB_DECLARE_XFER_HANDLER(Features)
     if(strcmp(annex, "target.xml") != 0 || write)
         return GDB_ReplyEmpty(ctx);
     else
-        return GDB_SendStreamData(ctx, target_xml, offset, length, sizeof(target_xml) - 1, false);
+        return GDB_SendStreamData(ctx, (const char *)target_xml, offset, length, target_xml_size, false);
 }
 
 struct
@@ -65,7 +51,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(CfwVersion)
         return GDB_HandleUnsupported(ctx);
     else
     {
-        char buf[sizeof(osdata_cfw_version_template_xml) + 64];
+        char buf[512]; // Make sure this doesn't overflow
         char versionString[16];
         s64 out;
         u32 version, commitHash;
@@ -82,11 +68,11 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(CfwVersion)
         isRelease = (bool)out;
 
         if(GET_VERSION_REVISION(version) == 0)
-            sprintf(versionString, "v%u.%u", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version));
+            sprintf(versionString, "v%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version));
         else
-            sprintf(versionString, "v%u.%u.%u", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
+            sprintf(versionString, "v%lu.%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
 
-        sz = (u32)sprintf(buf, osdata_cfw_version_template_xml, versionString, commitHash, isRelease ? "Yes" : "No");
+        sz = (u32)sprintf(buf, (const char *)osdata_cfw_version_template_xml, versionString, commitHash, isRelease ? "Yes" : "No");
 
         return GDB_SendStreamData(ctx, buf, offset, length, sz, false);
     }
@@ -113,7 +99,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Memory)
             svcGetSystemInfo(&out, 0, 3);
             baseUsed = (u32)out;
 
-            sprintf(ctx->memoryOsInfoXmlData, osdata_memory_template_xml,
+            sprintf(ctx->memoryOsInfoXmlData, (const char *)osdata_memory_template_xml,
                 applicationUsed, applicationTotal - applicationUsed, applicationTotal, (u32)((5ULL + ((1000ULL * applicationUsed) / applicationTotal)) / 10ULL),
                 systemUsed, systemTotal - systemUsed, systemTotal, (u32)((5ULL + ((1000ULL * systemUsed) / systemTotal)) / 10ULL),
                 baseUsed, baseTotal - baseUsed, baseTotal, (u32)((5ULL + ((1000ULL * baseUsed) / baseTotal)) / 10ULL)
@@ -139,17 +125,17 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Processes)
         if(ctx->processesOsInfoXmlData[0] == 0)
         {
             static const char header[] =
-            "<?xml version=\"1.0\"?>\n"
-            "<!DOCTYPE target SYSTEM \"osdata.dtd\">\n"
-            "<osdata type=\"processes\">\n";
+            /*"<?xml version=\"1.0\"?>"
+            "<!DOCTYPE target SYSTEM \"osdata.dtd\">" IDA rejects the xml header*/
+            "<osdata type=\"processes\">";
 
             static const char item[] =
-            "  <item>\n"
-            "    <column name=\"pid\">%u</column>\n"
-            "    <column name=\"command\">%s</column>\n"
-            "  </item>\n";
+            "<item>"
+            "<column name=\"pid\">%lu</column>"
+            "<column name=\"command\">%s</column>"
+            "</item>";
 
-            static const char footer[] = "</osdata>\n";
+            static const char footer[] = "</osdata>";
 
             int n;
             u32 pos = 0;
@@ -196,7 +182,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Processes)
 GDB_DECLARE_XFER_HANDLER(OsData)
 {
     if(strcmp(annex, "") == 0 && !write)
-        return GDB_SendStreamData(ctx, osdata_xml, offset, length, sizeof(osdata_xml) - 1, false);
+        return GDB_SendStreamData(ctx, (const char *)osdata_xml, offset, length, osdata_xml_size, false);
     else
     {
         for(u32 i = 0; i < sizeof(xferOsDataCommandHandlers) / sizeof(xferOsDataCommandHandlers[0]); i++)

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -34,10 +34,10 @@ static char clkRateBuf[128 + 1];
 
 Menu N3DSMenu = {
     "New 3DS menu",
-    .nbItems = 2,
     {
         { "Enable L2 cache", METHOD, .method = &N3DSMenu_EnableDisableL2Cache },
-        { clkRateBuf, METHOD, .method = &N3DSMenu_ChangeClockRate }
+        { clkRateBuf, METHOD, .method = &N3DSMenu_ChangeClockRate },
+        {},
     }
 };
 
@@ -50,7 +50,7 @@ void N3DSMenu_UpdateStatus(void)
     svcGetSystemInfo(&L2CacheEnabled, 0x10001, 2);
 
     N3DSMenu.items[0].title = L2CacheEnabled ? "Disable L2 cache" : "Enable L2 cache";
-    sprintf(clkRateBuf, "Set clock rate to %uMHz", clkRate != 268 ? 268 : (u32)higherClkRate);
+    sprintf(clkRateBuf, "Set clock rate to %luMHz", clkRate != 268 ? 268 : (u32)higherClkRate);
 }
 
 void N3DSMenu_ChangeClockRate(void)

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -32,6 +32,16 @@ Result IFile_Open(IFile *file, FS_ArchiveID archiveId, FS_Path archivePath, FS_P
   Result res;
 
   res = FSUSER_OpenFileDirectly(&file->handle, archiveId, archivePath, filePath, flags, 0);
+  file->pos = 0;
+  file->size = 0;
+  return res;
+}
+
+Result IFile_OpenFromArchive(IFile *file, FS_Archive archive, FS_Path filePath, u32 flags)
+{
+  Result res;
+
+  res = FSUSER_OpenFile(&file->handle, archive, filePath, flags, 0);
   file->pos = 0;
   file->size = 0;
   return res;
@@ -71,7 +81,7 @@ Result IFile_Read(IFile *file, u64 *total, void *buffer, u32 len)
   while (1)
   {
     res = FSFILE_Read(file->handle, &read, file->pos, buf, left);
-    if (R_FAILED(res))
+    if (R_FAILED(res) || read == 0)
     {
       break;
     }

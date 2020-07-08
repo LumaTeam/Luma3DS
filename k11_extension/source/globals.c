@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -102,13 +102,14 @@ u32 nbSection0Modules;
 Result (*InterruptManager__MapInterrupt)(InterruptManager *manager, KBaseInterruptEvent *iEvent, u32 interruptID,
                                          u32 coreID, u32 priority, bool disableUponReceipt, bool levelHighActive);
 InterruptManager *interruptManager;
-KBaseInterruptEvent *customInterruptEvent;
 
 void (*initFPU)(void);
 void (*mcuReboot)(void);
 void (*coreBarrier)(void);
 
 CfwInfo cfwInfo;
+u32 kextBasePa;
+u32 stolenSystemMemRegionSize;
 
 vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;

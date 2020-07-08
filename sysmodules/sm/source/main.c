@@ -1,12 +1,11 @@
 /*
 main.c
 
-(c) TuxSH, 2017
+(c) TuxSH, 2017-2020
 This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for details).
 */
 
 #include "common.h"
-#include "memory.h"
 #include "services.h"
 #include "processes.h"
 #include "srv.h"
@@ -25,10 +24,27 @@ static ProcessData processDataPool[64];
 
 static u8 ALIGN(4) serviceAccessListStaticBuffer[0x110];
 
-void __appInit(void)
-{
-    s64 out;
+void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 
+// this is called after main exits
+void __wrap_exit(int rc)
+{
+    (void)rc;
+    // Not supposed to terminate... kernel will clean up the handles if it does happen anyway
+    svcExitProcess();
+}
+
+void __sync_init();
+// void __libc_init_array(void);
+
+// Called before main
+void initSystem(void)
+{
+    __sync_init();
+
+    //__libc_init_array();
+
+    s64 out;
     u32 *staticBuffers = getThreadStaticBuffers();
     staticBuffers[0] = IPC_Desc_StaticBuffer(0x110, 0);
     staticBuffers[1] = (u32)serviceAccessListStaticBuffer;
@@ -41,31 +57,12 @@ void __appInit(void)
     buildList(&freeProcessDataList, processDataPool, sizeof(processDataPool) / sizeof(ProcessData), sizeof(ProcessData));
 }
 
-
-// this is called after main exits
-void __appExit(void){}
-
-void __system_allocateHeaps(void){}
-
-void __system_initSyscalls(void){}
-
-Result __sync_init(void);
-Result __sync_fini(void);
-
-void __ctru_exit(void){}
-
-void initSystem(void)
-{
-    __sync_init();
-    __system_allocateHeaps();
-    __appInit();
-}
-
 int main(void)
 {
     Result res;
     u32 *cmdbuf = getThreadCommandBuffer();
-    u32 nbHandles = 3, nbSessions = 0, nbSrvPmSessions = 0;
+    u32 nbHandles = 3, nbSessions = 0;
+    bool srvPmSessionCreated = false;
 
     Handle clientPortDummy;
     Handle srvPort, srvPmPort;
@@ -89,9 +86,23 @@ int main(void)
 
     for(;;)
     {
-        s32 id;
+        s32 id = -1;
         if(replyTarget == 0)
             cmdbuf[0] = 0xFFFF0000; // Kernel11
+
+        // Rebuild the list
+        nbHandles = 3;
+        nbSessions = 0;
+        for(sessionData = sessionDataInUseList.first; sessionData != NULL; sessionData = sessionData->next)
+        {
+            handles[nbHandles++] = sessionData->handle;
+            nbSessions++;
+        }
+
+        for(sessionData = sessionDataWaitingPortReadyList.first; sessionData != NULL; sessionData = sessionData->next)
+        {
+            handles[nbHandles++] = sessionData->busyClientPortHandle;
+        }
 
         res = svcReplyAndReceive(&id, handles, nbHandles, replyTarget);
         if(res == (Result)0xC920181A) // unreachable remote
@@ -99,7 +110,7 @@ int main(void)
             // Note: if a process has ended, pm will call UnregisterProcess on it
             if(id < 0)
             {
-                for(id = 3; (u32)id < nbHandles && handles[id] != replyTarget; id++);
+                for(id = 0; (u32)id < nbHandles && handles[id] != replyTarget; id++);
                 if((u32)id >= nbHandles)
                     panic();
             }
@@ -117,30 +128,7 @@ int main(void)
 
                 if(sessionData != NULL)
                 {
-                    if(sessionData->busyClientPortHandle != 0) // remove unreferenced client port handles from array
-                    {
-                        u32 refCount = 0;
-                        for(u32 i = 0; i < sizeof(sessionDataPool) / sizeof(SessionData); i++)
-                        {
-                            if(sessionDataPool[i].busyClientPortHandle == sessionData->busyClientPortHandle)
-                                ++refCount;
-                        }
-                        if(refCount <= 1)
-                        {
-                            u32 i;
-                            for(i = 3 + nbSessions; i < nbHandles && handles[i] == sessionData->busyClientPortHandle; i++);
-                            if(i < nbHandles)
-                                handles[i] = handles[--nbHandles];
-                        }
-                    }
-
-                    --nbHandles;
-                    for(u32 i = (u32)id; i < nbHandles; i++)
-                        handles[i] = handles[i + 1];
-                    --nbSessions;
                     svcCloseHandle(sessionData->handle);
-                    if(sessionData->isSrvPm)
-                        --nbSrvPmSessions;
                     moveNode(sessionData, &freeSessionDataList, false);
                 }
                 else
@@ -158,11 +146,11 @@ int main(void)
                     {
                         sessionData->replayCmdbuf[1] = 0xD0406401; // unregistered service or named port
                         moveNode(sessionData, &sessionDataWaitingForServiceOrPortRegisterList, true);
-                        svcCloseHandle(handles[id]);
-                        handles[id] = handles[--nbHandles];
                         sessionData->busyClientPortHandle = 0;
                     }
                 }
+
+                // Don't close the handle.
             }
 
             replyTarget = 0;
@@ -179,26 +167,17 @@ int main(void)
                 sessionData = (SessionData *)allocateNode(&sessionDataInUseList, &freeSessionDataList, sizeof(SessionData), false);
                 sessionData->pid = (u32)-1;
                 sessionData->handle = session;
-                for(u32 i = nbHandles; i > 3 + nbSessions; i--)
-                    handles[i] = handles[i - 1];
-                handles[3 + nbSessions++] = session;
-                ++nbHandles;
             }
             else if(id == 2) // New srv:pm session
             {
                 Handle session;
-                if(!IS_PRE_7X && nbSrvPmSessions >= 1)
+                if(!IS_PRE_7X && srvPmSessionCreated)
                     panic();
                 assertSuccess(svcAcceptSession(&session, srvPmPort));
                 sessionData = (SessionData *)allocateNode(&sessionDataInUseList, &freeSessionDataList, sizeof(SessionData), false);
                 sessionData->pid = (u32)-1;
                 sessionData->handle = session;
                 sessionData->isSrvPm = true;
-                for(u32 i = nbHandles; i > 3 + nbSessions; i--)
-                    handles[i] = handles[i - 1];
-                handles[3 + nbSessions++] = session;
-                ++nbHandles;
-                ++nbSrvPmSessions;
             }
             else
             {
@@ -208,31 +187,17 @@ int main(void)
                         panic();
                     sessionData = sessionDataToWakeUpAfterServiceOrPortRegisterList.first;
                     moveNode(sessionData, &sessionDataInUseList, false);
-                    for(u32 i = nbHandles; i > 3 + nbSessions; i--)
-                        handles[i] = handles[i - 1];
-                    handles[3 + nbSessions++] = sessionData->handle;
-                    ++nbHandles;
-                    if(sessionData->isSrvPm)
-                        ++nbSrvPmSessions;
                     memcpy(cmdbuf, sessionData->replayCmdbuf, 16);
                 }
                 else if((u32)id >= 3 + nbSessions) // Resume SRV:GetServiceHandle if service was full
                 {
-                    SessionData *sTmp;
                     for(sessionData = sessionDataWaitingPortReadyList.first; sessionData != NULL && sessionData->busyClientPortHandle != handles[id];
                         sessionData = sessionData->next);
-                    if(sessionData == NULL)
-                        panic();
+                    if(sessionData == NULL) {
+                        // Ignore (client process could have ended) and continue
+                        continue;
+                    }
                     moveNode(sessionData, &sessionDataInUseList, false);
-                    for(sTmp = sessionDataWaitingPortReadyList.first; sTmp != NULL && sTmp->busyClientPortHandle != handles[id]; sTmp = sTmp->next);
-                    if(sTmp == NULL)
-                        handles[id] = handles[--nbHandles];
-                    for(u32 i = nbHandles + 1; i > 3 + nbSessions; i--)
-                        handles[i] = handles[i - 1];
-                    handles[3 + nbSessions++] = sessionData->handle;
-                    ++nbHandles;
-                    if(sessionData->isSrvPm)
-                        ++nbSrvPmSessions;
                     memcpy(cmdbuf, sessionData->replayCmdbuf, 16);
                     sessionData->busyClientPortHandle = 0;
                 }
@@ -243,10 +208,6 @@ int main(void)
                         panic();
                 }
 
-                for(id = 3; (u32)id < 3 + nbSessions && handles[id] != sessionData->handle; id++);
-                if((u32)id >= 3 + nbSessions)
-                    panic();
-
                 res = sessionData->isSrvPm ? srvPmHandleCommands(sessionData) : srvHandleCommands(sessionData);
 
                 if(R_MODULE(res) == RM_SRV && R_SUMMARY(res) == RS_WOULDBLOCK)
@@ -255,22 +216,10 @@ int main(void)
                     if(res == (Result)0xD0406401) // service or named port not registered yet
                         dstList = &sessionDataWaitingForServiceOrPortRegisterList;
                     else if(res == (Result)0xD0406402) // service full
-                    {
-                        u32 i;
                         dstList = &sessionDataWaitingPortReadyList;
-                        for(i = 3 + nbSessions; i < nbHandles && handles[i] != sessionData->busyClientPortHandle; i++);
-                        if(i >= nbHandles)
-                            handles[nbHandles++] = sessionData->busyClientPortHandle;
-                    }
                     else
                         panic();
 
-                    --nbHandles;
-                    for(u32 i = (u32)id; i < nbHandles; i++)
-                        handles[i] = handles[i + 1];
-                    --nbSessions;
-                    if(sessionData->isSrvPm)
-                        --nbSrvPmSessions;
                     moveNode(sessionData, dstList, true);
                 }
                 else

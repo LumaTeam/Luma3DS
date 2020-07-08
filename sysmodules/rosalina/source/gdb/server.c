@@ -1,27 +1,8 @@
 /*
-*   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   This file is part of Luma3DS.
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
+*   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
 
 #include "gdb/server.h"
@@ -32,9 +13,11 @@
 #include "gdb/debug.h"
 #include "gdb/regs.h"
 #include "gdb/mem.h"
+#include "gdb/hio.h"
 #include "gdb/watchpoints.h"
 #include "gdb/breakpoints.h"
 #include "gdb/stop_point.h"
+#include "task_runner.h"
 
 Result GDB_InitializeServer(GDBServer *server)
 {
@@ -55,6 +38,7 @@ Result GDB_InitializeServer(GDBServer *server)
 
     server->referenceCount = 0;
     svcCreateEvent(&server->statusUpdated, RESET_ONESHOT);
+    svcCreateEvent(&server->statusUpdateReceived, RESET_STICKY);
 
     for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
         GDB_InitializeContext(server->ctxs + i);
@@ -68,7 +52,13 @@ void GDB_FinalizeServer(GDBServer *server)
 {
     server_finalize(&server->super);
 
+    // Kill the "next application" context if needed
+    for (u32 i = 0; i < MAX_DEBUG; i++) {
+        if (server->ctxs[i].debug != 0)
+            GDB_CloseClient(&server->ctxs[i]);
+    }
     svcCloseHandle(server->statusUpdated);
+    svcCloseHandle(server->statusUpdateReceived);
 }
 
 void GDB_IncrementServerReferenceCount(GDBServer *server)
@@ -84,135 +74,212 @@ void GDB_DecrementServerReferenceCount(GDBServer *server)
 
 void GDB_RunServer(GDBServer *server)
 {
-    server_bind(&server->super, GDB_PORT_BASE);
-    server_bind(&server->super, GDB_PORT_BASE + 1);
-    server_bind(&server->super, GDB_PORT_BASE + 2);
-    server_run(&server->super);
+    Result res = server_bind(&server->super, GDB_PORT_BASE);
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 1);
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 2);
+
+    if(R_SUCCEEDED(res)) res = server_bind(&server->super, GDB_PORT_BASE + 3); // next application
+
+    if(R_SUCCEEDED(res))
+        server_run(&server->super);
+}
+
+void GDB_LockAllContexts(GDBServer *server)
+{
+    for (u32 i = 0; i < MAX_DEBUG; i++)
+        RecursiveLock_Lock(&server->ctxs[i].lock);
+}
+
+void GDB_UnlockAllContexts(GDBServer *server)
+{
+    for (u32 i = MAX_DEBUG; i > 0; i--)
+        RecursiveLock_Unlock(&server->ctxs[i - 1].lock);
+}
+
+GDBContext *GDB_SelectAvailableContext(GDBServer *server, u16 minPort, u16 maxPort)
+{
+    GDBContext *ctx;
+    u16 port;
+
+    GDB_LockAllContexts(server);
+
+    // Get a context
+    u32 id;
+    for(id = 0; id < MAX_DEBUG && (server->ctxs[id].flags & GDB_FLAG_ALLOCATED_MASK); id++);
+    if(id < MAX_DEBUG)
+        ctx = &server->ctxs[id];
+    else
+    {
+        GDB_UnlockAllContexts(server);
+        return NULL;
+    }
+
+    // Get a port
+    for (port = minPort; port < maxPort; port++)
+    {
+        bool portUsed = false;
+        for(id = 0; id < MAX_DEBUG; id++)
+        {
+            if((server->ctxs[id].flags & GDB_FLAG_ALLOCATED_MASK) && server->ctxs[id].localPort == port)
+                portUsed = true;
+        }
+
+        if (!portUsed)
+            break;
+    }
+
+    if (port >= maxPort)
+    {
+        ctx->flags = ~GDB_FLAG_SELECTED;
+        ctx = NULL;
+    }
+    else
+    {
+        ctx->flags |= GDB_FLAG_SELECTED;
+        ctx->localPort = port;
+        ctx->parent = server;
+    }
+
+    GDB_UnlockAllContexts(server);
+    return ctx;
+}
+
+GDBContext *GDB_FindAllocatedContextByPid(GDBServer *server, u32 pid)
+{
+    GDB_LockAllContexts(server);
+    GDBContext *ctx = NULL;
+    for(u32 i = 0; i < MAX_DEBUG; i++)
+    {
+        if(
+            ((server->ctxs[i].flags & GDB_FLAG_SELECTED) ||
+                (server->ctxs[i].state >= GDB_STATE_ATTACHED && server->ctxs[i].state < GDB_STATE_DETACHING))
+            && server->ctxs[i].pid == pid
+        )
+            ctx = &server->ctxs[i];
+    }
+    GDB_UnlockAllContexts(server);
+    return ctx;
 }
 
 int GDB_AcceptClient(GDBContext *ctx)
 {
-    RecursiveLock_Lock(&ctx->lock);
-    Result r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
-    if(R_SUCCEEDED(r))
-    {
-        DebugEventInfo *info = &ctx->latestDebugEvent;
-        ctx->state = GDB_STATE_CONNECTED;
-        ctx->processExited = ctx->processEnded = false;
-        ctx->latestSentPacketSize = 0;
-        while(R_SUCCEEDED(svcGetProcessDebugEvent(info, ctx->debug)) && info->type != DBGEVENT_EXCEPTION &&
-              info->exception.type != EXCEVENT_ATTACH_BREAK)
-        {
-            GDB_PreprocessDebugEvent(ctx, info);
-            svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
-        }
-    }
-    else
-    {
-        RecursiveLock_Unlock(&ctx->lock);
-        return -1;
-    }
+    Result r = 0;
 
-    svcSignalEvent(ctx->clientAcceptedEvent);
+    RecursiveLock_Lock(&ctx->lock);
+    ctx->state = GDB_STATE_CONNECTED;
+    ctx->latestSentPacketSize = 0;
+
+    if (ctx->flags & GDB_FLAG_SELECTED)
+        r = GDB_AttachToProcess(ctx);
+
     RecursiveLock_Unlock(&ctx->lock);
 
-    return 0;
+    return R_SUCCEEDED(r) ? 0 : -1;
 }
 
 int GDB_CloseClient(GDBContext *ctx)
 {
     RecursiveLock_Lock(&ctx->lock);
+    svcClearEvent(ctx->processAttachedEvent);
+    ctx->eventToWaitFor = ctx->processAttachedEvent;
+    svcClearEvent(ctx->parent->statusUpdateReceived);
+    svcSignalEvent(ctx->parent->statusUpdated); // note: monitor will be waiting for lock
+    RecursiveLock_Unlock(&ctx->lock);
 
-    for(u32 i = 0; i < ctx->nbBreakpoints; i++)
-    {
-        if(!ctx->breakpoints[i].persistent)
-            GDB_DisableBreakpointById(ctx, i);
-    }
-    memset(&ctx->breakpoints, 0, sizeof(ctx->breakpoints));
-    ctx->nbBreakpoints = 0;
+    if(ctx->parent->referenceCount >= 2)
+        svcWaitSynchronization(ctx->parent->statusUpdateReceived, -1LL);
 
-    for(u32 i = 0; i < ctx->nbWatchpoints; i++)
-    {
-        GDB_RemoveWatchpoint(ctx, ctx->watchpoints[i], WATCHPOINT_DISABLED);
-        ctx->watchpoints[i] = 0;
-    }
-    ctx->nbWatchpoints = 0;
+    RecursiveLock_Lock(&ctx->lock);
+    if (ctx->state >= GDB_STATE_ATTACHED || ctx->debug != 0)
+        GDB_DetachFromProcess(ctx);
 
-    svcKernelSetState(0x10002, ctx->pid, false);
-    memset(ctx->svcMask, 0, 32);
+    ctx->localPort = 0;
+    ctx->enableExternalMemoryAccess = false;
+    ctx->flags = 0;
+    ctx->state = GDB_STATE_DISCONNECTED;
 
+    ctx->catchThreadEvents = false;
+
+    memset(&ctx->latestDebugEvent, 0, sizeof(DebugEventInfo));
     memset(ctx->memoryOsInfoXmlData, 0, sizeof(ctx->memoryOsInfoXmlData));
     memset(ctx->processesOsInfoXmlData, 0, sizeof(ctx->processesOsInfoXmlData));
-    memset(ctx->threadListData, 0, sizeof(ctx->threadListData));
-    ctx->threadListDataPos = 0;
 
-    svcClearEvent(ctx->clientAcceptedEvent);
-    ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+    for (u32 i = 0; i < MAX_TIO_OPEN_FILE; i++)
+        IFile_Close(&ctx->openTioFileInfos[i].f);
+    memset(ctx->openTioFileInfos, 0, sizeof(ctx->openTioFileInfos));
+    ctx->numOpenTioFiles = 0;
+
     RecursiveLock_Unlock(&ctx->lock);
     return 0;
 }
 
 GDBContext *GDB_GetClient(GDBServer *server, u16 port)
 {
-    if(port < GDB_PORT_BASE || port >= GDB_PORT_BASE + sizeof(server->ctxs) / sizeof(GDBContext))
-        return NULL;
-
-    GDBContext *ctx = &server->ctxs[port - GDB_PORT_BASE];
-    if(!(ctx->flags & GDB_FLAG_USED) && (ctx->flags & GDB_FLAG_SELECTED))
+    GDB_LockAllContexts(server);
+    GDBContext *ctx = NULL;
+    for (u32 i = 0; i < MAX_DEBUG; i++)
     {
-        RecursiveLock_Lock(&ctx->lock);
-        ctx->flags |= GDB_FLAG_USED;
-        ctx->state = GDB_STATE_CONNECTED;
-        RecursiveLock_Unlock(&ctx->lock);
-
-        return ctx;
+        if (server->ctxs[i].localPort == port)
+        {
+            ctx = &server->ctxs[i];
+            break;
+        }
     }
 
-    return NULL;
+    if (ctx != NULL)
+    {
+        // Context already tied to a port/selected
+        if (ctx->flags & GDB_FLAG_USED)
+        {
+            GDB_UnlockAllContexts(server);
+            return NULL;
+        }
+
+        ctx->flags |= GDB_FLAG_USED;
+        ctx->state = GDB_STATE_CONNECTED;
+        ctx->parent = server;
+    }
+    else if (port >= GDB_PORT_BASE && port < GDB_PORT_BASE + MAX_DEBUG)
+    {
+        // Grab a free context
+        u32 id;
+        for(id = 0; id < MAX_DEBUG && (server->ctxs[id].flags & GDB_FLAG_ALLOCATED_MASK); id++);
+        if(id < MAX_DEBUG)
+            ctx = &server->ctxs[id];
+        else
+        {
+            GDB_UnlockAllContexts(server);
+            return NULL;
+        }
+
+        ctx->localPort = port;
+        ctx->flags |= GDB_FLAG_USED;
+        ctx->state = GDB_STATE_CONNECTED;
+        ctx->parent = server;
+    }
+
+    GDB_UnlockAllContexts(server);
+    if (port == GDB_PORT_BASE + MAX_DEBUG && ctx != NULL)
+    {
+        // this is not sufficient/foolproof and is buggy: TaskRunner_WaitReady(); // Finish grabbing new process debug, if anything...
+        bool ok = false;
+        do
+        {
+            svcSleepThread(5 * 1000 * 1000LL);
+            RecursiveLock_Lock(&ctx->lock);
+            ok = ctx->debug != 0;
+            RecursiveLock_Unlock(&ctx->lock);
+        }
+        while (!ok);
+    }
+
+    return ctx;
 }
 
 void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
 {
-    DebugEventInfo dummy;
-
-    svcSignalEvent(server->statusUpdated);
-
-    RecursiveLock_Lock(&ctx->lock);
-
-    /*
-        There's a possibility of a race condition with a possible user exception handler, but you shouldn't
-        use 'kill' on APPLICATION titles in the first place (reboot hanging because the debugger is still running, etc).
-    */
-
-    ctx->continueFlags = (DebugFlags)0;
-
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
-    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, ctx->continueFlags)));
-    if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
-    {
-        svcTerminateDebugProcess(ctx->debug);
-        ctx->processEnded = true;
-        ctx->processExited = false;
-    }
-
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
-    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, ctx->continueFlags)));
-
-    svcCloseHandle(ctx->debug);
-    ctx->debug = 0;
-
-    ctx->flags = (GDBFlags)0;
-    ctx->state = GDB_STATE_DISCONNECTED;
-
-    ctx->eventToWaitFor = ctx->clientAcceptedEvent;
-    ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
-    ctx->pid = 0;
-    ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
-    ctx->nbThreads = 0;
-    memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
-    ctx->catchThreadEvents = false;
-    ctx->enableExternalMemoryAccess = false;
-    RecursiveLock_Unlock(&ctx->lock);
+    (void)server;
+    (void)ctx;
 }
 
 static const struct
@@ -222,9 +289,11 @@ static const struct
 } gdbCommandHandlers[] =
 {
     { '?', GDB_HANDLER(GetStopReason) },
+    { '!', GDB_HANDLER(EnableExtendedMode) },
     { 'c', GDB_HANDLER(Continue) },
     { 'C', GDB_HANDLER(Continue) },
     { 'D', GDB_HANDLER(Detach) },
+    { 'F', GDB_HANDLER(HioReply) },
     { 'g', GDB_HANDLER(ReadRegisters) },
     { 'G', GDB_HANDLER(WriteRegisters) },
     { 'H', GDB_HANDLER(SetThreadId) },
@@ -235,6 +304,7 @@ static const struct
     { 'P', GDB_HANDLER(WriteRegister) },
     { 'q', GDB_HANDLER(ReadQuery) },
     { 'Q', GDB_HANDLER(WriteQuery) },
+    { 'R', GDB_HANDLER(Restart) },
     { 'T', GDB_HANDLER(IsThreadAlive) },
     { 'v', GDB_HANDLER(VerboseCommand) },
     { 'X', GDB_HANDLER(WriteMemoryRaw) },
@@ -257,7 +327,7 @@ int GDB_DoPacket(GDBContext *ctx)
     int ret;
 
     RecursiveLock_Lock(&ctx->lock);
-    GDBFlags oldFlags = ctx->flags;
+    u32 oldFlags = ctx->flags;
 
     if(ctx->state == GDB_STATE_DISCONNECTED)
         return -1;
@@ -281,9 +351,20 @@ int GDB_DoPacket(GDBContext *ctx)
     else
         ret = 0;
 
-    RecursiveLock_Unlock(&ctx->lock);
-    if(ctx->state == GDB_STATE_CLOSING)
-        return -1;
+    if(ctx->state == GDB_STATE_DETACHING)
+    {
+        if(ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        {
+            ctx->state = GDB_STATE_CONNECTED;
+            RecursiveLock_Unlock(&ctx->lock);
+            return ret;
+        }
+        else
+        {
+            RecursiveLock_Unlock(&ctx->lock);
+            return -1;
+        }
+    }
 
     if((oldFlags & GDB_FLAG_PROCESS_CONTINUING) && !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
     {
@@ -293,5 +374,6 @@ int GDB_DoPacket(GDBContext *ctx)
     else if(!(oldFlags & GDB_FLAG_PROCESS_CONTINUING) && (ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
         svcSignalEvent(ctx->continuedEvent);
 
+    RecursiveLock_Unlock(&ctx->lock);
     return ret;
 }

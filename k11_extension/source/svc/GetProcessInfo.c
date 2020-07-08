@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 */
 
 #include "svc/GetProcessInfo.h"
-#include "memory.h"
+#include <string.h>
 
 Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
 {

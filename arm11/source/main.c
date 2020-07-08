@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -40,6 +40,10 @@ extern volatile Arm11Operation operation;
 static void initScreens(u32 brightnessLevel, struct fb *fbs)
 {
     *(vu32 *)0x10141200 = 0x1007F;
+
+    *(vu32 *)0x10202204 = 0x01000000; //set LCD fill black to hide potential garbage -- NFIRM does it before firmlaunching
+    *(vu32 *)0x10202A04 = 0x01000000;
+
     *(vu32 *)0x10202014 = 0x00000001;
     *(vu32 *)0x1020200C &= 0xFFFEFFFE;
     *(vu32 *)0x10202240 = brightnessLevel;
@@ -118,16 +122,33 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     //Disco register
     for(u32 i = 0; i < 256; i++)
         *(vu32 *)0x10400584 = 0x10101 * i;
+
+    *(vu32 *)0x10202204 = 0x00000000; //unset LCD fill
+    *(vu32 *)0x10202A04 = 0x00000000;
 }
 
 static void setupFramebuffers(struct fb *fbs)
 {
+    *(vu32 *)0x10202204 = 0x01000000; //set LCD fill black to hide potential garbage -- NFIRM does it before firmlaunching
+    *(vu32 *)0x10202A04 = 0x01000000;
+
     *(vu32 *)0x10400468 = (u32)fbs[0].top_left;
     *(vu32 *)0x1040046c = (u32)fbs[1].top_left;
     *(vu32 *)0x10400494 = (u32)fbs[0].top_right;
     *(vu32 *)0x10400498 = (u32)fbs[1].top_right;
     *(vu32 *)0x10400568 = (u32)fbs[0].bottom;
     *(vu32 *)0x1040056c = (u32)fbs[1].bottom;
+
+    //Set framebuffer format, framebuffer select and stride
+    *(vu32 *)0x10400470 = 0x80341;
+    *(vu32 *)0x10400478 = 0;
+    *(vu32 *)0x10400490 = 0x2D0;
+    *(vu32 *)0x10400570 = 0x80301;
+    *(vu32 *)0x10400578 = 0;
+    *(vu32 *)0x10400590 = 0x2D0;
+
+    *(vu32 *)0x10202204 = 0x00000000; //unset LCD fill
+    *(vu32 *)0x10202A04 = 0x00000000;
 }
 
 static void clearScreens(struct fb *fb)
