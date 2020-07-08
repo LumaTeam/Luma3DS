@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*'
+      - 'LICENSE.txt'
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*'
+      - 'LICENSE.txt'
+      - 'README.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: nanquitas/luma3ds
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: make -j$(nproc --all)
+    - uses: actions/upload-artifact@v2
+      with:
+        name: Luma3DS
+        path: boot.firm
