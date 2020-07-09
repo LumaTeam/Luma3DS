@@ -133,6 +133,29 @@ static void handleTermNotification(u32 notificationId)
     (void)notificationId;
 }
 
+static void handleSleepNotification(u32 notificationId)
+{
+    ptmSysmInit();
+    s32 ackValue = ptmSysmGetNotificationAckValue(notificationId);
+    switch (notificationId)
+    {
+        case PTMNOTIFID_SLEEP_REQUESTED:
+            PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
+            break;
+        case PTMNOTIFID_GOING_TO_SLEEP:
+        case PTMNOTIFID_SLEEP_ALLOWED:
+        case PTMNOTIFID_FULLY_WAKING_UP:
+        case PTMNOTIFID_HALF_AWAKE:
+            PTMSYSM_NotifySleepPreparationComplete(ackValue);
+            break;
+        case PTMNOTIFID_SLEEP_DENIED:
+        case PTMNOTIFID_FULLY_AWAKE:
+        default:
+            break;
+    }
+    ptmSysmExit();
+}
+
 static void handlePreTermNotification(u32 notificationId)
 {
     (void)notificationId;
@@ -182,11 +205,17 @@ static const ServiceManagerServiceEntry services[] = {
 };
 
 static const ServiceManagerNotificationEntry notifications[] = {
-    { 0x100 , handleTermNotification                },
-    //{ 0x103 , handlePreTermNotification          }, // Sleep mode entry <=== causes issues
-    { 0x1000, handleNextApplicationDebuggedByForce  },
-    { 0x2000, handlePreTermNotification          },
-    { 0x3000, handleRestartHbAppNotification        },
+    { 0x100 ,                       handleTermNotification                  },
+    { PTMNOTIFID_SLEEP_REQUESTED,   handleSleepNotification                 },
+    { PTMNOTIFID_SLEEP_DENIED,      handleSleepNotification                 },
+    { PTMNOTIFID_SLEEP_ALLOWED,     handleSleepNotification                 },
+    { PTMNOTIFID_GOING_TO_SLEEP,    handleSleepNotification                 },
+    { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
+    { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
+    { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
+    { 0x1000,                       handleNextApplicationDebuggedByForce    },
+    { 0x2000,                       handlePreTermNotification               },
+    { 0x3000,                       handleRestartHbAppNotification          },
     { 0x000, NULL },
 };
 
