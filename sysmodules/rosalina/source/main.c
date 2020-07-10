@@ -156,6 +156,14 @@ static void handleSleepNotification(u32 notificationId)
     ptmSysmExit();
 }
 
+static void handleShellOpenedNotification(u32 notificationId)
+{
+    (void)notificationId;
+
+    // Note that this is called on system init
+    ScreenFiltersMenu_RestoreCct();
+}
+
 static void handlePreTermNotification(u32 notificationId)
 {
     (void)notificationId;
@@ -213,6 +221,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
     { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
     { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
+    { 0x213,                        handleShellOpenedNotification           },
     { 0x1000,                       handleNextApplicationDebuggedByForce    },
     { 0x2000,                       handlePreTermNotification               },
     { 0x3000,                       handleRestartHbAppNotification          },

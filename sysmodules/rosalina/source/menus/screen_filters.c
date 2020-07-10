@@ -32,26 +32,29 @@
 #include "redshift/redshift.h"
 #include "redshift/colorramp.h"
 
-typedef struct {
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 z;
+typedef union {
+    struct {
+        u8 r;
+        u8 g;
+        u8 b;
+        u8 z;
+    };
+    u32 raw;
 } Pixel;
 
 static u16 g_c[0x600];
 static Pixel g_px[0x400];
 
-int screenFiltersCurrentTemperature = 6500;
+int screenFiltersCurrentTemperature = -1;
 
-static void ScreenFiltersMenu_WriteLut(const u32* lut)
+static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
 {
     GPU_FB_TOP_COL_LUT_INDEX = 0;
     GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
 
     for (int i = 0; i <= 255; i++) {
-        GPU_FB_TOP_COL_LUT_ELEM = *lut;
-        GPU_FB_BOTTOM_COL_LUT_ELEM = *lut;
+        GPU_FB_TOP_COL_LUT_ELEM = lut->raw;
+        GPU_FB_BOTTOM_COL_LUT_ELEM = lut->raw;
         lut++;
     }
 }
@@ -84,7 +87,7 @@ static void ScreenFiltersMenu_ApplyColorSettings(color_setting_t* cs)
         g_px[i].b = *(g_c + i + 0x200) >> 8;
     } while(++i);
 
-    ScreenFiltersMenu_WriteLut((u32*)g_px);
+    ScreenFiltersMenu_WriteLut(g_px);
 }
 
 static void ScreenFiltersMenu_SetCct(int cct)
@@ -100,7 +103,6 @@ static void ScreenFiltersMenu_SetCct(int cct)
 
     ScreenFiltersMenu_ApplyColorSettings(&cs);
 }
-
 
 Menu screenFiltersMenu = {
     "Screen filters menu",
@@ -124,6 +126,20 @@ void ScreenFiltersMenu_Set##name(void)\
 {\
     screenFiltersCurrentTemperature = temp;\
     ScreenFiltersMenu_SetCct(temp);\
+}
+
+void ScreenFiltersMenu_RestoreCct(void)
+{
+    // Not initialized: return
+    if (screenFiltersCurrentTemperature == -1)
+        return;
+
+    // Wait for GSP to restore the CCT table
+    while (GPU_FB_TOP_COL_LUT_ELEM != g_px[0].raw)
+        svcSleepThread(10 * 1000 * 1000LL);
+
+    svcSleepThread(10 * 1000 * 1000LL);
+    ScreenFiltersMenu_WriteLut(g_px);
 }
 
 DEF_CCT_SETTER(6500, Default)
