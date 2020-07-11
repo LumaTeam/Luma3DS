@@ -140,6 +140,7 @@ static void handleSleepNotification(u32 notificationId)
     switch (notificationId)
     {
         case PTMNOTIFID_SLEEP_REQUESTED:
+            menuShouldExit = true;
             PTMSYSM_ReplyToSleepQuery(ROSALINA_PREVENT_DISCONNECT); // deny sleep request if we have network stuff running
             break;
         case PTMNOTIFID_GOING_TO_SLEEP:
@@ -150,18 +151,26 @@ static void handleSleepNotification(u32 notificationId)
             break;
         case PTMNOTIFID_SLEEP_DENIED:
         case PTMNOTIFID_FULLY_AWAKE:
+            menuShouldExit = false;
+            break;
         default:
             break;
     }
     ptmSysmExit();
 }
 
-static void handleShellOpenedNotification(u32 notificationId)
+static void handleShellNotification(u32 notificationId)
 {
-    (void)notificationId;
+    if (notificationId == 0x213) {
+        // Shell opened
+        // Note that this notification is fired on system init
+        ScreenFiltersMenu_RestoreCct();
+        menuShouldExit = false;
+    } else {
+        // Shell closed
+        menuShouldExit = true;
+    }
 
-    // Note that this is called on system init
-    ScreenFiltersMenu_RestoreCct();
 }
 
 static void handlePreTermNotification(u32 notificationId)
@@ -221,7 +230,8 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
     { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
     { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
-    { 0x213,                        handleShellOpenedNotification           },
+    { 0x213,                        handleShellNotification                 },
+    { 0x214,                        handleShellNotification                 },
     { 0x1000,                       handleNextApplicationDebuggedByForce    },
     { 0x2000,                       handlePreTermNotification               },
     { 0x3000,                       handleRestartHbAppNotification          },
