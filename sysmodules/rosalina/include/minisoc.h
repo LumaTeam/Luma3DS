@@ -17,6 +17,8 @@
 #define _REENT_ONLY
 #include <errno.h>
 
+#define ROSALINA_PREVENT_DISCONNECT          (*(volatile bool*)0x1FF81108)
+
 #define SYNC_ERROR ENODEV
 extern bool miniSocEnabled;
 

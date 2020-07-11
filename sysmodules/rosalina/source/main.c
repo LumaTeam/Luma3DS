@@ -140,7 +140,7 @@ static void handleSleepNotification(u32 notificationId)
     switch (notificationId)
     {
         case PTMNOTIFID_SLEEP_REQUESTED:
-            PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
+            PTMSYSM_ReplyToSleepQuery(ROSALINA_PREVENT_DISCONNECT); // deny sleep request if we have network stuff running
             break;
         case PTMNOTIFID_GOING_TO_SLEEP:
         case PTMNOTIFID_SLEEP_ALLOWED:

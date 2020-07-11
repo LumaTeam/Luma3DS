@@ -17,6 +17,7 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 
 extern u32 nbSection0Modules;
 extern Handle resumeGetServiceHandleOrPortRegisteredSemaphore;
+extern u32 ndmuServicePid;
 
 struct SessionDataList;
 
