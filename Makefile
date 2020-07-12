@@ -27,7 +27,7 @@ boot.firm:	$(SUBFOLDERS)
 	@echo built... $(notdir $@)
 
 boot.3dsx:
-	@curl -sS "https://github.com/fincs/new-hbmenu/releases/download/v2.1.1/boot.3dsx" -o "boot.3dsx"
+	@curl -sS "https://github.com/fincs/new-hbmenu/releases/latest/download/boot.3dsx" -o "boot.3dsx"
 
 $(SUBFOLDERS):
 	@$(MAKE) -C $@ all
