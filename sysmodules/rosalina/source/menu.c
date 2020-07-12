@@ -188,6 +188,7 @@ void menuThreadMain(void)
 
     while(!preTerminationRequested)
     {
+        svcSleepThread(50 * 1000 * 1000LL);
         if (menuShouldExit)
             continue;
 
@@ -200,8 +201,6 @@ void menuThreadMain(void)
             menuShow(&rosalinaMenu);
             menuLeave();
         }
-
-        svcSleepThread(50 * 1000 * 1000LL);
     }
 }
 

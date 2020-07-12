@@ -17,7 +17,8 @@ clean:
 	@$(foreach dir, $(SUBFOLDERS), $(MAKE) -C $(dir) clean &&) true
 	@rm -rf *.firm *.zip
 
-$(NAME)$(REVISION).zip:	boot.firm exception_dump_parser
+# boot.3dsx comes from https://github.com/fincs/new-hbmenu/releases
+$(NAME)$(REVISION).zip:	boot.firm boot.3dsx
 	@zip -r $@ $^ -x "*.DS_Store*" "*__MACOSX*"
 
 boot.firm:	$(SUBFOLDERS)
