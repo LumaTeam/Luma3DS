@@ -252,7 +252,8 @@ static ReslimitValues *fixupReslimitValues(void)
 
     // Note: we lie in the reslimit and make as if neither KExt nor Roslina existed, to avoid breakage
 
-    u32 sysmemalloc = SYSMEMALLOC + (hasKExt() ? getStolenSystemMemRegionSize() : 0);
+    u32 appmemalloc = OS_KernelConfig->memregion_sz[0];
+    u32 sysmemalloc = OS_KernelConfig->memregion_sz[1] + (hasKExt() ? getStolenSystemMemRegionSize() : 0);
     ReslimitValues *values = !IS_N3DS ? g_o3dsReslimitValues : g_n3dsReslimitValues;
 
     static const u32 minAppletMemAmount = 0x1200000;
@@ -261,7 +262,7 @@ static ReslimitValues *fixupReslimitValues(void)
     u32 baseRegionSize = !IS_N3DS ? 0x1400000 : 0x2000000;
 
     if (sysmemalloc < minAppletMemAmount) {
-        values[1][0] = SYSMEMALLOC - minAppletMemAmount / 3;
+        values[1][0] = sysmemalloc - minAppletMemAmount / 3;
         values[2][0] = 0;
         values[3][0] = baseRegionSize + otherMinOvercommitAmount;
     } else {
@@ -271,8 +272,8 @@ static ReslimitValues *fixupReslimitValues(void)
         values[3][0] = baseRegionSize + (otherMinOvercommitAmount + excess / 4);
     }
 
-    values[0][0] = APPMEMALLOC;
-    g_defaultAppMemLimit = APPMEMALLOC;
+    values[0][0] = appmemalloc;
+    g_defaultAppMemLimit = appmemalloc;
 
     return values;
 }
