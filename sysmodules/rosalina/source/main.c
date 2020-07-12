@@ -82,13 +82,15 @@ void initSystem(void)
     isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
 
     svcGetSystemInfo(&out, 0x10000, 0x100);
-    HBLDR_3DSX_TID = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+    Luma_SharedConfig->hbldr_3dsx_tid = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+    Luma_SharedConfig->use_hbldr = true;
 
     svcGetSystemInfo(&out, 0x10000, 0x101);
     menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
 
-    miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
-                                                                                  "Switch the hb. title to hblauncher_loader";
+    miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
+        "Switch the hb. title to the current app." :
+        "Switch the hb. title to hblauncher_loader";
 
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
@@ -141,7 +143,7 @@ static void handleSleepNotification(u32 notificationId)
     {
         case PTMNOTIFID_SLEEP_REQUESTED:
             menuShouldExit = true;
-            PTMSYSM_ReplyToSleepQuery(ROSALINA_PREVENT_DISCONNECT); // deny sleep request if we have network stuff running
+            PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
             break;
         case PTMNOTIFID_GOING_TO_SLEEP:
         case PTMNOTIFID_SLEEP_ALLOWED:

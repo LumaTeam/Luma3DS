@@ -2,8 +2,6 @@
 
 #include <3ds/exheader.h>
 
-#define HBLDR_3DSX_TID  (*(vu64 *)0x1FF81100)
-
 Result hbldrInit(void);
 void hbldrExit(void);
 

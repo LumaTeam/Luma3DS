@@ -30,6 +30,7 @@
 #include <3ds/srv.h>
 #include <3ds/result.h>
 #include "csvc.h"
+#include "luma_shared_config.h"
 
 // For accessing physmem uncached (and directly)
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)

@@ -54,7 +54,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     Result res;
     char failureReason[64];
 
-    if(HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID)
+    if(Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID)
     {
         FS_ProgramInfo progInfo;
         u32 pid;
@@ -62,7 +62,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
         if(R_SUCCEEDED(res))
         {
-            HBLDR_3DSX_TID = progInfo.programId;
+            Luma_SharedConfig->hbldr_3dsx_tid = progInfo.programId;
             miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else
@@ -74,7 +74,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     else
     {
         res = 0;
-        HBLDR_3DSX_TID = HBLDR_DEFAULT_3DSX_TID;
+        Luma_SharedConfig->hbldr_3dsx_tid = HBLDR_DEFAULT_3DSX_TID;
         miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
     }
 
@@ -202,7 +202,7 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.config = config;
     configData.multiConfig = multiConfig;
     configData.bootConfig = bootConfig;
-    configData.hbldr3dsxTitleId = HBLDR_3DSX_TID;
+    configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
 
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;

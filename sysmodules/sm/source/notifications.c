@@ -8,8 +8,9 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 #include "notifications.h"
 #include "processes.h"
 
-// 0 by default
-#define ROSALINA_PREVENT_DISCONNECT          (*(volatile bool*)0x1FF81108)
+#include <stdatomic.h>
+
+static atomic_int ndmuWorkaroundCount;
 
 static bool isNotificationInhibited(const ProcessData *processData, u32 notificationId)
 {
@@ -19,7 +20,7 @@ static bool isNotificationInhibited(const ProcessData *processData, u32 notifica
         // Shell opened, shell closed
         case 0x213:
         case 0x214:
-            return pid == ndmuServicePid && ROSALINA_PREVENT_DISCONNECT;
+            return pid == ndmuServicePid && atomic_load(&ndmuWorkaroundCount) > 0;
         default:
             return false;
     }
@@ -204,5 +205,12 @@ Result PublishToAll(u32 notificationId)
             return 0xD8606408;
     }
 
+    return 0;
+}
+
+Result AddToNdmuWorkaroundCount(s32 count)
+{
+    // Note: no check is made to (current value)+count
+    atomic_fetch_add(&ndmuWorkaroundCount, count);
     return 0;
 }

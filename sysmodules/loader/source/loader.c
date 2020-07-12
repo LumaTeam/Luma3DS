@@ -4,6 +4,7 @@
 #include "ifile.h"
 #include "util.h"
 #include "hbldr.h"
+#include "luma_shared_config.h"
 
 extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode;
@@ -91,6 +92,11 @@ static int lzss_decompress(u8 *end)
     return ret;
 }
 
+static inline bool hbldrIs3dsxTitle(u64 tid)
+{
+    return Luma_SharedConfig->use_hbldr && tid == Luma_SharedConfig->hbldr_3dsx_tid;
+}
+
 static Result allocateSharedMem(prog_addrs_t *shared, prog_addrs_t *vaddr, int flags)
 {
     u32 dummy;
@@ -169,11 +175,8 @@ static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
         }
     }
 
-    s64 nbSection0Modules;
-    svcGetSystemInfo(&nbSection0Modules, 26, 0);
-
     // Tweak 3dsx placeholder title exheaderInfo
-    if (nbSection0Modules == 6 && exheaderInfo->aci.local_caps.title_id == HBLDR_3DSX_TID)
+    if (hbldrIs3dsxTitle(exheaderInfo->aci.local_caps.title_id))
     {
         assertSuccess(hbldrInit());
         HBLDR_PatchExHeaderInfo(exheaderInfo);
@@ -204,7 +207,7 @@ static Result LoadProcess(Handle *process, u64 programHandle)
     u64 titleId;
 
     // make sure the cached info corrosponds to the current programHandle
-    if (g_cached_programHandle != programHandle || g_exheaderInfo.aci.local_caps.title_id == HBLDR_3DSX_TID)
+    if (g_cached_programHandle != programHandle || hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
     {
         res = GetProgramInfo(&g_exheaderInfo, programHandle);
         g_cached_programHandle = programHandle;
@@ -230,7 +233,7 @@ static Result LoadProcess(Handle *process, u64 programHandle)
     titleId = g_exheaderInfo.aci.local_caps.title_id;
     ExHeader_CodeSetInfo *csi = &g_exheaderInfo.sci.codeset_info;
 
-    if (titleId == HBLDR_3DSX_TID)
+    if (hbldrIs3dsxTitle(titleId))
     {
         assertSuccess(hbldrInit());
         assertSuccess(HBLDR_LoadProcess(&codeset, csi->text.address, flags & 0xF00, titleId, csi->name));
@@ -377,7 +380,7 @@ void loaderHandleCommands(void *ctx)
             break;
         case 4: // GetProgramInfo
             memcpy(&programHandle, &cmdbuf[1], 8);
-            if (programHandle != g_cached_programHandle || g_exheaderInfo.aci.local_caps.title_id == HBLDR_3DSX_TID)
+            if (programHandle != g_cached_programHandle || hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
             {
                 res = GetProgramInfo(&g_exheaderInfo, programHandle);
                 g_cached_programHandle = R_SUCCEEDED(res) ? programHandle : 0;
