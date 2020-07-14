@@ -102,7 +102,7 @@ Result miniSocInit(void)
     ret = SOCU_Initialize(miniSocMemHandle, socContextSize);
     if(ret != 0) goto cleanup;
 
-    svcKernelSetState(0x10000, 2);
+    svcKernelSetState(0x10000, 0x10);
     miniSocEnabled = true;
     srvExtAddToNdmuWorkaroundCount(1);
 
@@ -149,7 +149,7 @@ Result miniSocExitDirect(void)
     {
         miniSocEnabled = false;
         srvExtAddToNdmuWorkaroundCount(-1);
-        svcKernelSetState(0x10000, 2);
+        svcKernelSetState(0x10000, 0x10);
     }
     return ret;
 }

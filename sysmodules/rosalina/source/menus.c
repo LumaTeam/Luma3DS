@@ -39,6 +39,7 @@
 #include "memory.h"
 #include "fmt.h"
 #include "process_patches.h"
+#include "luminance.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
@@ -155,107 +156,92 @@ void RosalinaMenu_Reboot(void)
     while(!menuShouldExit);
 }
 
-static u32 gspPatchAddrN3ds, gspPatchValuesN3ds[2];
-static bool gspPatchDoneN3ds;
-
-static Result RosalinaMenu_PatchN3dsGspForBrightness(u32 size)
-{
-    u32 *off = (u32 *)0x00100000;
-    u32 *end = (u32 *)(0x00100000 + size);
-
-    for (; off < end && (off[0] != 0xE92D4030 || off[1] != 0xE1A04000 || off[2] != 0xE2805C01 || off[3] != 0xE5D0018C); off++);
-
-    if (off >= end) {
-        return -1;
-    }
-
-    gspPatchAddrN3ds = (u32)off;
-    gspPatchValuesN3ds[0] = off[26];
-    gspPatchValuesN3ds[1] = off[50];
-
-    // NOP brightness changing in GSP
-    off[26] = 0xE1A00000;
-    off[50] = 0xE1A00000;
-
-    return 0;
-}
-static Result RosalinaMenu_RevertN3dsGspPatch(u32 size)
-{
-    (void)size;
-
-    u32 *off = (u32 *)gspPatchAddrN3ds;
-    off[26] = gspPatchValuesN3ds[0];
-    off[50] = gspPatchValuesN3ds[1];
-
-    return 0;
-}
-
 void RosalinaMenu_ChangeScreenBrightness(void)
 {
-    Result patchResult = 0;
-    if (isN3DS && !gspPatchDoneN3ds)
-    {
-        patchResult = PatchProcessByName("gsp", RosalinaMenu_PatchN3dsGspForBrightness);
-        gspPatchDoneN3ds = R_SUCCEEDED(patchResult);
-    }
-
     Draw_Lock();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
+    // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
+    // Assume top and bottom screen luminances are the same (should be; if not, we'll set them to the same values).
+    u32 luminance = getCurrentLuminance(false);
+
     do
     {
-        // Assume the current brightness for both screens are the same.
-        s32 brightness = (s32)(LCD_TOP_BRIGHTNESS & 0xFF);
-
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
         u32 posY = 30;
-        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Current brightness (0..255): %3lu\n\n", brightness);
-        if (R_SUCCEEDED(patchResult))
-        {
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Up/Down for +-1, Right/Left for +-10.\n");
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y to revert the GSP patch and exit.\n\n");
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Current luminance: %lu\n\n", luminance);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
 
-            posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * avoid using values far higher than the presets.\n");
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * normal brightness mngmt. is now broken on N3DS.\nYou'll need to press Y to revert");
-        }
-        else
-            Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Failed to patch GSP (0x%08lx).", (u32)patchResult);
-
+        posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by the presets.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if ((pressed & DIRECTIONAL_KEYS) && R_SUCCEEDED(patchResult))
-        {
-            if (pressed & KEY_UP)
-                brightness += 1;
-            else if (pressed & KEY_DOWN)
-                brightness -= 1;
-            else if (pressed & KEY_RIGHT)
-                brightness += 10;
-            else if (pressed & KEY_LEFT)
-                brightness -= 10;
+        if (pressed & KEY_A)
+            break;
 
-            brightness = brightness < 0 ? 0 : brightness;
-            brightness = brightness > 255 ? 255 : brightness;
-            LCD_TOP_BRIGHTNESS = (u32)brightness;
-            LCD_BOT_BRIGHTNESS = (u32)brightness;
-        }
-        else if ((pressed & KEY_Y) && gspPatchDoneN3ds)
-        {
-            patchResult = PatchProcessByName("gsp", RosalinaMenu_RevertN3dsGspPatch);
-            gspPatchDoneN3ds = !R_SUCCEEDED(patchResult);
-            return;
-        }
-        else if (pressed & KEY_B)
+        if (pressed & KEY_B)
             return;
     }
     while (!menuShouldExit);
+
+    Draw_Lock();
+
+    Draw_RestoreFramebuffer();
+    Draw_FreeFramebufferCache();
+
+    svcKernelSetState(0x10000, 2); // unblock gsp
+    gspLcdInit(); // assume it doesn't fail. If it does, brightness won't change, anyway.
+
+    // gsp:LCD will normalize the brightness between top/bottom screen, handle PWM, etc.
+
+    s32 lum = (s32)luminance;
+
+    do
+    {
+        u32 pressed = waitInputWithTimeout(1000);
+        if (pressed & DIRECTIONAL_KEYS)
+        {
+            if (pressed & KEY_UP)
+                lum += 1;
+            else if (pressed & KEY_DOWN)
+                lum -= 1;
+            else if (pressed & KEY_RIGHT)
+                lum += 10;
+            else if (pressed & KEY_LEFT)
+                lum -= 10;
+
+            lum = lum < 0 ? 0 : lum;
+
+            // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
+            // This is actually SetLuminance:
+            GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP) | BIT(GSP_SCREEN_BOTTOM), lum);
+        }
+
+        if (pressed & KEY_B)
+            break;
+    }
+    while (!menuShouldExit);
+
+    gspLcdExit();
+    svcKernelSetState(0x10000, 2); // block gsp again
+
+    if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
+    {
+        // Shouldn't happen
+        __builtin_trap();
+    }
+    else
+        Draw_SetupFramebuffer();
+
+    Draw_Unlock();
 }
 
 void RosalinaMenu_PowerOff(void) // Soft shutdown.
