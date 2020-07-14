@@ -218,8 +218,9 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     programInfoUpdate = (launchFlags & PMLAUNCHFLAG_USE_UPDATE_TITLE) ? programInfoUpdate : programInfo;
     TRY(registerProgram(&programHandle, programInfo, programInfoUpdate));
 
+    u32 coreVer = OS_KernelConfig->kernel_syscore_ver;
     res = LOADER_GetProgramInfo(exheaderInfo, programHandle);
-    res = R_SUCCEEDED(res) && SYSCOREVER == 2 && exheaderInfo->aci.local_caps.core_info.core_version != SYSCOREVER ? (Result)0xC8A05800 : res;
+    res = R_SUCCEEDED(res) && coreVer == 2 && exheaderInfo->aci.local_caps.core_info.core_version != coreVer ? (Result)0xC8A05800 : res;
 
     if (R_FAILED(res)) {
         LOADER_UnregisterProgram(programHandle);
@@ -227,7 +228,7 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     }
 
     // Change APPMEMALLOC if needed
-    if (IS_N3DS && APPMEMTYPE == 6 && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
+    if (IS_N3DS && OS_KernelConfig->app_memtype == 6 && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
         u32 limitMb;
         SystemMode n3dsSystemMode = exheaderInfo->aci.local_caps.core_info.n3ds_system_mode;
         bool forceO3dsAppMem = (launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) != 0;
@@ -332,9 +333,11 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
 
     u32 tidh = (u32)(programInfo->programId >> 32);
     u32 tidl = (u32)programInfo->programId;
-    if ((tidh == 0x00040030 || tidh == 0x00040130) && (tidl & 0xFF) != SYSCOREVER) {
+    u32 coreVer = OS_KernelConfig->kernel_syscore_ver;
+    if (coreVer == 2 && (tidh == 0x00040030 || tidh == 0x00040130) && (tidl & 0xFF) != coreVer) {
         // Panic if launching SAFE_MODE sysmodules or applets (note: exheader syscorever check above only done for applications in official PM)
         // Official PM also hardcodes SYSCOREVER = 2 here.
+        // NATIVE_FIRM-only.
         panic(4);
     }
 
@@ -520,8 +523,8 @@ Result autolaunchSysmodules(void)
     FS_ProgramInfo programInfo = { .mediaType = MEDIATYPE_NAND };
 
     // Launch NS
-    if (NSTID != 0) {
-        programInfo.programId = NSTID;
+    if (OS_KernelConfig->ns_tid != 0) {
+        programInfo.programId = OS_KernelConfig->ns_tid;
         TRY(launchTitleImplWrapper(NULL, NULL, &programInfo, &programInfo, PMLAUNCHFLAG_LOAD_DEPENDENCIES));
     }
 

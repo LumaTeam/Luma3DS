@@ -36,9 +36,6 @@
 #include "gdb/server.h"
 #include "pmdbgext.h"
 
-#define SYSCOREVER              (*(vu32 *)0x1FF80010)
-#define APPMEMTYPE              (*(vu32 *)0x1FF80030)
-
 extern GDBContext *nextApplicationGdbCtx;
 extern GDBServer gdbServer;
 
@@ -322,21 +319,22 @@ void HBLDR_HandleCommands(void *ctx)
             memcpy(&exhi->sci.codeset_info.stack_size, &stacksize, 4);
             memset(&exhi->sci.dependencies, 0, sizeof(exhi->sci.dependencies));
 
-            if (SYSCOREVER == 2)
+            u32 coreVer = OS_KernelConfig->kernel_syscore_ver;
+            if (coreVer == 2)
                 memcpy(exhi->sci.dependencies, dependencyListNativeFirm, sizeof(dependencyListNativeFirm));
-            else if (SYSCOREVER == 3)
+            else if (coreVer == 3)
                 memcpy(exhi->sci.dependencies, dependencyListSafeFirm, sizeof(dependencyListSafeFirm));
 
             ExHeader_Arm11SystemLocalCapabilities* localcaps0 = &exhi->aci.local_caps;
 
-            localcaps0->core_info.core_version = SYSCOREVER;
+            localcaps0->core_info.core_version = coreVer;
             localcaps0->core_info.use_cpu_clockrate_804MHz = false;
             localcaps0->core_info.enable_l2c = false;
             localcaps0->core_info.ideal_processor = 0;
             localcaps0->core_info.affinity_mask = BIT(0);
             localcaps0->core_info.priority = 0x30;
 
-            u32 appmemtype = APPMEMTYPE;
+            u32 appmemtype = OS_KernelConfig->app_memtype;
             localcaps0->core_info.o3ds_system_mode = appmemtype < 6 ? (SystemMode)appmemtype : SYSMODE_O3DS_PROD;
             localcaps0->core_info.n3ds_system_mode = appmemtype >= 6 ? (SystemMode)(appmemtype - 6 + 1) : SYSMODE_N3DS_PROD;
 
@@ -363,7 +361,7 @@ void HBLDR_HandleCommands(void *ctx)
             // Set kernel release version to the current kernel version
             kcaps0->descriptors[0] = 0xFC000000 | (osGetKernelVersion() >> 16);
 
-            if (GET_VERSION_MINOR(osGetKernelVersion()) >= 50 && SYSCOREVER == 2) // 9.6+ NFIRM
+            if (GET_VERSION_MINOR(osGetKernelVersion()) >= 50 && coreVer == 2) // 9.6+ NFIRM
             {
                 u64 lastdep = sizeof(dependencyListNativeFirm)/8;
                 exhi->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
