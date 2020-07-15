@@ -170,13 +170,23 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
     // Assume top and bottom screen luminances are the same (should be; if not, we'll set them to the same values).
     u32 luminance = getCurrentLuminance(false);
+    u32 minLum = getMinLuminancePreset();
+    u32 maxLum = getMaxLuminancePreset();
 
     do
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Screen brightness");
         u32 posY = 30;
-        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Current luminance: %lu\n\n", luminance);
+        posY = Draw_DrawFormattedString(
+            10,
+            posY,
+            COLOR_WHITE,
+            "Current luminance: %lu (min. %lu, max. %lu)\n\n",
+            luminance,
+            minLum,
+            maxLum
+        );
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
 

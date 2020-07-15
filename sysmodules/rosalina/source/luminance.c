@@ -96,6 +96,18 @@ static void readCalibration(void)
     }
 }
 
+u32 getMinLuminancePreset(void)
+{
+    readCalibration();
+    return s_blPwmData.luminanceLevels[0];
+}
+
+u32 getMaxLuminancePreset(void)
+{
+    readCalibration();
+    return s_blPwmData.luminanceLevels[s_blPwmData.numLevels - 1];
+}
+
 u32 getCurrentLuminance(bool top)
 {
     u32 regbase = top ? 0x10202200 : 0x10202A00;

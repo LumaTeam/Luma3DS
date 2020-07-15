@@ -28,4 +28,6 @@
 
 #include <3ds/types.h>
 
+u32 getMinLuminancePreset(void);
+u32 getMaxLuminancePreset(void);
 u32 getCurrentLuminance(bool top);
