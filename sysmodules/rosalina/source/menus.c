@@ -63,7 +63,11 @@ Menu rosalinaMenu = {
 
 bool rosalinaMenuShouldShowDebugInfo(void)
 {
-    return true;
+    // Don't show on release builds
+
+    s64 out;
+    svcGetSystemInfo(&out, 0x10000, 0x200);
+    return out == 0;
 }
 
 void RosalinaMenu_ShowDebugInfo(void)
@@ -117,8 +121,8 @@ void RosalinaMenu_ShowCredits(void)
         Draw_DrawString(10, posY, COLOR_WHITE,
             (
                 "Special thanks to:\n"
-                "  Bond697, WinterMute, piepie62, yifanlu\n"
-                "  Luma3DS contributors, ctrulib contributors,\n"
+                "  fincs, WinterMute, mtheall, piepie62,\n"
+                "  Luma3DS contributors, libctru contributors,\n"
                 "  other people"
             ));
 
@@ -138,7 +142,7 @@ void RosalinaMenu_Reboot(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Reboot");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -170,7 +174,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Screen brightness");
         u32 posY = 30;
         posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Current luminance: %lu\n\n", luminance);
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
@@ -254,7 +258,7 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Power off");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
