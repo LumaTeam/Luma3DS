@@ -10,17 +10,11 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 
 #include <stdatomic.h>
 
-static atomic_int ndmuWorkaroundCount;
-
 static bool isNotificationInhibited(const ProcessData *processData, u32 notificationId)
 {
-    u32 pid = processData->pid;
+    (void)processData;
     switch(notificationId)
     {
-        // Shell opened, shell closed
-        case 0x213:
-        case 0x214:
-            return pid == ndmuServicePid && atomic_load(&ndmuWorkaroundCount) > 0;
         default:
             return false;
     }
@@ -205,12 +199,5 @@ Result PublishToAll(u32 notificationId)
             return 0xD8606408;
     }
 
-    return 0;
-}
-
-Result AddToNdmuWorkaroundCount(s32 count)
-{
-    // Note: no check is made to (current value)+count
-    atomic_fetch_add(&ndmuWorkaroundCount, count);
     return 0;
 }
