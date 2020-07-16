@@ -104,10 +104,18 @@ bool rosalinaThreadLockPredicate(KThread *thread, u32 mask)
         if (highTitleId != 0x00040130) // non-sysmodules
             return true;
         else
-            return lowTitleId == 0x1A02 || lowTitleId == 0x1C02 || lowTitleId == 0x2702; // dsp, gsp, csnd
+            return lowTitleId == 0x1A02 || lowTitleId == 0x2702; // dsp, csnd
+    }
+    if (mask & 2)
+    {
+        if (highTitleId != 0x00040130) // non-sysmodules
+            false;
+        return lowTitleId == 0x1C02; // gsp
     }
     if (mask & 4)
     {
+        if (highTitleId != 0x00040130) // non-sysmodules
+            return false;
         return lowTitleId == 0x1D02 || lowTitleId == 0x3302;
     }
 

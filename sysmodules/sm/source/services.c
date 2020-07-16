@@ -13,8 +13,6 @@ This is part of 3ds_sm, which is licensed under the MIT license (see LICENSE for
 ServiceInfo servicesInfo[0xA0] = { 0 };
 u32 nbServices = 0; // including "ports" registered with getPort
 
-u32 ndmuServicePid = 3; // use our PID as default.
-
 static Result checkServiceName(const char *name, s32 nameSize)
 {
     if(nameSize <= 0 || nameSize > 8)
@@ -97,9 +95,6 @@ static Result doRegisterServiceOrPort(u32 pid, Handle *serverPort, Handle client
 
     if(!isNamedPort)
         *serverPort = portServer;
-
-    if(R_SUCCEEDED(res) && strcmp(name, "ndm:u") == 0)
-        ndmuServicePid = pid;
 
     return res;
 }

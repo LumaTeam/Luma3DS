@@ -3,7 +3,7 @@ Open source replacement of the Arm11 PXI system module.
 This is licensed under the MIT license.
 
 # Usage
-To run this system module, use a recent release or commit of [Luma3DS](https://github.com/AuroraWright/Luma3DS/) and copy pxi.cxi to /luma/sysmodules/.
+To run this system module, use a recent release or commit of [Luma3DS](https://github.com/LumaTeam/Luma3DS/) and copy pxi.cxi to /luma/sysmodules/.
 
 # Credits
 This list is not complete at all:

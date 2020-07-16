@@ -145,7 +145,7 @@ static const u32 kernelCaps[] =
     0xFF81FF78, // RW static mapping: 0x1FF78000
     0xFF91F000, // RO static mapping: 0x1F000000
     0xFF91F600, // RO static mapping: 0x1F600000
-    0xFF002101, // Exflags: APPLICATION memtype + "Allow debug" + "Access core2"
+    0xFF002109, // Exflags: APPLICATION memtype + "Shared page writing" + "Allow debug" + "Access core2"
     0xFE000200, // Handle table size: 0x200
 };
 
@@ -344,7 +344,7 @@ void HBLDR_HandleCommands(void *ctx)
             // See the big comment in sysmodules/pm/source/reslimit.c for technical details.
             localcaps0->reslimits[0] = BIT(7) | 89;
 
-            //localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
+            localcaps0->storage_info.fs_access_info = 0xFFFFFFFF; // Give access to everything
             localcaps0->storage_info.no_romfs = true;
             localcaps0->storage_info.use_extended_savedata_access = true; // Whatever
 

@@ -167,14 +167,6 @@ Result srvHandleCommands(SessionData *sessionData)
             break;
         }
 
-        case 0x1000: // Custom command: AddToNdmuWorkaroundCount
-        {
-            res = AddToNdmuWorkaroundCount((s32)cmdbuf[1]);
-            cmdbuf[0] = IPC_MakeHeader(0x1000, 1, 0);;
-            cmdbuf[1] = (u32)res;
-            break;
-        }
-
         default:
             goto invalid_command;
             break;

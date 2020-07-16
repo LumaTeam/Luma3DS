@@ -319,7 +319,21 @@ void MiscellaneousMenu_InputRedirection(void)
         else
         {
             if(res == 0)
-                Draw_DrawString(10, 30, COLOR_WHITE, "InputRedirection stopped successfully.");
+            {
+                u32 posY = 30;
+                posY = Draw_DrawString(10, posY, COLOR_WHITE, "InputRedirection stopped successfully.\n\n");
+                if (isN3DS)
+                {
+                    posY = Draw_DrawString(
+                        10,
+                        posY,
+                        COLOR_WHITE,
+                        "This might cause a key press to be repeated in\n"
+                        "Home Menu for no reason.\n\n"
+                        "Just pressing ZL/ZR on the console is enough to fix\nthis.\n"
+                    );
+                }
+            }
             else
                 Draw_DrawString(10, 30, COLOR_WHITE, buf);
         }
