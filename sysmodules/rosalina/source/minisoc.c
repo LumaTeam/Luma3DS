@@ -87,7 +87,7 @@ Result miniSocInit(void)
     ret = SOCU_Initialize(miniSocMemHandle, socContextSize);
     if(ret != 0) goto cleanup;
 
-    if (!exclusiveStateEntered)
+    if (!exclusiveStateEntered && isServiceUsable("ndm:u"))
     {
         ndmuInit();
         ret = NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
@@ -140,7 +140,7 @@ Result miniSocExitDirect(void)
     svcControlMemory(&tmp, socContextAddr, socContextAddr, socContextSize, MEMOP_FREE, MEMPERM_DONTCARE);
     if(ret == 0)
     {
-        if (exclusiveStateEntered)
+        if (exclusiveStateEntered && isServiceUsable("ndm:u"))
         {
             //ndmuInit();
             ret = NDMU_UnlockState();
