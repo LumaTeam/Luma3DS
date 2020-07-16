@@ -180,6 +180,8 @@ static void handlePreTermNotification(u32 notificationId)
     (void)notificationId;
     // Might be subject to a race condition, but heh.
 
+    miniSocUnlockState(true);
+
     // Disable input redirection
     InputRedirection_Disable(100 * 1000 * 1000LL);
 
