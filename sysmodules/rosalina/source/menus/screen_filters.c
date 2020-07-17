@@ -116,7 +116,7 @@ Menu screenFiltersMenu = {
         { "[2700K] Incandescent", METHOD, .method = &ScreenFiltersMenu_SetIncandescent },
         { "[2300K] Warm Incandescent", METHOD, .method = &ScreenFiltersMenu_SetWarmIncandescent },
         { "[1900K] Candle", METHOD, .method = &ScreenFiltersMenu_SetCandle },
-        { "[2700K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
+        { "[1200K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
         {},
     }
 };
