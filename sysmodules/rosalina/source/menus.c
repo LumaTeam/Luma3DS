@@ -232,7 +232,8 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             else if (pressed & KEY_LEFT)
                 lum -= 10;
 
-            lum = lum < 0 ? 0 : lum;
+            lum = lum < (s32)minLum ? (s32)minLum : lum;
+            lum = lum > (s32)maxLum ? (s32)maxLum : lum;
 
             // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
             // This is actually SetLuminance:
