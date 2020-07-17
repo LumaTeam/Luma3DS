@@ -817,12 +817,27 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x00, 0x00, 0x00
         };
 
+        static const u8 pattern2[] = {
+            0xBB, 0xD1
+        },
+                        patch2[] = {
+            0xC0, 0x46 // mov r8, r8
+        };
+
         //Patch DLP region check
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
                 sizeof(patch), 1
+            )) goto error;
+        
+        // Patch DLP client region check
+        if (!patchMemory(code, textSize,
+               pattern2,
+               sizeof(pattern2), 0,
+               patch2,
+               sizeof(patch2), 1
             )) goto error;
     }
 
