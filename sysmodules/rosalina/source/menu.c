@@ -193,6 +193,7 @@ void    menuThreadMain(void)
 
     while(!preTerminationRequested)
     {
+        svcSleepThread(50 * 1000 * 1000LL);
         if (menuShouldExit)
             continue;
 
@@ -226,13 +227,13 @@ void menuEnter(void)
     if(!menuShouldExit && menuRefCount == 0)
     {
         menuRefCount++;
-        svcKernelSetState(0x10000, 1);
+        svcKernelSetState(0x10000, 2 | 1);
         svcSleepThread(5 * 1000 * 100LL);
         if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
         {
             // Oops
             menuRefCount = 0;
-            svcKernelSetState(0x10000, 1);
+            svcKernelSetState(0x10000, 2 | 1);
             svcSleepThread(5 * 1000 * 100LL);
         }
         else
@@ -250,7 +251,7 @@ void menuLeave(void)
     {
         Draw_RestoreFramebuffer();
         Draw_FreeFramebufferCache();
-        svcKernelSetState(0x10000, 1);
+        svcKernelSetState(0x10000, 2 | 1);
     }
     Draw_Unlock();
 }

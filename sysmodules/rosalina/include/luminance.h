@@ -24,13 +24,10 @@
 *         reasonable ways as different from the original version.
 */
 
-/* File mainly written by fincs */
 #pragma once
 
 #include <3ds/types.h>
-#include "MyThread.h"
 
-#define HBLDR_DEFAULT_3DSX_TID  0x000400000D921E00ULL
-
-void HBLDR_RestartHbApplication(void *p);
-void HBLDR_HandleCommands(void *ctx);
+u32 getMinLuminancePreset(void);
+u32 getMaxLuminancePreset(void);
+u32 getCurrentLuminance(bool top);

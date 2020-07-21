@@ -35,10 +35,10 @@
 Menu sysconfigMenu = {
     "System configuration menu",
     {
+        { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
-        { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
         {},
     }
 };

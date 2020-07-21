@@ -32,6 +32,8 @@ extern Menu screenFiltersMenu;
 
 extern int screenFiltersCurrentTemperature;
 
+void ScreenFiltersMenu_RestoreCct(void);
+
 void ScreenFiltersMenu_SetDefault(void);            // 6500K (default)
 
 void ScreenFiltersMenu_SetAquarium(void);           // 10000K

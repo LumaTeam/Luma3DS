@@ -102,7 +102,6 @@ Result debuggerDisable(s64 timeout)
         svcCloseHandle(dummy);
         PMDBG_DebugNextApplicationByForce(false);
         nextApplicationGdbCtx = NULL;
-        svcKernelSetState(0x10000, 2);
     }
 
     return res;

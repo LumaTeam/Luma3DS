@@ -83,13 +83,15 @@ void initSystem(void)
     isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
 
     svcGetSystemInfo(&out, 0x10000, 0x100);
-    HBLDR_3DSX_TID = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+    Luma_SharedConfig->hbldr_3dsx_tid = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
+    Luma_SharedConfig->use_hbldr = true;
 
     svcGetSystemInfo(&out, 0x10000, 0x101);
     menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
 
-    miscellaneousMenu.items[0].title = HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." :
-                                                                                  "Switch the hb. title to hblauncher_loader";
+    miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
+        "Switch the hb. title to the current app." :
+        "Switch the hb. title to hblauncher_loader";
 
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
@@ -102,6 +104,9 @@ void initSystem(void)
         svcBreak(USERBREAK_PANIC);
 
     if (R_FAILED(fsInit()))
+        svcBreak(USERBREAK_PANIC);
+
+    if (R_FAILED(FSUSER_SetPriority(-16)))
         svcBreak(USERBREAK_PANIC);
 
     // **** DO NOT init services that don't come from KIPs here ****
@@ -131,10 +136,52 @@ static void handleTermNotification(u32 notificationId)
     (void)notificationId;
 }
 
+static void handleSleepNotification(u32 notificationId)
+{
+    ptmSysmInit();
+    s32 ackValue = ptmSysmGetNotificationAckValue(notificationId);
+    switch (notificationId)
+    {
+        case PTMNOTIFID_SLEEP_REQUESTED:
+            menuShouldExit = true;
+            PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
+            break;
+        case PTMNOTIFID_GOING_TO_SLEEP:
+        case PTMNOTIFID_SLEEP_ALLOWED:
+        case PTMNOTIFID_FULLY_WAKING_UP:
+        case PTMNOTIFID_HALF_AWAKE:
+            PTMSYSM_NotifySleepPreparationComplete(ackValue);
+            break;
+        case PTMNOTIFID_SLEEP_DENIED:
+        case PTMNOTIFID_FULLY_AWAKE:
+            menuShouldExit = false;
+            break;
+        default:
+            break;
+    }
+    ptmSysmExit();
+}
+
+static void handleShellNotification(u32 notificationId)
+{
+    if (notificationId == 0x213) {
+        // Shell opened
+        // Note that this notification is fired on system init
+        ScreenFiltersMenu_RestoreCct();
+        menuShouldExit = false;
+    } else {
+        // Shell closed
+        menuShouldExit = true;
+    }
+
+}
+
 static void handlePreTermNotification(u32 notificationId)
 {
     (void)notificationId;
     // Might be subject to a race condition, but heh.
+
+    miniSocUnlockState(true);
 
     // Disable input redirection
     InputRedirection_Disable(100 * 1000 * 1000LL);
@@ -180,11 +227,19 @@ static const ServiceManagerServiceEntry services[] = {
 };
 
 static const ServiceManagerNotificationEntry notifications[] = {
-    { 0x100 , handleTermNotification                },
-    //{ 0x103 , handlePreTermNotification          }, // Sleep mode entry <=== causes issues
-    { 0x1000, handleNextApplicationDebuggedByForce  },
-    { 0x2000, handlePreTermNotification          },
-    { 0x3000, handleRestartHbAppNotification        },
+    { 0x100 ,                       handleTermNotification                  },
+    { PTMNOTIFID_SLEEP_REQUESTED,   handleSleepNotification                 },
+    { PTMNOTIFID_SLEEP_DENIED,      handleSleepNotification                 },
+    { PTMNOTIFID_SLEEP_ALLOWED,     handleSleepNotification                 },
+    { PTMNOTIFID_GOING_TO_SLEEP,    handleSleepNotification                 },
+    { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
+    { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
+    { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
+    { 0x213,                        handleShellNotification                 },
+    { 0x214,                        handleShellNotification                 },
+    { 0x1000,                       handleNextApplicationDebuggedByForce    },
+    { 0x2000,                       handlePreTermNotification               },
+    { 0x3000,                       handleRestartHbAppNotification          },
     { 0x000, NULL },
 };
 
