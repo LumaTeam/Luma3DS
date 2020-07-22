@@ -5,8 +5,13 @@
 
 typedef bool (*ThreadPredicate)(KThread *thread);
 
-void    rosalinaLockThread(KThread *thread);
-void    rosalinaRescheduleThread(KThread *thread, bool lock);
+static void rosalinaLockThread(KThread *thread)
+{
+    KThread *syncThread = synchronizationMutex->owner;
+
+    if(syncThread == NULL || syncThread != thread)
+        rosalinaRescheduleThread(thread, true);
+}
 
 Result  ControlProcess(Handle processHandle, ProcessOp op, u32 varg2, u32 varg3)
 {
