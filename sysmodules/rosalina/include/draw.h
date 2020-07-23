@@ -55,7 +55,11 @@
 #define GPU_CMDLIST_CNT             REG32(0x104018F0)
 
 #define LCD_TOP_BRIGHTNESS          REG32(0x10202240)
+#define LCD_TOP_FILLCOLOR           REG32(0x10202204)
 #define LCD_BOT_BRIGHTNESS          REG32(0x10202A40)
+#define LCD_BOT_FILLCOLOR           REG32(0x10202A04)
+
+#define LCD_FILLCOLOR_ENABLE        (1u << 24)
 
 #define FB_BOTTOM_VRAM_ADDR         ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000

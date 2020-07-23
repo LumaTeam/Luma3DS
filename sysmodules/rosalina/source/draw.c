@@ -204,6 +204,8 @@ u32 Draw_SetupFramebuffer(void)
     GPU_FB_BOTTOM_FMT = format;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
 
+    LCD_BOT_FILLCOLOR &= ~LCD_FILLCOLOR_ENABLE;
+
     return framebufferCacheSize;
 }
 
