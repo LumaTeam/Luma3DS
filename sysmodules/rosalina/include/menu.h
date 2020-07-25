@@ -27,33 +27,25 @@
 #pragma once
 
 #include <3ds/types.h>
+#include <3ds/services/hid.h>
 #include "MyThread.h"
 #include "utils.h"
 
 #define HID_PAD           (REG32(0x10146000) ^ 0xFFF)
 
-#define BUTTON_A          (1 << 0)
-#define BUTTON_B          (1 << 1)
-#define BUTTON_SELECT     (1 << 2)
-#define BUTTON_START      (1 << 3)
-#define BUTTON_RIGHT      (1 << 4)
-#define BUTTON_LEFT       (1 << 5)
-#define BUTTON_UP         (1 << 6)
-#define BUTTON_DOWN       (1 << 7)
-#define BUTTON_R1         (1 << 8)
-#define BUTTON_L1         (1 << 9)
-#define BUTTON_X          (1 << 10)
-#define BUTTON_Y          (1 << 11)
 
-#define DEFAULT_MENU_COMBO  (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)
+#define DEFAULT_MENU_COMBO      (KEY_L | KEY_DDOWN | KEY_SELECT)
+#define DIRECTIONAL_KEYS        (KEY_DOWN | KEY_UP | KEY_LEFT | KEY_RIGHT)
 
 #define CORE_APPLICATION  0
 #define CORE_SYSTEM       1
 
 typedef enum MenuItemAction {
-    METHOD,
-    MENU
+    MENU_END = 0,
+    METHOD = 1,
+    MENU = 2,
 } MenuItemAction;
+
 typedef struct MenuItem {
     const char *title;
 
@@ -62,24 +54,31 @@ typedef struct MenuItem {
         struct Menu *menu;
         void (*method)(void);
     };
+
+    bool (*visibility)(void);
 } MenuItem;
+
 typedef struct Menu {
     const char *title;
 
-    u32 nbItems;
-    MenuItem items[0x40];
+    MenuItem items[16];
 } Menu;
 
-extern bool terminationRequest;
-extern Handle terminationRequestEvent;
+extern bool isN3DS;
+extern bool menuShouldExit;
+extern bool preTerminationRequested;
+extern Handle preTerminationEvent;
 
 extern u32 menuCombo;
 
-u32 waitInputWithTimeout(u32 msec);
+u32 waitInputWithTimeout(s32 msec);
 u32 waitInput(void);
 
-u32 waitComboWithTimeout(u32 msec);
+u32 waitComboWithTimeout(s32 msec);
 u32 waitCombo(void);
+
+bool menuCheckN3ds(void);
+u32 menuCountItems(const Menu *menu);
 
 MyThread *menuCreateThread(void);
 void menuEnter(void);

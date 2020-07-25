@@ -39,29 +39,30 @@
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
-    .nbItems = 5,
     {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = &MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
         { "Sync time and date via NTP", METHOD, .method = &MiscellaneousMenu_SyncTimeDate },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
+        {},
     }
 };
 
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
     Result res;
-    u64 titleId = 0;
     char failureReason[64];
 
-    if(HBLDR_3DSX_TID == HBLDR_DEFAULT_3DSX_TID)
+    if(Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID)
     {
+        FS_ProgramInfo progInfo;
         u32 pid;
-        res = PMDBG_GetCurrentAppTitleIdAndPid(&titleId, &pid);
+        u32 launchFlags;
+        res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
         if(R_SUCCEEDED(res))
         {
-            HBLDR_3DSX_TID = titleId;
+            Luma_SharedConfig->hbldr_3dsx_tid = progInfo.programId;
             miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else
@@ -73,7 +74,7 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     else
     {
         res = 0;
-        HBLDR_3DSX_TID = HBLDR_DEFAULT_3DSX_TID;
+        Luma_SharedConfig->hbldr_3dsx_tid = HBLDR_DEFAULT_3DSX_TID;
         miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
     }
 
@@ -94,13 +95,25 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
 {
-    static const char *keys[] = { "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y" };
-    for(s32 i = 11; i >= 0; i--)
+    static const char *keys[] = {
+        "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y",
+        "?", "?",
+        "ZL", "ZR",
+        "?", "?", "?", "?",
+        "Touch",
+        "?", "?", "?",
+        "CStick Right", "CStick Left", "CStick Up", "CStick Down",
+        "CPad Right", "CPad Left", "CPad Up", "CPad Down",
+    };
+
+    char *outOrig = out;
+    out[0] = 0;
+    for(s32 i = 31; i >= 0; i--)
     {
         if(combo & (1 << i))
         {
@@ -110,12 +123,13 @@ static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
         }
     }
 
-    out[-1] = 0;
+    if (out != outOrig)
+        out[-1] = 0;
 }
 
 void MiscellaneousMenu_ChangeMenuCombo(void)
 {
-    char comboStrOrig[64], comboStr[64];
+    char comboStrOrig[128], comboStr[128];
     u32 posY;
 
     Draw_Lock();
@@ -130,9 +144,6 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
 
     posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "The current menu combo is:  %s", comboStrOrig);
     posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo:");
-
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
 
     menuCombo = waitCombo();
     MiscellaneousMenu_ConvertComboToString(comboStr, menuCombo);
@@ -150,7 +161,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_SaveSettings(void)
@@ -191,7 +202,7 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.config = config;
     configData.multiConfig = multiConfig;
     configData.bootConfig = bootConfig;
-    configData.hbldr3dsxTitleId = HBLDR_3DSX_TID;
+    configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
 
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
@@ -216,7 +227,7 @@ void MiscellaneousMenu_SaveSettings(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_InputRedirection(void)
@@ -308,7 +319,21 @@ void MiscellaneousMenu_InputRedirection(void)
         else
         {
             if(res == 0)
-                Draw_DrawString(10, 30, COLOR_WHITE, "InputRedirection stopped successfully.");
+            {
+                u32 posY = 30;
+                posY = Draw_DrawString(10, posY, COLOR_WHITE, "InputRedirection stopped successfully.\n\n");
+                if (isN3DS)
+                {
+                    posY = Draw_DrawString(
+                        10,
+                        posY,
+                        COLOR_WHITE,
+                        "This might cause a key press to be repeated in\n"
+                        "Home Menu for no reason.\n\n"
+                        "Just pressing ZL/ZR on the console is enough to fix\nthis.\n"
+                    );
+                }
+            }
             else
                 Draw_DrawString(10, 30, COLOR_WHITE, buf);
         }
@@ -316,7 +341,7 @@ void MiscellaneousMenu_InputRedirection(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_SyncTimeDate(void)
@@ -330,7 +355,6 @@ void MiscellaneousMenu_SyncTimeDate(void)
     bool isSocURegistered;
 
     time_t t;
-    struct tm localt = {0};
 
     res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
     cantStart = R_FAILED(res) || !isSocURegistered;
@@ -350,16 +374,16 @@ void MiscellaneousMenu_SyncTimeDate(void)
 
         input = waitInput();
 
-        if(input & BUTTON_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
-        if(input & BUTTON_RIGHT) utcOffset = (utcOffset + 1) % 24;
-        if(input & BUTTON_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
-        if(input & BUTTON_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
+        if(input & KEY_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
+        if(input & KEY_RIGHT) utcOffset = (utcOffset + 1) % 24;
+        if(input & KEY_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
+        if(input & KEY_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & (BUTTON_A | BUTTON_B)) && !terminationRequest);
+    while(!(input & (KEY_A | KEY_B)) && !menuShouldExit);
 
-    if (input & BUTTON_B)
+    if (input & KEY_B)
         return;
 
     utcOffset -= 12;
@@ -374,8 +398,7 @@ void MiscellaneousMenu_SyncTimeDate(void)
         {
             t += 3600 * utcOffset;
             t += 60 * utcOffsetMinute;
-            gmtime_r(&t, &localt);
-            res = ntpSetTimeDate(&localt);
+            res = ntpSetTimeDate(t);
         }
     }
 
@@ -399,6 +422,6 @@ void MiscellaneousMenu_SyncTimeDate(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & BUTTON_B) && !terminationRequest);
+    while(!(input & KEY_B) && !menuShouldExit);
 
 }

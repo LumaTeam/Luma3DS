@@ -29,10 +29,12 @@ typedef struct ProcessData {
     u32 pid;
     u64 titleId;
     u64 programHandle;
+    u32 launchFlags;
     u8 flags;
     u8 terminatedNotificationVariation;
     TerminationStatus terminationStatus;
     u8 refcount;
+    FS_MediaType mediaType;
 } ProcessData;
 
 typedef struct ProcessList {

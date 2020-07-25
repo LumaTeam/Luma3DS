@@ -5,9 +5,9 @@
 **Luma3DS** is a program to patch the system software of (New) Nintendo (2)3DS handheld consoles "on the fly", adding features such as per-game language settings, debugging capabilities for developers, and removing restrictions enforced by Nintendo such as the region lock.
 
 It also allows you to run unauthorized ("homebrew") content by removing signature checks.
-To use it, you will need a console capable of running homebrew software on the Arm9 processor. We recommend [Plailect's guide](https://3ds.hacks.guide/) for details on how to get your system ready.
+To use it, you will need a console capable of running homebrew software on the Arm9 processor.
 
-Since v8.0, Luma3DS has its own in-game menu, triggerable by <kbd>L+Down+Select</kbd> (see the [release notes](https://github.com/AuroraWright/Luma3DS/releases/tag/v8.0)).
+Since v8.0, Luma3DS has its own in-game menu, triggerable by <kbd>L+Down+Select</kbd> (see the [release notes](https://github.com/LumaTeam/Luma3DS/releases/tag/v8.0)).
 
 #
 ### Compiling
@@ -16,18 +16,18 @@ Since v8.0, Luma3DS has its own in-game menu, triggerable by <kbd>L+Down+Select<
     2. [makerom](https://github.com/jakcron/Project_CTR) in PATH
     3. [firmtool](https://github.com/TuxSH/firmtool)
     4. Up-to-date devkitARM+libctru
-1. Clone the repository with `git clone https://github.com/AuroraWright/Luma3DS.git`
+1. Clone the repository with `git clone https://github.com/LumaTeam/Luma3DS.git`
 2. Run `make`.
 
     The produced `boot.firm` is meant to be copied to the root of your SD card for usage with Boot9Strap.
 
 #
 ### Setup / Usage / Features
-See https://github.com/AuroraWright/Luma3DS/wiki
+See https://github.com/LumaTeam/Luma3DS/wiki
 
 #
 ### Credits
-See https://github.com/AuroraWright/Luma3DS/wiki/Credits
+See https://github.com/LumaTeam/Luma3DS/wiki/Credits
 
 #
 ### Licensing

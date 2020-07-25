@@ -27,8 +27,10 @@
 #pragma once
 
 #include <3ds/svc.h>
+#include <3ds/srv.h>
 #include <3ds/result.h>
 #include "csvc.h"
+#include "luma_shared_config.h"
 
 // For accessing physmem uncached (and directly)
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
@@ -56,4 +58,12 @@ static inline void *decodeArmBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-Result OpenProcessByName(const char *name, Handle *h);
+static inline bool isServiceUsable(const char *name)
+{
+    bool r;
+    return R_SUCCEEDED(srvIsServiceRegistered(&r, name)) && r;
+}
+
+void formatMemoryPermission(char *outbuf, MemPerm perm);
+void formatUserMemoryState(char *outbuf, MemState state);
+u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);

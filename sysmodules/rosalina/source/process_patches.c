@@ -25,47 +25,10 @@
 */
 
 #include <3ds.h>
+#include <string.h>
 #include "csvc.h"
-#include "menus/process_patches.h"
-#include "memory.h"
-#include "draw.h"
-#include "hbloader.h"
-#include "fmt.h"
+#include "process_patches.h"
 #include "utils.h"
-
-static Result ProcessPatchesMenu_DoPatchUnpatchFS(u32 textTotalRoundedSize)
-{
-    static bool patched = false;
-    static u16 *off;
-    static u16 origData[2];
-    static const u16 pattern[2] = {
-        0x7401, // strb r1, [r0, #16]
-        0x2000, // movs r0, #0
-    };
-
-    if(patched)
-    {
-        memcpy(off, &origData, sizeof(origData));
-        patched = false;
-    }
-    else
-    {
-        off = (u16 *)memsearch((u8 *)0x00100000, &pattern, textTotalRoundedSize, sizeof(pattern));
-        if(off == NULL)
-            return -1;
-
-        for(; (*off & 0xFF00) != 0xB500; off++); // Find function start
-
-        memcpy(origData, off, 4);
-        off[0] = 0x2001; // mov r0, #1
-        off[1] = 0x4770; // bx lr
-
-        patched = true;
-    }
-
-    //processPatchesMenu.items[1].title = patched ? "Unpatch FS for the archive checks" : "Patch FS for the archive checks";
-    return 0;
-}
 
 Result OpenProcessByName(const char *name, Handle *h)
 {
@@ -96,7 +59,7 @@ Result OpenProcessByName(const char *name, Handle *h)
     return 0;
 }
 
-static u32 ProcessPatchesMenu_PatchUnpatchProcessByName(const char *name, Result (*func)(u32 size))
+Result PatchProcessByName(const char *name, Result (*func)(u32 size))
 {
     Result res;
     Handle processHandle;
@@ -112,9 +75,4 @@ static u32 ProcessPatchesMenu_PatchUnpatchProcessByName(const char *name, Result
 
     svcUnmapProcessMemoryEx(processHandle, 0x00100000, textTotalRoundedSize);
     return res;
-}
-
-void ProcessPatchesMenu_PatchUnpatchFSDirectly(void)
-{
-    ProcessPatchesMenu_PatchUnpatchProcessByName("fs", &ProcessPatchesMenu_DoPatchUnpatchFS);
 }

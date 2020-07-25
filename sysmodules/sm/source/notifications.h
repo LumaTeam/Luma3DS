@@ -17,3 +17,5 @@ Result PublishToSubscriber(u32 notificationId, u32 flags);
 Result PublishAndGetSubscriber(u32 *pidCount, u32 *pidList, u32 notificationId, u32 flags);
 Result PublishToProcess(Handle process, u32 notificationId);
 Result PublishToAll(u32 notificationId);
+
+Result AddToNdmuWorkaroundCount(s32 count);

@@ -104,14 +104,22 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
                 __ldrex((s32 *)&rosalinaState);
             }
             while(__strex((s32 *)&rosalinaState, (s32)(rosalinaState ^ varg1)));
+            __dmb();
 
-            if(rosalinaState & 2)
+            if(rosalinaState & 0x10)
                 hasStartedRosalinaNetworkFuncsOnce = true;
 
-            if(rosalinaState & 1)
-                rosalinaLockAllThreads();
-            else if(varg1 & 1)
-                rosalinaUnlockAllThreads();
+            // 1: all applet/app/dsp/csnd... threads 2: gsp 4: hid/ir
+            for (u32 v = 4; v != 0; v >>= 1)
+            {
+                if (varg1 & v)
+                {
+                    if (rosalinaState & v)
+                        rosalinaLockThreads(v);
+                    else
+                        rosalinaUnlockThreads(v);
+                }
+            }
 
             break;
         }

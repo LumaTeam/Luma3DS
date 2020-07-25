@@ -13,8 +13,11 @@ exceptions/arm11/build
 *.d
 *.elf
 *.cxi
+*.3dsx
 .DS_Store
 *.dmp
 .project
 .cproject
 .settings
+
+Luma3DS*.zip

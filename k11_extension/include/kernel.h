@@ -1126,11 +1126,11 @@ typedef union KCacheMaintenanceInterruptEvent
 
 typedef struct FcramLayout
 {
-  void *applicationAddr;
+  u32 applicationAddr;
   u32 applicationSize;
-  void *systemAddr;
+  u32 systemAddr;
   u32 systemSize;
-  void *baseAddr;
+  u32 baseAddr;
   u32 baseSize;
 } FcramLayout;
 

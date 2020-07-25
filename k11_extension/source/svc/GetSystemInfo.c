@@ -79,7 +79,11 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     break;
 
                 case 0x300: // K11Ext size
-                    *out = (s64)(__end__ - __start__);
+                    *out = (s64)(((u64)kextBasePa << 32) | (u64)(__end__ - __start__));
+                    break;
+
+                case 0x301: // stolen SYSTEM memory size
+                    *out = stolenSystemMemRegionSize;
                     break;
 
                 default:

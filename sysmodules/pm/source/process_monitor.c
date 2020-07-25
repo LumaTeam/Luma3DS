@@ -29,7 +29,7 @@ static void cleanupProcess(ProcessData *process)
 
     ProcessList_Lock(&g_manager.processList);
     if (g_manager.runningApplicationData != NULL && process->handle == g_manager.runningApplicationData->handle) {
-        if (IS_N3DS && APPMEMTYPE == 6) {
+        if (IS_N3DS && OS_KernelConfig->app_memtype == 6) {
             assertSuccess(resetAppMemLimit());
         }
         g_manager.runningApplicationData = NULL;

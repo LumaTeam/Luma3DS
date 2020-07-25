@@ -32,7 +32,7 @@
 #include "fmt.h"
 #include "ifile.h"
 
-extern Handle terminationRequestEvent;
+extern Handle preTerminationEvent;
 
 static inline void assertSuccess(Result res)
 {
@@ -254,7 +254,7 @@ void ERRF_HandleCommands(void)
         {
             ERRF_GetErrInfo(&info, (cmdbuf + 1), sizeof(ERRF_FatalErrInfo));
             ERRF_SaveErrorToFile(&info);
-            if(info.type != ERRF_ERRTYPE_LOGGED || info.procId == 0)
+            if(!menuShouldExit && (info.type != ERRF_ERRTYPE_LOGGED || info.procId == 0))
             {
                 menuEnter();
 
@@ -321,7 +321,7 @@ void errDispThreadMain(void)
 
     do
     {
-        handles[0] = terminationRequestEvent;
+        handles[0] = preTerminationEvent;
         handles[1] = serverHandle;
         handles[2] = sessionHandle;
 
@@ -365,7 +365,7 @@ void errDispThreadMain(void)
             }
         }
     }
-    while(!terminationRequest);
+    while(!preTerminationRequested);
 
     svcCloseHandle(sessionHandle);
     svcCloseHandle(clientHandle);

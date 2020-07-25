@@ -56,10 +56,12 @@ static Result loadWithoutDependencies(Handle *outDebug, ProcessData **outProcess
     process->pid = pid;
     process->titleId = exheaderInfo->aci.local_caps.title_id;;
     process->programHandle = programHandle;
+    process->launchFlags = launchFlags; // not in official PM
     process->flags = 0; // will be filled later
     process->terminatedNotificationVariation = (launchFlags & 0xF0) >> 4;
     process->terminationStatus = TERMSTATUS_RUNNING;
     process->refcount = 1;
+    process->mediaType = programInfo->mediaType; // not in official PM
 
     ProcessList_Unlock(&g_manager.processList);
     svcSignalEvent(g_manager.newProcessEvent);
@@ -71,7 +73,11 @@ static Result loadWithoutDependencies(Handle *outDebug, ProcessData **outProcess
     u32 serviceCount;
     for(serviceCount = 0; serviceCount < 34 && *(u64 *)localcaps->service_access[serviceCount] != 0; serviceCount++);
 
-    TRY(FSREG_Register(pid, programHandle, programInfo, &localcaps->storage_info));
+    // Not in official PM: patch local caps to give access to everything
+    ExHeader_Arm11StorageInfo storageInfo = localcaps->storage_info;
+    storageInfo.fs_access_info = 0xFFFFFFFF;
+
+    TRY(FSREG_Register(pid, programHandle, programInfo, &storageInfo));
     TRY(SRVPM_RegisterProcess(pid, serviceCount, localcaps->service_access));
 
     if (localcaps->reslimit_category <= RESLIMIT_CATEGORY_OTHER) {
@@ -133,6 +139,11 @@ static Result loadWithDependencies(Handle *outDebug, ProcessData **outProcessDat
 
     if (numUnique > 0) {
         process->flags |= PROCESSFLAG_DEPENDENCIES_LOADED;
+    }
+
+    if (launchFlags & PMLAUNCHFLAGEXT_FAKE_DEPENDENCY_LOADING) {
+        // See no evil
+        numUnique = 0;
     }
 
     /*
@@ -207,8 +218,9 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     programInfoUpdate = (launchFlags & PMLAUNCHFLAG_USE_UPDATE_TITLE) ? programInfoUpdate : programInfo;
     TRY(registerProgram(&programHandle, programInfo, programInfoUpdate));
 
+    u32 coreVer = OS_KernelConfig->kernel_syscore_ver;
     res = LOADER_GetProgramInfo(exheaderInfo, programHandle);
-    res = R_SUCCEEDED(res) && SYSCOREVER == 2 && exheaderInfo->aci.local_caps.core_info.core_version != SYSCOREVER ? (Result)0xC8A05800 : res;
+    res = R_SUCCEEDED(res) && coreVer == 2 && exheaderInfo->aci.local_caps.core_info.core_version != coreVer ? (Result)0xC8A05800 : res;
 
     if (R_FAILED(res)) {
         LOADER_UnregisterProgram(programHandle);
@@ -216,21 +228,21 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     }
 
     // Change APPMEMALLOC if needed
-    if (IS_N3DS && APPMEMTYPE == 6 && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
+    if (IS_N3DS && OS_KernelConfig->app_memtype == 6 && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
         u32 limitMb;
         SystemMode n3dsSystemMode = exheaderInfo->aci.local_caps.core_info.n3ds_system_mode;
-        if ((launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) || n3dsSystemMode == SYSMODE_O3DS_PROD) {
-            if ((launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) & PMLAUNCHFLAG_FORCE_USE_O3DS_MAX_APP_MEM) {
-                limitMb = 96;
-            } else {
-                switch (exheaderInfo->aci.local_caps.core_info.o3ds_system_mode) {
-                    case SYSMODE_O3DS_PROD: limitMb = 64; break;
-                    case SYSMODE_DEV1:      limitMb = 96; break;
-                    case SYSMODE_DEV2:      limitMb = 80; break;
-                    default:                limitMb = 0;  break;
-                }
+        bool forceO3dsAppMem = (launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_APP_MEM) != 0;
+        if (forceO3dsAppMem && (launchFlags & PMLAUNCHFLAG_FORCE_USE_O3DS_MAX_APP_MEM) != 0) {
+            setAppMemLimit(96 << 20);
+        } else if (forceO3dsAppMem || n3dsSystemMode == SYSMODE_O3DS_PROD) {
+            switch (exheaderInfo->aci.local_caps.core_info.o3ds_system_mode) {
+                case SYSMODE_O3DS_PROD: limitMb = 64; break;
+                case SYSMODE_DEV1:      limitMb = 96; break;
+                case SYSMODE_DEV2:      limitMb = 80; break;
+                default:                limitMb = 0;  break;
             }
 
+            // Can be 0:
             setAppMemLimit(limitMb << 20);
         }
     }
@@ -321,9 +333,11 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
 
     u32 tidh = (u32)(programInfo->programId >> 32);
     u32 tidl = (u32)programInfo->programId;
-    if ((tidh == 0x00040030 || tidh == 0x00040130) && (tidl & 0xFF) != SYSCOREVER) {
+    u32 coreVer = OS_KernelConfig->kernel_syscore_ver;
+    if (coreVer == 2 && (tidh == 0x00040030 || tidh == 0x00040130) && (tidl & 0xFF) != coreVer) {
         // Panic if launching SAFE_MODE sysmodules or applets (note: exheader syscorever check above only done for applications in official PM)
         // Official PM also hardcodes SYSCOREVER = 2 here.
+        // NATIVE_FIRM-only.
         panic(4);
     }
 
@@ -509,8 +523,8 @@ Result autolaunchSysmodules(void)
     FS_ProgramInfo programInfo = { .mediaType = MEDIATYPE_NAND };
 
     // Launch NS
-    if (NSTID != 0) {
-        programInfo.programId = NSTID;
+    if (OS_KernelConfig->ns_tid != 0) {
+        programInfo.programId = OS_KernelConfig->ns_tid;
         TRY(launchTitleImplWrapper(NULL, NULL, &programInfo, &programInfo, PMLAUNCHFLAG_LOAD_DEPENDENCIES));
     }
 

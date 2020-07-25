@@ -110,8 +110,11 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     struct KExtParameters
     {
         u32 basePA;
+        u32 stolenSystemMemRegionSize;
         void *originalHandlers[4];
         u32 L1MMUTableAddrs[4];
+
+        volatile bool done;
 
         struct CfwInfo
         {
@@ -137,7 +140,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
     //Our kernel11 extension is initially loaded in VRAM
     u32 kextTotalSize = *(u32 *)0x18000020 - K11EXT_VA;
-    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - kextTotalSize;
+    u32 stolenSystemMemRegionSize = kextTotalSize; // no need to steal any more mem on N3DS. Currently, everything fits in BASE on O3DS too (?)
+    u32 dstKextPA = (ISN3DS ? 0x2E000000 : 0x26C00000) - stolenSystemMemRegionSize; // start of BASE memregion (note: linear heap ---> <--- the rest)
 
     u32 *hookVeneers = (u32 *)*freeK11Space;
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
@@ -179,6 +183,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
     struct KExtParameters *p = (struct KExtParameters *)(*(u32 *)0x18000024 - K11EXT_VA + 0x18000000);
     p->basePA = dstKextPA;
+    p->done = false;
+    p->stolenSystemMemRegionSize = stolenSystemMemRegionSize;
 
     for(u32 i = 0; i < 4; i++)
     {
@@ -436,7 +442,7 @@ u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
     off32 += 2;
     off32[1] = off32[0] + modulesSize;
     for(; *off32 != section0size; off32++);
-    *off32 += ((modulesSize + 0x1FF) >> 9) << 9;
+    *off32 = ((modulesSize + 0x1FF) >> 9) << 9;
 
     off = memsearch(pos, modulePidPattern, size, 4);
 
