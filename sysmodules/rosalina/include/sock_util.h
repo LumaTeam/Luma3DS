@@ -77,3 +77,4 @@ void server_run(struct sock_server *serv);
 void server_kill_connections(struct sock_server *serv);
 void server_set_should_close_all(struct sock_server *serv);
 void server_finalize(struct sock_server *serv);
+bool Wifi__IsConnected(void);

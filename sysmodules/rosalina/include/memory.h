@@ -30,6 +30,8 @@
 #include <string.h>
 
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
+void *memset32(void *dest, u32 value, u32 size);
+
 void hexItoa(u64 number, char *out, u32 digits, bool uppercase);
 unsigned long int xstrtoul(const char *nptr, char **endptr, int base, bool allowPrefix, bool *ok);
 unsigned long long int xstrtoull(const char *nptr, char **endptr, int base, bool allowPrefix, bool *ok);

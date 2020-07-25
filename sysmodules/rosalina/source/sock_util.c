@@ -9,10 +9,12 @@
 #include <3ds/result.h>
 #include <3ds/svc.h>
 #include <3ds/synchronization.h>
+#include <3ds/services/ac.h>
 #include <arpa/inet.h>
 #include "memory.h"
 #include "minisoc.h"
 #include "sock_util.h"
+#include "sleep.h"
 
 extern Handle preTerminationEvent;
 extern bool preTerminationRequested;
@@ -185,6 +187,14 @@ void server_run(struct sock_server *serv)
 
         for(nfds_t i = 0; i < serv->nfds; i++)
             fds[i].revents = 0;
+
+        if (Sleep__Status())
+        {
+            while (!Wifi__IsConnected()
+                    && serv->running && !preTerminationRequested)
+                svcSleepThread(1000000000ULL);
+        }
+
         int pollres = socPoll(fds, serv->nfds, 50);
 
         if(server_should_exit(serv) || pollres < -10000)
@@ -320,4 +330,14 @@ void server_finalize(struct sock_server *serv)
     svcCloseHandle(serv->shall_terminate_event);
     svcClearEvent(serv->started_event);
     svcCloseHandle(serv->started_event);
+}
+
+bool    Wifi__IsConnected(void)
+{
+    u32     status = 0;
+    u32     wifistatus = 0;
+
+    acInit();
+    return R_SUCCEEDED(ACU_GetWifiStatus(&wifistatus)) && wifistatus > 0
+        && R_SUCCEEDED(ACU_GetStatus(&status)) && status != 1;
 }
