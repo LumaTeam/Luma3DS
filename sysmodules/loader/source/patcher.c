@@ -817,12 +817,32 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x00, 0x00, 0x00
         };
 
+        static const u8 pattern2[] = {
+            0x20, 0x82, 0xa8, 0x7e, 0x00, 0x28, 0x00, 0xd0, 0x01, 0x20, 0xa0, 0x77
+        },
+                        pattern3[] = {
+            0x42
+        },
+                        patch2[] = {
+            0xC0, 0x46 // mov r8, r8
+        };
+
         //Patch DLP region check
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
                 patch,
                 sizeof(patch), 1
+            )) goto error;
+        
+        // Patch DLP client region check
+        u8 *found = memsearch(code, pattern2, textSize, sizeof(pattern2));
+        
+        if (!patchMemory(found, textSize,
+               pattern3,
+               sizeof(pattern3), 1,
+               patch2,
+               sizeof(patch2), 1
             )) goto error;
     }
 
