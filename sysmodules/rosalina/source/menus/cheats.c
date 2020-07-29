@@ -1645,7 +1645,7 @@ static Result Cheat_ReadLine(BufferedFile* file, char* line, u32 lineSize)
         if (total == 0)
         {
             line[idx] = '\0';
-            return -1;
+            return 0;
         }
         if (R_SUCCEEDED(res))
         {
