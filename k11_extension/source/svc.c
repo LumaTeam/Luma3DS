@@ -44,8 +44,10 @@
 #include "svc/MapProcessMemoryEx.h"
 #include "svc/UnmapProcessMemoryEx.h"
 #include "svc/ControlService.h"
+#include "svc/ControlProcess.h"
 #include "svc/CopyHandle.h"
 #include "svc/TranslateHandle.h"
+#include "svc/ControlMemoryUnsafe.h"
 
 void *officialSVCs[0x7E] = {NULL};
 
@@ -66,6 +68,7 @@ void signalSvcReturn(u8 *pageEnd)
 {
     u32 svcId = (u32) *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
+    u32      flags = KPROCESS_GET_RVALUE(currentProcess, customFlags);
 
     if(svcId == 0xFE)
         svcId = *(u32 *)(pageEnd - 0x110 + 8 * 4); // r12 ; note: max theortical SVC atm: 0x1FFFFFFF. We don't support catching svcIds >= 0x100 atm either
@@ -73,6 +76,13 @@ void signalSvcReturn(u8 *pageEnd)
     // Since DBGEVENT_SYSCALL_RETURN is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL (debug->svcId is fortunately an u16!)
     if(debugOfProcess(currentProcess) != NULL && shouldSignalSyscallDebugEvent(currentProcess, svcId))
         SignalDebugEvent(DBGEVENT_OUTPUT_STRING, 0xFFFFFFFF, svcId);
+
+    // Signal if the memory layout of the process changed
+    if (flags & SignalOnMemLayoutChanges && flags & MemLayoutChanged)
+    {
+        *KPROCESS_GET_PTR(currentProcess, customFlags) = flags & ~MemLayoutChanged;
+        SignalEvent(KPROCESS_GET_RVALUE(currentProcess, onMemoryLayoutChangeEvent));
+    }
 }
 
 void postprocessSvc(void)
@@ -91,10 +101,41 @@ void *svcHook(u8 *pageEnd)
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     if(svcId == 0xFE)
         svcId = *(u32 *)(pageEnd - 0x110 + 8 * 4); // r12 ; note: max theortical SVC atm: 0x3FFFFFFF. We don't support catching svcIds >= 0x100 atm either
+
     switch(svcId)
     {
         case 0x01:
             return ControlMemoryHookWrapper;
+        case 0x03: /* svcExitProcess */
+        {
+            u32      flags = KPROCESS_GET_RVALUE(currentProcess, customFlags);
+
+            if (flags & SignalOnExit)
+            {
+                // Signal that the process is about to be terminated
+                if (PLG_GetStatus() == PLG_CFG_RUNNING)
+                    PLG_SignalEvent(PLG_CFG_EXIT_EVENT);
+
+                // Unlock all threads that might be locked
+                {
+                    KRecursiveLock__Lock(criticalSectionLock);
+
+                    for (KLinkedListNode *node = threadList->list.nodes.first;
+                        node != (KLinkedListNode *)&threadList->list.nodes;
+                        node = node->next)
+                    {
+                        KThread *thread = (KThread *)node->key;
+
+                        if (thread->ownerProcess == currentProcess && thread->schedulingMask & 0x20)
+                            thread->schedulingMask &= ~0x20;
+                    }
+
+                    KRecursiveLock__Unlock(criticalSectionLock);
+                }
+            }
+
+            return officialSVCs[0x3];
+        }
         case 0x29:
             return GetHandleInfoHookWrapper;
         case 0x2A:
@@ -136,11 +177,13 @@ void *svcHook(u8 *pageEnd)
             return invalidateEntireInstructionCache;
 
         case 0xA0:
-            return MapProcessMemoryEx;
+            return MapProcessMemoryExWrapper;
         case 0xA1:
             return UnmapProcessMemoryEx;
         case 0xA2:
             return ControlMemoryEx;
+        case 0xA3:
+            return ControlMemoryUnsafeWrapper;
 
         case 0xB0:
             return ControlService;
@@ -148,6 +191,8 @@ void *svcHook(u8 *pageEnd)
             return CopyHandleWrapper;
         case 0xB2:
             return TranslateHandleWrapper;
+        case 0xB3:
+            return ControlProcess;
 
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;

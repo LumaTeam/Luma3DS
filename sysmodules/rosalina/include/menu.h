@@ -81,7 +81,10 @@ bool menuCheckN3ds(void);
 u32 menuCountItems(const Menu *menu);
 
 MyThread *menuCreateThread(void);
-void menuEnter(void);
-void menuLeave(void);
-void menuThreadMain(void);
-void menuShow(Menu *root);
+void    menuEnter(void);
+void    menuLeave(void);
+void    menuThreadMain(void);
+void    menuShow(Menu *root);
+void    DispMessage(const char *title, const char *message);
+u32     DispErrMessage(const char *title, const char *message, const Result error);
+void    DisplayPluginMenu(u32   *cmdbuf);

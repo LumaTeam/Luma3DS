@@ -57,12 +57,17 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 5:
                     *out = cfwInfo.bootConfig;
                     break;
-
+                case 6:
+                    *out = fcramDescriptor->appRegion.regionSizeInBytes;
+                    break;
                 case 0x100:
                     *out = (s64)cfwInfo.hbldr3dsxTitleId;
                     break;
                 case 0x101:
                     *out = cfwInfo.rosalinaMenuCombo;
+                    break;
+                case 0x102:
+                    *out = cfwInfo.rosalinaFlags;
                     break;
 
                 case 0x200: // isRelease

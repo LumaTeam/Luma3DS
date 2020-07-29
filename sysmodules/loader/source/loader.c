@@ -154,6 +154,53 @@ static Result loadCode(u64 titleId, prog_addrs_t *shared, u64 programHandle, int
     return 0;
 }
 
+static u32 plgldrRefcount = 0;
+static Handle plgldrHandle = 0;
+
+Result plgldrInit(void)
+{
+    Result res;
+    if (AtomicPostIncrement(&plgldrRefcount)) return 0;
+
+    for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL)) {
+        res = svcConnectToPort(&plgldrHandle, "plg:ldr");
+        if(R_FAILED(res) && res != (Result)0xD88007FA) {
+            AtomicDecrement(&plgldrRefcount);
+            return res;
+        }
+    }
+
+    return 0;
+}
+
+void plgldrExit(void)
+{
+    if (AtomicDecrement(&plgldrRefcount)) return;
+        svcCloseHandle(plgldrHandle);
+}
+
+// Try to load a plugin for the game
+static Result PLGLDR_LoadPlugin(Handle *process)
+{
+    // Special case handling: games rebooting the 3DS on old models
+    if (!isN3DS && g_exheaderInfo.aci.local_caps.core_info.o3ds_system_mode > 0)
+    {
+        // Check if the plugin loader is enabled, otherwise skip the loading part
+        s64 out;
+
+        svcGetSystemInfo(&out, 0x10000, 0x102);
+        if ((out & 1) == 0)
+            return 0;
+    }
+
+    u32* cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = IPC_MakeHeader(1, 0, 2);
+    cmdbuf[1] = IPC_Desc_SharedHandles(1);
+    cmdbuf[2] = *process;
+    return svcSendSyncRequest(plgldrHandle);
+}
+
 static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
 {
     Result res = 0;
@@ -257,6 +304,9 @@ static Result LoadProcess(Handle *process, u64 programHandle)
     // load code
     if (R_SUCCEEDED(res = loadCode(titleId, &sharedAddr, programHandle, csi->flags.compress_exefs_code)))
     {
+        u32     *code = (u32 *)sharedAddr.text_addr;
+        bool    isHomebrew = code[0] == 0xEA000006 && code[8] == 0xE1A0400E;
+
         memcpy(&codesetinfo.name, csi->name, 8);
         codesetinfo.program_id = titleId;
         codesetinfo.text_addr = vaddr.text_addr;
@@ -274,6 +324,14 @@ static Result LoadProcess(Handle *process, u64 programHandle)
             res = svcCreateProcess(process, codeset, g_exheaderInfo.aci.kernel_caps.descriptors, count);
             svcCloseHandle(codeset);
             res = R_SUCCEEDED(res) ? 0 : res;
+            
+            // check for plugin
+            if (!res && !isHomebrew && ((u32)((titleId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000))
+            {
+                assertSuccess(plgldrInit());
+                assertSuccess(PLGLDR_LoadPlugin(process));
+                plgldrExit();
+            }
         }
     }
 

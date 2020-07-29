@@ -10,7 +10,7 @@
 #include "fmt.h"
 #include <stdlib.h>
 
-static s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
+s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
 {
     Handle process, thread;
     Result r;
