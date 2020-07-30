@@ -18,6 +18,8 @@
 
 #include <3ds/types.h>
 
+#include <3ds/types.h>
+
 /// Luma shared config type.
 typedef struct LumaSharedConfig {
     u64 hbldr_3dsx_tid;         ///< Title ID to use for 3DSX loading.

@@ -33,6 +33,13 @@
 #include "ifile.h"
 
 extern Handle preTerminationEvent;
+
+static inline void assertSuccess(Result res)
+{
+    if(R_FAILED(res))
+        svcBreak(USERBREAK_PANIC);
+}
+
 static MyThread errDispThread;
 static u8 ALIGN(8) errDispThreadStack[0xD00];
 
