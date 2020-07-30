@@ -10,6 +10,7 @@
 #include "csvc.h"
 #include "fmt.h"
 #include "gdb/breakpoints.h"
+#include "utils.h"
 
 #include "../utils.h"
 
@@ -19,12 +20,16 @@ struct
     GDBCommandHandler handler;
 } remoteCommandHandlers[] =
 {
+    { "convertvatopa"     , GDB_REMOTE_COMMAND_HANDLER(ConvertVAToPA) },
     { "syncrequestinfo"   , GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo) },
     { "translatehandle"   , GDB_REMOTE_COMMAND_HANDLER(TranslateHandle) },
+    { "listallhandles"    , GDB_REMOTE_COMMAND_HANDLER(ListAllHandles) },
     { "getmmuconfig"      , GDB_REMOTE_COMMAND_HANDLER(GetMmuConfig) },
     { "getmemregions"     , GDB_REMOTE_COMMAND_HANDLER(GetMemRegions) },
     { "flushcaches"       , GDB_REMOTE_COMMAND_HANDLER(FlushCaches) },
     { "toggleextmemaccess", GDB_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess) },
+    { "catchsvc"          , GDB_REMOTE_COMMAND_HANDLER(CatchSvc) },
+    { "getthreadpriority" , GDB_REMOTE_COMMAND_HANDLER(GetThreadPriority)}
 };
 
 static const char *GDB_SkipSpaces(const char *pos)
@@ -33,6 +38,50 @@ static const char *GDB_SkipSpaces(const char *pos)
     for(nextpos = pos; *nextpos != 0 && ((*nextpos >= 9 && *nextpos <= 13) || *nextpos == ' '); nextpos++);
     return nextpos;
 }
+
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(ConvertVAToPA)
+{
+    bool    ok;
+    int     n;
+    u32     val;
+    u32     pa;
+    char *  end;
+    char    outbuf[GDB_BUF_LEN / 2 + 1];
+
+    if(ctx->commandData[0] == 0)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    val = xstrtoul(ctx->commandData, &end, 0, true, &ok);
+
+    if(!ok)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    if (val >= 0x40000000)
+        pa = svcConvertVAToPA((const void *)val, false);
+    else
+    {
+        Handle process;
+        Result r = svcOpenProcess(&process, ctx->pid);
+        if(R_FAILED(r))
+        {
+            n = sprintf(outbuf, "Invalid process (wtf?)\n");
+            goto end;
+        }
+        r = svcControlProcess(process, PROCESSOP_GET_PA_FROM_VA, (u32)&pa, val);
+        svcCloseHandle(process);
+
+        if (R_FAILED(r))
+        {
+            n = sprintf(outbuf, "An error occured: %08lX\n", r);
+            goto end;
+        }
+    }
+
+    n = sprintf(outbuf, "va: 0x%08lX, pa: 0x%08lX, b31: 0x%08lX\n", val, pa, pa | (1 << 31));
+end:
+    return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
 
 GDB_DECLARE_REMOTE_COMMAND_HANDLER(SyncRequestInfo)
 {
@@ -118,6 +167,29 @@ end:
     return GDB_SendHexPacket(ctx, outbuf, n);
 }
 
+enum
+{
+    TOKEN_KAUTOOBJECT = 0,
+    TOKEN_KSYNCHRONIZATIONOBJECT = 1,
+    TOKEN_KEVENT = 0x1F,
+    TOKEN_KSEMAPHORE = 0x2F,
+    TOKEN_KTIMER = 0x35,
+    TOKEN_KMUTEX = 0x39,
+    TOKEN_KDEBUG = 0x4D,
+    TOKEN_KSERVERPORT = 0x55,
+    TOKEN_KDMAOBJECT = 0x59,
+    TOKEN_KCLIENTPORT = 0x65,
+    TOKEN_KCODESET = 0x68,
+    TOKEN_KSESSION = 0x70,
+    TOKEN_KTHREAD = 0x8D,
+    TOKEN_KSERVERSESSION = 0x95,
+    TOKEN_KCLIENTSESSION = 0xA5,
+    TOKEN_KPORT = 0xA8,
+    TOKEN_KSHAREDMEMORY = 0xB0,
+    TOKEN_KPROCESS = 0xC5,
+    TOKEN_KRESOURCELIMIT = 0xC8
+};
+
 GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
 {
     bool ok;
@@ -126,10 +198,11 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
     int n;
     Result r;
     u32 kernelAddr;
+    s64 token;
     Handle handle, process;
     s64 refcountRaw;
     u32 refcount;
-    char classBuf[32], serviceBuf[12] = { 0 };
+    char classBuf[32], serviceBuf[12] = {0}, ownerBuf[50] = { 0 };
     char outbuf[GDB_BUF_LEN / 2 + 1];
 
     if(ctx->commandData[0] == 0)
@@ -161,15 +234,94 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
 
     svcTranslateHandle(&kernelAddr, classBuf, handle);
     svcGetHandleInfo(&refcountRaw, handle, 1);
+    svcGetHandleInfo(&token, handle, 0x10001);
     svcControlService(SERVICEOP_GET_NAME, serviceBuf, handle);
     refcount = (u32)(refcountRaw - 1);
+
     if(serviceBuf[0] != 0)
         n = sprintf(outbuf, "(%s *)0x%08lx /* %s handle, %lu %s */\n", classBuf, kernelAddr, serviceBuf, refcount, refcount == 1 ? "reference" : "references");
+    else if (token == TOKEN_KPROCESS)
+    {
+        svcGetProcessInfo((s64 *)serviceBuf, handle, 0x10000);
+        n = sprintf(outbuf, "(%s *)0x%08lx /* process: %s, %lu %s */\n", classBuf, kernelAddr, serviceBuf, refcount, refcount == 1 ? "reference" : "references");
+    }
     else
-        n = sprintf(outbuf, "(%s *)0x%08lx /* %lu %s */\n", classBuf, kernelAddr, refcount, refcount == 1 ? "reference" : "references");
+    {
+        s64 owner;
+
+        if (R_SUCCEEDED(svcGetHandleInfo(&owner, handle, 0x10002)))
+        {
+            svcGetProcessInfo((s64 *)serviceBuf, (u32)owner, 0x10000);
+            svcCloseHandle((u32)owner);
+            sprintf(ownerBuf, " owner: %s", serviceBuf);
+        }
+        n = sprintf(outbuf, "(%s *)0x%08lx /* %lu %s%s */\n", classBuf, kernelAddr, refcount, refcount == 1 ? "reference" : "references", ownerBuf);
+    }
 
 end:
     svcCloseHandle(handle);
+    svcCloseHandle(process);
+    return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(ListAllHandles)
+{
+    bool    ok;
+    u32     val;
+    char    *end;
+    int     n = 0;
+    Result  r;
+    s32     count = 0;
+    Handle  process, procHandles[0x100];
+    char    outbuf[GDB_BUF_LEN / 2 + 1];
+
+    if(ctx->commandData[0] == 0)
+        val = 0; ///< All handles
+    else
+    { // Get handles of specified type
+        val = xstrtoul(ctx->commandData, &end, 0, true, &ok);
+
+        if(!ok)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        end = (char *)GDB_SkipSpaces(end);
+
+        if(*end != 0)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+    }
+
+    r = svcOpenProcess(&process, ctx->pid);
+    if(R_FAILED(r))
+    {
+        n = sprintf(outbuf, "Invalid process (wtf?)\n");
+        goto end;
+    }
+
+    if (R_FAILED(count = svcControlProcess(process, PROCESSOP_GET_ALL_HANDLES, (u32)procHandles, val)))
+        n = sprintf(outbuf, "An error occured: %08lX\n", count);
+    else if (count == 0)
+        n = sprintf(outbuf, "Process has no handles ?\n");
+    else
+    {
+        n = sprintf(outbuf, "Found %ld handles.\n", count);
+
+        const char *comma = "";
+        for (s32 i = 0; i < count && n < (GDB_BUF_LEN >> 1) - 20; ++i)
+        {
+            Handle handle = procHandles[i];
+
+            n += sprintf(outbuf + n, "%s0x%08lX", comma, handle);
+
+            if (((i + 1) % 8) == 0)
+            {
+                outbuf[n++] = '\n';
+                comma = "";
+            }
+            else
+                comma = ", ";
+        }
+    }
+end:
     svcCloseHandle(process);
     return GDB_SendHexPacket(ctx, outbuf, n);
 }
@@ -245,6 +397,53 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(ToggleExternalMemoryAccess)
     ctx->enableExternalMemoryAccess = !ctx->enableExternalMemoryAccess;
 
     n = sprintf(outbuf, "External memory access %s successfully.\n", ctx->enableExternalMemoryAccess ? "enabled" : "disabled");
+
+    return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(CatchSvc)
+{
+    if(ctx->commandData[0] == '0')
+    {
+        memset(ctx->svcMask, 0, 32);
+        return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, false)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
+    }
+    else if(ctx->commandData[0] == '1')
+    {
+        if(ctx->commandData[1] == ';')
+        {
+            u32 id;
+            const char *pos = ctx->commandData + 1;
+            memset(ctx->svcMask, 0, 32);
+
+            do
+            {
+                pos = GDB_ParseHexIntegerList(&id, pos + 1, 1, ';');
+                if(pos == NULL)
+                    return GDB_ReplyErrno(ctx, EILSEQ);
+
+                if(id < 0xFE)
+                    ctx->svcMask[id / 32] |= 1 << (31 - (id % 32));
+            }
+            while(*pos != 0);
+        }
+        else
+            memset(ctx->svcMask, 0xFF, 32);
+
+        return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, true, ctx->svcMask)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
+    }
+    else
+        return GDB_ReplyErrno(ctx, EILSEQ);
+}
+
+s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId);
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetThreadPriority)
+{
+    int n;
+    char outbuf[GDB_BUF_LEN / 2 + 1];
+
+    n = sprintf(outbuf, "Thread (%ld) priority: 0x%02lX\n", ctx->selectedThreadId,
+                GDB_GetDynamicThreadPriority(ctx, ctx->selectedThreadId));
 
     return GDB_SendHexPacket(ctx, outbuf, n);
 }

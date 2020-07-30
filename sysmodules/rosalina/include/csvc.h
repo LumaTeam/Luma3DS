@@ -71,18 +71,20 @@ void svcInvalidateEntireInstructionCache(void);
 ///@{
 /**
  * @brief Maps a block of process memory.
- * @param process Handle of the process.
- * @param destAddress Address of the mapped block in the current process.
- * @param srcAddress Address of the mapped block in the source process.
- * @param size Size of the block of the memory to map (truncated to a multiple of 0x1000 bytes).
+ * @param dstProcessHandle Handle of the process to map the memory in (destination)
+ * @param destAddress Start address of the memory block in the destination process
+ * @param srcProcessHandle Handle of the process to map the memory from (source)
+ * @param srcAddress Start address of the memory block in the source process
+ * @param size Size of the block of the memory to map (truncated to a multiple of 0x1000 bytes)
 */
-Result svcMapProcessMemoryEx(Handle process, u32 destAddr, u32 srcAddr, u32 size);
+Result svcMapProcessMemoryEx(Handle dstProcessHandle, u32 destAddress, Handle srcProcessHandle, u32 srcAddress, u32 size);
 
 /**
  * @brief Unmaps a block of process memory.
- * @param process Handle of the process.
- * @param destAddress Address of the block of memory to unmap, in the current (destination) process.
+ * @param process Handle of the process to unmap the memory from
+ * @param destAddress Address of the block of memory to unmap
  * @param size Size of the block of memory to unmap (truncated to a multiple of 0x1000 bytes).
+ * This function should only be used to unmap memory mapped with svcMapProcessMemoryEx
  */
 Result svcUnmapProcessMemoryEx(Handle process, u32 destAddress, u32 size);
 
@@ -104,6 +106,20 @@ Result svcUnmapProcessMemoryEx(Handle process, u32 destAddress, u32 size);
  * @sa svcControlMemory
  */
 Result svcControlMemoryEx(u32* addr_out, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
+
+/**
+ * @brief Controls memory mapping, this version removes all checks which were being done
+ * The only operations supported are MEMOP_FREE, MEMOP_ALLOC and MEMOP_ALLOC_LINEAR
+ * All memory allocated with this svc, must be freed with this svc as well
+ * @param[out] addr_out The virtual address resulting from the operation. Usually the same as addr0.
+ * @param addr0    The virtual address to be used for the operation.
+ * @param size     The requested size for @ref MEMOP_ALLOC and @ref MEMOP_ALLOC_LINEAR.
+ * @param op       Operation flags. See @ref MemOp.
+ * @param perm     A combination of @ref MEMPERM_READ and @ref MEMPERM_WRITE
+ *                 Value 0 is used when unmapping memory.
+ * @sa svcControlMemory
+ */
+Result svcControlMemoryUnsafe(u32 *out, u32 addr0, u32 size, MemOp op, MemPerm perm);
 ///@}
 
 ///@name System
@@ -134,4 +150,31 @@ Result svcCopyHandle(Handle *out, Handle outProcess, Handle in, Handle inProcess
  * @param in The input handle.
 */
 Result svcTranslateHandle(u32 *outKAddr, char *outClassName, Handle in);
+
+/// Operations for svcControlProcess
+typedef enum ProcessOp
+{
+    PROCESSOP_GET_ALL_HANDLES,  ///< List all handles of the process, varg3 can be either 0 to fetch all handles, or token of the type to fetch
+                                ///< s32 count = svcControlProcess(handle, PROCESSOP_GET_ALL_HANDLES, (u32)&outBuf, 0)
+                                ///< Returns how many handles were found
+
+    PROCESSOP_SET_MMU_TO_RWX,   ///< Set the whole memory of the process with rwx access (in the mmu table only)
+                                ///< svcControlProcess(handle, PROCESSOP_SET_MMU_TO_RWX, 0, 0)
+
+    PROCESSOP_GET_ON_MEMORY_CHANGE_EVENT, ///< Get the handle of an event which will be signaled each time the memory layout of this process changes
+                                          ///< svcControlProcess(handle, PROCESSOP_GET_ON_MEMORY_CHANGE_EVENT, &eventHandleOut, 0)
+
+    PROCESSOP_SIGNAL_ON_EXIT,   ///< Set a flag to be signaled when the process will be exited
+                                ///< svcControlProcess(handle, PROCESSOP_SIGNAL_ON_EXIT, 0, 0)
+    PROCESSOP_GET_PA_FROM_VA,   ///< Get the physical address of the VAddr within the process
+                                ///< svcControlProcess(handle, PROCESSOP_GET_PA_FROM_VA, (u32)&PAOut, VAddr)
+
+    PROCESSOP_SCHEDULE_THREADS, ///< Lock / Unlock the process's threads
+                                ///< svcControlProcess(handle, PROCESSOP_SCHEDULE_THREADS, lock, threadPredicate)
+                                ///< lock: 0 to unlock threads, any other value to lock threads
+                                ///< threadPredicate: can be NULL or a funcptr to a predicate (typedef bool (*ThreadPredicate)(KThread *thread);)
+                                ///< The predicate must return true to operate on the thread
+} ProcessOp;
+
+Result  svcControlProcess(Handle process, ProcessOp op, u32 varg2, u32 varg3);
 ///@}

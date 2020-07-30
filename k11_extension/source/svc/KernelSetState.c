@@ -186,6 +186,15 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             KRecursiveLock__Unlock(&dbgParamsLock);
             break;
         }
+        case 0x10007:
+        {
+            if (signalPluginEvent == NULL && varg1)
+            {
+                KProcessHandleTable *table = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
+                signalPluginEvent = (KEvent *)KProcessHandleTable__ToKAutoObject(table, varg1);
+            }
+            break;
+        }
         default:
         {
             res = KernelSetState(type, varg1, varg2, varg3);

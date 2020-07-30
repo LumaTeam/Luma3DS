@@ -35,6 +35,7 @@
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "minisoc.h"
+#include "plugin.h"
 
 bool isHidInitialized = false;
 
@@ -143,6 +144,7 @@ u32 waitCombo(void)
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[0x1000];
 static u8 batteryLevel = 255;
+static u32 homeBtnPressed = 0;
 
 static inline u32 menuAdvanceCursor(u32 pos, u32 numItems, s32 displ)
 {
@@ -174,8 +176,11 @@ MyThread *menuCreateThread(void)
 }
 
 u32 menuCombo;
+u32 blockMenuOpen = 0;
 
-void menuThreadMain(void)
+u32     DispWarningOnHome(void);
+
+void    menuThreadMain(void)
 {
     if(isN3DS)
         N3DSMenu_UpdateStatus();
@@ -198,8 +203,18 @@ void menuThreadMain(void)
         {
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
+            PluginLoader__UpdateMenu();
             menuShow(&rosalinaMenu);
             menuLeave();
+        }
+
+        // Check for home button on O3DS Mode3 with plugin loaded
+        if (homeBtnPressed != 0)
+        {
+            if (DispWarningOnHome())
+                svcKernelSetState(7); ///< reboot is fine since exiting a mode3 game reboot anyway
+
+            homeBtnPressed = 0;
         }
     }
 }

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2018 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -30,5 +30,5 @@
 #include "kernel.h"
 #include "svc.h"
 
-Result MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
-Result MapProcessMemoryExWrapper(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
+Result ControlMemoryUnsafe(u32 *out, u32 addr0, u32 size, MemOp op, MemPerm perm);
+Result ControlMemoryUnsafeWrapper(u32 *out, u32 addr0, u32 size, MemOp op, MemPerm perm);
