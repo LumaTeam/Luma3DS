@@ -29,14 +29,11 @@
 
 Result GetHandleInfoHook(s64 *out, Handle handle, u32 type)
 {
-    Result res = 0;
-
-    if(type >= 0x10000)
+    if(type == 0x10000) // KDebug and KProcess: get context ID
     {
-        KProcessHwInfo      *hwInfo;
+        KProcessHwInfo *hwInfo;
         KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-        KAutoObject         *obj;
-
+        KAutoObject *obj;
         if(handle == CUR_PROCESS_HANDLE)
         {
             obj = (KAutoObject *)(currentCoreContext->objectContext.currentProcess);
@@ -48,82 +45,18 @@ Result GetHandleInfoHook(s64 *out, Handle handle, u32 type)
         if(obj == NULL)
             return 0xD8E007F7;
 
-        switch (type)
-        {
-            case 0x10000: ///< Get ctx id (should probably move it to GetProcessInfo)
-            {
-                if(strcmp(classNameOfAutoObject(obj), "KDebug") == 0)
-                    hwInfo = hwInfoOfProcess(((KDebug *)obj)->owner);
-                else if(strcmp(classNameOfAutoObject(obj), "KProcess") == 0)
-                    hwInfo = hwInfoOfProcess((KProcess *)obj);
-                else
-                    hwInfo = NULL;
+        if(strcmp(classNameOfAutoObject(obj), "KDebug") == 0)
+            hwInfo = hwInfoOfProcess(((KDebug *)obj)->owner);
+        else if(strcmp(classNameOfAutoObject(obj), "KProcess") == 0)
+            hwInfo = hwInfoOfProcess((KProcess *)obj);
+        else
+            hwInfo = NULL;
 
-                *out = hwInfo != NULL ? KPROCESSHWINFO_GET_RVALUE(hwInfo, contextId) : -1;
-                break;
-            }
-            case 0x10001: ///< Get referenced object flags (token)
-            {
-                KClassToken token;
-
-                obj->vtable->GetClassToken(&token, obj);
-                *out = token.flags;
-                break;
-            }
-            case 0x10002: ///< Get object owner
-            {
-                Handle          hOut;
-                KClassToken     token;
-                KProcess *      owner = NULL;
-
-                obj->vtable->GetClassToken(&token, obj);
-                switch(token.flags)
-                {
-                    case TOKEN_KEVENT:
-                        owner = ((KEvent *)obj)->owner;
-                        break;
-                    case TOKEN_KSEMAPHORE:
-                        owner = ((KSemaphore *)obj)->owner;
-                        break;
-                    case TOKEN_KTIMER:
-                        owner = ((KTimer *)obj)->owner;
-                        break;
-                    case TOKEN_KMUTEX:
-                        owner = ((KMutex *)obj)->owner;
-                        break;
-                    case TOKEN_KDEBUG:
-                        owner = ((KDebug *)obj)->owner;
-                        break;
-                    case TOKEN_KTHREAD:
-                        owner = ((KThread *)obj)->ownerProcess;
-                        break;
-                    case TOKEN_KADDRESSARBITER:
-                        owner = ((KAddressArbiter *)obj)->owner;
-                        break;
-                    case TOKEN_KSHAREDMEMORY:
-                        owner = ((KSharedMemory *)obj)->owner;
-                        break;
-                    default:
-                        break;
-                }
-
-                if (owner == NULL)
-                    res =  0xD8E007F7;
-
-                res = createHandleForThisProcess(&hOut, (KAutoObject *)owner);
-                *out = hOut;
-
-                break;
-            }
-
-            default:
-                res = 0xF8C007F4;
-                break;
-        }
+        *out = hwInfo != NULL ? KPROCESSHWINFO_GET_RVALUE(hwInfo, contextId) : -1;
 
         obj->vtable->DecrementReferenceCount(obj);
-        return res;
+        return 0;
     }
-    
-    return GetHandleInfo(out, handle, type);
+    else
+        return GetHandleInfo(out, handle, type);
 }
