@@ -167,6 +167,15 @@ static void handleShellNotification(u32 notificationId)
     if (notificationId == 0x213) {
         // Shell opened
         // Note that this notification is fired on system init
+        
+        // Supress LEDs
+        mcuHwcInit();
+        u8 result;
+        MCUHWC_ReadRegister(0x28, &result, 1);
+        result = ~result;
+        MCUHWC_WriteRegister(0x28, &result, 1);
+        mcuHwcExit();
+
         ScreenFiltersMenu_RestoreCct();
         menuShouldExit = false;
     } else {
