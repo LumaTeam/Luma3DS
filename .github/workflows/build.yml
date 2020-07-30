@@ -21,6 +21,9 @@ jobs:
     container: nanquitas/luma3ds
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
     - name: Build
       run: make -j$(nproc --all)
     - uses: actions/upload-artifact@v2
