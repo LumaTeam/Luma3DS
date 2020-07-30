@@ -40,12 +40,8 @@ KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, H
 void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
 Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
-Result (*KProcessHwInfo__QueryMemory)(KProcessHwInfo *this, MemoryInfo *memoryInfo, PageInfo *pageInfo, void *address);
 Result (*KProcessHwInfo__MapProcessMemory)(KProcessHwInfo *this, KProcessHwInfo *other, void *dst, void *src, u32 nbPages);
 Result (*KProcessHwInfo__UnmapProcessMemory)(KProcessHwInfo *this, void *addr, u32 nbPages);
-Result (*KProcessHwInfo__CheckVaState)(KProcessHwInfo *hwInfo, u32 va, u32 size, u32 state, u32 perm);
-Result (*KProcessHwInfo__GetListOfKBlockInfoForVA)(KProcessHwInfo *hwInfo, KLinkedList *list, u32 va, u32 sizeInPage);
-Result (*KProcessHwInfo__MapListOfKBlockInfo)(KProcessHwInfo *this, u32 va, KLinkedList *list, u32 state, u32 perm, u32 sbz);
 Result (*KEvent__Clear)(KEvent *this);
 void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 void (*KObjectMutex__ErrorOccured)(void);
@@ -53,11 +49,8 @@ void (*KObjectMutex__ErrorOccured)(void);
 void (*KScheduler__AdjustThread)(KScheduler *this, KThread *thread, u32 oldSchedulingMask);
 void (*KScheduler__AttemptSwitchingThreadContext)(KScheduler *this);
 
-void (*KLinkedList_KBlockInfo__Clear)(KLinkedList *list);
-
 Result (*ControlMemory)(u32 *addrOut, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
 void (*SleepThread)(s64 ns);
-Result (*CreateEvent)(Handle *out, ResetType resetType);
 Result (*CloseHandle)(Handle handle);
 Result (*GetHandleInfo)(s64 *out, Handle handle, u32 type);
 Result (*GetSystemInfo)(s64 *out, s32 type, s32 param);
@@ -68,7 +61,6 @@ Result (*SendSyncRequest)(Handle handle);
 Result (*OpenProcess)(Handle *out, u32 processId);
 Result (*GetProcessId)(u32 *out, Handle process);
 Result (*DebugActiveProcess)(Handle *out, u32 processId);
-Result (*SignalEvent)(Handle event);
 Result (*UnmapProcessMemory)(Handle processHandle, void *dst, u32 size);
 Result (*KernelSetState)(u32 type, u32 varg1, u32 varg2, u32 varg3);
 
@@ -121,10 +113,3 @@ u32 stolenSystemMemRegionSize;
 
 vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;
-
-KLinkedList*    KLinkedList__Initialize(KLinkedList *list)
-{
-    list->size = 0;
-    list->nodes.first = list->nodes.last = (KLinkedListNode *)&list->nodes;
-    return list;
-}

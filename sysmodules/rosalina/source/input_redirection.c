@@ -32,8 +32,6 @@
 #include "process_patches.h"
 #include "menus.h"
 #include "memory.h"
-#include "sleep.h"
-#include "sock_util.h"
 
 bool inputRedirectionEnabled = false;
 Handle inputRedirectionThreadStartedEvent;
@@ -122,13 +120,6 @@ void inputRedirectionThreadMain(void)
         pfd.fd = sock;
         pfd.events = POLLIN;
         pfd.revents = 0;
-
-        if (Sleep__Status())
-        {
-            while (!Wifi__IsConnected()
-                    && inputRedirectionEnabled && !preTerminationRequested)
-                svcSleepThread(1000000000ULL);
-        }
 
         int pollres = socPoll(&pfd, 1, 10);
         if(pollres > 0 && (pfd.revents & POLLIN))
@@ -223,7 +214,7 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
     totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
     svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-    res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
+    res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize);
 
     if(R_SUCCEEDED(res) && !patchPrepared)
     {
@@ -241,8 +232,6 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
             0xE3A0B080, // mov r11, #0x80
         };
 
-        svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-        res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
         u32 irDataPhys = (u32)PA_FROM_VA_PTR(irData);
         u32 irCodePhys = (u32)PA_FROM_VA_PTR(&irCodePatchFunc);
 
@@ -358,7 +347,7 @@ static Result InputRedirection_DoUndoHidPatches(Handle processHandle, bool doPat
     totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
     svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-    res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
+    res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize);
 
     if (R_SUCCEEDED(res) && !patchPrepared)
     {
