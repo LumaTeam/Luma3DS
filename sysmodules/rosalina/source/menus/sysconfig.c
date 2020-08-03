@@ -35,9 +35,9 @@
 Menu sysconfigMenu = {
     "System configuration menu",
     {
+        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
-        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         {},
     }
@@ -153,7 +153,7 @@ void SysConfigMenu_ToggleWireless(void)
 
 void SysConfigMenu_UpdateStatus(bool control)
 {
-    MenuItem *item = &sysconfigMenu.items[3];
+    MenuItem *item = &sysconfigMenu.items[1];
 
     if(control)
     {

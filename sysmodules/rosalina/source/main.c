@@ -175,10 +175,16 @@ static void handleShellNotification(u32 notificationId)
         
         // Supress LEDs
         mcuHwcInit();
-        u8 result;
-        MCUHWC_ReadRegister(0x28, &result, 1);
-        result = ~result;
-        MCUHWC_WriteRegister(0x28, &result, 1);
+        if(isN3DS) {
+        MCUHWC_SetPowerLedState(3);
+        MCUHWC_SetWifiLedState(false);
+        }
+        else {
+            u8 result;
+            MCUHWC_ReadRegister(0x28, &result, 1);
+            result = ~result;
+            MCUHWC_WriteRegister(0x28, &result, 1);
+        }
         mcuHwcExit();
 
         ScreenFiltersMenu_RestoreCct();
@@ -259,6 +265,16 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { 0x000, NULL },
 };
 
+static void cutPowerToCardSlotWhenTWLCard(void)
+{
+    FS_CardType card;
+    bool status;
+
+    if(R_SUCCEEDED(FSUSER_GetCardType(&card)) && card == 1){
+        FSUSER_CardSlotPowerOff(&status);
+    }
+}
+
 // Some changes to commit
 int main(void)
 {
@@ -266,6 +282,7 @@ int main(void)
 
     Sleep__Init();
     PluginLoader__Init();
+    cutPowerToCardSlotWhenTWLCard();
 
     // Set up static buffers for IPC
     u32* bufPtrs = getThreadStaticBuffers();
