@@ -26,11 +26,21 @@
 /* The color temperature when no adjustment is applied. */
 #define NEUTRAL_TEMP  6500
 
+#define MIN_TEMP 1000
+#define MAX_TEMP 25000
+#define MIN_GAMMA 0.10
+#define MAX_GAMMA 10.0
+#define MIN_BRIGHTNESS 0.10
+#define MAX_BRIGHTNESS 1.0
+
 /* Color setting */
 typedef struct {
 	int temperature;
 	float gamma[3];
 	float brightness;
 } color_setting_t;
+
+void Redshift_EditableFilter();
+void Redshift_ApplySavedFilter();
 
 #endif /* ! REDSHIFT_REDSHIFT_H */

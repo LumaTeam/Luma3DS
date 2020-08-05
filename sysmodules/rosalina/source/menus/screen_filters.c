@@ -46,6 +46,7 @@ static u16 g_c[0x600];
 static Pixel g_px[0x400];
 
 int screenFiltersCurrentTemperature = -1;
+bool customFilterSelected = false;
 
 static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
 {
@@ -92,6 +93,8 @@ static void ScreenFiltersMenu_ApplyColorSettings(color_setting_t* cs)
 
 static void ScreenFiltersMenu_SetCct(int cct)
 {
+    customFilterSelected = false;
+
     color_setting_t cs;
     memset(&cs, 0, sizeof(cs));
 
@@ -107,6 +110,7 @@ static void ScreenFiltersMenu_SetCct(int cct)
 Menu screenFiltersMenu = {
     "Screen filters menu",
     {
+        { "Custom Filter", METHOD, .method = &ScreenFiltersMenu_CustomFilter},
         { "[6500K] Default", METHOD, .method = &ScreenFiltersMenu_SetDefault },
         { "[10000K] Aquarium", METHOD, .method = &ScreenFiltersMenu_SetAquarium },
         { "[7500K] Overcast Sky", METHOD, .method = &ScreenFiltersMenu_SetOvercastSky },
@@ -130,16 +134,24 @@ void ScreenFiltersMenu_Set##name(void)\
 
 void ScreenFiltersMenu_RestoreCct(void)
 {
-    // Not initialized: return
-    if (screenFiltersCurrentTemperature == -1)
-        return;
-
+    if (screenFiltersCurrentTemperature != -1 || customFilterSelected)
+    {
     // Wait for GSP to restore the CCT table
     while (GPU_FB_TOP_COL_LUT_ELEM != g_px[0].raw)
         svcSleepThread(10 * 1000 * 1000LL);
 
     svcSleepThread(10 * 1000 * 1000LL);
     ScreenFiltersMenu_WriteLut(g_px);
+
+    customFilterSelected ? Redshift_ApplySavedFilter() : ScreenFiltersMenu_WriteLut(g_px);
+    }
+    else
+        return; // Not initialized: return
+}
+
+void ScreenFiltersMenu_CustomFilter(void){
+    customFilterSelected = true;
+    Redshift_EditableFilter();
 }
 
 DEF_CCT_SETTER(6500, Default)
