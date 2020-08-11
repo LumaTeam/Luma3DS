@@ -26,11 +26,14 @@
 
 #pragma once
 
+#include <3ds/types.h>
 #include "menu.h"
 
 extern Menu screenFiltersMenu;
 
 extern int screenFiltersCurrentTemperature;
+
+extern bool ledsOff;
 
 void ScreenFiltersMenu_RestoreCct(void);
 void ScreenFiltersMenu_CustomFilter(void);

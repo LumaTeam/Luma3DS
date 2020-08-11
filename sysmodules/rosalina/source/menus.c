@@ -35,7 +35,6 @@
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
 #include "menus/screen_filters.h"
-#include "redshift/redshift.h"
 #include "plugin.h"
 #include "ifile.h"
 #include "memory.h"
@@ -53,13 +52,13 @@ Menu rosalinaMenu = {
         { "New 3DS settings:", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
-        { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Change screen brightness", METHOD, .method = &RosalinaMenu_ChangeScreenBrightness },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
         { "Debug info", METHOD, .method = &RosalinaMenu_ShowDebugInfo, .visibility = &rosalinaMenuShouldShowDebugInfo },
+        { "System configuration...", MENU, .menu = &sysconfigMenu },
         {},
     }
 };

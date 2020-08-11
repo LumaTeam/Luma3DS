@@ -47,6 +47,7 @@
 #include "plugin.h"
 
 bool isN3DS;
+bool ledsOff;
 
 Result __sync_init(void);
 Result __sync_fini(void);
@@ -83,6 +84,7 @@ void initSystem(void)
     mappableInit(0x10000000, 0x14000000);
 
     isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
+    ledsOff = false;
 
     svcGetSystemInfo(&out, 0x10000, 0x100);
     Luma_SharedConfig->hbldr_3dsx_tid = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
@@ -172,21 +174,7 @@ static void handleShellNotification(u32 notificationId)
     if (notificationId == 0x213) {
         // Shell opened
         // Note that this notification is fired on system init
-        
-        // Supress LEDs
-        mcuHwcInit();
-        if(isN3DS) {
-        MCUHWC_SetPowerLedState(3);
-        MCUHWC_SetWifiLedState(false);
-        }
-        else {
-            u8 result;
-            MCUHWC_ReadRegister(0x28, &result, 1);
-            result = ~result;
-            MCUHWC_WriteRegister(0x28, &result, 1);
-        }
-        mcuHwcExit();
-
+        ledsOff = false;
         ScreenFiltersMenu_RestoreCct();
         menuShouldExit = false;
     } else {

@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <3ds/types.h>
 
 /* The color temperature when no adjustment is applied. */
 #define NEUTRAL_TEMP  6500
@@ -39,6 +40,8 @@ typedef struct {
 	float gamma[3];
 	float brightness;
 } color_setting_t;
+
+extern bool ledsOff;
 
 void Redshift_EditableFilter();
 void Redshift_ApplySavedFilter();

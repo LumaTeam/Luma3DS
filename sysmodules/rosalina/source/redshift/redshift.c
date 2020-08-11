@@ -108,6 +108,11 @@ float fmodf(float f1, float f2);
 
 void Redshift_EditableFilter(void)
 {
+    if(!ledsOff)
+    {
+        menuToggleLEDs();
+    }
+
     Draw_Lock();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
@@ -178,14 +183,7 @@ void Redshift_EditableFilter(void)
 
 		if (kDown & (KEY_SELECT))
 		{
-			// ----- Switch off LEDs
-			mcuHwcInit();
-			u8 result;
-			MCUHWC_ReadRegister(0x28, &result, 1);
-			result = ~result;
-			MCUHWC_WriteRegister(0x28, &result, 1);
-			mcuHwcExit();
-			// ----- 
+            menuToggleLEDs();
 		}
         
         if(kDown & KEY_DOWN)
@@ -256,7 +254,7 @@ void Redshift_EditableFilter(void)
         Draw_DrawString(10, 18, COLOR_WHITE, "START save config, SELECT toggle LEDs");
         Draw_DrawString(10, 28, COLOR_WHITE, "X set top screen, A set bottom screen");
         Draw_DrawString(10, 38, COLOR_WHITE, "LEFT/RIGHT change value, +hold L1/R1 to fine tune)");
-		Draw_DrawString(10, 48, COLOR_WHITE, "Y reset value, B back to menu");
+		Draw_DrawString(10, 48, COLOR_WHITE, "Y reset values to default, B back to menu");
         
         sprintf(fmtbuf, "%c Colortemp: %iK", (sel == 0 ? '>' : ' '), cs.temperature);
         Draw_DrawString(10, 66, COLOR_WHITE, fmtbuf);
@@ -284,6 +282,11 @@ void Redshift_EditableFilter(void)
 
 void Redshift_ApplySavedFilter(void)
 {
+    if(!ledsOff)
+    {
+        menuToggleLEDs();
+    }
+
     color_setting_t cs;
     memset(&cs, 0, sizeof(cs));
     cs.temperature = NEUTRAL_TEMP;

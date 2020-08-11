@@ -31,14 +31,15 @@
 #include "fmt.h"
 #include "utils.h"
 #include "ifile.h"
+#include "menus.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",
     {
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
-        { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
+        { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         {},
     }
 };
@@ -68,12 +69,7 @@ void SysConfigMenu_ToggleLEDs(void)
 
         if(pressed & KEY_A)
         {
-            mcuHwcInit();
-            u8 result;
-            MCUHWC_ReadRegister(0x28, &result, 1);
-            result = ~result;
-            MCUHWC_WriteRegister(0x28, &result, 1);
-            mcuHwcExit();
+            menuToggleLEDs();
         }
         else if(pressed & KEY_B)
             return;

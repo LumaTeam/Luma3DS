@@ -39,6 +39,18 @@
 
 bool isHidInitialized = false;
 
+void menuToggleLEDs(void)
+{          
+        // toggle LEDs
+        mcuHwcInit();
+        u8 result;
+        MCUHWC_ReadRegister(0x28, &result, 1);
+        result = ~result;
+        MCUHWC_WriteRegister(0x28, &result, 1);
+        mcuHwcExit();
+        ledsOff = !ledsOff;
+}
+
 // libctru redefinition:
 
 bool hidShouldUseIrrst(void)
@@ -287,6 +299,7 @@ static void menuDraw(Menu *menu, u32 selected)
         sprintf(versionString, "v%lu.%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
 
     Draw_DrawString(10, 10, COLOR_TITLE, menu->title);
+    Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 19 * SPACING_X, 10, COLOR_TITLE, "SELECT: Toggle LEDs");
     u32 numItems = menuCountItems(menu);
     u32 dispY = 0;
 
@@ -414,7 +427,11 @@ void menuShow(Menu *root)
             if (menuItemIsHidden(&currentMenu->items[selectedItem]))
                 selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
         }
-
+        else if(pressed & KEY_SELECT)
+        {
+            menuToggleLEDs();
+        }
+        
         Draw_Lock();
         menuDraw(currentMenu, selectedItem);
         Draw_Unlock();
