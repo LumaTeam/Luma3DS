@@ -342,9 +342,7 @@ void RosalinaMenu_TakeScreenshot(void)
     Result res = 0;
 
     char directory[32];
-    memset(directory, 0, sizeof directory);
     char filename[90];
-    memset(filename, 0, sizeof filename);
 
     FS_Archive archive;
     FS_ArchiveID archiveId;
@@ -416,7 +414,7 @@ void RosalinaMenu_TakeScreenshot(void)
     res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
     if(R_SUCCEEDED(res))
     {
-        strcat(directory, "/luma/screenshots");
+        sprintf(directory, "/luma/screenshots");
         char dirName[16];
         #define CREATE_SUBDIR(length, name) do { \
             sprintf(dirName, "/%0" #length "lu", name); \
@@ -440,7 +438,12 @@ void RosalinaMenu_TakeScreenshot(void)
     res = PMDBG_GetCurrentAppInfo(&programInfo, &unused, &unused);
 
     #define WRITE_SCREENSHOT(screenName, screenWidth, top, left) do { \
-        sprintf(filename, "%s/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_%016llx_" screenName ".bmp", directory, year, month, days, hours, minutes, seconds, milliseconds, programInfo.programId); \
+        sprintf( \
+            filename, \
+            "%s/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_%016llx_%s.bmp", \
+            directory, \
+            year, month, days, hours, minutes, seconds, milliseconds, \
+            programInfo.programId, screenName); \
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE)); \
         TRY(RosalinaMenu_WriteScreenshot(&file, screenWidth, top, left)); \
         TRY(IFile_Close(&file)); \
