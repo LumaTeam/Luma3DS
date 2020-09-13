@@ -180,6 +180,7 @@ Result TwlbgSwitcher_WriteNameToFile(char filename[FILE_NAME_MAX])
 {
     IFile file;
     Result res = 0;
+    *g_twlbgName = 0;
 
      res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
                 fsMakePath(PATH_ASCII, g_textFileName), FS_OPEN_CREATE | FS_OPEN_WRITE);
@@ -191,8 +192,7 @@ Result TwlbgSwitcher_WriteNameToFile(char filename[FILE_NAME_MAX])
                 IFile_Close(&file);
 
                 if(R_SUCCEEDED(res))
-                {
-                    *g_twlbgName = 0;
+                {         
                     strcpy(g_twlbgName, filename); 
                 }
             }
@@ -204,6 +204,7 @@ Result TwlbgSwitcher_ReadNameFromFile(void)
 {
     IFile file;
     Result res = 0;
+    *g_twlbgName = 0;
 
      res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
             fsMakePath(PATH_ASCII, g_textFileName), FS_OPEN_READ);
@@ -211,7 +212,6 @@ Result TwlbgSwitcher_ReadNameFromFile(void)
         if(R_SUCCEEDED(res))
         {
             u64 total;
-            *g_twlbgName = 0;
             IFile_Read(&file, &total, g_twlbgName, sizeof(g_twlbgName));
 
             IFile_Close(&file);
