@@ -52,9 +52,9 @@ Menu rosalinaMenu = {
         { "", METHOD, .method = PluginLoader__MenuCallback},
         { "New 3DS settings:", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
         { "TwlBg: unknown", METHOD, .method = &TwlbgSwitcher_DisplayFiles },
+        { "Change screen brightness", METHOD, .method = &RosalinaMenu_ChangeScreenBrightness },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
-        { "Change screen brightness", METHOD, .method = &RosalinaMenu_ChangeScreenBrightness },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
@@ -192,11 +192,14 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             maxLum
         );
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Start to power off bottom backlight then exit.\n\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to begin, B to exit.\n\n");
 
         posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by the presets.\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be visible until\nyou exit.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom screen functions as normal with\nbacklight turned off.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom backlight will be restored when\nawakening from sleep mode.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
@@ -242,6 +245,12 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
             // This is actually SetLuminance:
             GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP) | BIT(GSP_SCREEN_BOTTOM), lum);
+        }
+
+        if (pressed & KEY_START)
+        {
+            GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM));
+            break;
         }
 
         if (pressed & KEY_B)
