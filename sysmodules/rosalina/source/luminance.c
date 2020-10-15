@@ -114,7 +114,7 @@ u32 getCurrentLuminance(bool top)
 
     readCalibration();
 
-    const float *coeffs = s_blPwmData.coeffs[top ? (isN3DS ? 2 : 1) : 0];
+    const float *coeffs = s_blPwmData.coeffs[top ? 1 : 0]; //removed N3DS condition because coeffs appear to be incorrect for N3DS top screen
     u32 brightness = REG32(regbase + 0x40);
     float ratio = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbase + 0x44));
 

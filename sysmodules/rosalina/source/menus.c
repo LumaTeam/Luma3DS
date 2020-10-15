@@ -177,7 +177,8 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     u32 minLum = getMinLuminancePreset();
     u32 maxLum = getMaxLuminancePreset();
     u32 trueMax = 172; // https://www.3dbrew.org/wiki/GSPLCD:SetBrightnessRaw
-
+    // hacky but N3DS coeffs for top screen don't seem to work and O3DS coeffs when using N3DS return 173 max brightness
+    luminanceTop = luminanceTop > trueMax ? trueMax : luminanceTop;
     do
     {
         Draw_Lock();
@@ -300,11 +301,15 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             {
                 lumTop = lumTop > (s32)trueMax ? (s32)trueMax : lumTop;
                 lumBot = lumBot > (s32)trueMax ? (s32)trueMax : lumBot;
+                lumTop = lumTop < (s32)minLum ? (s32)minLum : lumTop;
+                lumBot = lumBot < (s32)minLum ? (s32)minLum : lumBot;
             }
             else
             {
                 lumTop = lumTop > (s32)maxLum ? (s32)maxLum : lumTop;
                 lumBot = lumBot > (s32)maxLum ? (s32)maxLum : lumBot;
+                lumTop = lumTop < (s32)minLum ? (s32)minLum : lumTop;
+                lumBot = lumBot < (s32)minLum ? (s32)minLum : lumBot;
             }
             
 
