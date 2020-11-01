@@ -1801,7 +1801,9 @@ static void Cheat_LoadCheatsIntoMemory(u64 titleId)
     do
     {
         res = Cheat_ReadLine(&file, line, 1024);
-        if (R_SUCCEEDED(res))
+        // -1 is special; it can't be a normal result because of how results are constructed
+        // So let's just use it as a signal that this is the final line of a file
+        if (R_SUCCEEDED(res) || res == -1)
         {
             char* strippedLine = stripWhitespace(line);
             s32 lineLen = strnlen(strippedLine, 1023);
