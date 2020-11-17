@@ -36,7 +36,7 @@
 
 #define KERNPA2VA(a)            ((a) + (GET_VERSION_MINOR(osGetKernelVersion()) < 44 ? 0xD0000000 : 0xC0000000))
 
-static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride;
+static u32 gpuSavedFramebufferAddr1, gpuSavedFramebufferAddr2, gpuSavedFramebufferFormat, gpuSavedFramebufferStride, gpuSavedFillColor;
 static u32 framebufferCacheSize;
 static void *framebufferCache;
 static RecursiveLock lock;
@@ -203,6 +203,9 @@ u32 Draw_SetupFramebuffer(void)
     GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
     GPU_FB_BOTTOM_FMT = format;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
+    
+    gpuSavedFillColor = LCD_BOT_FILLCOLOR;
+    LCD_BOT_FILLCOLOR = 0;
 
     return framebufferCacheSize;
 }
@@ -211,7 +214,8 @@ void Draw_RestoreFramebuffer(void)
 {
     memcpy(FB_BOTTOM_VRAM_ADDR, framebufferCache, FB_BOTTOM_SIZE);
     Draw_FlushFramebuffer();
-
+    
+    LCD_BOT_FILLCOLOR = gpuSavedFillColor;
     GPU_FB_BOTTOM_ADDR_1 = gpuSavedFramebufferAddr1;
     GPU_FB_BOTTOM_ADDR_2 = gpuSavedFramebufferAddr2;
     GPU_FB_BOTTOM_FMT = gpuSavedFramebufferFormat;
