@@ -9,7 +9,7 @@ static void *const g_firmlaunchParameters = (void *)0x12000000;
 
 void mapFirmlaunchParameters(void)
 {
-    assertSuccess(svcKernelSetState(3, 0, g_firmlaunchParameters));
+    assertSuccess(svcKernelSetState(3, 0, (u64)((uintptr_t)g_firmlaunchParameters)));
 }
 
 Result GetFirmlaunchParams(void *outParams, size_t size)
