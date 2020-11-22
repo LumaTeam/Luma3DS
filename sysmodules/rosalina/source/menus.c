@@ -177,8 +177,10 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     u32 minLum = getMinLuminancePreset();
     u32 maxLum = getMaxLuminancePreset();
     u32 trueMax = 172; // https://www.3dbrew.org/wiki/GSPLCD:SetBrightnessRaw
+    u32 trueMin = 1;
     // hacky but N3DS coeffs for top screen don't seem to work and O3DS coeffs when using N3DS return 173 max brightness
     luminanceTop = luminanceTop > trueMax ? trueMax : luminanceTop;
+
     do
     {
         Draw_Lock();
@@ -188,7 +190,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             10,
             posY,
             COLOR_WHITE,
-            "Presets: min. %lu, max. %lu, raw max. 172.\n",
+            "Preset: %lu to %lu, Extended: 1 to 172.\n",
             minLum,
             maxLum
         );
@@ -209,7 +211,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
         posY = Draw_DrawString(10, posY, COLOR_GREEN, "Controls:\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +-1, Right/Left for +-10.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold X/A for Top/Bottom screen only. \n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold L or R to use raw max. limit. \n");
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Hold L/R for extended limits (<%lu may glitch). \n", minLum);
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y power off bottom backlight.\n\n");
         posY = Draw_DrawString(10, posY, COLOR_TITLE, "Press START to begin, B to exit.\n\n");
 
@@ -238,8 +240,6 @@ void RosalinaMenu_ChangeScreenBrightness(void)
 
     svcKernelSetState(0x10000, 2); // unblock gsp
     gspLcdInit(); // assume it doesn't fail. If it does, brightness won't change, anyway.
-
-    // gsp:LCD will normalize the brightness between top/bottom screen, handle PWM, etc.
 
     s32 lumTop = (s32)luminanceTop;
     s32 lumBot = (s32)luminanceBot;
@@ -301,8 +301,8 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             {
                 lumTop = lumTop > (s32)trueMax ? (s32)trueMax : lumTop;
                 lumBot = lumBot > (s32)trueMax ? (s32)trueMax : lumBot;
-                lumTop = lumTop < (s32)minLum ? (s32)minLum : lumTop;
-                lumBot = lumBot < (s32)minLum ? (s32)minLum : lumBot;
+                lumTop = lumTop < (s32)trueMin ? (s32)trueMin : lumTop;
+                lumBot = lumBot < (s32)trueMin ? (s32)trueMin : lumBot;
             }
             else
             {
@@ -311,22 +311,13 @@ void RosalinaMenu_ChangeScreenBrightness(void)
                 lumTop = lumTop < (s32)minLum ? (s32)minLum : lumTop;
                 lumBot = lumBot < (s32)minLum ? (s32)minLum : lumBot;
             }
-            
 
-            // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
-            // This is actually SetLuminance:
-            if(kHeld & KEY_X)
-            {
-                GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP), lumTop);
-            }
-            else if(kHeld & KEY_A)
-            {
-                GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_BOTTOM), lumBot);
-            }
-            else
-            {
+            if (lumTop >= (s32)minLum && lumBot >= (s32)minLum) {
                 GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP), lumTop);
                 GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_BOTTOM), lumBot);
+            }       
+            else {
+                setBrightnessAlt(lumTop, lumBot);
             }
         }
 
