@@ -115,7 +115,7 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     dumpHeader.magic[0] = 0xDEADC0DE;
     dumpHeader.magic[1] = 0xDEADCAFE;
     dumpHeader.versionMajor = 1;
-    dumpHeader.versionMinor = 2;
+    dumpHeader.versionMinor = 3;
 
     dumpHeader.processor = 11;
     dumpHeader.core = cpuId & 0xF;
