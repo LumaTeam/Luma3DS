@@ -33,6 +33,16 @@
 #define REG_DUMP_SIZE   4 * 17
 #define CODE_DUMP_SIZE  48
 
+static inline void dumpArm9Memory(ExceptionDumpHeader *dumpHeader, u8 *buf)
+{
+    // Check if n3ds extra arm9 mem is enabled (if it's possible to read CFG9_EXTMEMCNT9)
+    u8 extmemcnt9 = 0;
+    safecpy(&extmemcnt9, (const void *)0x10000200, 1);
+
+    u32 size = (extmemcnt9 & 1) ? 0x180000 : 0x100000;
+    dumpHeader->additionalDataSize += safecpy(buf, (const void *)0x08000000, size);
+}
+
 void __attribute__((noreturn)) arm9ExceptionHandlerMain(u32 *registerDump, u32 type)
 {
     ExceptionDumpHeader dumpHeader;
@@ -42,7 +52,7 @@ void __attribute__((noreturn)) arm9ExceptionHandlerMain(u32 *registerDump, u32 t
     dumpHeader.magic[0] = 0xDEADC0DE;
     dumpHeader.magic[1] = 0xDEADCAFE;
     dumpHeader.versionMajor = 1;
-    dumpHeader.versionMinor = 2;
+    dumpHeader.versionMinor = 3;
 
     dumpHeader.processor = 9;
     dumpHeader.core = 0;
@@ -68,6 +78,25 @@ void __attribute__((noreturn)) arm9ExceptionHandlerMain(u32 *registerDump, u32 t
 
     //Dump stack in place
     dumpHeader.stackDumpSize = safecpy(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF));
+    final += dumpHeader.stackDumpSize;
+
+    // See if we need to copy Arm9 memory (check for bkpt 0xFFFD / bkpt 0xFD)
+    if(dumpHeader.codeDumpSize > 0)
+    {
+        if(cpsr & 0x20)
+        {
+            // Thumb
+            u16 instr;
+            safecpy(&instr, codeDump + dumpHeader.codeDumpSize - 2, 2);
+            if(instr == 0xBEFD) dumpArm9Memory(&dumpHeader, final);
+        }
+        else
+        {
+            u32 instr;
+            safecpy(&instr, codeDump + dumpHeader.codeDumpSize - 4, 4);
+            if(instr == 0xE12FFF7D) dumpArm9Memory(&dumpHeader, final);
+        }
+    }
 
     dumpHeader.totalSize = sizeof(ExceptionDumpHeader) + dumpHeader.registerDumpSize + dumpHeader.codeDumpSize + dumpHeader.stackDumpSize + dumpHeader.additionalDataSize;
 

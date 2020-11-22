@@ -47,4 +47,6 @@
 bool loadSplash(void);
 void drawCharacter(bool isTopScreen, u32 posX, u32 posY, u32 color, char character);
 u32 drawString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *string);
+
+__attribute__((format(printf,5,6)))
 u32 drawFormattedString(bool isTopScreen, u32 posX, u32 posY, u32 color, const char *fmt, ...);
