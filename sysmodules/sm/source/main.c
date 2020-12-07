@@ -112,11 +112,11 @@ int main(void)
             {
                 for(id = 0; (u32)id < nbHandles && handles[id] != replyTarget; id++);
                 if((u32)id >= nbHandles)
-                    panic();
+                    panic(res);
             }
 
             if(id < 3)
-                panic();
+                panic(0);
             else if((u32)id < 3 + nbSessions) // Session closed
             {
                 sessionData = NULL;
@@ -132,7 +132,7 @@ int main(void)
                     moveNode(sessionData, &freeSessionDataList, false);
                 }
                 else
-                    panic();
+                    panic(0);
             }
             else // Port closed
             {
@@ -156,7 +156,7 @@ int main(void)
             replyTarget = 0;
         }
         else if(R_FAILED(res))
-            panic();
+            panic(res);
         else
         {
             replyTarget = 0;
@@ -172,7 +172,7 @@ int main(void)
             {
                 Handle session;
                 if(!IS_PRE_7X && srvPmSessionCreated)
-                    panic();
+                    panic(0);
                 assertSuccess(svcAcceptSession(&session, srvPmPort));
                 sessionData = (SessionData *)allocateNode(&sessionDataInUseList, &freeSessionDataList, sizeof(SessionData), false);
                 sessionData->pid = (u32)-1;
@@ -184,7 +184,7 @@ int main(void)
                 if(id == 0) // Resume SRV:GetServiceHandle or GetPort due to service or named port not registered
                 {
                     if(sessionDataToWakeUpAfterServiceOrPortRegisterList.first == NULL)
-                        panic();
+                        panic(0);
                     sessionData = sessionDataToWakeUpAfterServiceOrPortRegisterList.first;
                     moveNode(sessionData, &sessionDataInUseList, false);
                     memcpy(cmdbuf, sessionData->replayCmdbuf, 16);
@@ -205,7 +205,7 @@ int main(void)
                 {
                     for(sessionData = sessionDataInUseList.first; sessionData != NULL && sessionData->handle != handles[id]; sessionData = sessionData->next);
                     if(sessionData == NULL)
-                        panic();
+                        panic(0);
                 }
 
                 res = sessionData->isSrvPm ? srvPmHandleCommands(sessionData) : srvHandleCommands(sessionData);
@@ -218,7 +218,7 @@ int main(void)
                     else if(res == (Result)0xD0406402) // service full
                         dstList = &sessionDataWaitingPortReadyList;
                     else
-                        panic();
+                        panic(res);
 
                     moveNode(sessionData, dstList, true);
                 }
