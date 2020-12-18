@@ -193,6 +193,7 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
         //We can't boot < 3.x EmuNANDs
         if(nandType != FIRMWARE_SYSNAND) error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
+        //If you want to use SAFE_FIRM on 1.0, use Luma from NAND & comment this line:
         if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
         *firmType = NATIVE_FIRM1X2X;
@@ -429,6 +430,10 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
+    // Below 3.0, do not actually do anything.
+    if(!ISN3DS && firmVersion < 0xC)
+        return 0;
+
     //On N3DS, decrypt Arm9Bin and patch Arm9 entrypoint to skip kernel9loader
     if(ISN3DS)
     {
@@ -525,6 +530,10 @@ u32 patch1x2xNativeAndSafeFirm(void)
     ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
 
+    //Apply firmlaunch patches
+    //Doesn't work here if Luma is on SD. If you want to use SAFE_FIRM on 1.0, use Luma from NAND & uncomment this line:
+    //ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+
     if(ISN3DS && CONFIG(ENABLESAFEFIRMROSALINA))
     {
         u8 *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -539,10 +548,6 @@ u32 patch1x2xNativeAndSafeFirm(void)
         ret += patchKernel11(arm11Section1, firm->section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage);
 
         // Add some other patches to the mix, as we can now launch homebrew on SAFE_FIRM:
-
-        //Apply firmlaunch patches
-        //Or don't, this makes usm not work
-        //ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
         ret += patchKernel9Panic(arm9Section, kernel9Size);
         ret += patchP9AccessChecks(process9Offset, process9Size);
