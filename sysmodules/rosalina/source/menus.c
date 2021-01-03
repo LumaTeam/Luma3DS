@@ -35,13 +35,13 @@
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
 #include "menus/screen_filters.h"
+#include "menus/quick_switchers.h"
 #include "plugin.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
 #include "process_patches.h"
 #include "luminance.h"
-#include "twlbg_switcher.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
@@ -51,7 +51,7 @@ Menu rosalinaMenu = {
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},
         { "New 3DS settings:", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
-        { "TwlBg: unknown", METHOD, .method = &TwlbgSwitcher_DisplayFiles },
+        { "Quick-Switchers...", MENU, .menu = &quickSwitchersMenu },
         { "Change screen brightness", METHOD, .method = &RosalinaMenu_ChangeScreenBrightness },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
