@@ -247,7 +247,7 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
         u32 *off = (u32 *)memsearch((u8 *)0x00100000, &irOrigReadingCode, totalSize, sizeof(irOrigReadingCode) - 4);
         if(off == NULL)
         {
-            svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
             return -1;
         }
 
@@ -257,7 +257,7 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
             off2 = (u32 *)memsearch((u8 *)0x00100000, &irOrigWaitSyncCodeOld, totalSize, sizeof(irOrigWaitSyncCodeOld));
             if(off2 == NULL)
             {
-                svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+                svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
                 return -2;
             }
         }
@@ -265,7 +265,7 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
         u32 *off3 = (u32 *)memsearch((u8 *)0x00100000, &irOrigCppFlagCode, totalSize, sizeof(irOrigCppFlagCode));
         if(off3 == NULL)
         {
-            svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
             return -3;
         }
 
@@ -324,7 +324,7 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
     }
 
     svcInvalidateEntireInstructionCache();
-    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
 
     return res;
 }
@@ -363,21 +363,21 @@ static Result InputRedirection_DoUndoHidPatches(Handle processHandle, bool doPat
         u32 *off = (u32 *)memsearch((u8 *)0x00100000, &hidOrigRegisterAndValue, totalSize, sizeof(hidOrigRegisterAndValue));
         if(off == NULL)
         {
-            svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
             return -1;
         }
 
         u32 *off2 = (u32 *)memsearch((u8 *)off + sizeof(hidOrigRegisterAndValue), &hidOrigRegisterAndValue, totalSize - ((u32)off - 0x00100000), sizeof(hidOrigRegisterAndValue));
         if(off2 == NULL)
         {
-            svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
             return -2;
         }
 
         u32 *off3 = (u32 *)memsearch((u8 *)0x00100000, &hidOrigCode, totalSize, sizeof(hidOrigCode));
         if(off3 == NULL)
         {
-            svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
             return -3;
         }
 
@@ -413,7 +413,7 @@ static Result InputRedirection_DoUndoHidPatches(Handle processHandle, bool doPat
         }
     }
 
-    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
     return res;
 }
 
