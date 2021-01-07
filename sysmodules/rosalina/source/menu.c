@@ -36,6 +36,7 @@
 #include "menus/cheats.h"
 #include "minisoc.h"
 
+u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
 
@@ -225,8 +226,6 @@ MyThread *menuCreateThread(void)
         svcBreak(USERBREAK_PANIC);
     return &menuThread;
 }
-
-u32 menuCombo;
 
 void menuThreadMain(void)
 {
