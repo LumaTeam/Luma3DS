@@ -143,6 +143,11 @@ void Redshift_EditableFilter(void)
             IFile_Read(&file, &total, screens, sizeof(screens));
             ApplyCS(screens + 0, 0);
             ApplyCS(screens + 1, 1);
+            cs.temperature = screens[0].temperature;
+            cs.gamma[0] = screens[0].gamma[0];
+            cs.gamma[1] = screens[0].gamma[1];
+            cs.gamma[2] = screens[0].gamma[2];
+            cs.brightness = screens[0].brightness;
             IFile_Close(&file);
         }
     }
@@ -254,24 +259,25 @@ void Redshift_EditableFilter(void)
         Draw_DrawString(10, 18, COLOR_WHITE, "START save config, SELECT toggle LEDs");
         Draw_DrawString(10, 28, COLOR_WHITE, "X set top screen, A set bottom screen");
         Draw_DrawString(10, 38, COLOR_WHITE, "LEFT/RIGHT change value, +hold L1/R1 to fine tune)");
-		Draw_DrawString(10, 48, COLOR_WHITE, "Y reset values to default, B back to menu");
+		Draw_DrawString(10, 48, COLOR_WHITE, "Y reset values to neutral, B back to menu");
+        Draw_DrawString(10, 58, COLOR_WHITE, "Initial values are reloaded from top screen save");
         
         sprintf(fmtbuf, "%c Colortemp: %iK", (sel == 0 ? '>' : ' '), cs.temperature);
-        Draw_DrawString(10, 66, COLOR_WHITE, fmtbuf);
+        Draw_DrawString(10, 76, COLOR_WHITE, fmtbuf);
         
         sprintf(fmtbuf, "%c Gamma[R]: %i.%02i", (sel == 1 ? '>' : ' '),
             (int)cs.gamma[0], (int)fmodf((cs.gamma[0] * 100.0F) + 0.0001F, 100.0F));
-        Draw_DrawString(10, 82, COLOR_WHITE, fmtbuf);
+        Draw_DrawString(10, 92, COLOR_WHITE, fmtbuf);
         sprintf(fmtbuf, "%c Gamma[G]: %i.%02i", (sel == 2 ? '>' : ' '),
             (int)cs.gamma[1], (int)fmodf((cs.gamma[1] * 100.0F) + 0.0001F, 100.0F));
-        Draw_DrawString(10, 90, COLOR_WHITE, fmtbuf);
+        Draw_DrawString(10, 100, COLOR_WHITE, fmtbuf);
         sprintf(fmtbuf, "%c Gamma[B]: %i.%02i", (sel == 3 ? '>' : ' '),
             (int)cs.gamma[2], (int)fmodf((cs.gamma[2] * 100.0F) + 0.0001F, 100.0F));
-        Draw_DrawString(10, 98, COLOR_WHITE, fmtbuf);
+        Draw_DrawString(10, 108, COLOR_WHITE, fmtbuf);
         
-        sprintf(fmtbuf, "%c Brightness: %i.%02i", (sel == 4 ? '>' : ' '),
+        sprintf(fmtbuf, "%c Faux brightness: %i.%02i", (sel == 4 ? '>' : ' '),
             (int)cs.brightness, (int)fmodf((cs.brightness * 100.0F) + 0.0001F, 100.0F));
-        Draw_DrawString(10, 114, COLOR_WHITE, fmtbuf);
+        Draw_DrawString(10, 124, COLOR_WHITE, fmtbuf);
 
         Draw_FlushFramebuffer();
         Draw_Unlock();
