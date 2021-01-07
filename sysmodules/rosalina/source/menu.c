@@ -341,6 +341,17 @@ static void menuDraw(Menu *menu, u32 selected)
         int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
+    else
+    {
+        char timeString[9];
+        u64 timeInSeconds = osGetTime() / 1000;
+        u64 dayTime = timeInSeconds % 86400;
+        u8 hour = dayTime / 3600;
+        u8 min = (dayTime % 3600) / 60;
+        u8 seconds = dayTime % 60;
+        int n = sprintf(timeString, "%02d:%02d:%02d", hour, min, seconds);
+        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, timeString);
+    }
 
     if(R_SUCCEEDED(mcuInfoRes))
     {
