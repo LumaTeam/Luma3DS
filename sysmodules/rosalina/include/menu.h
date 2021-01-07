@@ -64,13 +64,16 @@ typedef struct Menu {
     MenuItem items[16];
 } Menu;
 
+extern u32 menuCombo;
+extern bool isHidInitialized;
+extern u32 mcuFwVersion;
+
+// From main.c
 extern bool isN3DS;
 extern bool ledsOff;
 extern bool menuShouldExit;
 extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
-
-extern u32 menuCombo;
 
 u32 waitInputWithTimeout(s32 msec);
 u32 waitInput(void);
