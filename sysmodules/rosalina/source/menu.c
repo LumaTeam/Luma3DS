@@ -346,7 +346,7 @@ static void menuDraw(Menu *menu, u32 selected)
         sprintf(versionString, "v%lu.%lu.%lu", GET_VERSION_MAJOR(version), GET_VERSION_MINOR(version), GET_VERSION_REVISION(version));
 
     Draw_DrawString(10, 10, COLOR_TITLE, menu->title);
-    Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 19 * SPACING_X, 10, COLOR_TITLE, "SELECT: Toggle LEDs");
+    
     u32 numItems = menuCountItems(menu);
     u32 dispY = 0;
 
@@ -363,6 +363,8 @@ static void menuDraw(Menu *menu, u32 selected)
     // Clear lines that are prone to change
     Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
     Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 19, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%19s", "");
+
+    Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 19 * SPACING_X, 10, COLOR_TITLE, "SELECT: Toggle LEDs");
 
     if(miniSocEnabled)
     {
