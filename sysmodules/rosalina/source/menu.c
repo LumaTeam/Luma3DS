@@ -37,6 +37,7 @@
 #include "minisoc.h"
 
 bool isHidInitialized = false;
+u32 mcuFwVersion = 0;
 
 // libctru redefinition:
 
@@ -142,7 +143,59 @@ u32 waitCombo(void)
 
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[0x1000];
-static u8 batteryLevel = 255;
+
+static float batteryPercentage;
+static float batteryVoltage;
+static u8 batteryTemperature;
+
+static Result menuUpdateMcuInfo(void)
+{
+    Result res = 0;
+    u8 data[4];
+
+    if (!isServiceUsable("mcu::HWC"))
+        return -1;
+
+    res = mcuHwcInit();
+    if (R_FAILED(res))
+        return res;
+
+    // Read mcu regs directly
+    for (u32 i = 0; i < 4; i++)
+    {
+        res = MCUHWC_ReadRegister(0xA + i, &data[i], 1);
+        if (R_FAILED(res))
+            break;
+    }
+
+    if (R_SUCCEEDED(res))
+    {
+        batteryTemperature = data[0];
+
+        // The battery percentage isn't very precise... its precision ranges from 0.09% to 0.14% approx
+        // Round to 0.1%
+        batteryPercentage = data[1] + data[2] / 256.0f;
+        batteryPercentage = (u32)((batteryPercentage + 0.05f) * 10.0f) / 10.0f;
+
+        // Round battery voltage to 0.01V
+        batteryVoltage = (5u * data[3]) / 256.0f;
+        batteryVoltage = (u32)((batteryVoltage + 0.005f) * 100.0f) / 100.0f;
+    }
+
+    // Read mcu fw version if not already done
+    if (mcuFwVersion == 0)
+    {
+        u8 minor = 0, major = 0;
+        MCUHWC_GetFwVerHigh(&major);
+        MCUHWC_GetFwVerLow(&minor);
+
+        // If it has failed, mcuFwVersion will be set to 0 again
+        mcuFwVersion = SYSTEM_VERSION(major - 0x10, minor, 0);
+    }
+
+    mcuHwcExit();
+    return res;
+}
 
 static inline u32 menuAdvanceCursor(u32 pos, u32 numItems, s32 displ)
 {
@@ -246,16 +299,8 @@ static void menuDraw(Menu *menu, u32 selected)
     s64 out;
     u32 version, commitHash;
     bool isRelease;
-    bool isMcuHwcRegistered;
 
-    if(R_SUCCEEDED(srvIsServiceRegistered(&isMcuHwcRegistered, "mcu::HWC")) && isMcuHwcRegistered && R_SUCCEEDED(mcuHwcInit()))
-    {
-        if(R_FAILED(MCUHWC_GetBatteryLevel(&batteryLevel)))
-            batteryLevel = 255;
-        mcuHwcExit();
-    }
-    else
-        batteryLevel = 255;
+    Result mcuInfoRes = menuUpdateMcuInfo();
 
     svcGetSystemInfo(&out, 0x10000, 0);
     version = (u32)out;
@@ -285,6 +330,10 @@ static void menuDraw(Menu *menu, u32 selected)
         dispY += SPACING_Y;
     }
 
+    // Clear lines that are prone to change
+    Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
+    Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 19, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%19s", "");
+
     if(miniSocEnabled)
     {
         char ipBuffer[17];
@@ -294,12 +343,21 @@ static void menuDraw(Menu *menu, u32 selected)
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
 
-    Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
+    if(R_SUCCEEDED(mcuInfoRes))
+    {
+        u32 voltageInt = (u32)batteryVoltage;
+        u32 voltageFrac = (u32)(batteryVoltage * 100.0f) % 100u;
+        u32 percentageInt = (u32)batteryPercentage;
+        u32 percentageFrac = (u32)(batteryPercentage * 10.0f) % 10u;
 
-    if(batteryLevel != 255)
-        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%02hhu%%", batteryLevel);
-    else
-        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "    ");
+        char buf[32];
+        int n = sprintf(
+            buf, "%hhu\xF8""C  %lu.%02luV  %lu.%lu%%", batteryTemperature, // CP437
+            voltageInt, voltageFrac,
+            percentageInt, percentageFrac
+        );
+        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, buf);
+    }
 
     if(isRelease)
         Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);
