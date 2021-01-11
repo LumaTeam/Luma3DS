@@ -161,13 +161,8 @@ static Result menuUpdateMcuInfo(void)
     if (R_FAILED(res))
         return res;
 
-    // Read mcu regs directly
-    for (u32 i = 0; i < 4; i++)
-    {
-        res = MCUHWC_ReadRegister(0xA + i, &data[i], 1);
-        if (R_FAILED(res))
-            break;
-    }
+    // Read single-byte mcu regs 0x0A to 0x0D directly
+    res = MCUHWC_ReadRegister(0xA, data, 4);
 
     if (R_SUCCEEDED(res))
     {
