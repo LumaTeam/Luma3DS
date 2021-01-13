@@ -43,7 +43,8 @@ Menu miscellaneousMenu = {
         { "Switch the hb. title to the current app.", METHOD, .method = &MiscellaneousMenu_SwitchBoot3dsxTargetTitle },
         { "Change the menu combo", METHOD, .method = &MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
-        { "Sync time and date via NTP", METHOD, .method = &MiscellaneousMenu_SyncTimeDate },
+        { "Update time and date via NTP", METHOD, .method = &MiscellaneousMenu_UpdateTimeDateNtp },
+        { "Nullify user time offset", METHOD, .method = &MiscellaneousMenu_NullifyUserTimeOffset },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         {},
     }
@@ -344,7 +345,7 @@ void MiscellaneousMenu_InputRedirection(void)
     while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
-void MiscellaneousMenu_SyncTimeDate(void)
+void MiscellaneousMenu_UpdateTimeDateNtp(void)
 {
     u32 posY;
     u32 input = 0;
@@ -415,7 +416,7 @@ void MiscellaneousMenu_SyncTimeDate(void)
         else if (R_FAILED(res))
             Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Operation failed (%08lx).", (u32)res) + SPACING_Y;
         else
-            Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Timedate & RTC updated successfully.\nYou may need to reboot to see the changes.") + SPACING_Y;
+            Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Time/date updated successfully.") + SPACING_Y;
 
         input = waitInput();
 
@@ -424,4 +425,28 @@ void MiscellaneousMenu_SyncTimeDate(void)
     }
     while(!(input & KEY_B) && !menuShouldExit);
 
+}
+
+
+void MiscellaneousMenu_NullifyUserTimeOffset(void)
+{
+    Result res = ntpNullifyUserTimeOffset();
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        if(R_SUCCEEDED(res))
+            Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.\n\nPlease reboot to finalize the changes.");
+        else
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08lx).", res);
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
