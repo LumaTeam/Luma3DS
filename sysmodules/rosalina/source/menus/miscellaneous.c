@@ -237,7 +237,10 @@ void MiscellaneousMenu_SaveSettings(void)
     res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/config.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
 
     if(R_SUCCEEDED(res))
+        res = IFile_SetSize(&file, sizeof(configData));
+    if(R_SUCCEEDED(res))
         res = IFile_Write(&file, &total, &configData, sizeof(configData), 0);
+    IFile_Close(&file);
 
     Draw_Lock();
     Draw_ClearFramebuffer();
