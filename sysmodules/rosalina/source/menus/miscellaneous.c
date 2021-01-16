@@ -36,6 +36,32 @@
 #include "minisoc.h"
 #include "ifile.h"
 #include "pmdbgext.h"
+#include "process_patches.h"
+
+typedef struct DspFirmSegmentHeader {
+    u32 offset;
+    u32 loadAddrHalfwords;
+    u32 size;
+    u8 _0x0C[3];
+    u8 memType;
+    u8 hash[0x20];
+} DspFirmSegmentHeader;
+
+typedef struct DspFirm {
+    u8 signature[0x100];
+    char magic[4];
+    u32 totalSize; // no more than 0x10000
+    u16 layoutBitfield;
+    u8 _0x10A[3];
+    u8 surroundSegmentMemType;
+    u8 numSegments; // no more than 10
+    u8 flags;
+    u32 surroundSegmentLoadAddrHalfwords;
+    u32 surroundSegmentSize;
+    u8 _0x118[8];
+    DspFirmSegmentHeader segmentHdrs[10];
+    u8 data[];
+} DspFirm;
 
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
@@ -45,6 +71,7 @@ Menu miscellaneousMenu = {
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
         { "Update time and date via NTP", METHOD, .method = &MiscellaneousMenu_UpdateTimeDateNtp },
         { "Nullify user time offset", METHOD, .method = &MiscellaneousMenu_NullifyUserTimeOffset },
+        { "Dump DSP firmware", METHOD, .method = &MiscellaneousMenu_DumpDspFirm },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         {},
     }
@@ -427,7 +454,6 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
 
 }
 
-
 void MiscellaneousMenu_NullifyUserTimeOffset(void)
 {
     Result res = ntpNullifyUserTimeOffset();
@@ -445,6 +471,76 @@ void MiscellaneousMenu_NullifyUserTimeOffset(void)
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.\n\nPlease reboot to finalize the changes.");
         else
             Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08lx).", res);
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
+}
+
+static Result MiscellaneousMenu_DumpDspFirmCallback(Handle procHandle, u32 textSz, u32 roSz, u32 rwSz)
+{
+    (void)procHandle;
+    Result res = 0;
+
+    // NOTE: we suppose .text, .rodata, .data+.bss are contiguous & in that order
+    u32 rwStart = 0x00100000 + textSz + roSz;
+    u32 rwEnd = rwStart + rwSz;
+
+    // Locate the DSP firm (it's in .data, not .rodata, suprisingly)
+    u32 magic;
+    memcpy(&magic, "DSP1", 4);
+    const u32 *off = (u32 *)rwStart;
+
+    for (; off < (u32 *)rwEnd && *off != magic; off++);
+
+    if (off >= (u32 *)rwEnd || off < (u32 *)(rwStart + 0x100))
+        return -2;
+
+    // Do some sanity checks
+    const DspFirm *firm = (const DspFirm *)((u32)off - 0x100);
+    if (firm->totalSize > 0x10000 || firm->numSegments > 10)
+        return -3;
+    if ((u32)firm + firm->totalSize >= rwEnd)
+        return -3;
+
+    // Dump to SD card (no point in dumping to CTRNAND as 3dsx stuff doesn't work there)
+    IFile file;
+    res = IFile_Open(
+        &file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
+        fsMakePath(PATH_ASCII, "/3ds/dspfirm.cdc"), FS_OPEN_CREATE | FS_OPEN_WRITE
+    );
+
+    u64 total;
+    if(R_SUCCEEDED(res))
+        res = IFile_Write(&file, &total, firm, firm->totalSize, 0);
+    if(R_SUCCEEDED(res))
+        res = IFile_SetSize(&file, firm->totalSize); // truncate accordingly
+
+    IFile_Close(&file);
+
+    return res;
+}
+void MiscellaneousMenu_DumpDspFirm(void)
+{
+    Result res = OperateOnProcessByName("menu", MiscellaneousMenu_DumpDspFirmCallback);
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        if(R_SUCCEEDED(res))
+            Draw_DrawString(10, 30, COLOR_WHITE, "DSP firm. successfully written to /3ds/dspfirm.cdc\non the SD card.");
+        else
+            Draw_DrawFormattedString(
+                10, 30, COLOR_WHITE,
+                "Operation failed (0x%08lx).\n\nMake sure that Home Menu is running and that your\nSD card is inserted.",
+                res
+            );
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
