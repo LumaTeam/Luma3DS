@@ -29,5 +29,7 @@
 #include <3ds/types.h>
 #include "menu.h"
 
+typedef Result(* OperateOnProcessCb)(Handle processHandle, u32 textSz, u32 roSz, u32 rwSz);
+
 Result OpenProcessByName(const char *name, Handle *h);
-Result PatchProcessByName(const char *name, Result (*func)(u32 size));
+Result OperateOnProcessByName(const char *name, OperateOnProcessCb func); // doesn't operate on the heap
