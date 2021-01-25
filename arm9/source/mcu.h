@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -24,22 +24,32 @@
 *         reasonable ways as different from the original version.
 */
 
-/*
-*   waitInput function based on code by d0k3 https://github.com/d0k3/Decrypt9WIP/blob/master/source/hid.c
-*/
-
 #pragma once
 
 #include "types.h"
 
-#define TICKS_PER_SEC       67027964ULL
-#define REG_TIMER_CNT(i)    *(vu16 *)(0x10003002 + 4 * i)
-#define REG_TIMER_VAL(i)    *(vu16 *)(0x10003000 + 4 * i)
+/*
+ * Bit13:   Battery low (at 10%, 5% and sub-1%)
+ * Bit7:    MCU WDT reset
+ * Bit6:    Shell opened (GPIO1_0 1->0)
+ * Bit5:    Shell closed (GPIO1_0 0->1)
+ * Bit1:    Power button held
+ * Bit0:    Power button pressed
+ */
+#define MCU_INT_MASK_FOR_INPUT  (BIT(13)|BIT(7)|BIT(6)|BIT(5)|BIT(1)|BIT(0))
+#define MCU_INT_LCD_BL_ON       (BIT(29)|BIT(27)|BIT(25))
+#define MCU_INT_LCD_BL_OFF      (BIT(28)|BIT(26)|BIT(24))
+#define MCU_INT_DEFAULT_MASK    0x0000E7FFu
 
-#define MAKE_BRANCH(src,dst)      (0xEA000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
-#define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
+u32 mcuGetInterruptMask(void);
+void mcuSetInterruptMask(u32 mask); // 1 for each interrupt you want to *disable* (mask)
+u32 mcuGetPendingInterrupts(u32 mask);
 
-void NORETURN powerOff(void);
-u32 waitInput(bool isMenu);
-void wait(u64 amount);
-void NORETURN error(const char *fmt, ...);
+void mcuPowerBacklightsOn(void);
+void mcuPowerBacklightsOff(void);
+
+void NORETURN mcuPowerOff(void);
+void NORETURN mcuReboot(void);
+
+void mcuInit(void);
+void mcuFinalize(void);

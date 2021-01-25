@@ -66,7 +66,7 @@ void I2C_init(void);
  *
  * @return     Returns true on success and false on failure.
  */
-bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, u8 *out, u32 size);
+bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, void *out, u32 size);
 
 /**
  * @brief      Writes a buffer to a I2C register.
@@ -78,7 +78,7 @@ bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, u8 *out, u32 size);
  *
  * @return     Returns true on success and false on failure.
  */
-bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const u8 *in, u32 size);
+bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const void *in, u32 size);
 
 /**
  * @brief      Reads a byte from a I2C register.

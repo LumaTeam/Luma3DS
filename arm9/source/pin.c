@@ -198,7 +198,7 @@ bool verifyPin(u32 pinMode)
         }
         while(!(pressed & PIN_BUTTONS));
 
-        if(pressed & BUTTON_START) mcuPowerOff();
+        if(pressed & BUTTON_START) powerOff();
 
         pressed &= PIN_BUTTONS;
 

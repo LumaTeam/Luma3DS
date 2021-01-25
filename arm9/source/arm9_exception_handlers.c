@@ -25,8 +25,7 @@
 */
 
 #include "arm9_exception_handlers.h"
-#include "i2c.h"
-#include "screen.h"
+#include "mcu.h"
 
 #define FINAL_BUFFER    0x25000000
 
@@ -103,10 +102,9 @@ void __attribute__((noreturn)) arm9ExceptionHandlerMain(u32 *registerDump, u32 t
     //Copy header (actually optimized by the compiler)
     *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
 
-    if(ARESCREENSINITIALIZED) I2C_writeReg(I2C_DEV_MCU, 0x22, 1 << 0); //Shutdown LCD
+    mcuPowerBacklightsOff();
 
     ((void (*)())0xFFFF0830)(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 
-    I2C_writeReg(I2C_DEV_MCU, 0x20, 1 << 2); //Reboot
-    while(true);
+    mcuReboot();
 }

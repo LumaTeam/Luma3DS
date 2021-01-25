@@ -16,7 +16,10 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Modified 2021 TuxSH
+
 #include <stdbool.h>
+#include <string.h>
 #include "types.h"
 #include "i2c.h"
 #include "utils.h"
@@ -158,11 +161,11 @@ static bool i2cStartTransfer(I2cDevice devId, u8 regAddr, bool read, I2cRegs *co
     else return false;
 }
 
-bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, u8 *out, u32 size)
+bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, void *out, u32 size)
 {
     const u8 busId = i2cDevTable[devId].busId;
     I2cRegs *const regs = i2cGetBusRegsBase(busId);
-
+    u8 *out8 = (u8 *)out;
 
     if(!i2cStartTransfer(devId, regAddr, true, regs)) return false;
 
@@ -170,27 +173,28 @@ bool I2C_readRegBuf(I2cDevice devId, u8 regAddr, u8 *out, u32 size)
     {
         regs->REG_I2C_CNT = I2C_ENABLE | I2C_IRQ_ENABLE | I2C_DIRE_READ | I2C_ACK;
         i2cWaitBusy(regs);
-        *out++ = regs->REG_I2C_DATA;
+        *out8++ = regs->REG_I2C_DATA;
     }
 
     regs->REG_I2C_CNT = I2C_ENABLE | I2C_IRQ_ENABLE | I2C_DIRE_READ | I2C_STOP;
     i2cWaitBusy(regs);
-    *out = regs->REG_I2C_DATA; // Last byte
+    *out8 = regs->REG_I2C_DATA; // Last byte
 
     return true;
 }
 
-bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const u8 *in, u32 size)
+bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const void *in, u32 size)
 {
     const u8 busId = i2cDevTable[devId].busId;
     I2cRegs *const regs = i2cGetBusRegsBase(busId);
+    const u8 *in8 = (const u8 *)in;
 
 
     if(!i2cStartTransfer(devId, regAddr, false, regs)) return false;
 
     while(--size)
     {
-        regs->REG_I2C_DATA = *in++;
+        regs->REG_I2C_DATA = *in8++;
         regs->REG_I2C_CNT = I2C_ENABLE | I2C_IRQ_ENABLE | I2C_DIRE_WRITE;
         i2cWaitBusy(regs);
         if(!I2C_GET_ACK(regs->REG_I2C_CNT)) // If ack flag is 0 it failed.
@@ -200,7 +204,7 @@ bool I2C_writeRegBuf(I2cDevice devId, u8 regAddr, const u8 *in, u32 size)
         }
     }
 
-    regs->REG_I2C_DATA = *in;
+    regs->REG_I2C_DATA = *in8;
     regs->REG_I2C_CNT = I2C_ENABLE | I2C_IRQ_ENABLE | I2C_DIRE_WRITE | I2C_STOP;
     i2cWaitBusy(regs);
     if(!I2C_GET_ACK(regs->REG_I2C_CNT)) // If ack flag is 0 it failed.

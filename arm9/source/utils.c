@@ -37,6 +37,7 @@
 #include "fmt.h"
 #include "memory.h"
 #include "fs.h"
+#include "mcu.h"
 
 static void startChrono(void)
 {
@@ -65,13 +66,24 @@ static u64 chrono(void)
     return res;
 }
 
+void powerOff(void)
+{
+    if(!needToSetupScreens) clearScreens(false);
+
+    mcuPowerBacklightsOff();
+
+    // Ensure that all memory transfers have completed and that the data cache has been flushed
+    flushEntireDCache();
+
+    mcuPowerOff();
+}
+
 u32 waitInput(bool isMenu)
 {
     static u64 dPadDelay = 0ULL;
     u64 initialValue = 0ULL;
     u32 key,
         oldKey = HID_PAD;
-    bool shouldShellShutdown = bootType != B9SNTR && bootType != NTR;
 
     if(isMenu)
     {
@@ -82,21 +94,34 @@ u32 waitInput(bool isMenu)
 
     while(true)
     {
+        // There are two sources of truth for the shell state: the gpio reg and the MCU
+
+        /*
+         * Bit13:   Battery low (at 10%, 5% and sub-1%)
+         * Bit7:    MCU WDT reset
+         * Bit6:    Shell opened (GPIO1_0 1->0)
+         * Bit5:    Shell closed (GPIO1_0 0->1)
+         * Bit1:    Power button held
+         * Bit0:    Power button pressed
+         */
+
+        // Ignore "shell opened", just ack
+        u32 mcuInts = mcuGetPendingInterrupts(MCU_INT_MASK_FOR_INPUT);
+
+        if (mcuInts & (BIT(7) | BIT(5) | BIT(1) | BIT(0)))
+            powerOff();
+
+        if (mcuInts & BIT(13))
+        {
+            u8 battLevelIntPart = I2C_readReg(I2C_DEV_MCU, 0xB);
+            if (battLevelIntPart == 0)
+                powerOff();
+        }
+
         key = HID_PAD;
 
         if(!key)
         {
-            if(shouldShellShutdown)
-            {
-                u8 shellState = I2C_readReg(I2C_DEV_MCU, 0xF);
-                wait(5);
-                if(!(shellState & 2)) mcuPowerOff();
-            }
-
-            u8 intStatus = I2C_readReg(I2C_DEV_MCU, 0x10);
-            wait(5);
-            if(intStatus & 1) mcuPowerOff(); //Power button pressed
-
             oldKey = 0;
             dPadDelay = 0;
             continue;
@@ -111,20 +136,6 @@ u32 waitInput(bool isMenu)
     }
 
     return key;
-}
-
-void mcuPowerOff(void)
-{
-    if(!needToSetupScreens) clearScreens(false);
-
-    //Shutdown LCD
-    if(ARESCREENSINITIALIZED) I2C_writeReg(I2C_DEV_MCU, 0x22, 1 << 0);
-
-    //Ensure that all memory transfers have completed and that the data cache has been flushed
-    flushEntireDCache();
-
-    I2C_writeReg(I2C_DEV_MCU, 0x20, 1 << 0);
-    while(true);
 }
 
 void wait(u64 amount)
@@ -151,6 +162,5 @@ void error(const char *fmt, ...)
     drawString(true, 10, posY + 2 * SPACING_Y, COLOR_WHITE, "Press any button to shutdown");
 
     waitInput(false);
-
-    mcuPowerOff();
+    powerOff();
 }

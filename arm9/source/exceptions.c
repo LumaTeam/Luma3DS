@@ -200,5 +200,5 @@ void detectAndProcessExceptionDumps(void)
 
 exit:
     memset((void *)dumpHeader, 0, dumpHeader->totalSize);
-    mcuPowerOff();
+    powerOff();
 }

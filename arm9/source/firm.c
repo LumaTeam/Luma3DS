@@ -37,6 +37,7 @@
 #include "screen.h"
 #include "fmt.h"
 #include "chainloader.h"
+#include "mcu.h"
 
 static Firm *firm = (Firm *)0x20001000;
 
@@ -564,6 +565,7 @@ u32 patch1x2xNativeAndSafeFirm(void)
 
 void launchFirm(int argc, char **argv)
 {
+    mcuFinalize();
     prepareArm11ForFirmlaunch();
     chainload(argc, argv, firm);
 }
