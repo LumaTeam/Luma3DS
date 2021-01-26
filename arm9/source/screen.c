@@ -32,7 +32,8 @@
 #include "screen.h"
 #include "config.h"
 #include "memory.h"
-#include "mcu.h"
+#include "i2c.h"
+#include "utils.h"
 
 bool needToSetupScreens = true;
 
@@ -68,7 +69,6 @@ void prepareArm11ForFirmlaunch(void)
 
 void deinitScreens(void)
 {
-    mcuPowerBacklightsOff();
     if(ARESCREENSINITIALIZED) invokeArm11Function(DEINIT_SCREENS);
 }
 
@@ -102,20 +102,19 @@ void initScreens(void)
             memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
             invokeArm11Function(INIT_SCREENS);
 
-            mcuPowerBacklightsOn();
+            //Turn on backlight
+            I2C_writeReg(I2C_DEV_MCU, 0x22, 0x2A);
+            wait(5);
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
-        clearScreens(false);
-        clearScreens(true);
-
         memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
         invokeArm11Function(SETUP_FRAMEBUFFERS);
+
+        clearScreens(true);
         needToSetupScreens = false;
     }
-    else
-    {
-        clearScreens(false);
-        swapFramebuffers(false);
-    }
+
+    clearScreens(false);
+    swapFramebuffers(false);
 }

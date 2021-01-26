@@ -49,14 +49,6 @@ typedef volatile s16 vs16;
 typedef volatile s32 vs32;
 typedef volatile s64 vs64;
 
-/// Creates a bitmask from a bit number.
-#define BIT(n) (1U<<(n))
-
-/// Aligns a struct (and other types?) to m, making sure that the size of the struct is a multiple of m.
-#define ALIGN(m)   __attribute__((aligned(m)))
-
-#define NORETURN __attribute__((noreturn))
-
 #include "3dsheaders.h"
 
 #define CFG_BOOTENV         (*(vu32 *)0x10010000)

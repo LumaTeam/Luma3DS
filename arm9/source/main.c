@@ -36,7 +36,7 @@
 #include "crypto.h"
 #include "memory.h"
 #include "screen.h"
-#include "mcu.h"
+#include "i2c.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 extern u8 __itcm_start__[], __itcm_lma__[], __itcm_bss_start__[], __itcm_end__[];
@@ -116,8 +116,7 @@ void main(int argc, char **argv, u32 magicWord)
     // Set up the additional sections, overwrites argc
     memcpy(__itcm_start__, __itcm_lma__, __itcm_bss_start__ - __itcm_start__);
     memset(__itcm_bss_start__, 0, __itcm_end__ - __itcm_bss_start__);
-    mcuInit();
-
+    I2C_init();
     if(isInvalidLoader) error("Launched using an unsupported loader.");
 
     installArm9Handlers();
@@ -142,7 +141,7 @@ void main(int argc, char **argv, u32 magicWord)
         {
             while(HID_PAD & NTRBOOT_BUTTONS);
             loadHomebrewFirm(0);
-            powerOff();
+            mcuPowerOff();
         }
     }
     else
@@ -165,7 +164,7 @@ void main(int argc, char **argv, u32 magicWord)
     //Determine if this is a firmlaunch boot
     if(bootType == FIRMLAUNCH)
     {
-        if(needConfig == CREATE_CONFIGURATION) powerOff();
+        if(needConfig == CREATE_CONFIGURATION) mcuPowerOff();
 
         switch(firmlaunchTidLow & 0xF)
         {

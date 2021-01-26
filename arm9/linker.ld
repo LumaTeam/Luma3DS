@@ -45,19 +45,16 @@ SECTIONS
 
         chainloader.o(.text*)
         i2c.o(.text*)
-        mcu.o(.text*)
         arm9_exception_handlers.o(.text*)
 
         *(.arm9_exception_handlers.rodata*)
         chainloader.o(.rodata*)
         i2c.o(.rodata*)
-        mcu.o(.rodata*)
         arm9_exception_handlers.o(.rodata*)
 
         *(.arm9_exception_handlers.data*)
         chainloader.o(.data*)
         i2c.o(.data*)
-        mcu.o(.data*)
         arm9_exception_handlers.o(.data*)
         . = ALIGN(32);
     } >itcm AT>main :itcm
@@ -70,7 +67,6 @@ SECTIONS
         *(.arm9_exception_handlers.bss*)
         chainloader.o(.bss* COMMON)
         i2c.o(.bss* COMMON)
-        mcu.o(.bss* COMMON)
         arm9_exception_handlers.o(.bss* COMMON)
         . = ALIGN(32);
         PROVIDE (__itcm_end__ = ABSOLUTE(.));

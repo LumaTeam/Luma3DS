@@ -123,8 +123,8 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     for(u32 i = 0; i < 256; i++)
         *(vu32 *)0x10400584 = 0x10101 * i;
 
-    //*(vu32 *)0x10202204 = 0x00000000; //unset LCD fill
-    //*(vu32 *)0x10202A04 = 0x00000000;
+    *(vu32 *)0x10202204 = 0x00000000; //unset LCD fill
+    *(vu32 *)0x10202A04 = 0x00000000;
 }
 
 static void setupFramebuffers(struct fb *fbs)
