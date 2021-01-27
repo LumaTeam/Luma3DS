@@ -130,7 +130,7 @@ void SysConfigMenu_ToggleWireless(void)
 
 void SysConfigMenu_UpdateStatus(bool control)
 {
-    MenuItem *item = &sysconfigMenu.items[3];
+    MenuItem *item = &sysconfigMenu.items[0];
 
     if(control)
     {
