@@ -27,7 +27,7 @@ boot.firm:	$(SUBFOLDERS)
 	@echo built... $(notdir $@)
 
 boot.3dsx:
-	@curl -sSL "https://github.com/fincs/new-hbmenu/releases/latest/download/boot.3dsx" -o "$@"
+	@wget -qqO "$@" "https://github.com/fincs/new-hbmenu/releases/latest/download/$@"
 	@echo downloaded... $(notdir $@)
 
 $(SUBFOLDERS):
