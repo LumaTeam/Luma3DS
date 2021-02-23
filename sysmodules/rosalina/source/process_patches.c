@@ -59,20 +59,32 @@ Result OpenProcessByName(const char *name, Handle *h)
     return 0;
 }
 
-Result PatchProcessByName(const char *name, Result (*func)(u32 size))
+Result OperateOnProcessByName(const char *name, OperateOnProcessCb func)
 {
     Result res;
     Handle processHandle;
-    OpenProcessByName(name, &processHandle);
+    res = OpenProcessByName(name, &processHandle);
 
-    s64 textTotalRoundedSize = 0, startAddress = 0;
-    svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002); // only patch .text
-    svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-    if(R_FAILED(res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, textTotalRoundedSize)))
+    if (R_FAILED(res))
         return res;
 
-    res = func(textTotalRoundedSize);
+    s64 startAddress, textSize, roSize, rwSize;
 
-    svcUnmapProcessMemoryEx(processHandle, 0x00100000, textTotalRoundedSize);
+    svcGetProcessInfo(&textSize, processHandle, 0x10002); // rounded sizes
+    svcGetProcessInfo(&roSize, processHandle, 0x10003);
+    svcGetProcessInfo(&rwSize, processHandle, 0x10004); // data and bss
+    svcGetProcessInfo(&startAddress, processHandle, 0x10005);
+
+    // NOTE: we suppose .text, .rodata, .data+.bss are contiguous & in that order
+    u32 totalSize = (u32)(textSize + roSize + rwSize);
+    if (R_FAILED(res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize)))
+    {
+        svcCloseHandle(processHandle);
+        return res;
+    }
+
+    res = func(processHandle, (u32)textSize, (u32)roSize, (u32)rwSize);
+
+    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
     return res;
 }

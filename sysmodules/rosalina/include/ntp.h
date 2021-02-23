@@ -31,3 +31,4 @@
 
 Result ntpGetTimeStamp(time_t *outTimestamp);
 Result ntpSetTimeDate(time_t timestamp);
+Result ntpNullifyUserTimeOffset(void); // not actually used for NTP
