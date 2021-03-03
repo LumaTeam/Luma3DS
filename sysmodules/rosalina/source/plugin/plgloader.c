@@ -15,7 +15,7 @@
 
 static const char *g_title = "Plugin loader";
 PluginLoaderContext PluginLoaderCtx;
-extern u32 blockMenuOpen;
+extern u32 g_blockMenuOpen;
 
 void        IR__Patch(void);
 void        IR__Unpatch(void);
@@ -296,16 +296,18 @@ void     PluginLoader__HandleCommands(void *_ctx)
             break;
         }
 
-        case 11: // Get menu opening block pys address
+        case 11: // Set rosalina menu block
         {
-            if (cmdbuf[0] != IPC_MakeHeader(11, 0, 0))
+            if (cmdbuf[0] != IPC_MakeHeader(11, 1, 0))
             {
                 error(cmdbuf, 0xD9001830);
                 break;
             }
-            cmdbuf[0] = IPC_MakeHeader(11, 2, 0);
+            
+            g_blockMenuOpen = cmdbuf[1];
+            
+            cmdbuf[0] = IPC_MakeHeader(11, 1, 0);
             cmdbuf[1] = 0;
-            cmdbuf[2] = svcConvertVAToPA(&blockMenuOpen, false);
             break;
         }
 
@@ -490,6 +492,7 @@ static void WaitForProcessTerminated(void *arg)
     ctx->target = 0;
     ctx->isExeDecFunctionset = false;
     ctx->isSwapFunctionset = false;
+    g_blockMenuOpen = 0;
     MemoryBlock__ResetSwapSettings();
     //if (!ctx->userLoadParameters.noIRPatch)
     //    IR__Unpatch();
