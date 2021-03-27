@@ -241,7 +241,8 @@ MyThread *menuCreateThread(void)
     return &menuThread;
 }
 
-u32 blockMenuOpen = 0;
+u32 menuCombo;
+u32 g_blockMenuOpen = 0;
 
 u32     DispWarningOnHome(void);
 
@@ -266,7 +267,7 @@ void menuThreadMain(void)
 
         Cheat_ApplyCheats();
 
-        if((scanHeldKeys() & menuCombo) == menuCombo)
+        if(((scanHeldKeys() & menuCombo) == menuCombo) && !g_blockMenuOpen)
         {
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
