@@ -1318,6 +1318,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.floatMode)
                             {
+                                float flarg1;
+                                memcpy(&flarg1, &arg1, sizeof(float));
                                 u32 tmp;
                                 if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
                                 {
@@ -1325,7 +1327,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                 }
                                 float value;
                                 memcpy(&value, &tmp, sizeof(float));
-                                value += arg1;
+                                value += flarg1;
                                 memcpy(&tmp, &value, sizeof(u32));
                                 if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
                                 {
@@ -1351,6 +1353,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.floatMode)
                             {
+                                float flarg1;
+                                memcpy(&flarg1, &arg1, sizeof(float));
                                 u32 tmp;
                                 if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
                                 {
@@ -1358,7 +1362,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                 }
                                 float value;
                                 memcpy(&value, &tmp, sizeof(float));
-                                value *= arg1;
+                                value *= flarg1;
                                 memcpy(&tmp, &value, sizeof(u32));
                                 if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
                                 {
@@ -1384,6 +1388,8 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.floatMode)
                             {
+                                float flarg1;
+                                memcpy(&flarg1, &arg1, sizeof(float));
                                 u32 tmp;
                                 if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
                                 {
@@ -1391,7 +1397,7 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                                 }
                                 float value;
                                 memcpy(&value, &tmp, sizeof(float));
-                                value /= arg1;
+                                value /= flarg1;
                                 memcpy(&tmp, &value, sizeof(u32));
                                 if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
                                 {
@@ -1417,9 +1423,11 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.data1Mode)
                             {
+                                float flarg1;
+                                memcpy(&flarg1, &arg1, sizeof(float));
                                 float value;
                                 memcpy(&value, activeData(), sizeof(float));
-                                value *= arg1;
+                                value *= flarg1;
                                 memcpy(activeData(), &value, sizeof(float));
                             }
                             else
@@ -1432,9 +1440,11 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                         {
                             if (cheat_state.data1Mode)
                             {
+                                float flarg1;
+                                memcpy(&flarg1, &arg1, sizeof(float));
                                 float value;
                                 memcpy(&value, activeData(), sizeof(float));
-                                value /= arg1;
+                                value /= flarg1;
                                 memcpy(activeData(), &value, sizeof(float));
                             }
                             else
