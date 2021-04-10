@@ -1311,196 +1311,235 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                     {
                         case 0x0:
                         {
-                            cheat_state.floatMode = arg1 & 0x1;
+                            if(!skipExecution)
+                            {
+                                cheat_state.floatMode = arg1 & 0x1;
+                            }
                         }
                             break;
                         case 0x1:
                         {
-                            if (cheat_state.floatMode)
+                            if (!skipExecution)
                             {
-                                float flarg1;
-                                memcpy(&flarg1, &arg1, sizeof(float));
-                                u32 tmp;
-                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                if (cheat_state.floatMode)
                                 {
-                                    return 0;
+                                    float flarg1;
+                                    memcpy(&flarg1, &arg1, sizeof(float));
+                                    u32 tmp;
+                                    if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                    {
+                                        return 0;
+                                    }
+                                    float value;
+                                    memcpy(&value, &tmp, sizeof(float));
+                                    value += flarg1;
+                                    memcpy(&tmp, &value, sizeof(u32));
+                                    if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                    {
+                                        return 0;
+                                    }
                                 }
-                                float value;
-                                memcpy(&value, &tmp, sizeof(float));
-                                value += flarg1;
-                                memcpy(&tmp, &value, sizeof(u32));
-                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                else
                                 {
-                                    return 0;
-                                }
-                            }
-                            else
-                            {
-                                u32 tmp;
-                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
-                                {
-                                    return 0;
-                                }
-                                tmp += arg1;
-                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
-                                {
-                                    return 0;
+                                    u32 tmp;
+                                    if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                    {
+                                        return 0;
+                                    }
+                                    tmp += arg1;
+                                    if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                    {
+                                        return 0;
+                                    }
                                 }
                             }
                         }
                             break;
                         case 0x2:
                         {
-                            if (cheat_state.floatMode)
+                            if (!skipExecution)
                             {
-                                float flarg1;
-                                memcpy(&flarg1, &arg1, sizeof(float));
-                                u32 tmp;
-                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                if (cheat_state.floatMode)
                                 {
-                                    return 0;
+                                    float flarg1;
+                                    memcpy(&flarg1, &arg1, sizeof(float));
+                                    u32 tmp;
+                                    if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                    {
+                                        return 0;
+                                    }
+                                    float value;
+                                    memcpy(&value, &tmp, sizeof(float));
+                                    value *= flarg1;
+                                    memcpy(&tmp, &value, sizeof(u32));
+                                    if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                    {
+                                        return 0;
+                                    }
                                 }
-                                float value;
-                                memcpy(&value, &tmp, sizeof(float));
-                                value *= flarg1;
-                                memcpy(&tmp, &value, sizeof(u32));
-                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                else
                                 {
-                                    return 0;
-                                }
-                            }
-                            else
-                            {
-                                u32 tmp;
-                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
-                                {
-                                    return 0;
-                                }
-                                tmp *= arg1;
-                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
-                                {
-                                    return 0;
+                                    u32 tmp;
+                                    if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                    {
+                                        return 0;
+                                    }
+                                    tmp *= arg1;
+                                    if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                    {
+                                        return 0;
+                                    }
                                 }
                             }
                         }
                             break;
                         case 0x3:
                         {
-                            if (cheat_state.floatMode)
+                            if (!skipExecution)
                             {
-                                float flarg1;
-                                memcpy(&flarg1, &arg1, sizeof(float));
-                                u32 tmp;
-                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                if (cheat_state.floatMode)
                                 {
-                                    return 0;
+                                    float flarg1;
+                                    memcpy(&flarg1, &arg1, sizeof(float));
+                                    u32 tmp;
+                                    if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                    {
+                                        return 0;
+                                    }
+                                    float value;
+                                    memcpy(&value, &tmp, sizeof(float));
+                                    value /= flarg1;
+                                    memcpy(&tmp, &value, sizeof(u32));
+                                    if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                    {
+                                        return 0;
+                                    }
                                 }
-                                float value;
-                                memcpy(&value, &tmp, sizeof(float));
-                                value /= flarg1;
-                                memcpy(&tmp, &value, sizeof(u32));
-                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                else
                                 {
-                                    return 0;
-                                }
-                            }
-                            else
-                            {
-                                u32 tmp;
-                                if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
-                                {
-                                    return 0;
-                                }
-                                tmp /= arg1;
-                                if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
-                                {
-                                    return 0;
+                                    u32 tmp;
+                                    if (!Cheat_Read32(processHandle, arg0 & 0x00FFFFFF, &tmp))
+                                    {
+                                        return 0;
+                                    }
+                                    tmp /= arg1;
+                                    if (!Cheat_Write32(processHandle, arg0 & 0x00FFFFFF, tmp))
+                                    {
+                                        return 0;
+                                    }
                                 }
                             }
                         }
                             break;
                         case 0x4:
                         {
-                            if (cheat_state.data1Mode)
+                            if (!skipExecution)
                             {
-                                float flarg1;
-                                memcpy(&flarg1, &arg1, sizeof(float));
-                                float value;
-                                memcpy(&value, activeData(), sizeof(float));
-                                value *= flarg1;
-                                memcpy(activeData(), &value, sizeof(float));
-                            }
-                            else
-                            {
-                                *activeData() *= arg1;
+                                if (cheat_state.data1Mode)
+                                {
+                                    float flarg1;
+                                    memcpy(&flarg1, &arg1, sizeof(float));
+                                    float value;
+                                    memcpy(&value, activeData(), sizeof(float));
+                                    value *= flarg1;
+                                    memcpy(activeData(), &value, sizeof(float));
+                                }
+                                else
+                                {
+                                    *activeData() *= arg1;
+                                }
                             }
                         }
                             break;
                         case 0x5:
                         {
-                            if (cheat_state.data1Mode)
+                            if (!skipExecution)
                             {
-                                float flarg1;
-                                memcpy(&flarg1, &arg1, sizeof(float));
-                                float value;
-                                memcpy(&value, activeData(), sizeof(float));
-                                value /= flarg1;
-                                memcpy(activeData(), &value, sizeof(float));
-                            }
-                            else
-                            {
-                                *activeData() /= arg1;
+                                if (cheat_state.data1Mode)
+                                {
+                                    float flarg1;
+                                    memcpy(&flarg1, &arg1, sizeof(float));
+                                    float value;
+                                    memcpy(&value, activeData(), sizeof(float));
+                                    value /= flarg1;
+                                    memcpy(activeData(), &value, sizeof(float));
+                                }
+                                else
+                                {
+                                    *activeData() /= arg1;
+                                }
                             }
                         }
                             break;
                         case 0x6:
                         {
-                            *activeData() &= arg1;
+                            if (!skipExecution)
+                            {
+                                *activeData() &= arg1;
+                            }
                         }
                             break;
                         case 0x7:
                         {
-                            *activeData() |= arg1;
+                            if (!skipExecution)
+                            {
+                                *activeData() |= arg1;
+                            }
                         }
                             break;
                         case 0x8:
                         {
-                            *activeData() ^= arg1;
+                            if (!skipExecution)
+                            {
+                                *activeData() ^= arg1;
+                            }
                         }
                             break;
                         case 0x9:
                         {
-                            *activeData() = ~*activeData();
+                            if (!skipExecution)
+                            {
+                                *activeData() = ~*activeData();
+                            }
                         }
                             break;
                         case 0xA:
                         {
-                            *activeData() <<= arg1;
+                            if (!skipExecution)
+                            {
+                                *activeData() <<= arg1;
+                            }
                         }
                             break;
                         case 0xB:
                         {
-                            *activeData() >>= arg1;
+                            if (!skipExecution)
+                            {
+                                *activeData() >>= arg1;
+                            }
                         }
                             break;
                         case 0xC:
                         {
-                            u8 origActiveOffset = cheat_state.activeOffset;
-                            for (size_t i = 0; i < arg1; i++)
+                            if (!skipExecution)
                             {
-                                u8 data;
-                                cheat_state.activeOffset = 1;
-                                if (!Cheat_Read8(processHandle, 0, &data))
+                                u8 origActiveOffset = cheat_state.activeOffset;
+                                for (size_t i = 0; i < arg1; i++)
                                 {
-                                    return 0;
+                                    u8 data;
+                                    cheat_state.activeOffset = 1;
+                                    if (!Cheat_Read8(processHandle, 0, &data))
+                                    {
+                                        return 0;
+                                    }
+                                    cheat_state.activeOffset = 0;
+                                    if (!Cheat_Write8(processHandle, 0, data))
+                                    {
+                                        return 0;
+                                    }
                                 }
-                                cheat_state.activeOffset = 0;
-                                if (!Cheat_Write8(processHandle, 0, data))
-                                {
-                                    return 0;
-                                }
+                                cheat_state.activeOffset = origActiveOffset;
                             }
-                            cheat_state.activeOffset = origActiveOffset;
                         }
                             break;
                         // Search for pattern
@@ -1553,9 +1592,12 @@ static u32 Cheat_ApplyCheat(const Handle processHandle, CheatDescription* const 
                             break;
                         case 0xF:
                         {
-                            u32 range = arg1 - (arg0 & 0xFFFFFF);
-                            u32 number = Cheat_GetRandomNumber() % range;
-                            *activeData() = (arg0 & 0xFFFFFF) + number;
+                            if (!skipExecution)
+                            {
+                                u32 range = arg1 - (arg0 & 0xFFFFFF);
+                                u32 number = Cheat_GetRandomNumber() % range;
+                                *activeData() = (arg0 & 0xFFFFFF) + number;
+                            }
                         }
                             break;
                         default:
