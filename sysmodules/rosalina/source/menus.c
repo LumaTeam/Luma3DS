@@ -181,6 +181,12 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
+    u8 sysModel;
+    cfguInit();
+    CFGU_GetSystemModel(&sysModel);
+    cfguExit();
+    bool hasTopScreen = (sysModel != 3); // 3 = o2DS
+
     // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
     u32 luminanceTop = getCurrentLuminance(true);
     u32 luminanceBot = getCurrentLuminance(false);
@@ -222,12 +228,13 @@ void RosalinaMenu_ChangeScreenBrightness(void)
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +-1, Right/Left for +-10.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold X/A for Top/Bottom screen only. \n");
         posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Hold L/R for extended limits (<%lu may glitch). \n", minLum);
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y power off bottom backlight.\n\n");
+        if (hasTopScreen) { posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y to toggle bottom backlight.\n\n"); }
+
         posY = Draw_DrawString(10, posY, COLOR_TITLE, "Press START to begin, B to exit.\n\n");
 
         posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * over-brighten screens at your own risk.\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * all changes revert in sleep mode.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * all changes revert on shell reopening.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be visible until exit.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom screen functions as normal with\nbacklight turned off.\n");
         Draw_FlushFramebuffer();
@@ -331,9 +338,15 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             }
         }
 
-        if (pressed & KEY_Y)
-        {
-            GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM));
+        if ((pressed & KEY_Y) && hasTopScreen)
+        {   
+            u8 result, botStatus;
+            mcuHwcInit();
+            MCUHWC_ReadRegister(0x0F, &result, 1); // https://www.3dbrew.org/wiki/I2C_Registers#Device_3
+            mcuHwcExit();  
+            botStatus = (result >> 5) & 1; // right shift result to bit 5 ("Bottom screen backlight on") and perform bitwise AND with 1
+
+            botStatus == 1 ? GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM)) : GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_BOTTOM));
         }
 
         if (pressed & KEY_B)
