@@ -33,8 +33,6 @@ extern Menu screenFiltersMenu;
 
 extern int screenFiltersCurrentTemperature;
 
-extern bool ledsOff;
-
 void ScreenFiltersMenu_RestoreCct(void);
 void ScreenFiltersMenu_CustomFilter(void);
 

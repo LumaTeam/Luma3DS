@@ -70,7 +70,6 @@ extern u32 mcuFwVersion;
 
 // From main.c
 extern bool isN3DS;
-extern bool ledsOff;
 extern bool menuShouldExit;
 extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
@@ -93,4 +92,4 @@ void    DispMessage(const char *title, const char *message);
 u32     DispErrMessage(const char *title, const char *message, const Result error);
 void    DisplayPluginMenu(u32   *cmdbuf);
 
-void menuToggleLEDs(void);
+void menuToggleLeds(void);

@@ -31,7 +31,6 @@
 
 extern Menu sysconfigMenu;
 extern bool isConnectionForced;
-extern bool ledsOff;
 
 void SysConfigMenu_UpdateStatus(bool control);
 

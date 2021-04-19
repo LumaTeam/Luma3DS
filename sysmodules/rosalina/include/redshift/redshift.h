@@ -41,9 +41,8 @@ typedef struct {
 	float brightness;
 } color_setting_t;
 
-extern bool ledsOff;
-
 void Redshift_EditableFilter();
 void Redshift_ApplySavedFilter();
+void Redshift_SuppressLeds();
 
 #endif /* ! REDSHIFT_REDSHIFT_H */

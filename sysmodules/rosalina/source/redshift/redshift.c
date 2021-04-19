@@ -108,10 +108,7 @@ float fmodf(float f1, float f2);
 
 void Redshift_EditableFilter(void)
 {
-    if(!ledsOff)
-    {
-        menuToggleLEDs();
-    }
+    Redshift_SuppressLeds();
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -188,7 +185,7 @@ void Redshift_EditableFilter(void)
 
 		if (kDown & (KEY_SELECT))
 		{
-            menuToggleLEDs();
+            menuToggleLeds();
 		}
         
         if(kDown & KEY_DOWN)
@@ -288,10 +285,7 @@ void Redshift_EditableFilter(void)
 
 void Redshift_ApplySavedFilter(void)
 {
-    if(!ledsOff)
-    {
-        menuToggleLEDs();
-    }
+    Redshift_SuppressLeds();
 
     color_setting_t cs;
     memset(&cs, 0, sizeof(cs));
@@ -319,4 +313,11 @@ void Redshift_ApplySavedFilter(void)
         ApplyCS(screens + 1, 1);
         IFile_Close(&file);
     }
+}
+
+void Redshift_SuppressLeds(void){
+    mcuHwcInit();
+    u8 off = 0;
+    MCUHWC_WriteRegister(0x28, &off, 1);
+    mcuHwcExit();
 }

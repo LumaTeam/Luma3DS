@@ -69,7 +69,7 @@ void SysConfigMenu_ToggleLEDs(void)
 
         if(pressed & KEY_A)
         {
-            menuToggleLEDs();
+            menuToggleLeds();
         }
         else if(pressed & KEY_B)
             return;

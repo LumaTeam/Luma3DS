@@ -42,7 +42,7 @@ u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
 
-void menuToggleLEDs(void)
+void menuToggleLeds(void)
 {          
         // toggle LEDs
         mcuHwcInit();
@@ -51,7 +51,6 @@ void menuToggleLEDs(void)
         result = ~result;
         MCUHWC_WriteRegister(0x28, &result, 1);
         mcuHwcExit();
-        ledsOff = !ledsOff;
 }
 
 // libctru redefinition:
@@ -492,7 +491,7 @@ void menuShow(Menu *root)
         }
         else if(pressed & KEY_SELECT)
         {
-            menuToggleLEDs();
+            menuToggleLeds();
         }
         
         Draw_Lock();

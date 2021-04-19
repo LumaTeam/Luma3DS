@@ -50,10 +50,7 @@ bool customFilterSelected = false;
 
 static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
 {
-    if(!ledsOff)
-    {
-        menuToggleLEDs();
-    }
+    Redshift_SuppressLeds();
 
     GPU_FB_TOP_COL_LUT_INDEX = 0;
     GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
