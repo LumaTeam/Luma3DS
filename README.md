@@ -1,6 +1,11 @@
 # Luma3DS
 *Noob-proof (N)3DS "Custom Firmware"*
 
+### My modifications
+- [x] Default Rosalina's Power Button Toggle to `DISABLED`
+- [ ] Disable Power Button in `agb.firm`
+- [ ] Disable Power Button in `twl.firm`
+
 ### What it is
 **Luma3DS** is a program to patch the system software of (New) Nintendo (2)3DS handheld consoles "on the fly", adding features such as per-game language settings, debugging capabilities for developers, and removing restrictions enforced by Nintendo such as the region lock.
 
