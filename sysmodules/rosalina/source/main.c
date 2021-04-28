@@ -260,6 +260,14 @@ int main(void)
     Draw_Init();
     Cheat_SeedRng(svcGetSystemTick());
 
+    /* Disable 3DS Power Button by Default */
+    u32 mcuIRQMask;
+    mcuHwcInit();
+    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+    mcuIRQMask |= 1;
+    MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
+    mcuHwcExit();
+
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
