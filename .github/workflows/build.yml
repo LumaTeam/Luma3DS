@@ -1,0 +1,29 @@
+name: Build Luma3DS
+
+on:
+  push:
+    branches: ["*"]
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    branches: ["*"]
+    paths-ignore:
+      - 'README.md'
+
+jobs: 
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm
+    name: Build with Docker using devkitARM
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Install tools
+        run: |
+          sudo apt-get -y update
+          sudo apt-get install python3-pip -y
+          curl -L https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.17/makerom-v0.17-ubuntu_x86_64.zip | zcat > makerom && chmod +x makerom && install makerom /usr/local/bin/makerom
+          pip3 install -U git+https://github.com/TuxSH/firmtool.git
+      - name: Build Luma3DS
+        run: make
+        
