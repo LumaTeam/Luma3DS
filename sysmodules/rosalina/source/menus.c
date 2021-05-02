@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include <3ds/os.h>
+#include "pmdbgext.h"
 #include "menus.h"
 #include "menu.h"
 #include "draw.h"
@@ -371,7 +372,8 @@ void RosalinaMenu_TakeScreenshot(void)
     IFile file;
     Result res = 0;
 
-    char filename[64];
+    char directory[32];
+    char filename[90];
 
     FS_Archive archive;
     FS_ArchiveID archiveId;
@@ -396,15 +398,6 @@ void RosalinaMenu_TakeScreenshot(void)
 
     Draw_GetCurrentScreenInfo(&bottomWidth, &is3d, false);
     Draw_GetCurrentScreenInfo(&topWidth, &is3d, true);
-
-    res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
-    if(R_SUCCEEDED(res))
-    {
-        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/screenshots"), 0);
-        if((u32)res == 0xC82044BE) // directory already exists
-            res = 0;
-        FSUSER_CloseArchive(archive);
-    }
 
     u32 seconds, minutes, hours, days, year, month;
     u64 milliseconds = osGetTime();
@@ -449,23 +442,51 @@ void RosalinaMenu_TakeScreenshot(void)
     days++;
     month++;
 
-    sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top.bmp", year, month, days, hours, minutes, seconds, milliseconds);
-    TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-    TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, true));
-    TRY(IFile_Close(&file));
+    res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
+    if(R_SUCCEEDED(res))
+    {
+        sprintf(directory, "/luma/screenshots");
+        char dirName[16];
+        #define CREATE_SUBDIR(length, name) do { \
+            sprintf(dirName, "/%0" #length "lu", name); \
+            strcat(directory, dirName); \
+            res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, directory), 0); \
+            if((u32)res == 0xC82044BE) /* directory already exists */ \
+                res = 0; \
+        } while(false)
 
-    sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_bot.bmp", year, month, days, hours, minutes, seconds, milliseconds);
-    TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-    TRY(RosalinaMenu_WriteScreenshot(&file, bottomWidth, false, true));
-    TRY(IFile_Close(&file));
+        CREATE_SUBDIR(4, year);
+        CREATE_SUBDIR(2, month);
+        CREATE_SUBDIR(2, days);
+
+        #undef CREATE_SUBDIR
+
+        FSUSER_CloseArchive(archive);
+    }
+
+    FS_ProgramInfo programInfo;
+    u32 unused;
+    res = PMDBG_GetCurrentAppInfo(&programInfo, &unused, &unused);
+
+    #define WRITE_SCREENSHOT(screenName, screenWidth, top, left) do { \
+        sprintf( \
+            filename, \
+            "%s/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_%016llx_%s.bmp", \
+            directory, \
+            year, month, days, hours, minutes, seconds, milliseconds, \
+            programInfo.programId, screenName); \
+        TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE)); \
+        TRY(RosalinaMenu_WriteScreenshot(&file, screenWidth, top, left)); \
+        TRY(IFile_Close(&file)); \
+    } while(false)
+
+    WRITE_SCREENSHOT("top", topWidth, true, true);
+    WRITE_SCREENSHOT("bot", bottomWidth, false, true);
 
     if(is3d && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
-    {
-        sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top_right.bmp", year, month, days, hours, minutes, seconds, milliseconds);
-        TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
-        TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, false));
-        TRY(IFile_Close(&file));
-    }
+        WRITE_SCREENSHOT("top_right", topWidth, true, false);
+
+    #undef WRITE_SCREENSHOT
 
 end:
     IFile_Close(&file);
