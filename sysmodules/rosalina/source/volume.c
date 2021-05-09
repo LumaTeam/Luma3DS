@@ -93,14 +93,15 @@ void Volume_ControlVolume(void)
             "Current volume: %lu%%\n\n",
             out);
         posY = Draw_DrawString(10, posY, COLOR_GREEN, "Controls:\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +-1, Right/Left for +-10.\n\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +-1, Right/Left for +-10 [0; 64].\n\n");
 
         if(!volumeSlider[0] || volumeSlider[0] == 0xFF)
         {
             posY = Draw_DrawString(10, posY, COLOR_RED, "Note:\n");
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "Your volume slider is stuck at the edge,\n");
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "Your volume slider is right at the edge,\n");
             posY = Draw_DrawString(10, posY, COLOR_WHITE, "so it can't be adjusted by software.\n");
-            posY = Draw_DrawString(10, posY, COLOR_WHITE, "You may need to solder to fix the volume :(\n");
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "If it is physically stuck there then you \n");
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "may need to solder to fix the volume :(\n");
         }
         else if(volumeSlider[0] < 0x10 || volumeSlider[0] >= 0xF0)
         {
