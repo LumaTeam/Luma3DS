@@ -52,6 +52,8 @@
 #define COLORREG_IDX_B REG32(0x10400580)
 #define COLORREG_DAT_B REG32(0x10400584)
 
+bool customFilterSelected = false;
+
 static void WriteAt(u32 v, u8 idx, int screen)
 {
     if(screen & 1)
@@ -146,6 +148,7 @@ void Redshift_EditableFilter(void)
             cs.gamma[2] = screens[0].gamma[2];
             cs.brightness = screens[0].brightness;
             IFile_Close(&file);
+            customFilterSelected = true;
         }
     }
     
@@ -177,6 +180,7 @@ void Redshift_EditableFilter(void)
                 u64 total;
                 res = IFile_Write(&file, &total, screens, sizeof(screens), 0);
                 IFile_Close(&file);
+                customFilterSelected = true;
             }
         }
 
@@ -253,7 +257,7 @@ void Redshift_EditableFilter(void)
         
         Draw_Lock();
         Draw_DrawString(10, 8, COLOR_RED, "CTR_Redshift - ported by Sono, minor edit Nutez");
-        Draw_DrawString(10, 18, COLOR_WHITE, "START save config, SELECT toggle LEDs");
+        Draw_DrawString(10, 18, COLOR_WHITE, "START save filter config, SELECT toggle LEDs");
         Draw_DrawString(10, 28, COLOR_WHITE, "X set top screen, A set bottom screen");
         Draw_DrawString(10, 38, COLOR_WHITE, "LEFT/RIGHT change value, +hold L1/R1 to fine tune)");
 		Draw_DrawString(10, 48, COLOR_WHITE, "Y reset values to neutral, B back to menu");
@@ -275,6 +279,9 @@ void Redshift_EditableFilter(void)
         sprintf(fmtbuf, "%c Faux brightness: %i.%02i", (sel == 4 ? '>' : ' '),
             (int)cs.brightness, (int)fmodf((cs.brightness * 100.0F) + 0.0001F, 100.0F));
         Draw_DrawString(10, 124, COLOR_WHITE, fmtbuf);
+
+        Draw_DrawString(10, 144, COLOR_GREEN, "Note:");
+        Draw_DrawString(10, 152, COLOR_WHITE, "Save config to have it reapply on shell open");
 
         Draw_FlushFramebuffer();
         Draw_Unlock();

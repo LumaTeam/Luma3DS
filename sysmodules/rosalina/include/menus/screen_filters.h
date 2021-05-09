@@ -32,6 +32,7 @@
 extern Menu screenFiltersMenu;
 
 extern int screenFiltersCurrentTemperature;
+extern bool customFilterSelected;
 
 void ScreenFiltersMenu_RestoreCct(void);
 void ScreenFiltersMenu_CustomFilter(void);

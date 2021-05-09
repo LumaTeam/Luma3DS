@@ -46,7 +46,9 @@ static u16 g_c[0x600];
 static Pixel g_px[0x400];
 
 int screenFiltersCurrentTemperature = -1;
-bool customFilterSelected = false;
+
+// from redshift.c
+extern bool customFilterSelected;
 
 static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
 {
@@ -143,7 +145,6 @@ void ScreenFiltersMenu_RestoreCct(void)
         svcSleepThread(10 * 1000 * 1000LL);
 
     svcSleepThread(10 * 1000 * 1000LL);
-    ScreenFiltersMenu_WriteLut(g_px);
 
     customFilterSelected ? Redshift_ApplySavedFilter() : ScreenFiltersMenu_WriteLut(g_px);
     }
@@ -152,7 +153,6 @@ void ScreenFiltersMenu_RestoreCct(void)
 }
 
 void ScreenFiltersMenu_CustomFilter(void){
-    customFilterSelected = true;
     Redshift_EditableFilter();
 }
 
