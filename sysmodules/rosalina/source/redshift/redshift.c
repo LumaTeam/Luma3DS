@@ -281,7 +281,7 @@ void Redshift_EditableFilter(void)
         Draw_DrawString(10, 124, COLOR_WHITE, fmtbuf);
 
         Draw_DrawString(10, 144, COLOR_GREEN, "Note:");
-        Draw_DrawString(10, 152, COLOR_WHITE, "Save config to have it reapply on shell open");
+        Draw_DrawString(10, 152, COLOR_WHITE, "Only saved filter config will be reapplied");
 
         Draw_FlushFramebuffer();
         Draw_Unlock();
