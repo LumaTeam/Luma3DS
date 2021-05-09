@@ -193,7 +193,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     u32 minLum = getMinLuminancePreset();
     u32 maxLum = getMaxLuminancePreset();
     u32 trueMax = 172; // https://www.3dbrew.org/wiki/GSPLCD:SetBrightnessRaw
-    u32 trueMin = 1;
+    u32 trueMin = 0;
     // hacky but N3DS coeffs for top screen don't seem to work and O3DS coeffs when using N3DS return 173 max brightness
     luminanceTop = luminanceTop > trueMax ? trueMax : luminanceTop;
 
@@ -206,7 +206,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             10,
             posY,
             COLOR_WHITE,
-            "Preset: %lu to %lu, Extended: 1 to 172.\n",
+            "Preset: %lu to %lu, Extended: 0 to 172.\n",
             minLum,
             maxLum
         );
@@ -228,7 +228,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +-1, Right/Left for +-10.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold X/A for Top/Bottom screen only. \n");
         posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Hold L/R for extended limits (<%lu may glitch). \n", minLum);
-        if (hasTopScreen) { posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y to toggle bottom backlight.\n\n"); }
+        if (hasTopScreen) { posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y to toggle screen backlights.\n\n"); }
 
         posY = Draw_DrawString(10, posY, COLOR_TITLE, "Press START to begin, B to exit.\n\n");
 
@@ -340,13 +340,26 @@ void RosalinaMenu_ChangeScreenBrightness(void)
 
         if ((pressed & KEY_Y) && hasTopScreen)
         {   
-            u8 result, botStatus;
+            u8 result, botStatus, topStatus;
             mcuHwcInit();
             MCUHWC_ReadRegister(0x0F, &result, 1); // https://www.3dbrew.org/wiki/I2C_Registers#Device_3
             mcuHwcExit();  
             botStatus = (result >> 5) & 1; // right shift result to bit 5 ("Bottom screen backlight on") and perform bitwise AND with 1
+            topStatus = (result >> 6) & 1; // bit06: Top screen backlight on
 
-            botStatus == 1 ? GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM)) : GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_BOTTOM));
+            if (botStatus == 1 && topStatus == 1)
+            {
+                GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM));
+            }
+            else if (botStatus == 0 && topStatus == 1)
+            {
+                GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_BOTTOM));
+                GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_TOP));
+            }
+            else if (topStatus == 0)
+            {
+                GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_TOP));
+            }
         }
 
         if (pressed & KEY_B)

@@ -133,6 +133,6 @@ void setBrightnessAlt(u32 lumTop, u32 lumBot)
     u8 *screenTop = (u8 *)PA_PTR(regbaseTop +  offset);
     u8 *screenBot = (u8 *)PA_PTR(regbaseBot +  offset);
 
-    *screenBot = luminanceToBrightness(lumBot, coeffsBot, 1, ratioBot);
-    *screenTop = luminanceToBrightness(lumTop, coeffsTop, 1, ratioTop);
+    *screenBot = luminanceToBrightness(lumBot, coeffsBot, 0, ratioBot);
+    *screenTop = luminanceToBrightness(lumTop, coeffsTop, 0, ratioTop);
 }
