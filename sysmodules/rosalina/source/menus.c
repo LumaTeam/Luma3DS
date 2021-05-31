@@ -195,7 +195,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     u32 trueMax = 172; // https://www.3dbrew.org/wiki/GSPLCD:SetBrightnessRaw
     u32 trueMin = 0;
     // hacky but N3DS coeffs for top screen don't seem to work and O3DS coeffs when using N3DS return 173 max brightness
-    luminanceTop = luminanceTop > trueMax ? trueMax : luminanceTop;
+    luminanceTop = luminanceTop == 173 ? trueMax : luminanceTop;
 
     do
     {
@@ -213,19 +213,19 @@ void RosalinaMenu_ChangeScreenBrightness(void)
         posY = Draw_DrawFormattedString(
             10,
             posY,
-            luminanceTop > maxLum ? COLOR_RED : COLOR_WHITE,
+            luminanceTop > trueMax ? COLOR_RED : COLOR_WHITE,
             "Top screen luminance: %lu\n",
             luminanceTop
         );
         posY = Draw_DrawFormattedString(
             10,
             posY,
-            luminanceBot > maxLum ? COLOR_RED : COLOR_WHITE,
+            luminanceBot > trueMax ? COLOR_RED : COLOR_WHITE,
             "Bottom screen luminance: %lu \n\n",
             luminanceBot
         );
         posY = Draw_DrawString(10, posY, COLOR_GREEN, "Controls:\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +-1, Right/Left for +-10.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down for +/-1, Right/Left for +/-10.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold X/A for Top/Bottom screen only. \n");
         posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Hold L/R for extended limits (<%lu may glitch). \n", minLum);
         if (hasTopScreen) { posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press Y to toggle screen backlights.\n\n"); }
@@ -233,7 +233,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
         posY = Draw_DrawString(10, posY, COLOR_TITLE, "Press START to begin, B to exit.\n\n");
 
         posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * over-brighten screens at your own risk.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * values rarely glitch >172, do not use these!\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * all changes revert on shell reopening.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be visible until exit.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom screen functions as normal with\nbacklight turned off.\n");
@@ -361,7 +361,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
                 GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_TOP));
             }
         }
-
+        
         if (pressed & KEY_B)
             break;
     }

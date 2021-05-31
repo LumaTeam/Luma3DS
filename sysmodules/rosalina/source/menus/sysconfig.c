@@ -33,6 +33,7 @@
 #include "ifile.h"
 #include "menus.h"
 #include "volume.h"
+#include "luminance.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",
@@ -41,6 +42,7 @@ Menu sysconfigMenu = {
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
+        { "Permanent Brightness Recalibration", METHOD, .method = &Luminance_RecalibrateBrightnessDefaults },
         { "Software Volume Control", METHOD, .method = &Volume_ControlVolume },
         {},
     }
