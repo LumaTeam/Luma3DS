@@ -131,7 +131,6 @@ void initSystem(void)
 bool menuShouldExit = false;
 bool preTerminationRequested = false;
 Handle preTerminationEvent;
-extern bool isHidInitialized;
 
 static void handleTermNotification(u32 notificationId)
 {
