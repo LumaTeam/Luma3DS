@@ -29,6 +29,7 @@
 #include <string.h>
 #include "utils.h"
 #include "minisoc.h"
+#include "ntp.h"
 
 #define NUM2BCD(n)          ((n<99) ? (((n/10)*0x10)|(n%10)) : 0x99)
 
@@ -144,6 +145,21 @@ Result ntpSetTimeDate(time_t timestamp)
     Result res = ptmSysmInit();
     if (R_FAILED(res)) return res;
 
+    // Update the user time offset
+    // 946684800 is the timestamp of 01/01/2000 00:00 relative to the Unix Epoch
+    s64 msY2k = (timestamp - 946684800) * 1000;
+    res = PTMSYSM_SetUserTime(msY2k);
+
+    ptmSysmExit();
+    return res;
+}
+
+// Not actually used for NTP, but...
+Result ntpNullifyUserTimeOffset(void)
+{
+    Result res = ptmSysmInit();
+    if (R_FAILED(res)) return res;
+
     res = cfguInit();
     if (R_FAILED(res))
     {
@@ -151,19 +167,25 @@ Result ntpSetTimeDate(time_t timestamp)
         return res;
     }
 
-    // First, set the config RTC offset to 0
-    u8 rtcOff[8] = {0};
-    res = CFG_SetConfigInfoBlk4(8, 0x30001, rtcOff);
+    // First, set the user time offset to 0 (user time = rtc time + user time offset)
+    s64 userTimeOff = 0;
+    res = CFG_SetConfigInfoBlk4(8, 0x30001, &userTimeOff);
     if (R_FAILED(res)) goto cleanup;
 
-    // Update the RTC
-    // 946684800 is the timestamp of 01/01/2000 00:00 relative to the Unix Epoch
-    s64 msY2k = (timestamp - 946684800) * 1000;
-    res = PTMSYSM_SetRtcTime(msY2k);
+    // Get the user time from shared data... there might be up to 0.5s drift from {mcu+offset} but we don't care here
+    s64 userTime = osGetTime() - 3155673600000LL; // 1900 -> 2000 time base
+
+    // Apply user time to RTC
+    res = PTMSYSM_SetRtcTime(userTime);
     if (R_FAILED(res)) goto cleanup;
+
+    // Invalidate system (absolute, server) time, which gets fixed on "friends" login anyway -- don't care if we fail here.
+    // It has become invalid because we changed the RTC time
+    PTMSYSM_InvalidateSystemTime();
 
     // Save the config changes
     res = CFG_UpdateConfigSavegame();
+
     cleanup:
     ptmSysmExit();
     cfguExit();

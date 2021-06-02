@@ -85,13 +85,44 @@ void RosalinaMenu_ShowDebugInfo(void)
     u32 kextPa = (u32)((u64)kextAddrSize >> 32);
     u32 kextSize = (u32)kextAddrSize;
 
+    u32 kernelVer = osGetKernelVersion();
+    FS_SdMmcSpeedInfo speedInfo;
+
     do
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Debug info");
 
         u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, memoryMap);
-        Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Kernel ext PA: %08lx - %08lx\n", kextPa, kextPa + kextSize);
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Kernel ext PA: %08lx - %08lx\n\n", kextPa, kextPa + kextSize);
+        posY = Draw_DrawFormattedString(
+            10, posY, COLOR_WHITE, "Kernel version: %lu.%lu-%lu\n",
+            GET_VERSION_MAJOR(kernelVer), GET_VERSION_MINOR(kernelVer), GET_VERSION_REVISION(kernelVer)
+        );
+        if (mcuFwVersion != 0)
+        {
+            posY = Draw_DrawFormattedString(
+                10, posY, COLOR_WHITE, "MCU FW version: %lu.%lu\n",
+                GET_VERSION_MAJOR(mcuFwVersion), GET_VERSION_MINOR(mcuFwVersion)
+            );
+        }
+
+        if (R_SUCCEEDED(FSUSER_GetSdmcSpeedInfo(&speedInfo)))
+        {
+            u32 clkDiv = 1 << (1 + (speedInfo.sdClkCtrl & 0xFF));
+            posY = Draw_DrawFormattedString(
+                10, posY, COLOR_WHITE, "SDMC speed: HS=%d %lukHz\n",
+                (int)speedInfo.highSpeedModeEnabled, SYSCLOCK_SDMMC / (1000 * clkDiv)
+            );
+        }
+        if (R_SUCCEEDED(FSUSER_GetNandSpeedInfo(&speedInfo)))
+        {
+            u32 clkDiv = 1 << (1 + (speedInfo.sdClkCtrl & 0xFF));
+            posY = Draw_DrawFormattedString(
+                10, posY, COLOR_WHITE, "NAND speed: HS=%d %lukHz\n",
+                (int)speedInfo.highSpeedModeEnabled, SYSCLOCK_SDMMC / (1000 * clkDiv)
+            );
+        }
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }

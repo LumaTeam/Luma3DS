@@ -129,8 +129,15 @@ void detectAndProcessExceptionDumps(void)
     }
 
     if(dumpHeader->additionalDataSize != 0)
-        posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE,
-                                   "Current process: %.8s (%016llX)", (const char *)additionalData, *(vu64 *)(additionalData + 8));
+    {
+        u32 size = dumpHeader->additionalDataSize;
+        if(dumpHeader->processor == 11)
+            posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE,
+                                    "Current process: %.8s (%016llX)", (const char *)additionalData, *(vu64 *)(additionalData + 8));
+        else
+            posY = drawFormattedString(true, 10, posY + SPACING_Y, COLOR_WHITE,
+                                    "Arm9 memory dump at offset %X size %lX", (uintptr_t)additionalData - (uintptr_t)dumpHeader, size);
+    }
     posY += SPACING_Y;
 
     for(u32 i = 0; i < 17; i += 2)

@@ -88,30 +88,7 @@ void SysConfigMenu_ToggleWireless(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    bool nwmRunning = false;
-
-    u32 pidList[0x40];
-    s32 processAmount;
-
-    svcGetProcessList(&processAmount, pidList, 0x40);
-
-    for(s32 i = 0; i < processAmount; i++)
-    {
-        Handle processHandle;
-        Result res = svcOpenProcess(&processHandle, pidList[i]);
-        if(R_FAILED(res))
-            continue;
-
-        char processName[8] = {0};
-        svcGetProcessInfo((s64 *)&processName, processHandle, 0x10000);
-        svcCloseHandle(processHandle);
-
-        if(!strncmp(processName, "nwm", 4))
-        {
-            nwmRunning = true;
-            break;
-        }
-    }
+    bool nwmRunning = isServiceUsable("nwm::EXT");
 
     do
     {
@@ -153,7 +130,7 @@ void SysConfigMenu_ToggleWireless(void)
 
 void SysConfigMenu_UpdateStatus(bool control)
 {
-    MenuItem *item = &sysconfigMenu.items[3];
+    MenuItem *item = &sysconfigMenu.items[0];
 
     if(control)
     {
