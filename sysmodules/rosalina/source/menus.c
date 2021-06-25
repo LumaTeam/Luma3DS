@@ -406,6 +406,8 @@ void RosalinaMenu_TakeScreenshot(void)
         FSUSER_CloseArchive(archive);
     }
 
+    // Conversion code adapted from https://stackoverflow.com/questions/21593692/convert-unix-timestamp-to-date-without-system-libs
+    // (original author @gnif under CC-BY-SA 4.0)
     u32 seconds, minutes, hours, days, year, month;
     u64 milliseconds = osGetTime();
     seconds = milliseconds/1000;
