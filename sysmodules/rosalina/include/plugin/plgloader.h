@@ -12,8 +12,6 @@ void        PluginLoader__MenuCallback(void);
 void        PluginLoader__UpdateMenu(void);
 void        PluginLoader__HandleKernelEvent(u32 notifId);
 void        PluginLoader__HandleCommands(void *ctx);
-void        PluginLoader__EnableNotificationLED(void);
-void        PluginLoader__DisableNotificationLED(void);
 
 void    PluginLoader__Error(const char *message, Result res);
 

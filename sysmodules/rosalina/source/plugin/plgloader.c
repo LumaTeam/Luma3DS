@@ -393,57 +393,6 @@ void     PluginLoader__HandleCommands(void *_ctx)
     }
 }
 
-void     PluginLoader__EnableNotificationLED(void)
-{
-    struct
-    {
-        u32     animation;
-        u8      r[32];
-        u8      g[32];
-        u8      b[32];
-    }       pattern;
-    u32 *   cmdbuf = getThreadCommandBuffer();
-    Handle  ptmsysmHandle;
-
-    if (R_FAILED(srvGetServiceHandle(&ptmsysmHandle, "ptm:sysm")))
-        return;
-
-    pattern.animation = 0x50;
-    for (u32 i = 0; i < 32; ++i)
-    {
-        pattern.r[i] = 0xFF;
-        pattern.g[i] = 0;
-        pattern.b[i] = 0xFF;
-    }
-    cmdbuf[0] = IPC_MakeHeader(0x801, 25, 0);
-    memcpy(&cmdbuf[1], &pattern, sizeof(pattern));
-
-    svcSendSyncRequest(ptmsysmHandle);
-    svcCloseHandle(ptmsysmHandle);
-}
-
-void     PluginLoader__DisableNotificationLED(void)
-{
-    struct
-    {
-        u32     animation;
-        u8      r[32];
-        u8      g[32];
-        u8      b[32];
-    }       pattern = {0};
-    u32 *   cmdbuf = getThreadCommandBuffer();
-    Handle  ptmsysmHandle;
-
-    if (R_FAILED(srvGetServiceHandle(&ptmsysmHandle, "ptm:sysm")))
-        return;
-
-    cmdbuf[0] = IPC_MakeHeader(0x801, 25, 0);
-    memcpy(&cmdbuf[1], &pattern, sizeof(pattern));
-
-    svcSendSyncRequest(ptmsysmHandle);
-    svcCloseHandle(ptmsysmHandle);
-}
-
 static bool     ThreadPredicate(u32 *kthread)
 {
     // Check if the thread is part of the plugin
@@ -518,7 +467,6 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
     }
     else if (event == PLG_CFG_SWAP_EVENT)
     {
-        PluginLoader__EnableNotificationLED();
         if (ctx->pluginIsSwapped)
         {
             // Reload data from swap file
@@ -546,7 +494,6 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
             SetConfigMemoryStatus(PLG_CFG_SWAPPED);
         }
         ctx->pluginIsSwapped = !ctx->pluginIsSwapped;
-        PluginLoader__DisableNotificationLED();
     }
     srvPublishToSubscriber(0x1002, 0);
 }
