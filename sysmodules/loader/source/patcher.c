@@ -30,7 +30,7 @@ static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s3
 
 static Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, u32 flags)
 {
-    return IFile_Open(file, archiveId, fsMakePath(PATH_ASCII, path), fsMakePath(PATH_EMPTY, ""), flags);
+    return IFile_Open(file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, path), flags);
 }
 
 static bool dirCheck(FS_ArchiveID archiveId, const char *path)
