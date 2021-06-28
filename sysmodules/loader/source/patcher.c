@@ -548,12 +548,14 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
-    if(progId == 0x0004003000008F02LL || //USA Home Menu
-       progId == 0x0004003000008202LL || //JPN Home Menu
-       progId == 0x0004003000009802LL || //EUR Home Menu
-       progId == 0x000400300000A902LL || //KOR Home Menu
-       progId == 0x000400300000A102LL || //CHN Home Menu
-       progId == 0x000400300000B102LL) //TWN Home Menu
+    bool isHomeMenu = progId == 0x0004003000008F02LL || //USA Home Menu
+                      progId == 0x0004003000008202LL || //JPN Home Menu
+                      progId == 0x0004003000009802LL || //EUR Home Menu
+                      progId == 0x000400300000A902LL || //KOR Home Menu
+                      progId == 0x000400300000A102LL || //CHN Home Menu
+                      progId == 0x000400300000B102LL;   //TWN Home Menu
+
+    if(isHomeMenu)
     {
         bool applyRegionFreePatch = true;
 
@@ -864,7 +866,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
         if(!applyCodeIpsPatch(progId, code, size)) goto error;
 
-        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
+        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000 || isHomeMenu)
         {
             u8 mask,
                regionId,
