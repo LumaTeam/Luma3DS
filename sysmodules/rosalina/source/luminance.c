@@ -155,7 +155,7 @@ void Luminance_RecalibrateBrightnessDefaults(void)
         CFG_GetConfigInfoBlk8(sizeof(BlPwmData), 0x50002, &s_blPwmData);
     cfguExit();
     
-    s_blPwmData.brightnessMin = 0;
+    s_blPwmData.brightnessMin = 1;
 
     do
     {

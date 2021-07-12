@@ -51,11 +51,10 @@ static void Volume_AdjustVolume(u8* out, int slider, float value)
 
 void Volume_ControlVolume(void)
 {
-    u8 volumeSlider[2];
-    u8 dspVolumeSlider[2];
-    int target = 0; // target is value [0; 64]
-    int targetMin = 0;
-    int targetMax = 64;
+    u8 volumeSlider[2], dspVolumeSlider[2], disableVolumeSlider[2];
+    int target = 0, targetMin = 0, targetMax = 64;
+    disableVolumeSlider[0] = 0xFF;
+    disableVolumeSlider[1] = 0x00;
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -63,6 +62,9 @@ void Volume_ControlVolume(void)
     Draw_Unlock();
 
     mcuHwcInit();
+    // mute and disable volume slider
+    MCUHWC_WriteRegister(0x58, disableVolumeSlider, 2);
+
     do
     {
         // https://www.3dbrew.org/wiki/I2C_Registers#Device_3
