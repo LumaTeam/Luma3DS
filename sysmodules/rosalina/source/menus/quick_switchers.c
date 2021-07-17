@@ -28,6 +28,7 @@ static Entry               g_displayEntries[MAX_FILES];
 static Switchable          g_switchables[NO_OF_SWITCHABLES] =
 {
     {"/luma/sysmodules/TwlBg", "/luma/sysmodules", "/luma/sysmodules/twlbgName.txt", "TwlBg.cxi", "UnknownTwlBg.cxi", "cxi", "TwlBg"},
+    {"/luma/sysmodules/Widescreen", "/_nds/TWiLightMenu/TwlBg", "/luma/sysmodules/widescreenName.txt", "Widescreen.cxi", "UnknownWidescreen.cxi", "cxi", "Widescreen"},
     {"/luma/sysmodules/AgbBg", "/luma/sysmodules", "/luma/sysmodules/agbbgName.txt", "AgbBg.cxi", "UnknownAgbBg.cxi", "cxi", "AgbBg"},
     {"/3ds/open_agb_firm", "/3ds/open_agb_firm", "/3ds/open_agb_firm/configName.txt", "config.ini", "UnknownConfig.ini", "ini", "Open_AGB"}
 };
@@ -42,8 +43,9 @@ Menu quickSwitchersMenu = {
     "Quick-Switchers menu",
     {
         { g_switchables[0].menuText, METHOD, .method = &QuickSwitchers_TwlBg},
-        { g_switchables[1].menuText, METHOD, .method = &QuickSwitchers_AgbBg},
-        { g_switchables[2].menuText, METHOD, .method = &QuickSwitchers_OpenAgb},
+        { g_switchables[1].menuText, METHOD, .method = &QuickSwitchers_Widescreen},
+        { g_switchables[2].menuText, METHOD, .method = &QuickSwitchers_AgbBg},
+        { g_switchables[3].menuText, METHOD, .method = &QuickSwitchers_OpenAgb},
         {},
     }
 };
@@ -54,15 +56,21 @@ void QuickSwitchers_TwlBg(void)
     QuickSwitchers_DisplayFiles();
 }
 
-void QuickSwitchers_AgbBg(void)
+void QuickSwitchers_Widescreen(void)
 {
     g_switchablesIndex = 1;
     QuickSwitchers_DisplayFiles();
 }
 
-void QuickSwitchers_OpenAgb(void)
+void QuickSwitchers_AgbBg(void)
 {
     g_switchablesIndex = 2;
+    QuickSwitchers_DisplayFiles();
+}
+
+void QuickSwitchers_OpenAgb(void)
+{
+    g_switchablesIndex = 3;
     QuickSwitchers_DisplayFiles();
 }
 

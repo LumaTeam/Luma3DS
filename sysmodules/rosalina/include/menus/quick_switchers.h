@@ -2,7 +2,7 @@
 
 #define MAX_FILES 18
 #define FILE_NAME_MAX 256
-#define NO_OF_SWITCHABLES 3
+#define NO_OF_SWITCHABLES 4
 
 extern Menu quickSwitchersMenu;
 
@@ -15,5 +15,6 @@ void QuickSwitchers_UpdateMenu(void);
 void QuickSwitchers_UpdateStatus(void);
 void QuickSwitchers_UpdateStatuses(void);
 void QuickSwitchers_TwlBg(void);
+void QuickSwitchers_Widescreen(void);
 void QuickSwitchers_AgbBg(void);
 void QuickSwitchers_OpenAgb(void);
