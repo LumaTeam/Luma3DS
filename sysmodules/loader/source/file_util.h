@@ -15,7 +15,7 @@ namespace util
 {
 inline FS_Path MakePath(const char *path)
 {
-    return {PATH_ASCII, strnlen(path, 255) + 1, path};
+    return fsMakePath(PATH_ASCII, path);
 }
 
 // A small wrapper to make forgetting to close a file and

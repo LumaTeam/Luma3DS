@@ -43,6 +43,5 @@ extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode;
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress);
-Result fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int flags);
 bool loadTitleCodeSection(u64 progId, u8 *code, u32 size);
 bool loadTitleExheaderInfo(u64 progId, ExHeader_Info *exheaderInfo);

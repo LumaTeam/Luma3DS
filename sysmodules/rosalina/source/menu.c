@@ -158,7 +158,9 @@ u32 waitCombo(void)
 
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[0x1000];
+
 static u32 homeBtnPressed = 0;
+
 static float batteryPercentage;
 static float batteryVoltage;
 static u8 batteryTemperature;
@@ -178,13 +180,8 @@ static Result menuUpdateMcuInfo(void)
     if (R_FAILED(res))
         return res;
 
-    // Read mcu regs directly
-    for (u32 i = 0; i < 4; i++)
-    {
-        res = MCUHWC_ReadRegister(0xA + i, &data[i], 1);
-        if (R_FAILED(res))
-            break;
-    }
+    // Read single-byte mcu regs 0x0A to 0x0D directly
+    res = MCUHWC_ReadRegister(0xA, data, 4);
 
     if (R_SUCCEEDED(res))
     {
@@ -369,10 +366,6 @@ static void menuDraw(Menu *menu, u32 selected)
         dispY += SPACING_Y;
     }
 
-    // Clear lines that are prone to change
-    Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
-    Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 19, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%19s", "");
-
     if(miniSocEnabled)
     {
         char ipBuffer[17];
@@ -381,6 +374,8 @@ static void menuDraw(Menu *menu, u32 selected)
         int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
+    else
+        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
 
     if(R_SUCCEEDED(mcuInfoRes))
     {
@@ -391,7 +386,7 @@ static void menuDraw(Menu *menu, u32 selected)
 
         char buf[32];
         int n = sprintf(
-            buf, "%hhu\xF8""C  %lu.%02luV  %lu.%lu%%", batteryTemperature, // CP437
+            buf, "%02hhu\xF8""C  %lu.%02luV  %lu.%lu%%", batteryTemperature, // CP437
             voltageInt, voltageFrac,
             percentageInt, percentageFrac
         );
@@ -403,6 +398,8 @@ static void menuDraw(Menu *menu, u32 selected)
         int n2 = sprintf(volBuf, "Volume: %lu%%", out);
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n2, 10, COLOR_WHITE, volBuf);
     }
+    else
+        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 19, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%19s", "");
 
     if(isRelease)
         Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);

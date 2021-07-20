@@ -238,7 +238,8 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 void loadHomebrewFirm(u32 pressed)
 {
     char path[10 + 255];
-    bool found = !pressed ? payloadMenu(path) : findPayload(path, pressed);
+    bool hasDisplayedMenu = false;
+    bool found = !pressed ? payloadMenu(path, &hasDisplayedMenu) : findPayload(path, pressed);
 
     if(!found) return;
 
@@ -253,10 +254,12 @@ void loadHomebrewFirm(u32 pressed)
     else sprintf(absPath, "nand:/rw/luma/%s", path);
 
     char *argv[2] = {absPath, (char *)fbs};
+    bool wantsScreenInit = (firm->reserved2[0] & 1) != 0;
 
-    initScreens();
+    if(!hasDisplayedMenu && wantsScreenInit)
+        initScreens(); // Don't init the screens unless we have to, if not already done
 
-    launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
+    launchFirm(wantsScreenInit ? 2 : 1, argv);
 }
 
 static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool loadFromStorage)
