@@ -39,3 +39,5 @@ void SysConfigMenu_ToggleWireless(void);
 void SysConfigMenu_TogglePowerButton(void);
 void SysConfigMenu_ControlWifi(void);
 void SysConfigMenu_DisableForcedWifiConnection(void);
+void SysConfigMenu_ToggleRehidFolder(void);
+void SysConfigMenu_UpdateRehidFolderStatus(void);

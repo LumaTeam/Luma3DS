@@ -35,6 +35,7 @@
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "menus/quick_switchers.h"
+#include "menus/sysconfig.h"
 #include "minisoc.h"
 #include "plugin.h"
 #include "volume.h"
@@ -257,6 +258,7 @@ void menuThreadMain(void)
         N3DSMenu_UpdateStatus();
 
     QuickSwitchers_UpdateStatuses();
+    SysConfigMenu_UpdateRehidFolderStatus();
 
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
         svcSleepThread(500 * 1000 * 1000LL);

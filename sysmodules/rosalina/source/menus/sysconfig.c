@@ -42,6 +42,7 @@ Menu sysconfigMenu = {
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
+        { "Toggle rehid folder: ", METHOD, .method = &SysConfigMenu_ToggleRehidFolder },
         { "Permanent Brightness Recalibration", METHOD, .method = &Luminance_RecalibrateBrightnessDefaults },
         { "Software Volume Control", METHOD, .method = &Volume_ControlVolume },
         {},
@@ -49,6 +50,8 @@ Menu sysconfigMenu = {
 };
 
 bool isConnectionForced = false;
+static char rehidPath[16] = "/rehid";
+static char rehidOffPath[16] = "/rehid_off";
 
 void SysConfigMenu_ToggleLEDs(void)
 {
@@ -333,4 +336,48 @@ void SysConfigMenu_DisableForcedWifiConnection(void)
             return;
     }
     while(!menuShouldExit);
+}
+
+void SysConfigMenu_ToggleRehidFolder(void)
+{
+    FS_Archive sdmcArchive = 0;
+
+    if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
+    {
+        MenuItem *item = &sysconfigMenu.items[4];
+
+        if(R_SUCCEEDED(FSUSER_RenameDirectory(sdmcArchive, fsMakePath(PATH_ASCII, rehidPath), sdmcArchive, fsMakePath(PATH_ASCII, rehidOffPath))))
+            {
+                item->title = "Toggle rehid folder: [Disabled]";
+            }
+        else if(R_SUCCEEDED(FSUSER_RenameDirectory(sdmcArchive, fsMakePath(PATH_ASCII, rehidOffPath), sdmcArchive, fsMakePath(PATH_ASCII, rehidPath))))
+            {
+                item->title = "Toggle rehid folder: [Enabled]";
+            }
+
+        FSUSER_CloseArchive(sdmcArchive);
+    }
+}
+
+void SysConfigMenu_UpdateRehidFolderStatus(void)
+{
+    Handle dir;
+    FS_Archive sdmcArchive = 0;
+
+    if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
+    {
+        MenuItem *item = &sysconfigMenu.items[4];
+
+        if(R_SUCCEEDED(FSUSER_OpenDirectory(&dir, sdmcArchive, fsMakePath(PATH_ASCII, rehidPath))))
+            {
+                FSDIR_Close(dir);
+                item->title = "Toggle rehid folder: [Enabled]";
+            }
+            else
+            {
+                item->title = "Toggle rehid folder: [Disabled]";
+            }
+
+        FSUSER_CloseArchive(sdmcArchive);
+    }
 }
