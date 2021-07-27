@@ -18,3 +18,4 @@ void QuickSwitchers_TwlBg(void);
 void QuickSwitchers_Widescreen(void);
 void QuickSwitchers_AgbBg(void);
 void QuickSwitchers_OpenAgb(void);
+void QuickSwitchers_RevertWidescreen(void);

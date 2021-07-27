@@ -46,6 +46,7 @@ Menu quickSwitchersMenu = {
         { g_switchables[1].menuText, METHOD, .method = &QuickSwitchers_Widescreen},
         { g_switchables[2].menuText, METHOD, .method = &QuickSwitchers_AgbBg},
         { g_switchables[3].menuText, METHOD, .method = &QuickSwitchers_OpenAgb},
+        { "Revert TWL widescreen", METHOD, .method = &QuickSwitchers_RevertWidescreen},
         {},
     }
 };
@@ -217,10 +218,10 @@ Result QuickSwitchers_SwitchFile(char filename[FILE_NAME_MAX])
     res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 
     if(R_SUCCEEDED(res))
-            {
-                FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, activeFilePath), sdmcArchive, fsMakePath(PATH_ASCII, switchOutPath));
-                res = FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, switchInPath), sdmcArchive, fsMakePath(PATH_ASCII, activeFilePath)); // renames chosen file to the required name for external programme
-            }
+    {
+        FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, activeFilePath), sdmcArchive, fsMakePath(PATH_ASCII, switchOutPath));
+        res = FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, switchInPath), sdmcArchive, fsMakePath(PATH_ASCII, activeFilePath)); // renames chosen file to the required name for external programme
+    }
 
     FSUSER_CloseArchive(sdmcArchive);
 
@@ -280,14 +281,14 @@ void QuickSwitchers_UpdateMenu(void)
 void QuickSwitchers_UpdateStatus(void)
 {
     if(R_SUCCEEDED(QuickSwitchers_ReadNameFromFile()))
-        {
-            QuickSwitchers_UpdateMenu();
-        }
+    {
+        QuickSwitchers_UpdateMenu();
+    }
     else
-        {
-            sprintf(g_menuDisplay[g_switchablesIndex], "%s: %s", g_switchables[g_switchablesIndex].menuText, "unknown");
-            quickSwitchersMenu.items[g_switchablesIndex].title = g_menuDisplay[g_switchablesIndex];
-        }
+    {
+        sprintf(g_menuDisplay[g_switchablesIndex], "%s: %s", g_switchables[g_switchablesIndex].menuText, "unknown");
+        quickSwitchersMenu.items[g_switchablesIndex].title = g_menuDisplay[g_switchablesIndex];
+    }
 }
 
 void QuickSwitchers_UpdateStatuses(void)
@@ -298,5 +299,38 @@ void QuickSwitchers_UpdateStatuses(void)
     {
         QuickSwitchers_UpdateStatus();
         ++g_switchablesIndex;
+    }
+}
+
+void QuickSwitchers_RevertWidescreen(void)
+{
+    FS_Archive sdmcArchive = 0;
+
+    const char twlbgPath[32] = "/luma/sysmodules/TwlBg.cxi";
+    const char twlbgBakPath[42] = "/_nds/TWiLightMenu/TwlBg/TwlBg.cxi.bak";
+    const char widescreenPath[42] = "/_nds/TWiLightMenu/TwlBg/Widescreen.cxi";
+
+    if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
+    {
+        MenuItem *item = &quickSwitchersMenu.items[4];
+
+        if(R_SUCCEEDED(FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, twlbgPath), sdmcArchive, fsMakePath(PATH_ASCII, widescreenPath))))
+        {
+            if(R_SUCCEEDED(FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, twlbgBakPath), sdmcArchive, fsMakePath(PATH_ASCII, twlbgPath)))) // renames chosen file to the required name for external programme
+            {
+                item->title = "Revert TWL widescreen: [Succeeded]";
+            }
+            else 
+            {
+                FSUSER_RenameFile(sdmcArchive, fsMakePath(PATH_ASCII, widescreenPath), sdmcArchive, fsMakePath(PATH_ASCII, twlbgPath));
+                item->title = "Revert TWL widescreen: [Unneeded]";
+            }
+        }
+        else
+        {
+            item->title = "Revert TWL widescreen: [Unneeded]";
+        }
+
+        FSUSER_CloseArchive(sdmcArchive);
     }
 }

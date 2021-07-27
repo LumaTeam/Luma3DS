@@ -177,7 +177,6 @@ static void handleShellNotification(u32 notificationId)
         // Shell closed
         menuShouldExit = true;
     }
-
 }
 
 static void handlePreTermNotification(u32 notificationId)
