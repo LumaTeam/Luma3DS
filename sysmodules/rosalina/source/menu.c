@@ -505,6 +505,16 @@ void menuShow(Menu *root)
         {
             menuToggleLeds();
         }
+        else if(pressed & KEY_START)
+        {
+            if (isServiceUsable("nwm::EXT"))
+            {
+                u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+                nwmExtInit();
+                NWMEXT_ControlWirelessEnabled(!wireless);
+                nwmExtExit();
+            }
+        }
         
         Draw_Lock();
         menuDraw(currentMenu, selectedItem);
