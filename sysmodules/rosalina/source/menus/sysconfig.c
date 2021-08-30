@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include "menus/sysconfig.h"
+#include "menus/config_extra.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
@@ -44,6 +45,7 @@ Menu sysconfigMenu = {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle rehid folder: ", METHOD, .method = &SysConfigMenu_ToggleRehidFolder },
         { "Permanent Brightness Recalibration", METHOD, .method = &Luminance_RecalibrateBrightnessDefaults },
+        { "Extra Config...", MENU, .menu = &configExtraMenu },
         { "Software Volume Control", METHOD, .method = &Volume_ControlVolume },
         {},
     }

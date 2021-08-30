@@ -39,6 +39,7 @@
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
+#include "menus/config_extra.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -47,6 +48,9 @@
 #include "plugin.h"
 
 bool isN3DS;
+bool wifiOnBeforeSleep;
+
+extern config_extra configExtra;
 
 Result __sync_init(void);
 Result __sync_fini(void);
@@ -173,9 +177,39 @@ static void handleShellNotification(u32 notificationId)
         // Note that this notification is fired on system init
         ScreenFiltersMenu_RestoreCct();
         menuShouldExit = false;
-    } else {
+
+        if(configExtra.suppressLeds){
+            mcuHwcInit();
+            u8 off = 0;
+            MCUHWC_WriteRegister(0x28, &off, 1);
+            mcuHwcExit();
+        }
+
+        if(wifiOnBeforeSleep && configExtra.cutSleepWifi && isServiceUsable("nwm::EXT")){
+            nwmExtInit();
+            NWMEXT_ControlWirelessEnabled(true);
+            nwmExtExit();
+        }
+    } 
+    else {
         // Shell closed
         menuShouldExit = true;
+
+        if(configExtra.cutSleepWifi)
+        {      
+            u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+
+            if (isServiceUsable("nwm::EXT") && wireless)
+            {
+                wifiOnBeforeSleep = true;
+                nwmExtInit();
+                NWMEXT_ControlWirelessEnabled(false);
+                nwmExtExit();
+            }
+            else {
+                wifiOnBeforeSleep = false;
+            }
+        }
     }
 }
 
@@ -265,7 +299,11 @@ int main(void)
 
     Sleep__Init();
     PluginLoader__Init();
-    cutPowerToCardSlotWhenTWLCard();
+    ConfigExtra_ReadConfigExtra();
+    if (configExtra.cutSlotPower)
+    {
+        cutPowerToCardSlotWhenTWLCard();
+    }
 
     // Set up static buffers for IPC
     u32* bufPtrs = getThreadStaticBuffers();
