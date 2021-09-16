@@ -344,7 +344,7 @@ static void menuDraw(Menu *menu, u32 selected)
 
         char buf[32];
         int n = sprintf(
-            buf, "%02hhu\xF8""C  %lu.%02luV  %lu.%lu%%", batteryTemperature, // CP437
+            buf, "   %02hhu\xF8""C  %lu.%02luV  %lu.%lu%%", batteryTemperature, // CP437
             voltageInt, voltageFrac,
             percentageInt, percentageFrac
         );
