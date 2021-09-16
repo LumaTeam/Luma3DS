@@ -7,7 +7,7 @@
 #include "service_manager.h"
 
 u32 config, multiConfig, bootConfig;
-bool isN3DS, isSdMode;
+bool isN3DS, isSdMode, nextGamePatchDisabled;
 
 // MAKE SURE fsreg has been init before calling this
 static Result fsldrPatchPermissions(void)
@@ -87,7 +87,7 @@ void initSystem(void)
 }
 
 static const ServiceManagerServiceEntry services[] = {
-    { "Loader", 1, loaderHandleCommands, false },
+    { "Loader", 2, loaderHandleCommands, false },
     { NULL },
 };
 
@@ -97,6 +97,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
 
 int main(void)
 {
+    nextGamePatchDisabled = false;
     loadCFWInfo();
     assertSuccess(ServiceManager_Run(services, notifications, NULL));
     return 0;
