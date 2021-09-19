@@ -880,7 +880,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
-    if(CONFIG(PATCHGAMES))
+    if(CONFIG(PATCHGAMES) && !nextGamePatchDisabled)
     {
         if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
         if(!applyCodeIpsPatch(progId, code, size)) goto error;
@@ -899,6 +899,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         }
     }
 
+    nextGamePatchDisabled = false;
     return;
 
 error:
