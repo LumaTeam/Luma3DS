@@ -30,20 +30,29 @@
 #include "memory.h"
 #include "menu.h"
 #include "menus.h"
+#include "ifile.h"
+#include "pmdbgext.h"
 
-static char clkRateBuf[128 + 1];
-static char new3dsMenuBuf[128 + 1];
+static char clkRateBuf[128 + 1], new3dsMenuBuf[128 + 1], new3dsMenuConfigBuf[128 + 1], fileNameBuf[64];
 
 Menu N3DSMenu = {
     "New 3DS menu",
     {
         { "Enable L2 cache", METHOD, .method = &N3DSMenu_EnableDisableL2Cache },
         { clkRateBuf, METHOD, .method = &N3DSMenu_ChangeClockRate },
+        { new3dsMenuConfigBuf, METHOD, .method = &N3DSMenu_UpdateConfig, .visibility = &currentTitleAvailable },
         {},
     }
 };
 
 static s64 clkRate = 0, higherClkRate = 0, L2CacheEnabled = 0;
+static u64 programId = 0;
+static bool currentTitleUseN3DS = false;
+
+bool currentTitleAvailable(void)
+{
+    return programId > 0;
+}
 
 void N3DSMenu_UpdateStatus(void)
 {
@@ -77,4 +86,67 @@ void N3DSMenu_EnableDisableL2Cache(void)
     svcKernelSetState(10, (u32)newBitMask);
 
     N3DSMenu_UpdateStatus();
+}
+
+void N3DSMenu_CheckForConfigFile(void)
+{
+    programId = 0;
+    currentTitleUseN3DS = false;
+
+    FS_ProgramInfo programInfo;
+    u32 pid;
+    u32 launchFlags;
+
+    if(R_SUCCEEDED(PMDBG_GetCurrentAppInfo(&programInfo, &pid, &launchFlags)))
+    {
+        programId = programInfo.programId;
+
+        sprintf(fileNameBuf, "%s%016llX%s", "/luma/n3ds/", programId, ".bin");
+        IFile file;
+
+        if(R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),fsMakePath(PATH_ASCII, fileNameBuf), FS_OPEN_READ)))
+        {
+            IFile_Close(&file);
+            currentTitleUseN3DS = true;
+        }
+    }
+
+    N3DSMenu_UpdateConfigStatus();
+}
+
+void N3DSMenu_CreateConfigFile(void)
+{
+    IFile file;
+  
+     if(R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),fsMakePath(PATH_ASCII, fileNameBuf), FS_OPEN_CREATE | FS_OPEN_WRITE)))
+     {
+         IFile_Close(&file);
+         currentTitleUseN3DS = true;
+     }
+}
+
+void N3DSMenu_DeleteConfigFile(void)
+{
+    FS_Archive archive;
+
+    if(R_SUCCEEDED(FSUSER_OpenArchive(&archive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
+    {
+        if(R_SUCCEEDED(FSUSER_DeleteFile(archive, fsMakePath(PATH_ASCII, fileNameBuf))))
+        {
+            currentTitleUseN3DS = false;
+        }
+    
+        FSUSER_CloseArchive(archive);
+    }
+}
+
+void N3DSMenu_UpdateConfig(void)
+{
+    currentTitleUseN3DS ? N3DSMenu_DeleteConfigFile() : N3DSMenu_CreateConfigFile();
+    N3DSMenu_UpdateConfigStatus();
+}
+
+void N3DSMenu_UpdateConfigStatus(void)
+{
+    sprintf(new3dsMenuConfigBuf, "Auto run current title as N3DS: %s", currentTitleUseN3DS ? "[true]" : "[false]");
 }

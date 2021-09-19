@@ -47,13 +47,13 @@ u32 mcuFwVersion = 0;
 
 void menuToggleLeds(void)
 {          
-        // toggle LEDs
-        mcuHwcInit();
-        u8 result;
-        MCUHWC_ReadRegister(0x28, &result, 1);
-        result = ~result;
-        MCUHWC_WriteRegister(0x28, &result, 1);
-        mcuHwcExit();
+    // toggle LEDs
+    mcuHwcInit();
+    u8 result;
+    MCUHWC_ReadRegister(0x28, &result, 1);
+    result = ~result;
+    MCUHWC_WriteRegister(0x28, &result, 1);
+    mcuHwcExit();
 }
 
 // libctru redefinition:
@@ -279,7 +279,11 @@ void menuThreadMain(void)
         if(((scanHeldKeys() & menuCombo) == menuCombo) && !g_blockMenuOpen)
         {
             menuEnter();
-            if(isN3DS) N3DSMenu_UpdateStatus();
+            if(isN3DS) {
+                N3DSMenu_UpdateStatus();
+                N3DSMenu_CheckForConfigFile();
+            }
+
             PluginLoader__UpdateMenu();
             menuShow(&rosalinaMenu);
             menuLeave();

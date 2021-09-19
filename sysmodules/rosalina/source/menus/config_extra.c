@@ -12,7 +12,7 @@ bool configExtraSaved = false;
 static const char menuText[4][32] = {
     "Automatically suppress LEDs",
     "Cut power to TWL Flashcards",
-    "Cut 3DS Wifi in sleep mode",
+    "Cut 3DS WiFi in sleep mode",
     "Save config. Changes saved"
 };
 
