@@ -65,7 +65,9 @@ typedef struct Menu {
 } Menu;
 
 extern u32 menuCombo;
+extern u32 g_blockMenuOpen;
 extern bool isHidInitialized;
+extern bool rosalinaOpen;
 extern u32 mcuFwVersion;
 
 // From main.c
@@ -84,6 +86,7 @@ bool menuCheckN3ds(void);
 u32 menuCountItems(const Menu *menu);
 
 MyThread *menuCreateThread(void);
+void    openRosalina(void);
 void    menuEnter(void);
 void    menuLeave(void);
 void    menuThreadMain(void);

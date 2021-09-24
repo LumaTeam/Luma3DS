@@ -43,6 +43,7 @@
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
+bool rosalinaOpen = false;
 u32 mcuFwVersion = 0;
 
 void menuToggleLeds(void)
@@ -276,17 +277,9 @@ void menuThreadMain(void)
 
         Cheat_ApplyCheats();
 
-        if(((scanHeldKeys() & menuCombo) == menuCombo) && !g_blockMenuOpen)
+        if(((scanHeldKeys() & menuCombo) == menuCombo) && !rosalinaOpen && !g_blockMenuOpen)
         {
-            menuEnter();
-            if(isN3DS) {
-                N3DSMenu_UpdateStatus();
-                N3DSMenu_CheckForConfigFile();
-            }
-
-            PluginLoader__UpdateMenu();
-            menuShow(&rosalinaMenu);
-            menuLeave();
+            openRosalina();
         }
 
         // Check for home button on O3DS Mode3 with plugin loaded
@@ -298,6 +291,21 @@ void menuThreadMain(void)
             homeBtnPressed = 0;
         }
     }
+}
+
+void openRosalina(void)
+{
+    rosalinaOpen = true;
+    menuEnter();
+    if(isN3DS) {
+        N3DSMenu_UpdateStatus();
+        N3DSMenu_CheckForConfigFile();
+    }
+
+    PluginLoader__UpdateMenu();
+    menuShow(&rosalinaMenu);
+    menuLeave();
+    rosalinaOpen = false;
 }
 
 static s32 menuRefCount = 0;

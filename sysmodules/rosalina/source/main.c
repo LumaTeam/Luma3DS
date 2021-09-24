@@ -258,6 +258,15 @@ static void handleRestartHbAppNotification(u32 notificationId)
     TaskRunner_RunTask(HBLDR_RestartHbApplication, NULL, 0);
 }
 
+static void handleHomeButtonNotification(u32 notificationId)
+{
+    (void)notificationId;
+    if(configExtra.homeToRosalina && isHidInitialized && !rosalinaOpen && !menuShouldExit && !preTerminationRequested && !g_blockMenuOpen)
+    {
+        openRosalina();
+    }
+}
+
 static const ServiceManagerServiceEntry services[] = {
     { "hb:ldr", 2, HBLDR_HandleCommands, true },
     { "plg:ldr", 1, PluginLoader__HandleCommands, true },
@@ -275,6 +284,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
     { 0x213,                        handleShellNotification                 },
     { 0x214,                        handleShellNotification                 },
+    { 0x204,                        handleHomeButtonNotification            },
     { 0x1000,                       handleNextApplicationDebuggedByForce    },
     { 0x2000,                       handlePreTermNotification               },
     { 0x3000,                       handleRestartHbAppNotification          },
