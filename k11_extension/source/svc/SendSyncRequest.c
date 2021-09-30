@@ -209,6 +209,40 @@ Result SendSyncRequestHook(Handle handle)
 
                 break;
             }
+
+            case 0x08030204:
+            {
+               SessionInfo* info = SessionInfo_Lookup(clientSession->parentSession); // OpenFileDirectly
+               if (!(info != NULL && strcmp(info->name, "fs:USER") == 0))
+                  break;
+
+               if (strcmp((char*)(cmdbuf[12] + 12), "logo") != 0)
+                  break;
+
+               static const char* sdPath = "/luma/logo.bin";
+
+               u32 origBuf[12];
+               memcpy(origBuf, cmdbuf, 12 * sizeof(u32));
+               char origPath[0x14];
+               memcpy(origPath, (char*)cmdbuf[12], 0x14);
+
+               cmdbuf[2] = 9; // ArchiveId to SDMC
+               cmdbuf[3] = 1; // ArchivePathType to EMPTY
+               cmdbuf[5] = 3; // FilePathType to ASCII
+               strcpy((char*)cmdbuf[12], sdPath); // Replace FilePathData
+
+               res = SendSyncRequest(handle);
+               if (cmdbuf[1] != 0) { // File doesn't exist, restore original parameters
+                  memcpy(cmdbuf, origBuf, 12 * sizeof(u32));
+                  memcpy((char*)cmdbuf[12], origPath, 0x14);
+                  skip = false;
+               }
+               else {
+                  skip = true;
+               }
+
+               break;
+            }
         }
     }
 
