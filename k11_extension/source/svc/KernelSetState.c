@@ -35,6 +35,7 @@
 static u32 nbEnabled = 0;
 static u32 maskedPids[MAX_DEBUG];
 static u32 masks[MAX_DEBUG][8] = {0};
+static bool forceBetterSoc = false;
 
 bool shouldSignalSyscallDebugEvent(KProcess *process, u8 svcId)
 {
@@ -97,6 +98,16 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
 
     switch(type)
     {
+        case 0xA: // Type 10 (ConfigureNew3DSCPU)
+        {
+            if (varg1 & (1 << 2)) // Lock faster speed
+                forceBetterSoc = true;
+            else if (varg1 & (1 << 3)) // Unlock faster speed
+                forceBetterSoc = false;
+            else
+                res = KernelSetState(type, forceBetterSoc ? 3 : varg1, varg2, varg3);
+            break;
+        }
         case 0x10000:
         {
             do
