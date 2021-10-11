@@ -40,6 +40,7 @@
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
 #include "menus/config_extra.h"
+#include "redshift/redshift.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -174,16 +175,17 @@ static void handleShellNotification(u32 notificationId)
 {
     if (notificationId == 0x213) {
         // Shell opened
-        // Note that this notification is fired on system init
-        ScreenFiltersMenu_RestoreCct();
-        menuShouldExit = false;
-
+        // Note that this notification is fired on system init    
         if(configExtra.suppressLeds){
-            mcuHwcInit();
-            u8 off = 0;
-            MCUHWC_WriteRegister(0x28, &off, 1);
-            mcuHwcExit();
+            Redshift_SuppressLeds();
         }
+
+        if(dayNightSettingsRead && !ScreenFiltersMenu_RestoreCct())
+        { 
+            Redshift_ApplyDayNightSettings();
+        }
+        
+        menuShouldExit = false;
 
         if(wifiOnBeforeSleep && configExtra.cutSleepWifi && isServiceUsable("nwm::EXT")){
             nwmExtInit();
@@ -284,7 +286,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
     { 0x213,                        handleShellNotification                 },
     { 0x214,                        handleShellNotification                 },
-    { 0x204,                        handleHomeButtonNotification            },
+    { 0x205,                        handleHomeButtonNotification            },
     { 0x1000,                       handleNextApplicationDebuggedByForce    },
     { 0x2000,                       handlePreTermNotification               },
     { 0x3000,                       handleRestartHbAppNotification          },
@@ -314,6 +316,8 @@ int main(void)
     {
         cutPowerToCardSlotWhenTWLCard();
     }
+
+    dayNightSettingsRead = Redshift_ReadDayNightSettings();
 
     // Set up static buffers for IPC
     u32* bufPtrs = getThreadStaticBuffers();

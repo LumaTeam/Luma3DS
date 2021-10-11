@@ -52,7 +52,27 @@
 #define COLORREG_IDX_B REG32(0x10400580)
 #define COLORREG_DAT_B REG32(0x10400584)
 
-bool customFilterSelected = false;
+bool redshiftFilterSelected = false;
+bool dayNightSettingsRead = false;
+
+static const char filterLocs[3][32] = {
+    "/luma/redshift.bin",
+    "/luma/dayshift.bin",
+    "/luma/nightshift.bin"
+};
+
+day_night_settings s_dayNight = {
+    .day_brightnessLevel = 3,
+    .day_filterEnabled = true,
+    .day_ledSuppression = false,
+    .day_startHour = 8,
+    .day_startMinute = 10,
+    .night_brightnessLevel = 2,
+    .night_filterEnabled = true,
+    .night_ledSuppression = true,
+    .night_startHour = 19,
+    .night_startMinute = 30
+};
 
 static void WriteAt(u32 v, u8 idx, int screen)
 {
@@ -108,9 +128,12 @@ static void ApplyCS(color_setting_t* cs, int screen)
 
 float fmodf(float f1, float f2);
 
-void Redshift_EditableFilter(void)
+void Redshift_EditableFilter(u8 filterNo)
 {
-    Redshift_SuppressLeds();
+    if (filterNo == 0)
+    {
+        Redshift_SuppressLeds();
+    }
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -134,7 +157,7 @@ void Redshift_EditableFilter(void)
     if(!(HID_PAD & ~(KEY_A | KEY_X)))
     {
         res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
-            fsMakePath(PATH_ASCII, "/luma/redshift.bin"), FS_OPEN_READ);
+            fsMakePath(PATH_ASCII, filterLocs[filterNo]), FS_OPEN_READ);
         
         if(R_SUCCEEDED(res))
         {
@@ -148,7 +171,7 @@ void Redshift_EditableFilter(void)
             cs.gamma[2] = screens[0].gamma[2];
             cs.brightness = screens[0].brightness;
             IFile_Close(&file);
-            customFilterSelected = true;
+            redshiftFilterSelected = filterNo == 0 ? true : false;
         }
     }
     
@@ -173,14 +196,14 @@ void Redshift_EditableFilter(void)
         if(kDown & KEY_START)
         {
             res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
-                fsMakePath(PATH_ASCII, "/luma/redshift.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
+                fsMakePath(PATH_ASCII, filterLocs[filterNo]), FS_OPEN_CREATE | FS_OPEN_WRITE);
             
             if(R_SUCCEEDED(res))
             {
                 u64 total;
                 res = IFile_Write(&file, &total, screens, sizeof(screens), 0);
                 IFile_Close(&file);
-                customFilterSelected = true;
+                redshiftFilterSelected = filterNo == 0 ? true : false;
             }
         }
 
@@ -290,9 +313,12 @@ void Redshift_EditableFilter(void)
     while(!menuShouldExit);
 }
 
-void Redshift_ApplySavedFilter(void)
+void Redshift_ApplySavedFilter(u8 filterNo)
 {
-    Redshift_SuppressLeds();
+    if (filterNo == 0)
+    {
+        Redshift_SuppressLeds();
+    }
 
     color_setting_t cs;
     memset(&cs, 0, sizeof(cs));
@@ -310,7 +336,7 @@ void Redshift_ApplySavedFilter(void)
     Result res = 0;
 
     res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/luma/redshift.bin"), FS_OPEN_READ);
+        fsMakePath(PATH_ASCII, filterLocs[filterNo]), FS_OPEN_READ);
     
     if(R_SUCCEEDED(res))
     {
@@ -322,9 +348,310 @@ void Redshift_ApplySavedFilter(void)
     }
 }
 
-void Redshift_SuppressLeds(void){
+void Redshift_SuppressLeds(void)
+{
     mcuHwcInit();
     u8 off = 0;
     MCUHWC_WriteRegister(0x28, &off, 1);
     mcuHwcExit();
+}
+
+bool Redshift_LcdsAvailable(void)
+{
+    Result res = 0;
+    Handle gspLcdHandle;
+    res = srvGetServiceHandle(&gspLcdHandle, "gsp::Lcd");
+    if(R_SUCCEEDED(res)) 
+    {
+        u8 tries = 0;
+        u32 *cmdbuf = getThreadCommandBuffer();
+
+	    cmdbuf[0] = IPC_MakeHeader(0x0E,0,0); // 0x0E0000
+
+        while(tries < 51)
+        {
+            if(R_SUCCEEDED(res = svcSendSyncRequest(gspLcdHandle))) 
+            {
+                u8 lcdStatus = cmdbuf[2];
+
+                if((lcdStatus & 8) == 0)
+                {
+                    if((lcdStatus & 4) && (lcdStatus & 15) == 7) // Sono discovery
+                    {
+                        svcCloseHandle(gspLcdHandle);
+                        return true;
+                    }
+                }
+            }
+
+            svcSleepThread(10 * 1000 * 1000LL);
+            tries += 1;
+        }   
+
+        svcCloseHandle(gspLcdHandle);
+        return false;   
+    }
+    return false; 
+}
+
+void Redshift_ApplyDayNightSettings(void)
+{
+    backlight_controls s_backlight = {
+            .abl_enabled = 0,
+            .brightness_level = 0
+    };
+
+    u64 timeInSeconds = osGetTime() / 1000;
+    u64 dayTime = timeInSeconds % 86400;
+    u8 hour = dayTime / 3600;
+    u8 minute = (dayTime % 3600) / 60;
+
+    // if day
+    if((hour < s_dayNight.night_startHour || (hour == s_dayNight.night_startHour && minute <= s_dayNight.night_startMinute)) 
+        && (hour > s_dayNight.day_startHour || (hour == s_dayNight.day_startHour && minute >= s_dayNight.day_startMinute)))
+    {
+        if(s_dayNight.day_ledSuppression)
+        {
+            Redshift_SuppressLeds();
+        }
+
+        cfguInit();
+        CFG_GetConfigInfoBlk8(sizeof(backlight_controls), 0x50001, &s_backlight);            
+        if(s_backlight.brightness_level != s_dayNight.day_brightnessLevel)
+        {
+            s_backlight.brightness_level = s_dayNight.day_brightnessLevel;
+            CFG_SetConfigInfoBlk8(sizeof(backlight_controls), 0x50001, &s_backlight);
+        }
+        cfguExit();
+
+        if(s_dayNight.day_filterEnabled && Redshift_LcdsAvailable())
+        {
+            Redshift_ApplySavedFilter(1);
+        }
+    }
+    else
+    {
+        if(s_dayNight.night_ledSuppression)
+        {
+            Redshift_SuppressLeds();
+        }
+
+        cfguInit();
+        CFG_GetConfigInfoBlk8(sizeof(backlight_controls), 0x50001, &s_backlight);        
+        if(s_backlight.brightness_level != s_dayNight.night_brightnessLevel)
+        {
+            s_backlight.brightness_level = s_dayNight.night_brightnessLevel;
+            CFG_SetConfigInfoBlk8(sizeof(backlight_controls), 0x50001, &s_backlight);
+        }
+        cfguExit();
+
+        if(s_dayNight.night_filterEnabled && Redshift_LcdsAvailable())
+        {
+            Redshift_ApplySavedFilter(2);
+        }
+    }
+}
+
+bool Redshift_ReadDayNightSettings(void)
+{
+    IFile file;
+    Result res = 0;
+    res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
+            fsMakePath(PATH_ASCII, "/luma/configBootshift.bin"), FS_OPEN_READ);
+        
+    if(R_SUCCEEDED(res))
+    {
+        u64 total;
+        if(R_SUCCEEDED(IFile_Read(&file, &total, &s_dayNight, sizeof(s_dayNight))))
+        {
+            IFile_Close(&file);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+}
+
+static void WriteDayNightSettings(void)
+{
+    IFile file;
+    Result res = 0;
+    res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
+            fsMakePath(PATH_ASCII, "/luma/configBootshift.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
+        
+    if(R_SUCCEEDED(res))
+    {
+        u64 total;
+        IFile_Write(&file, &total, &s_dayNight, sizeof(s_dayNight), 0);
+        IFile_Close(&file);
+    }
+}
+
+void Redshift_ConfigureDayNightSettings(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    int sel = 0;
+    u8 minBri = 1, maxBri = 5, hourMax = 23, minuteMax = 50;
+    char fmtbuf[0x40];
+
+    do
+    {
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if (pressed & DIRECTIONAL_KEYS)
+        {
+            if(pressed & KEY_DOWN)
+            {
+                if(++sel > 9) sel = 9;
+            }
+            else if(pressed & KEY_UP)
+            {
+                if(--sel < 0) sel = 0;
+            }
+            else if (pressed & KEY_RIGHT)
+            {
+                switch(sel){
+                    case 0:
+                        s_dayNight.day_brightnessLevel += 1;
+                        s_dayNight.day_brightnessLevel = s_dayNight.day_brightnessLevel > maxBri ? minBri : s_dayNight.day_brightnessLevel;
+                    break;
+                    case 1:
+                        s_dayNight.day_filterEnabled = !s_dayNight.day_filterEnabled;
+                    break;
+                    case 2:
+                        s_dayNight.day_ledSuppression = !s_dayNight.day_ledSuppression;
+                    break;
+                    case 3:
+                        s_dayNight.day_startHour += 1;
+                        s_dayNight.day_startHour = s_dayNight.day_startHour > hourMax ? 0 : s_dayNight.day_startHour;
+                    break;
+                    case 4:
+                        s_dayNight.day_startMinute += 10;
+                        s_dayNight.day_startMinute = s_dayNight.day_startMinute > minuteMax ? 0 : s_dayNight.day_startMinute;
+                    break;
+                    case 5:
+                        s_dayNight.night_brightnessLevel += 1;
+                        s_dayNight.night_brightnessLevel = s_dayNight.night_brightnessLevel > maxBri ? minBri : s_dayNight.night_brightnessLevel;
+                    break;
+                    case 6:
+                        s_dayNight.night_filterEnabled = !s_dayNight.night_filterEnabled;
+                    break;
+                    case 7:
+                        s_dayNight.night_ledSuppression = !s_dayNight.night_ledSuppression;
+                    break;
+                    case 8:
+                        s_dayNight.night_startHour += 1;
+                        s_dayNight.night_startHour = s_dayNight.night_startHour > hourMax ? 0 : s_dayNight.night_startHour;
+                    break;
+                    case 9:
+                        s_dayNight.night_startMinute += 10;
+                        s_dayNight.night_startMinute = s_dayNight.night_startMinute > minuteMax ? 0 : s_dayNight.night_startMinute;
+                    break;
+                }
+            }
+            else if (pressed & KEY_LEFT)
+            {
+                switch(sel){
+                    case 0:
+                        s_dayNight.day_brightnessLevel -= 1;
+                        s_dayNight.day_brightnessLevel = s_dayNight.day_brightnessLevel > maxBri ? maxBri : s_dayNight.day_brightnessLevel;
+                    break;
+                    case 1:
+                        s_dayNight.day_filterEnabled = !s_dayNight.day_filterEnabled;
+                    break;
+                    case 2:
+                        s_dayNight.day_ledSuppression = !s_dayNight.day_ledSuppression;
+                    break;
+                    case 3:
+                        s_dayNight.day_startHour -= 1;
+                        s_dayNight.day_startHour = s_dayNight.day_startHour > hourMax ? hourMax : s_dayNight.day_startHour;
+                    break;
+                    case 4:
+                        s_dayNight.day_startMinute -= 10;
+                        s_dayNight.day_startMinute = s_dayNight.day_startMinute > minuteMax ? minuteMax : s_dayNight.day_startMinute;
+                    break;
+                    case 5:
+                        s_dayNight.night_brightnessLevel -= 1;
+                        s_dayNight.night_brightnessLevel = s_dayNight.night_brightnessLevel > maxBri ? maxBri : s_dayNight.night_brightnessLevel;
+                    break;
+                    case 6:
+                        s_dayNight.night_filterEnabled = !s_dayNight.night_filterEnabled;
+                    break;
+                    case 7:
+                        s_dayNight.night_ledSuppression = !s_dayNight.night_ledSuppression;
+                    break;
+                    case 8:
+                        s_dayNight.night_startHour -= 1;
+                        s_dayNight.night_startHour = s_dayNight.night_startHour > hourMax ? hourMax : s_dayNight.night_startHour;
+                    break;
+                    case 9:
+                        s_dayNight.night_startMinute -= 10;
+                        s_dayNight.night_startMinute = s_dayNight.night_startMinute > minuteMax ? minuteMax : s_dayNight.night_startMinute;
+                    break;
+                }
+            }
+        }
+        
+        if (pressed & KEY_B)
+            break;
+
+        if(pressed & KEY_START)
+        {
+            WriteDayNightSettings();
+            dayNightSettingsRead = true;
+        }
+
+        Draw_Lock();
+        Draw_ClearFramebuffer();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Day/Night Mode - by Nutez, discovery Sono");
+        u32 posY = 30;
+
+        sprintf(fmtbuf, "%c Day brightness: %i", (sel == 0 ? '>' : ' '), s_dayNight.day_brightnessLevel);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Day use filter: %s", (sel == 1 ? '>' : ' '), s_dayNight.day_filterEnabled ? "[true]" : "[false]");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Day suppress LEDs: %s", (sel == 2 ? '>' : ' '), s_dayNight.day_ledSuppression ? "[true]" : "[false]");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Day start hour: %i", (sel == 3 ? '>' : ' '), s_dayNight.day_startHour);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Day start minute: %i", (sel == 4 ? '>' : ' '), s_dayNight.day_startMinute);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + (SPACING_Y*2);
+
+        sprintf(fmtbuf, "%c Night brightness: %i", (sel == 5 ? '>' : ' '), s_dayNight.night_brightnessLevel);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Night use filter: %s", (sel == 6 ? '>' : ' '), s_dayNight.night_filterEnabled ? "[true]" : "[false]");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Night suppress LEDs: %s", (sel == 7 ? '>' : ' '), s_dayNight.night_ledSuppression ? "[true]" : "[false]");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Night start hour: %i", (sel == 8 ? '>' : ' '), s_dayNight.night_startHour);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Night start minute: %i", (sel == 9 ? '>' : ' '), s_dayNight.night_startMinute);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + (SPACING_Y*2);
+
+        posY = Draw_DrawString(10, posY, COLOR_GREEN, "Controls:") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " UP/DOWN to choose settings.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " RIGHT/LEFT to edit values.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " Press START to save all value changes.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " Press B to exit.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while (!menuShouldExit);
 }

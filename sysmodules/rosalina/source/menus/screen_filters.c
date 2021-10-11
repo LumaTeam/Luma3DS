@@ -48,7 +48,7 @@ static Pixel g_px[0x400];
 int screenFiltersCurrentTemperature = -1;
 
 // from redshift.c
-extern bool customFilterSelected;
+extern bool redshiftFilterSelected;
 
 static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
 {
@@ -97,7 +97,7 @@ static void ScreenFiltersMenu_ApplyColorSettings(color_setting_t* cs)
 
 static void ScreenFiltersMenu_SetCct(int cct)
 {
-    customFilterSelected = false;
+    redshiftFilterSelected = false;
 
     color_setting_t cs;
     memset(&cs, 0, sizeof(cs));
@@ -114,7 +114,7 @@ static void ScreenFiltersMenu_SetCct(int cct)
 Menu screenFiltersMenu = {
     "Screen filters menu",
     {
-        { "Custom Filter", METHOD, .method = &ScreenFiltersMenu_CustomFilter},
+        { "Custom Filter", METHOD, .method = &ScreenFiltersMenu_RedshiftFilter},
         { "[6500K] Default", METHOD, .method = &ScreenFiltersMenu_SetDefault },
         { "[10000K] Aquarium", METHOD, .method = &ScreenFiltersMenu_SetAquarium },
         { "[7500K] Overcast Sky", METHOD, .method = &ScreenFiltersMenu_SetOvercastSky },
@@ -125,6 +125,9 @@ Menu screenFiltersMenu = {
         { "[2300K] Warm Incandescent", METHOD, .method = &ScreenFiltersMenu_SetWarmIncandescent },
         { "[1900K] Candle", METHOD, .method = &ScreenFiltersMenu_SetCandle },
         { "[1200K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
+        { "Day Mode Filter", METHOD, .method = &ScreenFiltersMenu_DayshiftFilter},
+        { "Night Mode Filter", METHOD, .method = &ScreenFiltersMenu_NightshiftFilter},
+        { "Day/Night Config", METHOD, .method = &Redshift_ConfigureDayNightSettings},
         {},
     }
 };
@@ -136,9 +139,9 @@ void ScreenFiltersMenu_Set##name(void)\
     ScreenFiltersMenu_SetCct(temp);\
 }
 
-void ScreenFiltersMenu_RestoreCct(void)
+bool ScreenFiltersMenu_RestoreCct(void)
 {
-    if (screenFiltersCurrentTemperature != -1 || customFilterSelected)
+    if (screenFiltersCurrentTemperature != -1 || redshiftFilterSelected)
     {
     // Wait for GSP to restore the CCT table
     while (GPU_FB_TOP_COL_LUT_ELEM != g_px[0].raw)
@@ -146,14 +149,23 @@ void ScreenFiltersMenu_RestoreCct(void)
 
     svcSleepThread(10 * 1000 * 1000LL);
 
-    customFilterSelected ? Redshift_ApplySavedFilter() : ScreenFiltersMenu_WriteLut(g_px);
+    redshiftFilterSelected ? Redshift_ApplySavedFilter(0) : ScreenFiltersMenu_WriteLut(g_px);
+    return true;
     }
     else
-        return; // Not initialized: return
+        return false; // Not initialized: return
 }
 
-void ScreenFiltersMenu_CustomFilter(void){
-    Redshift_EditableFilter();
+void ScreenFiltersMenu_RedshiftFilter(void){
+    Redshift_EditableFilter(0);
+}
+
+void ScreenFiltersMenu_DayshiftFilter(void){
+    Redshift_EditableFilter(1);
+}
+
+void ScreenFiltersMenu_NightshiftFilter(void){
+    Redshift_EditableFilter(2);
 }
 
 DEF_CCT_SETTER(6500, Default)

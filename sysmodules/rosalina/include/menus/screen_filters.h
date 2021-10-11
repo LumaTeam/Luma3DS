@@ -34,8 +34,10 @@ extern Menu screenFiltersMenu;
 extern int screenFiltersCurrentTemperature;
 extern bool customFilterSelected;
 
-void ScreenFiltersMenu_RestoreCct(void);
-void ScreenFiltersMenu_CustomFilter(void);
+bool ScreenFiltersMenu_RestoreCct(void);
+void ScreenFiltersMenu_RedshiftFilter(void);
+void ScreenFiltersMenu_DayshiftFilter(void);
+void ScreenFiltersMenu_NightshiftFilter(void);
 
 void ScreenFiltersMenu_SetDefault(void);            // 6500K (default)
 
