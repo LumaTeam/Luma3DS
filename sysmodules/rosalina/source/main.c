@@ -50,6 +50,7 @@
 
 bool isN3DS;
 bool wifiOnBeforeSleep;
+bool hasTopScreen;
 
 extern config_extra configExtra;
 
@@ -316,6 +317,12 @@ int main(void)
     {
         cutPowerToCardSlotWhenTWLCard();
     }
+
+    u8 sysModel;
+    cfguInit();
+    CFGU_GetSystemModel(&sysModel);
+    cfguExit();
+    hasTopScreen = (sysModel != 3); // 3 = o2DS
 
     dayNightSettingsRead = Redshift_ReadDayNightSettings();
 

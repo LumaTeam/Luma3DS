@@ -32,8 +32,6 @@
 #include "draw.h"
 #include "menu.h"
 
-extern bool isN3DS;
-
 typedef struct BlPwmData
 {
     float coeffs[3][3];

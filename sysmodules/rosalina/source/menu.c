@@ -529,6 +529,28 @@ void menuShow(Menu *root)
                 nwmExtExit();
             }
         }
+        else if ((pressed & KEY_Y) && configExtra.toggleBottomLcd && hasTopScreen)
+        {
+            u8 result, botStatus;
+            mcuHwcInit();
+            MCUHWC_ReadRegister(0x0F, &result, 1); // https://www.3dbrew.org/wiki/I2C_Registers#Device_3
+            mcuHwcExit();  
+            botStatus = (result >> 5) & 1; // right shift result to bit 5 ("Bottom screen backlight on") and perform bitwise AND with 1
+
+            svcKernelSetState(0x10000, 2); // unblock gsp
+            gspLcdInit();
+            if(botStatus)
+            {
+                GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM));
+            }
+            else
+            {
+                GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_BOTTOM));
+            }
+            gspLcdExit();
+            svcKernelSetState(0x10000, 2); // block gsp again
+            break;
+        }
         
         Draw_Lock();
         menuDraw(currentMenu, selectedItem);

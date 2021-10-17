@@ -73,6 +73,7 @@ extern u32 mcuFwVersion;
 // From main.c
 extern bool isN3DS;
 extern bool menuShouldExit;
+extern bool hasTopScreen;
 extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
 

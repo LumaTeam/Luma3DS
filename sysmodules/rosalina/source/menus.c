@@ -202,12 +202,6 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    u8 sysModel;
-    cfguInit();
-    CFGU_GetSystemModel(&sysModel);
-    cfguExit();
-    bool hasTopScreen = (sysModel != 3); // 3 = o2DS
-
     // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
     u32 luminanceTop = getCurrentLuminance(true);
     u32 luminanceBot = getCurrentLuminance(false);
