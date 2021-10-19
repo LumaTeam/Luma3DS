@@ -384,7 +384,7 @@ bool Redshift_LcdsAvailable(void)
                 }
             }
 
-            svcSleepThread(10 * 1000 * 1000LL);
+            svcSleepThread(20 * 1000 * 1000LL);
             tries += 1;
         }   
 
