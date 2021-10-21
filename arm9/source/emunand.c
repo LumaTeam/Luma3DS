@@ -77,7 +77,7 @@ void locateEmuNand(FirmwareSource *nandType)
             if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && memcmp(temp + 0x100, "NCSD", 4) == 0)
             {
                 emuOffset = nandOffset + 1;
-                emuHeader = nandOffset + 1;
+                emuHeader = 0;
                 return;
             }
 
@@ -85,7 +85,7 @@ void locateEmuNand(FirmwareSource *nandType)
             else if(i != 2 && !sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && memcmp(temp + 0x100, "NCSD", 4) == 0)
             {
                 emuOffset = nandOffset;
-                emuHeader = nandOffset + nandSize;
+                emuHeader = nandSize;
                 return;
             }
         }
