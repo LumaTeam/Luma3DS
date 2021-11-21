@@ -41,7 +41,8 @@ typedef struct {
 	float brightness;
 } color_setting_t;
 
-extern bool dayNightSettingsRead;
+extern bool nightLightSettingsRead;
+extern bool nightLightOverride;
 
 typedef struct {
    u8 abl_enabled;
@@ -49,24 +50,30 @@ typedef struct {
 } backlight_controls;
 
 typedef struct {
-   u8 day_brightnessLevel;
-   bool day_filterEnabled;
-   bool day_ledSuppression;
-   u8 day_startHour;
-   u8 day_startMinute;
+   u8 light_brightnessLevel;
+   bool light_filterEnabled;
+   bool light_ledSuppression;
+   u8 light_startHour;
+   u8 light_startMinute;
    u8 night_brightnessLevel;
    bool night_filterEnabled;
    bool night_ledSuppression; 
    u8 night_startHour;
    u8 night_startMinute;
-} day_night_settings;
+   bool use_nightMode;
+   bool light_changeBrightness;
+   bool night_changeBrightness;
+} night_light_settings;
 
 void Redshift_EditableFilter(u8 filterNo);
 void Redshift_ApplySavedFilter(u8 filterNo);
 void Redshift_SuppressLeds();
 bool Redshift_LcdsAvailable();
-bool Redshift_ReadDayNightSettings();
-void Redshift_ApplyDayNightSettings();
-void Redshift_ConfigureDayNightSettings();
+bool Redshift_ReadNightLightSettings();
+void Redshift_ApplyNightLightSettings();
+void ApplyLightMode();
+void ApplyNightMode();
+void Redshift_UpdateNightLightStatuses();
+void Redshift_ConfigureNightLightSettings();
 
 #endif /* ! REDSHIFT_REDSHIFT_H */

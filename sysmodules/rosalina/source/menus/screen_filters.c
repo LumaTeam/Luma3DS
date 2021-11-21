@@ -125,9 +125,9 @@ Menu screenFiltersMenu = {
         { "[2300K] Warm Incandescent", METHOD, .method = &ScreenFiltersMenu_SetWarmIncandescent },
         { "[1900K] Candle", METHOD, .method = &ScreenFiltersMenu_SetCandle },
         { "[1200K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
-        { "Day Mode Filter", METHOD, .method = &ScreenFiltersMenu_DayshiftFilter},
-        { "Night Mode Filter", METHOD, .method = &ScreenFiltersMenu_NightshiftFilter},
-        { "Day/Night Config", METHOD, .method = &Redshift_ConfigureDayNightSettings},
+        { "Apply Light Mode & Edit Filter", METHOD, .method = &ScreenFiltersMenu_LightshiftFilter},
+        { "Apply Night Mode & Edit Filter", METHOD, .method = &ScreenFiltersMenu_NightshiftFilter},
+        { "Night/Light Config", METHOD, .method = &Redshift_ConfigureNightLightSettings},
         {},
     }
 };
@@ -137,6 +137,8 @@ void ScreenFiltersMenu_Set##name(void)\
 {\
     screenFiltersCurrentTemperature = temp;\
     ScreenFiltersMenu_SetCct(temp);\
+    Redshift_UpdateNightLightStatuses();\
+    return;\
 }
 
 bool ScreenFiltersMenu_RestoreCct(void)
@@ -158,14 +160,19 @@ bool ScreenFiltersMenu_RestoreCct(void)
 
 void ScreenFiltersMenu_RedshiftFilter(void){
     Redshift_EditableFilter(0);
+    Redshift_UpdateNightLightStatuses();
 }
 
-void ScreenFiltersMenu_DayshiftFilter(void){
+void ScreenFiltersMenu_LightshiftFilter(void){
+    if(nightLightSettingsRead) ApplyLightMode();
     Redshift_EditableFilter(1);
+    Redshift_UpdateNightLightStatuses();
 }
 
 void ScreenFiltersMenu_NightshiftFilter(void){
+    if(nightLightSettingsRead) ApplyNightMode();
     Redshift_EditableFilter(2);
+    Redshift_UpdateNightLightStatuses();
 }
 
 DEF_CCT_SETTER(6500, Default)

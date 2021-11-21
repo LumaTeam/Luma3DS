@@ -46,7 +46,7 @@
 Menu rosalinaMenu = {
     "Rosalina menu",
     {
-        { "Screen filters...", MENU, .menu = &screenFiltersMenu },
+        { "Screen filters", MENU, .menu = &screenFiltersMenu },
         { "Take screenshot", METHOD, .method = &RosalinaMenu_TakeScreenshot },
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},

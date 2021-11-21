@@ -181,9 +181,9 @@ static void handleShellNotification(u32 notificationId)
             Redshift_SuppressLeds();
         }
 
-        if(dayNightSettingsRead && !ScreenFiltersMenu_RestoreCct())
+        if(nightLightSettingsRead && !ScreenFiltersMenu_RestoreCct())
         { 
-            Redshift_ApplyDayNightSettings();
+            Redshift_ApplyNightLightSettings();
         }
         
         menuShouldExit = false;
@@ -324,7 +324,7 @@ int main(void)
     cfguExit();
     hasTopScreen = (sysModel != 3); // 3 = o2DS
 
-    dayNightSettingsRead = Redshift_ReadDayNightSettings();
+    nightLightSettingsRead = Redshift_ReadNightLightSettings();
 
     // Set up static buffers for IPC
     u32* bufPtrs = getThreadStaticBuffers();

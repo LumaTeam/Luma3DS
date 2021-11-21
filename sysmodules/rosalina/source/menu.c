@@ -40,6 +40,7 @@
 #include "minisoc.h"
 #include "plugin.h"
 #include "volume.h"
+#include "redshift/redshift.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
@@ -302,6 +303,8 @@ void openRosalina(void)
         N3DSMenu_CheckForConfigFile();
     }
 
+    nightLightSettingsRead = Redshift_ReadNightLightSettings();
+    Redshift_UpdateNightLightStatuses();
     PluginLoader__UpdateMenu();
     menuShow(&rosalinaMenu);
     menuLeave();
@@ -528,6 +531,11 @@ void menuShow(Menu *root)
                 NWMEXT_ControlWirelessEnabled(!wireless);
                 nwmExtExit();
             }
+        }
+        else if(pressed & KEY_X)
+        {
+            nightLightOverride = !nightLightOverride;
+            Redshift_UpdateNightLightStatuses();
         }
         else if ((pressed & KEY_Y) && configExtra.toggleBottomLcd && hasTopScreen)
         {

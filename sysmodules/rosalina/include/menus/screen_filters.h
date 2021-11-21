@@ -36,7 +36,7 @@ extern bool customFilterSelected;
 
 bool ScreenFiltersMenu_RestoreCct(void);
 void ScreenFiltersMenu_RedshiftFilter(void);
-void ScreenFiltersMenu_DayshiftFilter(void);
+void ScreenFiltersMenu_LightshiftFilter(void);
 void ScreenFiltersMenu_NightshiftFilter(void);
 
 void ScreenFiltersMenu_SetDefault(void);            // 6500K (default)
