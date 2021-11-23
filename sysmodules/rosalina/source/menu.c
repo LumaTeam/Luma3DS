@@ -415,7 +415,14 @@ static void menuDraw(Menu *menu, u32 selected)
         u32 out = (u32)((coe * 100.0F) + (1 / 256.0F));
         char volBuf[32];
         int n2 = sprintf(volBuf, "Volume: %lu%%", out);
-        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n2, 10, COLOR_WHITE, volBuf);
+        if(miniSocEnabled)
+        {
+            Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n2, SCREEN_BOT_HEIGHT - 30, COLOR_WHITE, volBuf);
+        }
+        else 
+        {
+            Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n2, 10, COLOR_WHITE, volBuf);
+        }
     }
     else
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 19, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%19s", "");
