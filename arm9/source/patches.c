@@ -491,7 +491,7 @@ u32 patchTwlArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     //This is in thumb in TWL_FIRM
 
-    static const u8 pattern[] = {0x81, 0x60, 0x09, 0x49};
+    static const u8 pattern[] = {0xC1, 0x60, 0x40, 0x21};
 
     u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
