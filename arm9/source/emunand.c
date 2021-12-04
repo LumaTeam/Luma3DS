@@ -149,6 +149,21 @@ static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
     return 0;
 }
 
+static inline u32 getTwlSdmmc(u8 *pos, u32 size, u32 *sdmmc)
+{
+    static const u8 pattern[] = {0xF2, 0xD0, 0x12, 0x48},
+                    pattern2[] = {0x3D, 0x18, 0x28, 0x79};
+
+    const u32 *off = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+    const u16 *off2 = (u16 *)memsearch(pos, pattern2, size, sizeof(pattern2));
+
+    if(off == NULL || off2 == NULL) return 1;
+
+    *sdmmc = *(off + 0x13) + *(u32 *)(off2 + (*(off2 - 1) & 0xFF) * 2);
+
+    return 0;
+}
+
 static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
 {
     //Look for read/write code
@@ -187,7 +202,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address, u32 firmVersion)
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address, u32 firmVersion, bool twl)
 {
     u8 *freeK9Space;
 
@@ -201,7 +216,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 proce
 
     //Find and add the SDMMC struct
     u32 sdmmc;
-    ret += !ISN3DS && firmVersion < 0x25 ? getOldSdmmc(&sdmmc, firmVersion) : getSdmmc(process9Offset, process9Size, &sdmmc);
+    ret += twl ? getTwlSdmmc(process9Offset, process9Size, &sdmmc) : !ISN3DS && firmVersion < 0x25 ? getOldSdmmc(&sdmmc, firmVersion) : getSdmmc(process9Offset, process9Size, &sdmmc);
     if(!ret) emunandPatchSdmmcStructPtr = sdmmc;
 
     //Copy EmuNAND code

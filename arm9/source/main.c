@@ -369,7 +369,7 @@ boot:
             res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isFirmProtEnabled, needToInitSd, doUnitinfoPatch);
             break;
         case TWL_FIRM:
-            res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
+            res = patchTwlFirm(firmVersion, nandType, loadFromStorage, doUnitinfoPatch);
             break;
         case AGB_FIRM:
             res = patchAgbFirm(loadFromStorage, doUnitinfoPatch);
