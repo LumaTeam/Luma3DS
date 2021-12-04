@@ -169,13 +169,13 @@ static inline u32 patchNandRw(u8 *pos, u32 size, u32 branchOffset)
     //Look for read/write code
     static const u8 pattern[] = {0x1E, 0x00, 0xC8, 0x05};
 
-    u16 *readOffset = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u16 *readOffset = (u16 *)((u32)memsearch(pos, pattern, size, sizeof(pattern)) | 2);
 
     if(readOffset == NULL) return 1;
 
     readOffset -= 3;
 
-    u16 *writeOffset = (u16 *)memsearch((u8 *)(readOffset + 5), pattern, 0x100, sizeof(pattern));
+    u16 *writeOffset = (u16 *)((u32)memsearch((u8 *)(readOffset + 5), pattern, 0x100, sizeof(pattern)) | 2);
 
     if(writeOffset == NULL) return 1;
 
@@ -223,7 +223,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 proce
     memcpy(freeK9Space, emunandPatch, emunandPatchSize);
 
     //Add EmuNAND hooks
-    u32 branchOffset = (u32)(freeK9Space - arm9Section + kernel9Address);
+    u32 branchOffset = (u32)(freeK9Space - arm9Section + kernel9Address) | 1;
     ret += patchNandRw(process9Offset, process9Size, branchOffset);
 
     //Set MPU
