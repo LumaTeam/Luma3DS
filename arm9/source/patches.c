@@ -706,7 +706,11 @@ u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
 
     if(temp == NULL)
     {
-        if(firmVersion == 0xFFFFFFFF) return patchOldTwlFlashcartChecks(pos, size);
+        if(firmVersion == 0xFFFFFFFF)
+        {
+            patchOldTwlFlashcartChecks(pos, size);
+            return 0;
+        }
 
         return 1;
     }
