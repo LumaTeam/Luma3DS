@@ -486,9 +486,36 @@ u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
     return 0;
 }
 
+
+u32 patchTwlArm9ExceptionHandlersInstall(u8 *pos, u32 size)
+{
+    //This is in thumb in TWL_FIRM
+
+    static const u8 pattern[] = {0x81, 0x60, 0x09, 0x49};
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL) return 1;
+
+    u16 *off;
+
+    for(off = (u16 *)temp; *off != 0x6001; off--); //Until str r1, [r0]
+
+    for(u32 r0 = 0x08000000; *off != 0x2140; off++) //Until mov r1, #0x40
+    {
+        //Discard everything that's not str rX, [r0, #imm](!)
+        if((*off & 0xFC00) != 0x6000) continue;
+
+        u32 addr = r0 + ((*off >> 4) & 0xFF);
+        if((addr & 7) != 0 && addr != 0x08000014 && addr != 0x08000004) *off = 0x4600; //nop
+    }
+
+    return 0;
+}
+
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 {
-    //Stub svcBreak with "bkpt 65535" so we can debug the panic
+    //Stub svcBreak with "bkpt 65535" or "bkpt 255" so we can debug the panic
 
     //Look for the svc handler
     static const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
@@ -499,14 +526,28 @@ u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 
     while(*arm9SvcTable != 0) arm9SvcTable++; //Look for SVC0 (NULL)
 
-    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
+    if (arm9SvcTable[0x3C] & 1) //Might be thumb
+    {
+        u16 *addr = (u16 *)(pos + arm9SvcTable[0x3C] - kernel9Address - 1);
 
-    /*
-        mov r8, sp
-        bkpt 0xffff
-    */
-    addr[0] = 0xE1A0800D;
-    addr[1] = 0xE12FFF7F;
+        /*
+            mov r8, sp
+            bkpt 0xff
+        */
+        addr[0] = 0x46E8;
+        addr[1] = 0xBEFF;
+    }
+    else
+    {
+        u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
+
+        /*
+            mov r8, sp
+            bkpt 0xffff
+        */
+        addr[0] = 0xE1A0800D;
+        addr[1] = 0xE12FFF7F;
+    }
 
     arm9ExceptionHandlerSvcBreakAddress = arm9SvcTable[0x3C]; //BreakPtr
 
@@ -523,6 +564,20 @@ u32 patchKernel9Panic(u8 *pos, u32 size)
 
     u32 *off = (u32 *)(temp - 0x34);
     *off = 0xE12FFF7E;
+
+    return 0;
+}
+
+u32 patchTwlKernel9Panic(u8 *pos, u32 size)
+{
+    static const u8 pattern[] = {0xB5, 0x13, 0x00, 0x11};
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL) return 1;
+
+    u16 *off = (u16 *)(temp - 3);
+    *off = 0xBEFE;
 
     return 0;
 }

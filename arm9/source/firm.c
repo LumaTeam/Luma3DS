@@ -463,6 +463,11 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
     //Apply UNITINFO patch
     if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
 
+    //Arm9 exception handlers
+    ret += patchTwlArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
+    ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[3].address);
+    ret += patchTwlKernel9Panic(arm9Section, kernel9Size);
+
     if(loadFromStorage)
     {
         mergeSection0(TWL_FIRM, 0, true);

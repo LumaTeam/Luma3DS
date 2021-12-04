@@ -76,7 +76,7 @@ GEN_USUAL_HANDLER undefinedInstruction, 1
 prefetchAbortHandler:
     msr cpsr_cx, #0xd7                  @ mask interrupts (abort mode)
     mrs sp, spsr
-    and sp, #0x3f
+    and sp, #0x1f
     cmp sp, #0x13
     bne _prefetchAbortNormalHandler
 
@@ -84,7 +84,9 @@ prefetchAbortHandler:
     ldr sp, [sp]
     cmp sp, #0
     beq _prefetchAbortNormalHandler
-    add sp, #(1*4 + 4)
+    tst sp, #1
+    addne sp, #(1*2 + 2 + 1)
+    addeq sp, #(1*4 + 4)
     cmp lr, sp
     bne _prefetchAbortNormalHandler
 
