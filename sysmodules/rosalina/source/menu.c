@@ -436,8 +436,10 @@ void menuShow(Menu *root)
                 currentMenu = previousMenus[--nbPreviousMenus];
                 selectedItem = previousSelectedItems[nbPreviousMenus];
             }
-            else
+            else {
+                while(scanHeldKeys() & KEY_B);
                 break;
+            }
         }
         else if(pressed & KEY_DOWN)
         {
