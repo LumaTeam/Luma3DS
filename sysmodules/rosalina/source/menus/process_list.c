@@ -50,6 +50,8 @@ typedef struct ProcessInfo
 static ProcessInfo infos[0x40] = {0}, infosPrev[0x40] = {0};
 extern GDBServer gdbServer;
 
+bool ascii = false;
+
 static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *info)
 {
     const char *checkbox;
@@ -382,6 +384,13 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             menus[MENU_MODE_SEARCH].buf = searchPattern;
             menus[MENU_MODE_SEARCH].max = 1;
             // ------------------------------------------
+            char u8ToChar(u8 val) {
+                if(val < 32 || val > 126)
+                {
+                    return '-';
+                }
+                return val;
+            }
 
             void drawMenu(void)
             {
@@ -438,10 +447,23 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                         if(address < menus[menuMode].max)
                         {
-                            Draw_DrawFormattedString(x, y,
-                            address == menus[menuMode].selected ? (editing ? COLOR_RED : COLOR_GREEN) : COLOR_WHITE,
-                            "%.2x",
-                            menus[menuMode].buf[address]);
+                            u32 color;
+                            if(address == menus[menuMode].selected)
+                            {
+                                if(editing)
+                                    color = COLOR_RED;
+                                else
+                                    color = COLOR_GREEN;
+                            }
+                            else
+                                color = COLOR_WHITE;
+
+                            u8 val = menus[menuMode].buf[address];
+                            
+                            if(ascii)
+                                Draw_DrawFormattedString(x, y, color, "%c ", u8ToChar(val));
+                            else
+                                Draw_DrawFormattedString(x, y, color, "%.2x", val);
                         }
                         else
                             Draw_DrawString(x, y, COLOR_WHITE, "  ");
@@ -514,6 +536,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     ProcessListMenu_DumpMemory(info->name, menus[MENU_MODE_NORMAL].buf, menus[MENU_MODE_NORMAL].max);
                     clearMenu();
                 }
+                else if(pressed & KEY_START)
+                    ascii = !ascii;
 
                 if(editing)
                 {
