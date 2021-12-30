@@ -386,9 +386,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             // ------------------------------------------
             char u8ToChar(u8 val) {
                 if(val < 32 || val > 126)
-                {
                     return '-';
-                }
                 return val;
             }
 
