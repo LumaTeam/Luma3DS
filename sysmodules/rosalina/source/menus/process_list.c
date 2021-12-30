@@ -419,15 +419,19 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 // ------------------------------------------
 
                 // Location
+                const u32 infoY = instructionsY + SPACING_Y;
+                viewerY += SPACING_Y;
                 if(codeAvailable && heapAvailable)
-                {
-                    const u32 infoY = instructionsY + SPACING_Y;
-                    viewerY += SPACING_Y;
+                {    
                     Draw_DrawString(10, infoY, COLOR_WHITE, "Press L or R to switch between heap and code.");
                     if((u32)menus[MENU_MODE_NORMAL].buf == heapDestAddress)
                         Draw_DrawString(10 + SPACING_X * 31, infoY, COLOR_GREEN, "heap");
                     if((u32)menus[MENU_MODE_NORMAL].buf == codeDestAddress)
                         Draw_DrawString(10 + SPACING_X * 40, infoY, COLOR_GREEN, "code");
+                } else {
+                    Draw_DrawString(10, infoY, COLOR_WHITE, "SELECT to dump memory, START to toggle ASCII view.");
+                    if (ascii)
+                        Draw_DrawString(10 + SPACING_X * 39, infoY, COLOR_GREEN, "ASCII");
                 }
                 // ------------------------------------------
 
