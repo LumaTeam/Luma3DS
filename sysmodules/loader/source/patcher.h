@@ -37,6 +37,7 @@ enum singleOptions
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
+    IGNOREBROKENCAMERAS,
 };
 
 extern u32 config, multiConfig, bootConfig;

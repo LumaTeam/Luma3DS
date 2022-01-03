@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -257,7 +257,8 @@ bool doErrfThrowHook(u32 *cmdbuf)
             If you're getting this error, you may have broken your head-tracking hardware,
             and you need to enable the qtm error bypass below:
         */
-        { "qtm", 0xF96183FEu, CONFIG(ENABLESAFEFIRMROSALINA)},
+        { "qtm", 0xF96183FEu, CONFIG(IGNOREBROKENCAMERAS)},
+        { "cam", 0xF9605002u, CONFIG(IGNOREBROKENCAMERAS)},
         {   "",             0,                         false}, // impossible case to ensure the array has at least 1 element
     };
 

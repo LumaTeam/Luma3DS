@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -96,6 +96,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Set developer UNITINFO",
                                                "( ) Disable Arm11 exception handlers",
                                                "( ) Enable Rosalina on SAFE_FIRM",
+                                               "( ) Ignore QTM/CAM errors", 
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -199,11 +200,14 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Enables Rosalina, the kernel ext.\n"
                                                  "and sysmodule reimplementations on\n"
                                                  "SAFE_FIRM (New 3DS only).\n\n"
-                                                 "Also suppresses QTM error 0xF96183FE,\n"
-                                                 "allowing to use 8.1-11.3 N3DS on\n"
-                                                 "New 2DS XL consoles.\n\n"
                                                  "Only select this if you know what you\n"
                                                  "are doing!",
+
+                                                 "Suppress QTM error 0xF96183FE and\n"
+                                                 "CAM error 0xF9605002.\n\n"
+                                                 "This is useful if your cameras are\n"
+                                                 "broken or you need to use 8.1-11.3\n"
+                                                 "N3DS firmware on the New 2DS XL.\n", 
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -221,7 +225,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     } multiOptions[] = {
         { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = true },
-        { .visible = true  },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = ISN3DS },
@@ -240,7 +244,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible  = ISN3DS },
+        { .visible = ISN3DS },
+        { .visible = ISN3DS }, 
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
