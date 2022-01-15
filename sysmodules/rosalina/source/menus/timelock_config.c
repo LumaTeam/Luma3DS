@@ -77,7 +77,7 @@ void TimelockMenu_LoadData(void)
     if (R_FAILED(res))
     {
         timelockConfigData.isEnabled = false;
-        timelockConfigData.minutes = 0;
+        timelockConfigData.minutes = 10;
         memcpy(timelockConfigData.pin, "0000", 4);
     }
     
@@ -138,8 +138,7 @@ void TimelockMenu_Delay(void)
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Timelock delay menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "To only lock the console at startup, use 0.");
-        Draw_DrawString(10, 40, COLOR_WHITE, "Press A to save the delay.");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to save the delay.");
         Draw_DrawString(10, 60, COLOR_WHITE, currentMinutesString);
         Draw_DrawString(10, 80, COLOR_WHITE, "Press B to go back.");
         Draw_FlushFramebuffer();
@@ -149,7 +148,7 @@ void TimelockMenu_Delay(void)
 
         if (kDown & KEY_DUP)
         {
-            currentMinutes = (currentMinutes == 990 ? 0 : (currentMinutes + 10));
+            currentMinutes = (currentMinutes == 990 ? 10 : (currentMinutes + 10));
 
             const u16 currentMinutesHundreds = currentMinutes / 100;
             const u16 currentMinutesTens = (currentMinutes - (currentMinutesHundreds * 100)) / 10;
@@ -160,7 +159,7 @@ void TimelockMenu_Delay(void)
 
         if (kDown & KEY_DDOWN)
         {
-            currentMinutes = (currentMinutes == 0 ? 990 : (currentMinutes - 10));
+            currentMinutes = (currentMinutes == 10 ? 990 : (currentMinutes - 10));
 
             const u16 currentMinutesHundreds = currentMinutes / 100;
             const u16 currentMinutesTens = (currentMinutes - (currentMinutesHundreds * 100)) / 10;
