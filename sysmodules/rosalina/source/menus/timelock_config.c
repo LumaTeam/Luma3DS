@@ -39,6 +39,7 @@ struct PACKED ALIGN(4)
     bool isEnabled;
     u16 minutes;
     char pin[PIN_LENGTH];
+    u16 elapsedMinutes;
 } timelockConfigData;
 
 
@@ -79,6 +80,7 @@ void TimelockMenu_LoadData(void)
         timelockConfigData.isEnabled = false;
         timelockConfigData.minutes = 10;
         memcpy(timelockConfigData.pin, "0000", 4);
+        timelockConfigData.elapsedMinutes = 0;
     }
     
     IFile_Close(&file);
@@ -249,13 +251,16 @@ void TimelockMenu_PIN(void)
 void TimelockMenu_SaveSettings(void)
 {
     Result res;
-
     IFile file;
     u64 total;
     s64 out;
     bool isSdMode;
 
-    if (R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    timelockConfigData.elapsedMinutes = 0;
+
+    if (R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203)))
+        svcBreak(USERBREAK_ASSERT);
+    
     isSdMode = (bool)out;
 
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
