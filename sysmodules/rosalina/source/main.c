@@ -38,6 +38,7 @@
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
+#include "menus/timelock_config.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -258,6 +259,7 @@ int main(void)
 
     Draw_Init();
     Cheat_SeedRng(svcGetSystemTick());
+    TimelockMenu_LoadData();
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();

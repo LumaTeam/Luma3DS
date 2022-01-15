@@ -35,6 +35,7 @@
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
 #include "menus/screen_filters.h"
+#include "menus/timelock_config.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
@@ -53,6 +54,7 @@ Menu rosalinaMenu = {
         { "Screen filters...", MENU, .menu = &screenFiltersMenu },
         { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
+        { "Timelock options...", MENU, .menu = &timelockMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
