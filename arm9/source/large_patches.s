@@ -41,7 +41,7 @@ emunandPatch:
         add r2, #4
 
         @ More original code that might have been skipped depending on alignment;
-        @ needs to be done at the end so CSPR is preserved
+        @ needs to be done at the end so CPSR is preserved
         lsl r0, r1, #0x17
         bx r2
 
