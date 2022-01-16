@@ -284,11 +284,15 @@ void TimelockMenu_SaveSettings(void)
         Draw_DrawString(10, 10, COLOR_TITLE, "Timelock options menu");
 
         if (R_SUCCEEDED(res))
+        {
             Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
+            Draw_DrawString(10, 50, COLOR_RED, "The console needs to be rebooted");
+            Draw_DrawString(10, 60, COLOR_RED, "in order to apply the changes.");
+        }
         else
             Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08lx).", res);
         
-        Draw_DrawString(10, 50, COLOR_WHITE, "Press B to go back.");
+        Draw_DrawString(10, 80, COLOR_WHITE, "Press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
