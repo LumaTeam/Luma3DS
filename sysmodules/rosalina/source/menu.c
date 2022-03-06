@@ -35,11 +35,13 @@
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "minisoc.h"
+#include "timelock_shared_config.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
 bool needsResetSelectedItem = false;
+bool isRosalinaMenuOpened = false;
 
 // libctru redefinition:
 
@@ -260,8 +262,10 @@ void menuThreadMain(void)
 
         Cheat_ApplyCheats();
 
-        if((scanHeldKeys() & menuCombo) == menuCombo)
+        if ((scanHeldKeys() & menuCombo) == menuCombo && !isTimeLocked)
         {
+            isRosalinaMenuOpened = true;
+
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
             menuShow(&rosalinaMenu);
@@ -284,6 +288,7 @@ void menuEnter(void)
             // Oops
             menuRefCount = 0;
             svcKernelSetState(0x10000, 2 | 1);
+            isRosalinaMenuOpened = false;
             svcSleepThread(5 * 1000 * 100LL);
         }
         else
@@ -302,6 +307,8 @@ void menuLeave(void)
         Draw_RestoreFramebuffer();
         Draw_FreeFramebufferCache();
         svcKernelSetState(0x10000, 2 | 1);
+
+        isRosalinaMenuOpened = false;
     }
     Draw_Unlock();
 }
