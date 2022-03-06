@@ -39,6 +39,7 @@
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
+bool needsResetSelectedItem = false;
 
 // libctru redefinition:
 
@@ -215,6 +216,24 @@ u32 menuCountItems(const Menu *menu)
     return n;
 }
 
+static inline u32 menuAdvanceCursorWithVisibilityHandling(const Menu* menu, u32 pos, u32 numItems, s32 displ)
+{
+    u32 menuIter = 0;
+    u32 selectedItem = pos;
+
+    do
+    {
+        // If everything is hidden in the menu, we return index 0 to avoid an infinite loop
+        if (menuIter >= numItems)
+            return 0;
+
+        selectedItem = menuAdvanceCursor(selectedItem, numItems, displ);
+        menuIter++;
+    } while (menuItemIsHidden(&menu->items[selectedItem]));
+
+    return selectedItem;
+}
+
 MyThread *menuCreateThread(void)
 {
     if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0x1000, 52, CORE_SYSTEM)))
@@ -371,7 +390,7 @@ void menuShow(Menu *root)
 
     u32 numItems = menuCountItems(currentMenu);
     if (menuItemIsHidden(&currentMenu->items[selectedItem]))
-        selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
+        selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, 1);
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -412,7 +431,10 @@ void menuShow(Menu *root)
                     previousSelectedItems[nbPreviousMenus] = selectedItem;
                     previousMenus[nbPreviousMenus++] = currentMenu;
                     currentMenu = currentMenu->items[selectedItem].menu;
+
                     selectedItem = 0;
+                    if (menuItemIsHidden(&currentMenu->items[selectedItem]))
+                        selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, 1);
                     break;
                 default:
                     __builtin_trap(); // oops
@@ -441,15 +463,21 @@ void menuShow(Menu *root)
         }
         else if(pressed & KEY_DOWN)
         {
-            selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
-            if (menuItemIsHidden(&currentMenu->items[selectedItem]))
-                selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
+            selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, 1);
         }
         else if(pressed & KEY_UP)
         {
-            selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
+            selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, -1);
+        }
+
+        if (needsResetSelectedItem)
+        {
+            selectedItem = 0;
+
             if (menuItemIsHidden(&currentMenu->items[selectedItem]))
-                selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
+                selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, 1);
+
+            needsResetSelectedItem = false;
         }
 
         Draw_Lock();
@@ -457,4 +485,9 @@ void menuShow(Menu *root)
         Draw_Unlock();
     }
     while(!menuShouldExit);
+}
+
+void menuResetSelectedItem(void)
+{
+    needsResetSelectedItem = true;
 }

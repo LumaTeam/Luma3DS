@@ -88,3 +88,4 @@ void menuEnter(void);
 void menuLeave(void);
 void menuThreadMain(void);
 void menuShow(Menu *root);
+void menuResetSelectedItem(void);
