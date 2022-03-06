@@ -41,6 +41,12 @@ typedef enum
 
 extern Menu timelockMenu;
 
+bool TimelockMenu_IsMenuLocked(void);
+bool TimelockMenu_IsMenuUnlocked(void);
+void TimelockMenu_LockMenu(void);
+void TimelockMenu_UnlockMenu(void);
+bool TimelockMenu_CheckPIN(char *enteredPIN);
+
 void TimelockMenu_LoadData(void);
 void TimelockMenu_UpdateAll(void);
 void TimelockMenu_UpdateStatus(TIMELOCK_CONFIG_MENU menuItem);

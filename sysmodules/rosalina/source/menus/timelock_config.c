@@ -43,6 +43,7 @@ struct PACKED ALIGN(4)
 } timelockConfigData;
 
 
+bool isMenuLocked = true;
 char timelockMenuToggle[] = "[_] Toggle timelock";
 char timelockMenuDelay[] = "[__0m] Delay";
 char timelockMenuPin[] = "[____] PIN";
@@ -50,13 +51,105 @@ char timelockMenuPin[] = "[____] PIN";
 Menu timelockMenu = {
     "Timelock menu",
     {
-        { timelockMenuToggle, METHOD, .method = &TimelockMenu_ToggleTimelock },
-        { timelockMenuDelay, METHOD, .method = &TimelockMenu_Delay },
-        { timelockMenuPin, METHOD, .method = &TimelockMenu_PIN },
-        { "Save settings", METHOD, .method = &TimelockMenu_SaveSettings },
+        { "Unlock menu", METHOD, .method = &TimelockMenu_UnlockMenu, .visibility = &TimelockMenu_IsMenuLocked },
+        { timelockMenuToggle, METHOD, .method = &TimelockMenu_ToggleTimelock, .visibility = &TimelockMenu_IsMenuUnlocked },
+        { timelockMenuDelay, METHOD, .method = &TimelockMenu_Delay, .visibility = &TimelockMenu_IsMenuUnlocked },
+        { timelockMenuPin, METHOD, .method = &TimelockMenu_PIN, .visibility = &TimelockMenu_IsMenuUnlocked },
+        { "Save settings", METHOD, .method = &TimelockMenu_SaveSettings, .visibility = &TimelockMenu_IsMenuUnlocked },
+        { "Lock menu", METHOD, .method = &TimelockMenu_LockMenu, .visibility = &TimelockMenu_IsMenuUnlocked },
         {},
     }
 };
+
+bool TimelockMenu_IsMenuLocked(void)
+{
+    return isMenuLocked;
+}
+
+bool TimelockMenu_IsMenuUnlocked(void)
+{
+    return !TimelockMenu_IsMenuLocked();
+}
+
+void TimelockMenu_LockMenu(void)
+{
+    isMenuLocked = true;
+
+    menuResetSelectedItem();
+}
+
+void TimelockMenu_UnlockMenu(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    u8 pinIndex = 0;
+    char currentPin[PIN_LENGTH] = {0};
+
+    memcpy(currentPin, "0000", PIN_LENGTH);
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Timelock menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Enter the PIN and press A.");
+        for (int i = 0; i < PIN_LENGTH; i++)
+        {
+            Draw_DrawCharacter(10 + (i * 10), 50, COLOR_WHITE, currentPin[i]);
+            Draw_DrawCharacter(10 + (i * 10), 60, COLOR_WHITE, (i == pinIndex ? '^' : ' '));
+        }
+        Draw_DrawString(10, 80, COLOR_WHITE, "Press B to go back.");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        const u32 kDown = waitInputWithTimeout(1000);
+
+        if (kDown & KEY_DLEFT)
+        {
+            pinIndex = (pinIndex == 0 ? (PIN_LENGTH - 1) : (pinIndex - 1));
+        }
+
+        if (kDown & KEY_DRIGHT)
+        {
+            pinIndex = (pinIndex == (PIN_LENGTH - 1) ? 0 : (pinIndex + 1));
+        }
+        
+        if (kDown & KEY_DUP)
+        {
+            currentPin[pinIndex] = (currentPin[pinIndex] == '9' ? '0' : (currentPin[pinIndex] + 1));
+        }
+
+        if (kDown & KEY_DDOWN)
+        {
+            currentPin[pinIndex] = (currentPin[pinIndex] == '0' ? '9' : (currentPin[pinIndex] - 1));
+        }
+
+        if (kDown & KEY_A)
+        {
+            if (TimelockMenu_CheckPIN(currentPin))
+            {
+                isMenuLocked = false;
+                break;
+            }
+        }
+
+        if (kDown & KEY_B)
+        {
+            break;
+        }
+    }
+    while (!menuShouldExit);
+
+
+    menuResetSelectedItem();
+}
+
+bool TimelockMenu_CheckPIN(char *enteredPIN)
+{
+    return (memcmp(timelockConfigData.pin, enteredPIN, PIN_LENGTH) == 0);
+}
 
 void TimelockMenu_LoadData(void)
 {
@@ -79,7 +172,7 @@ void TimelockMenu_LoadData(void)
     {
         timelockConfigData.isEnabled = false;
         timelockConfigData.minutes = 10;
-        memcpy(timelockConfigData.pin, "0000", 4);
+        memcpy(timelockConfigData.pin, "0000", PIN_LENGTH);
         timelockConfigData.elapsedMinutes = 0;
     }
     
@@ -141,8 +234,8 @@ void TimelockMenu_Delay(void)
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Timelock delay menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to save the delay.");
-        Draw_DrawString(10, 60, COLOR_WHITE, currentMinutesString);
-        Draw_DrawString(10, 80, COLOR_WHITE, "Press B to go back.");
+        Draw_DrawString(10, 50, COLOR_WHITE, currentMinutesString);
+        Draw_DrawString(10, 70, COLOR_WHITE, "Press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
@@ -174,12 +267,12 @@ void TimelockMenu_Delay(void)
         {
             timelockConfigData.minutes = currentMinutes;
             TimelockMenu_UpdateStatus(TL_MENU_DELAY);
-            return;
+            break;
         }
 
         if (kDown & KEY_B)
         {
-            return;
+            break;
         }
     }
     while (!menuShouldExit);
@@ -237,12 +330,12 @@ void TimelockMenu_PIN(void)
         {
             memcpy(timelockConfigData.pin, currentPin, PIN_LENGTH);
             TimelockMenu_UpdateStatus(TL_MENU_PIN);
-            return;
+            break;
         }
 
         if (kDown & KEY_B)
         {
-            return;
+            break;
         }
     }
     while (!menuShouldExit);
