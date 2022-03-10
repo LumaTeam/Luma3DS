@@ -88,7 +88,7 @@ void TimelockMenu_UnlockMenu(void)
     u8 pinIndex = 0;
     char currentPin[PIN_LENGTH] = {0};
 
-    memcpy(currentPin, "0000", PIN_LENGTH);
+    memcpy(currentPin, PIN_ZERO, PIN_LENGTH);
 
     do
     {
@@ -172,7 +172,7 @@ void TimelockMenu_LoadData(void)
     {
         timelockConfigData.isEnabled = false;
         timelockConfigData.minutes = 10;
-        memcpy(timelockConfigData.pin, "0000", PIN_LENGTH);
+        memcpy(timelockConfigData.pin, PIN_ZERO, PIN_LENGTH);
         timelockConfigData.elapsedMinutes = 0;
     }
     

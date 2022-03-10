@@ -29,6 +29,7 @@
 #include "menu.h"
 
 #define CONFIG_FILE_PATH "/luma/timelock_config.bin"
+#define PIN_ZERO         "0000"
 #define PIN_LENGTH       4
 
 
