@@ -29,6 +29,6 @@
 #include <3ds/types.h>
 #include <time.h>
 
-Result ntpGetTimeStamp(time_t *outTimestamp);
-Result ntpSetTimeDate(time_t timestamp);
+Result ntpGetTimeStamp(u64 *msSince1900, u64 *samplingTick);
+Result ntpSetTimeDate(u64 msSince1900, u64 samplingTick);
 Result ntpNullifyUserTimeOffset(void); // not actually used for NTP
