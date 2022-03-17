@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -385,7 +385,7 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
 
     bool isSocURegistered;
 
-    time_t t;
+    u64 msSince1900, samplingTick;
 
     res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
     cantStart = R_FAILED(res) || !isSocURegistered;
@@ -424,12 +424,11 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
     res = 0;
     if(!cantStart)
     {
-        res = ntpGetTimeStamp(&t);
+        res = ntpGetTimeStamp(&msSince1900, &samplingTick);
         if(R_SUCCEEDED(res))
         {
-            t += 3600 * utcOffset;
-            t += 60 * utcOffsetMinute;
-            res = ntpSetTimeDate(t);
+            msSince1900 += 1000 * (3600 * utcOffset + 60 * utcOffsetMinute);
+            res = ntpSetTimeDate(msSince1900, samplingTick);
         }
     }
 
