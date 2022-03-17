@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -33,7 +33,9 @@
 
 #define NUM2BCD(n)          ((n<99) ? (((n/10)*0x10)|(n%10)) : 0x99)
 
-#define NTP_TIMESTAMP_DELTA 2208988800ull
+//#define NTP_TIMESTAMP_DELTA 2208988800ull
+
+#define MSEC_DELTA_1900_2000 3155673600000ull
 
 #define MAKE_IPV4(a,b,c,d)  ((a) << 24 | (b) << 16 | (c) << 8 | (d))
 
@@ -73,10 +75,13 @@ typedef struct NtpPacket
 
 } NtpPacket;            // Total: 384 bits or 48 bytes.
 
-Result ntpGetTimeStamp(time_t *outTimestamp)
+Result ntpGetTimeStamp(u64 *msSince1900, u64 *samplingTick)
 {
     Result res = 0;
     struct linger linger;
+    *msSince1900 = 0;
+    *samplingTick = 0;
+
     res = miniSocInit();
     if(R_FAILED(res))
         return res;
@@ -108,12 +113,14 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
     if(socConnect(sock, (struct sockaddr *)&servAddr, sizeof(struct sockaddr_in)) < 0)
         goto cleanup;
 
+    u64 roundTripTicks = svcGetSystemTick();
     if(socSend(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
 
     if(socRecv(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
-
+    roundTripTicks = svcGetSystemTick() - roundTripTicks;
+    u64 dt = 1000 * 1000 * roundTripTicks / (2 * SYSCLOCK_ARM11); // avg = round trip time / 2
     res = 0;
 
     // These two fields contain the time-stamp seconds as the packet left the NTP server.
@@ -121,13 +128,11 @@ Result ntpGetTimeStamp(time_t *outTimestamp)
     // ntohl() converts the bit/byte order from the network's to host's "endianness".
 
     packet.txTm_s = ntohl(packet.txTm_s); // Time-stamp seconds.
-    packet.txTm_f = ntohl(packet.txTm_f); // Time-stamp fraction of a second.
-
-    // Extract the 32 bits that represent the time-stamp seconds (since NTP epoch) from when the packet left the server.
-    // Subtract 70 years worth of seconds from the seconds since 1900.
-    // This leaves the seconds since the UNIX epoch of 1970.
-    // (1900)------------------(1970)**************************************(Time Packet Left the Server)
-    *outTimestamp = (time_t)(packet.txTm_s - NTP_TIMESTAMP_DELTA);
+    packet.txTm_f = ntohl(packet.txTm_f); // Time-stamp fraction of a second. txTm is 32.32 fixed point.
+    u64 txTmUsec = (1000 * 1000 * (u64)packet.txTm_f) >> 32; // convert txTm to usec (truncate; end result is in ms anyway)
+    txTmUsec += 1000 * 1000 * (u64)packet.txTm_s;
+    *msSince1900 = (txTmUsec + dt + 500u) / 1000u;
+    *samplingTick = svcGetSystemTick();
 
 cleanup:
     linger.l_onoff = 1;
@@ -140,54 +145,70 @@ cleanup:
     return res;
 }
 
-Result ntpSetTimeDate(time_t timestamp)
+static Result ntpSetTimeDateImpl(u64 msSince1900, u64 samplingTick, bool syncRtc)
 {
     Result res = ptmSysmInit();
     if (R_FAILED(res)) return res;
-
-    // Update the user time offset
-    // 946684800 is the timestamp of 01/01/2000 00:00 relative to the Unix Epoch
-    s64 msY2k = (timestamp - 946684800) * 1000;
-    res = PTMSYSM_SetUserTime(msY2k);
-
-    ptmSysmExit();
-    return res;
-}
-
-// Not actually used for NTP, but...
-Result ntpNullifyUserTimeOffset(void)
-{
-    Result res = ptmSysmInit();
-    if (R_FAILED(res)) return res;
-
-    res = cfguInit();
+    res = ptmSetsInit();
     if (R_FAILED(res))
     {
         ptmSysmExit();
         return res;
     }
+    res = cfguInit();
+    if (R_FAILED(res))
+    {
+        ptmSetsExit();
+        ptmSysmExit();
+        return res;
+    }
 
-    // First, set the user time offset to 0 (user time = rtc time + user time offset)
-    s64 userTimeOff = 0;
-    res = CFG_SetConfigInfoBlk4(8, 0x30001, &userTimeOff);
-    if (R_FAILED(res)) goto cleanup;
+    u64 dt = 1000 * (svcGetSystemTick() - samplingTick) / SYSCLOCK_ARM11;
+    s64 msY2k = msSince1900 + dt - MSEC_DELTA_1900_2000;
 
-    // Get the user time from shared data... there might be up to 0.5s drift from {mcu+offset} but we don't care here
-    s64 userTime = osGetTime() - 3155673600000LL; // 1900 -> 2000 time base
+    if (syncRtc)
+    {
+        u64 samplingTick2 = svcGetSystemTick();
 
-    // Apply user time to RTC
-    res = PTMSYSM_SetRtcTime(userTime);
-    if (R_FAILED(res)) goto cleanup;
+        s64 timeOff = 0;
+        res = CFG_SetConfigInfoBlk4(8, 0x30001, &timeOff);
+        if (R_SUCCEEDED(res)) res = CFG_SetConfigInfoBlk4(8, 0x30002, &timeOff);
 
-    // Invalidate system (absolute, server) time, which gets fixed on "friends" login anyway -- don't care if we fail here.
-    // It has become invalid because we changed the RTC time
-    PTMSYSM_InvalidateSystemTime();
+        // Save the config changes
+        if (R_SUCCEEDED(res)) res = CFG_UpdateConfigSavegame();
 
-    // Save the config changes
-    res = CFG_UpdateConfigSavegame();
+        // Wait till next second
+        msY2k += 1000 * (svcGetSystemTick() - samplingTick2) / SYSCLOCK_ARM11;
+        if (msY2k % 1000u != 0)
+        {
+            u64 dt2 = 1000u - msY2k % 1000u;
+            svcSleepThread(dt2);
+            msY2k += dt2;
+        }
+        if (R_SUCCEEDED(res)) res = PTMSYSM_SetRtcTime(msY2k);
+    }
+    else
+    {
+        if (R_SUCCEEDED(res)) res = PTMSYSM_SetUserTime(msY2k);
+        if (R_SUCCEEDED(res)) res = PTMSETS_SetSystemTime(msY2k);
+    }
 
-    cleanup:
-    ptmSysmExit();
+
     cfguExit();
+    ptmSetsExit();
+    ptmSysmExit();
     return res;
+}
+
+Result ntpSetTimeDate(u64 msSince1900, u64 samplingTick)
+{
+    return ntpSetTimeDateImpl(msSince1900, samplingTick, false);
+}
+
+// Not actually used for NTP, but...
+Result ntpNullifyUserTimeOffset(void)
+{
+    u64 msSince1900 = osGetTime();
+    u64 samplingTick = svcGetSystemTick();
+    return ntpSetTimeDateImpl(msSince1900, samplingTick, true);
 }
