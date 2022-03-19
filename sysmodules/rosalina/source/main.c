@@ -27,6 +27,7 @@
 #include <3ds.h>
 #include "memory.h"
 #include "menu.h"
+#include "timelock.h"
 #include "service_manager.h"
 #include "errdisp.h"
 #include "hbloader.h"
@@ -264,6 +265,7 @@ int main(void)
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
+    MyThread *timelockThread = timelockCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
@@ -274,6 +276,7 @@ int main(void)
 
     MyThread_Join(taskRunnerThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
+    MyThread_Join(timelockThread, -1LL);
 
     return 0;
 }

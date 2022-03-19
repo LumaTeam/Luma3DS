@@ -29,19 +29,12 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <3ds.h>
-#include "menus/timelock_config.h"
 #include "draw.h"
 #include "ifile.h"
+#include "menus/timelock_config.h"
 
 
-struct PACKED ALIGN(4)
-{
-    bool isEnabled;
-    u16 minutes;
-    char pin[PIN_LENGTH];
-    u16 elapsedMinutes;
-} timelockConfigData;
-
+timelockConfig timelockConfigData;
 
 bool isMenuLocked = true;
 char timelockMenuToggle[] = "[_] Toggle timelock";

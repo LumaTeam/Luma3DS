@@ -18,6 +18,18 @@
 
 #include <3ds/types.h>
 
+#define PIN_LENGTH       4
+#define CONFIG_FILE_PATH "/luma/timelock_config.bin"
+
+
+typedef struct PACKED ALIGN(4) timelockConfig
+{
+    bool isEnabled;
+    u16 minutes;
+    char pin[PIN_LENGTH];
+    u16 elapsedMinutes;
+} timelockConfig;
+
 
 extern bool isRosalinaMenuOpened;
 extern bool isTimeLocked;

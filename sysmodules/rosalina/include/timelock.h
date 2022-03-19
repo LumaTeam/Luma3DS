@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -26,31 +26,30 @@
 
 #pragma once
 
-#include "menu.h"
-#include "../timelock_shared_config.h"
+#include <3ds/types.h>
+#include "MyThread.h"
+#include "timelock_shared_config.h"
 
-#define PIN_ZERO         "0000"
+
+#define MINUTES_TO_CHECK  1
+
+#define CORE_APPLICATION  0
+#define CORE_SYSTEM       1
 
 
-typedef enum
-{
-    TL_MENU_TOGGLE,
-    TL_MENU_DELAY,
-    TL_MENU_PIN
-} TIMELOCK_CONFIG_MENU;
+// From main.c
+extern bool preTerminationRequested;
+extern Handle preTerminationEvent;
 
-extern Menu timelockMenu;
 
-bool TimelockMenu_IsMenuLocked(void);
-bool TimelockMenu_IsMenuUnlocked(void);
-void TimelockMenu_LockMenu(void);
-void TimelockMenu_UnlockMenu(void);
-bool TimelockMenu_CheckPIN(char *enteredPIN);
+MyThread *timelockCreateThread(void);
+void timelockThreadMain(void);
+void timelockLoadData(void);
+void timelockEnter(void);
+void timelockLeave(void);
+void timelockShow(void);
+void saveElapsedTime(void);
 
-void TimelockMenu_LoadData(void);
-void TimelockMenu_UpdateAll(void);
-void TimelockMenu_UpdateStatus(TIMELOCK_CONFIG_MENU menuItem);
-void TimelockMenu_ToggleTimelock(void);
-void TimelockMenu_Delay(void);
-void TimelockMenu_PIN(void);
-void TimelockMenu_SaveSettings(void);
+bool checkPIN(void);
+void resetEnteredPIN(void);
+void timelockInput(void);
