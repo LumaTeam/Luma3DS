@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -348,7 +348,7 @@ int ctrNandInit(void)
     u8 __attribute__((aligned(4))) temp[0x200];
 
     //Read NCSD header
-    result = firmSource == FIRMWARE_SYSNAND ? sdmmc_nand_readsectors(0, 1, temp) : sdmmc_sdcard_readsectors(emuHeader, 1, temp);
+    result = firmSource == FIRMWARE_SYSNAND ? sdmmc_nand_readsectors(0, 1, temp) : sdmmc_sdcard_readsectors(emuOffset + emuHeader, 1, temp);
 
     if(!result)
     {
