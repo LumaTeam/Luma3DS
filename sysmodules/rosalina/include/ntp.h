@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -29,6 +29,6 @@
 #include <3ds/types.h>
 #include <time.h>
 
-Result ntpGetTimeStamp(time_t *outTimestamp);
-Result ntpSetTimeDate(time_t timestamp);
+Result ntpGetTimeStamp(u64 *msSince1900, u64 *samplingTick);
+Result ntpSetTimeDate(u64 msSince1900, u64 samplingTick);
 Result ntpNullifyUserTimeOffset(void); // not actually used for NTP
