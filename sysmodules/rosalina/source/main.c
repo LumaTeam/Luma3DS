@@ -139,9 +139,6 @@ static void handleTermNotification(u32 notificationId)
 
 static void handleSleepNotification(u32 notificationId)
 {
-    // Quick dirty fix
-    Sleep__HandleNotification(notificationId);
-
     ptmSysmInit();
     s32 ackValue = ptmSysmGetNotificationAckValue(notificationId);
     switch (notificationId)
@@ -168,6 +165,9 @@ static void handleSleepNotification(u32 notificationId)
 
 static void handleShellNotification(u32 notificationId)
 {
+    // Quick dirty fix
+    Sleep__HandleNotification(notificationId);
+    
     if (notificationId == 0x213) {
         // Shell opened
         // Note that this notification is fired on system init
