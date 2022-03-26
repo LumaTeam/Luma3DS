@@ -130,3 +130,6 @@ extern BootType bootType;
 
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[80+1];
+
+extern u16 mcuFwVersion;
+extern u8 mcuConsoleInfo[9];
