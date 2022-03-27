@@ -24,6 +24,7 @@
 *         reasonable ways as different from the original version.
 */
 
+#include <assert.h>
 #include "config.h"
 #include "memory.h"
 #include "fs.h"
@@ -33,14 +34,84 @@
 #include "emunand.h"
 #include "buttons.h"
 #include "pin.h"
+#include "i2c.h"
+
+#define MAKE_LUMA_VERSION_MCU(major, minor, build) (u16)(((major) & 0xFF) << 8 | ((minor) & 0x1F) << 5 | ((build) & 7))
 
 CfgData configData;
 ConfigurationStatus needConfig;
 static CfgData oldConfig;
 
+static CfgDataMcu configDataMcu;
+static_assert(sizeof(CfgDataMcu) > 0, "wrong data size");
+
+static void writeConfigMcu(void)
+{
+    u8 data[sizeof(CfgDataMcu)];
+
+    // Set Luma version
+    configDataMcu.lumaVersion = MAKE_LUMA_VERSION_MCU(VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+
+    // Set bootconfig from CfgData
+    configDataMcu.bootCfg = configData.bootConfig;
+
+    memcpy(data, &configDataMcu, sizeof(CfgDataMcu));
+
+    // Fix checksum
+    u8 checksum = 0;
+    for (u32 i = 0; i < sizeof(CfgDataMcu) - 1; i++)
+        checksum += data[i];
+    checksum = ~checksum;
+    data[sizeof(CfgDataMcu) - 1] = checksum;
+    configDataMcu.checksum = checksum;
+
+    I2C_writeReg(I2C_DEV_MCU, 0x60, 200 - sizeof(CfgDataMcu));
+    I2C_writeRegBuf(I2C_DEV_MCU, 0x61, data, sizeof(CfgDataMcu));
+}
+
+static bool readConfigMcu(void)
+{
+    u8 data[sizeof(CfgDataMcu)];
+    u16 curVer = MAKE_LUMA_VERSION_MCU(VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+
+    // Select free reg id, then access the data regs
+    I2C_writeReg(I2C_DEV_MCU, 0x60, 200 - sizeof(CfgDataMcu));
+    I2C_readRegBuf(I2C_DEV_MCU, 0x61, data, sizeof(CfgDataMcu));
+    memcpy(&configDataMcu, data, sizeof(CfgDataMcu));
+
+    u8 checksum = 0;
+    for (u32 i = 0; i < sizeof(CfgDataMcu) - 1; i++)
+        checksum += data[i];
+    checksum = ~checksum;
+
+    if (checksum != configDataMcu.checksum || configDataMcu.lumaVersion < MAKE_LUMA_VERSION_MCU(10, 3, 0))
+    {
+        // Invalid data stored in MCU...
+        configData.bootConfig = 0;
+        // Perform upgrade process (ignoring failures)
+        doLumaUpgradeProcess();
+        writeConfigMcu();
+
+        return false;
+    }
+
+    if (configDataMcu.lumaVersion < curVer)
+    {
+        // Perform upgrade process (ignoring failures)
+        doLumaUpgradeProcess();
+        writeConfigMcu();
+    }
+
+    return true;
+}
+
 bool readConfig(void)
 {
     bool ret;
+
+    ret = readConfigMcu();
+    if (!ret)
+        return false;
 
     if(fileRead(&configData, CONFIG_FILE, sizeof(CfgData)) != sizeof(CfgData) ||
        memcmp(configData.magic, "CONF", 4) != 0 ||
@@ -48,11 +119,12 @@ bool readConfig(void)
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
         memset(&configData, 0, sizeof(CfgData));
-
         ret = false;
     }
-    else ret = true;
+    else
+        ret = true;
 
+    configData.bootConfig = configDataMcu.bootCfg;
     oldConfig = configData;
 
     return ret;
@@ -73,7 +145,9 @@ void writeConfig(bool isConfigOptions)
         needConfig = MODIFY_CONFIGURATION;
     }
 
-    if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
+    if (!isConfigOptions)
+        writeConfigMcu();
+    else if(!fileWrite(&configData, CONFIG_FILE, sizeof(CfgData)))
         error("Error writing the configuration file");
 }
 

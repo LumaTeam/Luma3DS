@@ -60,8 +60,19 @@ static bool switchToMainDir(bool isSd)
 
 bool mountFs(bool isSd, bool switchToCtrNand)
 {
-    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) :
-                  f_mount(&nandFs, "1:", 1) == FR_OK && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
+    static bool sdInitialized = false, nandInitialized = false;
+    if (isSd)
+    {
+        if (!sdInitialized)
+            sdInitialized = f_mount(&sdFs, "0:", 1) == FR_OK;
+        return sdInitialized && switchToMainDir(true);
+    }
+    else
+    {
+        if (!nandInitialized)
+            nandInitialized = f_mount(&nandFs, "1:", 1) == FR_OK;
+        return nandInitialized && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
+    }
 }
 
 u32 fileRead(void *dest, const char *path, u32 maxSize)
@@ -385,8 +396,9 @@ void findDumpFile(const char *folderPath, char *fileName)
     if(result == FR_OK) f_closedir(&dir);
 }
 
-static u8 fileCopyBuffer[0x1000];
-bool backupEssentialFiles(void)
+static u8 fileCopyBuffer[0x10000];
+
+static bool backupEssentialFiles(void)
 {
     size_t sz = sizeof(fileCopyBuffer);
 
@@ -419,4 +431,21 @@ bool backupEssentialFiles(void)
     }
 
     return ok;
+}
+
+bool doLumaUpgradeProcess(void)
+{
+    // Ensure CTRNAND is mounted
+    bool ok = mountFs(false, false), ok2 = true;
+    if (!ok)
+        return false;
+
+    // Try to boot.firm to CTRNAND, when applicable
+    if (isSdMode)
+        ok = fileCopy("0:/boot.firm", "1:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
+
+    // Try to backup essential files
+    ok2 = backupEssentialFiles();
+
+    return ok && ok2;
 }

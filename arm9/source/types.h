@@ -73,6 +73,14 @@ typedef struct __attribute__((packed, aligned(4)))
 
 typedef struct
 {
+    u16 lumaVersion;
+    u8 bootCfg;
+    u8 reserved[2];
+    u8 checksum;
+} CfgDataMcu;
+
+typedef struct
+{
     char magic[4];
     u16 formatVersionMajor, formatVersionMinor;
 
