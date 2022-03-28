@@ -30,6 +30,7 @@
 #include "menu.h"
 
 extern Menu miscellaneousMenu;
+extern int lastNtpTzOffset;
 
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void);
 void MiscellaneousMenu_ChangeMenuCombo(void);

@@ -32,7 +32,6 @@
 #include "svc/GetSystemInfo.h"
 #include "svc/GetProcessInfo.h"
 #include "svc/GetThreadInfo.h"
-#include "svc/GetCFWInfo.h"
 #include "svc/ConnectToPort.h"
 #include "svc/SendSyncRequest.h"
 #include "svc/Break.h"
@@ -105,8 +104,6 @@ void *svcHook(u8 *pageEnd)
             return GetThreadInfoHookWrapper;
         case 0x2D:
             return ConnectToPortHookWrapper;
-        case 0x2E:
-            return GetCFWInfo; // DEPRECATED
         case 0x32:
             return SendSyncRequestHook;
         case 0x3C:

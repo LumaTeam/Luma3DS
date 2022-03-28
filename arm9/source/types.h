@@ -61,14 +61,16 @@ typedef volatile s64 vs64;
 #define ISN3DS       (CFG11_SOCINFO & 2)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 
-typedef struct __attribute__((packed, aligned(4)))
-{
-    char magic[4];
+typedef struct {
     u16 formatVersionMajor, formatVersionMinor;
 
     u32 config, multiConfig, bootConfig;
+    u32 splashDurationMsec;
+
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
+    u16 screenFiltersCct;
+    s16 ntpTzOffetMinutes;
 } CfgData;
 
 typedef struct
