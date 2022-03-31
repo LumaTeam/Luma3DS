@@ -488,6 +488,7 @@ static bool readConfigMcu(void)
     if (checksum != configDataMcu.checksum || configDataMcu.lumaVersion < MAKE_LUMA_VERSION_MCU(10, 3, 0))
     {
         // Invalid data stored in MCU...
+        memset(&configDataMcu, 0, sizeof(CfgDataMcu));
         configData.bootConfig = 0;
         // Perform upgrade process (ignoring failures)
         doLumaUpgradeProcess();
@@ -508,14 +509,11 @@ static bool readConfigMcu(void)
 
 bool readConfig(void)
 {
-    bool ret;
+    bool retMcu, ret;
 
-    ret = readConfigMcu();
-    if (!ret)
-        return false;
-
+    retMcu = readConfigMcu();
     ret = readLumaIniConfig();
-    if(!ret ||
+    if(!retMcu || !ret ||
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
@@ -540,16 +538,24 @@ bool readConfig(void)
 
 void writeConfig(bool isConfigOptions)
 {
-    //If the configuration is different from previously, overwrite it.
-    if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && configData.config == oldConfig.config && configData.multiConfig == oldConfig.multiConfig) ||
-                                              (!isConfigOptions && configData.bootConfig == oldConfig.bootConfig))) return;
+    bool updateMcu, updateIni;
 
-    if(needConfig == CREATE_CONFIGURATION)
+    if (needConfig == CREATE_CONFIGURATION)
+    {
+        updateMcu = !isConfigOptions; // We've already committed it once (if it wasn't initialized)
+        updateIni = isConfigOptions;
         needConfig = MODIFY_CONFIGURATION;
+    }
+    else
+    {
+        updateMcu = !isConfigOptions && configData.bootConfig != oldConfig.bootConfig;
+        updateIni = isConfigOptions && (configData.config != oldConfig.config || configData.multiConfig != oldConfig.multiConfig);
+    }
 
-    if (!isConfigOptions)
+    if (updateMcu)
         writeConfigMcu();
-    else if(!writeLumaIniConfig())
+
+    if(updateIni && !writeLumaIniConfig())
         error("Error writing the configuration file");
 }
 

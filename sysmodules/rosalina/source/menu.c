@@ -234,6 +234,8 @@ void menuThreadMain(void)
     s64 out;
     svcGetSystemInfo(&out, 0x10000, 0x102);
     screenFiltersCurrentTemperature = (int)(u32)out;
+    if (screenFiltersCurrentTemperature < 1000 || screenFiltersCurrentTemperature > 25100)
+        screenFiltersCurrentTemperature = 6500;
 
     // Careful about race conditions here
     if (screenFiltersCurrentTemperature != 6500)
