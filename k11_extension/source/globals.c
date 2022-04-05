@@ -113,3 +113,5 @@ u32 stolenSystemMemRegionSize;
 
 vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;
+
+u32 pidOffsetKProcess, hwInfoOffsetKProcess, codeSetOffsetKProcess, handleTableOffsetKProcess, debugOffsetKProcess;

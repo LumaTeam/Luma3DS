@@ -32,7 +32,9 @@
 #include "utils.h"
 
 extern void *officialSVCs[0x7E];
+extern void *alteredSvcTable[0x100];
+
+void buildAlteredSvcTable(void);
 
 void postprocessSvc(void);
 void svcDefaultHandler(u8 svcId);
-void *svcHook(u8 *pageEnd);
