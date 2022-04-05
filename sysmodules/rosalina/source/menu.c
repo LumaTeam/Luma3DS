@@ -35,6 +35,7 @@
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "minisoc.h"
+#include "menus/screen_filters.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
@@ -143,7 +144,7 @@ u32 waitCombo(void)
 }
 
 static MyThread menuThread;
-static u8 ALIGN(8) menuThreadStack[0x1000];
+static u8 ALIGN(8) menuThreadStack[0x3000];
 
 static float batteryPercentage;
 static float batteryVoltage;
@@ -217,7 +218,7 @@ u32 menuCountItems(const Menu *menu)
 
 MyThread *menuCreateThread(void)
 {
-    if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0x1000, 52, CORE_SYSTEM)))
+    if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0x3000, 52, CORE_SYSTEM)))
         svcBreak(USERBREAK_PANIC);
     return &menuThread;
 }
@@ -229,6 +230,16 @@ void menuThreadMain(void)
 
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
         svcSleepThread(500 * 1000 * 1000LL);
+
+    s64 out;
+    svcGetSystemInfo(&out, 0x10000, 0x102);
+    screenFiltersCurrentTemperature = (int)(u32)out;
+    if (screenFiltersCurrentTemperature < 1000 || screenFiltersCurrentTemperature > 25100)
+        screenFiltersCurrentTemperature = 6500;
+
+    // Careful about race conditions here
+    if (screenFiltersCurrentTemperature != 6500)
+        ScreenFiltersMenu_SetCct(screenFiltersCurrentTemperature);
 
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;

@@ -19,7 +19,7 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source source/gdb source/menus source/redshift
-DATA		:=	source/gdb/xml
+DATA		:=	source/gdb/xml data
 INCLUDES	:=	include include/gdb include/menus include/redshift
 
 #---------------------------------------------------------------------------------
@@ -144,6 +144,11 @@ $(OFILES_SRC)	: $(HFILES_BIN)
 	@$(bin2o)
 #---------------------------------------------------------------------------------
 %.xml.o	%_xml.h:	%.xml
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(bin2o)
+#---------------------------------------------------------------------------------
+%.ini.o	%_ini.h:	%.ini
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)

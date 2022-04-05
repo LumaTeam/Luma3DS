@@ -49,6 +49,9 @@ bool isSdMode;
 u16 launchedPath[80+1];
 BootType bootType;
 
+u16 mcuFwVersion;
+u8 mcuConsoleInfo[9];
+
 void main(int argc, char **argv, u32 magicWord)
 {
     bool isFirmProtEnabled,
@@ -117,6 +120,11 @@ void main(int argc, char **argv, u32 magicWord)
     memcpy(__itcm_start__, __itcm_lma__, __itcm_bss_start__ - __itcm_start__);
     memset(__itcm_bss_start__, 0, __itcm_end__ - __itcm_bss_start__);
     I2C_init();
+
+    I2C_readRegBuf(I2C_DEV_MCU, 0x00, (u8 *)&mcuFwVersion, 2);
+    if ((mcuFwVersion & 0xFFF) < 0x0100) error("Unsupported MCU FW version.");
+    I2C_readRegBuf(I2C_DEV_MCU, 0x7F, mcuConsoleInfo, 9);
+
     if(isInvalidLoader) error("Launched using an unsupported loader.");
 
     installArm9Handlers();
