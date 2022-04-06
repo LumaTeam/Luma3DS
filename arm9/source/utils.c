@@ -38,7 +38,7 @@
 #include "memory.h"
 #include "fs.h"
 
-static void startChrono(void)
+void startChrono(void)
 {
     static bool isChronoStarted = false;
 
@@ -55,7 +55,7 @@ static void startChrono(void)
     isChronoStarted = true;
 }
 
-static u64 chrono(void)
+u64 chrono(void)
 {
     u64 res = 0;
     for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
