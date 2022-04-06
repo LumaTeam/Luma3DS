@@ -188,7 +188,7 @@ static Result PLGLDR_LoadPlugin(Handle *process)
         // Check if the plugin loader is enabled, otherwise skip the loading part
         s64 out;
 
-        svcGetSystemInfo(&out, 0x10000, 0x102);
+        svcGetSystemInfo(&out, 0x10000, 0x180);
         if ((out & 1) == 0)
             return 0;
     }

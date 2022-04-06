@@ -90,6 +90,13 @@ void RosalinaMenu_ShowDebugInfo(void)
     u32 kernelVer = osGetKernelVersion();
     FS_SdMmcSpeedInfo speedInfo;
 
+    Handle hm = 0;
+    OpenProcessByName("menu", &hm);
+    s64 out = 0;
+    svcGetHandleInfo(&out, hm, 0);
+    svcCloseHandle(hm);
+    u64 timeToBootHm = 1000u * out / SYSCLOCK_ARM11;
+
     do
     {
         Draw_Lock();
@@ -123,6 +130,13 @@ void RosalinaMenu_ShowDebugInfo(void)
             posY = Draw_DrawFormattedString(
                 10, posY, COLOR_WHITE, "NAND speed: HS=%d %lukHz\n",
                 (int)speedInfo.highSpeedModeEnabled, SYSCLOCK_SDMMC / (1000 * clkDiv)
+            );
+        }
+        if (timeToBootHm != 0)
+        {
+            posY = Draw_DrawFormattedString(
+                10, posY, COLOR_WHITE, "Time to boot to Home Menu: %llums\n",
+                timeToBootHm
             );
         }
         Draw_FlushFramebuffer();

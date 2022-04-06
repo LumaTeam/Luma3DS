@@ -2,6 +2,8 @@
 #include "globals.h"
 #include "utils.h"
 
+extern u8 svcSignalingEnabled;
+
 DescType     L1Descriptor__GetType(u32 descriptor)
 {
     L1Descriptor   pdesc = {descriptor};
@@ -298,8 +300,10 @@ KProcessHwInfo *PatchDescriptorAccessControl(KProcessHwInfo *hwInfo, u32 **outSt
     u32 state = **outState;
     u32 flags =  KPROCESS_GET_RVALUE(process, customFlags);
 
-    if (flags & SignalOnMemLayoutChanges)
+    if (flags & SignalOnMemLayoutChanges) {
+        svcSignalingEnabled |= 2;
         *KPROCESS_GET_PTR(process, customFlags) |= MemLayoutChanged;
+    }        
 
     if (!(flags & ForceRWXPages))
         return hwInfo;

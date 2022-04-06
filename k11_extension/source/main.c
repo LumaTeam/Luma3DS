@@ -121,6 +121,12 @@ void configHook(vu8 *cfgPage)
     *(vu32 *)(configPage + 0x44) = fcramLayout.systemSize;
     *(vu32 *)(configPage + 0x48) = fcramLayout.baseSize;
     *isDevUnit = true; // enable debug features
+
+    pidOffsetKProcess = KPROCESS_OFFSETOF(processId);
+    hwInfoOffsetKProcess = KPROCESS_OFFSETOF(hwInfo);
+    codeSetOffsetKProcess = KPROCESS_OFFSETOF(codeSet);
+    handleTableOffsetKProcess = KPROCESS_OFFSETOF(handleTable);
+    debugOffsetKProcess = KPROCESS_OFFSETOF(debug);
 }
 
 void KProcessHwInfo__MapL1Section_Hook(void);
@@ -394,6 +400,7 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     void **arm11SvcTable = (void**)originalHandlers[2];
     while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
+    buildAlteredSvcTable();
 
     findUsefulSymbols();
 

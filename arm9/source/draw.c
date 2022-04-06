@@ -58,8 +58,7 @@ bool loadSplash(void)
 
     swapFramebuffers(true);
 
-    u32 durationIndex = MULTICONFIG(SPLASH_DURATION);
-    wait(1000ULL + (durationIndex * 2000ULL));
+    wait(configData.splashDurationMsec);
 
     return true;
 }

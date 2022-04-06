@@ -140,9 +140,12 @@ typedef struct CfwInfo
 
     u16 configFormatVersionMajor, configFormatVersionMinor;
     u32 config, multiConfig, bootConfig;
+    u32 splashDurationMsec;
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
     u32 rosalinaFlags;
+    u16 screenFiltersCct;
+    s16 ntpTzOffetMinutes;
 } CfwInfo;
 
 extern CfwInfo cfwInfo;

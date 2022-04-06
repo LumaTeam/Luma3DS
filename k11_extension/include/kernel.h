@@ -27,6 +27,7 @@
 #pragma once
 
 #include "types.h"
+#include <string.h>
 
 extern u32 kernelVersion;
 
@@ -1246,29 +1247,37 @@ offsetof(classname##O3DSPre8x, field)))
 #define KPROCESSHWINFO_GET_RVALUE(obj, field)             *(KPROCESSHWINFO_GET_PTR(obj, field))
 #define KPROCESSHWINFO_GET_RVALUE_TYPE(type, obj, field)  *(KPROCESSHWINFO_GET_PTR_TYPE(type, obj, field))
 
+extern u32 pidOffsetKProcess, hwInfoOffsetKProcess, codeSetOffsetKProcess, handleTableOffsetKProcess, debugOffsetKProcess;
+
 static inline u32 idOfProcess(KProcess *process)
 {
-    return KPROCESS_GET_RVALUE(process, processId);
+    u32 id;
+    memcpy(&id, (const u8 *)process + pidOffsetKProcess, 4);
+    return id;
 }
 
 static inline KProcessHwInfo *hwInfoOfProcess(KProcess *process)
 {
-    return KPROCESS_GET_PTR_TYPE(KProcessHwInfo, process, hwInfo);
+    return (KProcessHwInfo *)((uintptr_t)process + hwInfoOffsetKProcess);
 }
 
 static inline KCodeSet *codeSetOfProcess(KProcess *process)
 {
-    return KPROCESS_GET_RVALUE(process, codeSet);
+    KCodeSet *cs;
+    memcpy(&cs, (const u8 *)process + codeSetOffsetKProcess, 4);
+    return cs;
 }
 
 static inline KProcessHandleTable *handleTableOfProcess(KProcess *process)
 {
-    return KPROCESS_GET_PTR(process, handleTable);
+    return (KProcessHandleTable *)((uintptr_t)process + handleTableOffsetKProcess);
 }
 
 static inline KDebug *debugOfProcess(KProcess *process)
 {
-    return KPROCESS_GET_RVALUE(process, debug);
+    KDebug *debug;
+    memcpy(&debug, (const u8 *)process + debugOffsetKProcess, 4);
+    return debug;
 }
 
 static inline const char *classNameOfAutoObject(KAutoObject *object)

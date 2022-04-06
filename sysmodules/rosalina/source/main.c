@@ -83,13 +83,15 @@ void initSystem(void)
     mappableInit(0x10000000, 0x14000000);
 
     isN3DS = svcGetSystemInfo(&out, 0x10001, 0) == 0;
-
     svcGetSystemInfo(&out, 0x10000, 0x100);
     Luma_SharedConfig->hbldr_3dsx_tid = out == 0 ? HBLDR_DEFAULT_3DSX_TID : (u64)out;
     Luma_SharedConfig->use_hbldr = true;
 
     svcGetSystemInfo(&out, 0x10000, 0x101);
     menuCombo = out == 0 ? DEFAULT_MENU_COMBO : (u32)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x103);
+    lastNtpTzOffset = (s16)out;
 
     miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
         "Switch the hb. title to the current app." :

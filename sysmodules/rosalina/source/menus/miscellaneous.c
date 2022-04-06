@@ -38,7 +38,34 @@
 #include "pmdbgext.h"
 #include "plugin.h"
 #include "process_patches.h"
+#include "screen_filters.h"
+#include "config_template_ini.h"
 
+#define CONFIG(a)        (((cfg->config >> (a)) & 1) != 0)
+#define MULTICONFIG(a)   ((cfg->multiConfig >> (2 * (a))) & 3)
+#define BOOTCONFIG(a, b) ((cfg->bootConfig >> (a)) & (b))
+
+enum singleOptions
+{
+    AUTOBOOTEMU = 0,
+    USEEMUFIRM,
+    LOADEXTFIRMSANDMODULES,
+    PATCHGAMES,
+    PATCHVERSTRING,
+    SHOWGBABOOT,
+    PATCHUNITINFO,
+    DISABLEARM11EXCHANDLERS,
+    ENABLESAFEFIRMROSALINA,
+};
+
+enum multiOptions
+{
+    DEFAULTEMU = 0,
+    BRIGHTNESS,
+    SPLASH,
+    PIN,
+    NEWCPU
+};
 typedef struct DspFirmSegmentHeader {
     u32 offset;
     u32 loadAddrHalfwords;
@@ -64,6 +91,19 @@ typedef struct DspFirm {
     u8 data[];
 } DspFirm;
 
+typedef struct CfgData {
+    u16 formatVersionMajor, formatVersionMinor;
+
+    u32 config, multiConfig, bootConfig;
+    u32 splashDurationMsec;
+
+    u64 hbldr3dsxTitleId;
+    u32 rosalinaMenuCombo;
+    u32 rosalinaFlags;
+    u16 screenFiltersCct;
+    s16 ntpTzOffetMinutes;
+} CfgData;
+
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
     {
@@ -77,6 +117,7 @@ Menu miscellaneousMenu = {
         {},
     }
 };
+int lastNtpTzOffset = 0;
 
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
@@ -193,57 +234,132 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
+static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
+{
+    char lumaVerStr[64];
+    char lumaRevSuffixStr[16];
+    char rosalinaMenuComboStr[128];
+
+    const char *splashPosStr;
+    const char *n3dsCpuStr;
+
+    s64 outInfo;
+    svcGetSystemInfo(&outInfo, 0x10000, 0);
+    u32 version = (u32)outInfo;
+
+    svcGetSystemInfo(&outInfo, 0x10000, 1);
+    u32 commitHash = (u32)outInfo;
+
+    svcGetSystemInfo(&outInfo, 0x10000, 0x200);
+    bool isRelease = (bool)outInfo;
+
+    switch (MULTICONFIG(SPLASH)) {
+        default: case 0: splashPosStr = "off"; break;
+        case 1: splashPosStr = "before payloads"; break;
+        case 2: splashPosStr = "after payloads"; break;
+    }
+
+    switch (MULTICONFIG(NEWCPU)) {
+        default: case 0: n3dsCpuStr = "off"; break;
+        case 1: n3dsCpuStr = "clock"; break;
+        case 2: n3dsCpuStr = "l2"; break;
+        case 3: n3dsCpuStr = "clock+l2"; break;
+    }
+
+    if (GET_VERSION_REVISION(version) != 0) {
+        sprintf(lumaVerStr, "Luma3DS v%d.%d.%d", (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version), (int)GET_VERSION_REVISION(version));
+    } else {
+        sprintf(lumaVerStr, "Luma3DS v%d.%d",  (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version));
+    }
+
+    if (isRelease) {
+        strcpy(lumaRevSuffixStr, "");
+    } else {
+        sprintf(lumaRevSuffixStr, "-%08lx", (u32)commitHash);
+    }
+
+    MiscellaneousMenu_ConvertComboToString(rosalinaMenuComboStr, cfg->rosalinaMenuCombo);
+
+    static const int pinOptionToDigits[] = { 0, 4, 6, 8 };
+    int pinNumDigits = pinOptionToDigits[MULTICONFIG(PIN)];
+
+    int n = sprintf(
+        out, (const char *)config_template_ini,
+        lumaVerStr, lumaRevSuffixStr,
+
+        (int)cfg->formatVersionMajor, (int)cfg->formatVersionMinor,
+        (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
+        (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
+        (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
+
+        1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
+        splashPosStr, (unsigned int)cfg->splashDurationMsec,
+        pinNumDigits, n3dsCpuStr,
+
+        cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
+        (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+
+        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
+        (int)CONFIG(ENABLESAFEFIRMROSALINA)
+    );
+
+    return n < 0 ? 0 : (size_t)n;
+}
+
+
 Result  SaveSettings(void)
 {
+    char inibuf[0x2000];
+
     Result res;
 
     IFile file;
     u64 total;
 
-    struct PACKED ALIGN(4)
-    {
-        char magic[4];
-        u16 formatVersionMajor, formatVersionMinor;
-
-        u32 config, multiConfig, bootConfig;
-        u64 hbldr3dsxTitleId;
-        u32 rosalinaMenuCombo;
-        u32 rosalinaFlags;
-    } configData;
+    CfgData configData;
 
     u32 formatVersion;
     u32 config, multiConfig, bootConfig;
+    u32 splashDurationMsec;
+
     s64 out;
     bool isSdMode;
-
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 2))) svcBreak(USERBREAK_ASSERT);
+    svcGetSystemInfo(&out, 0x10000, 2);
     formatVersion = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 3))) svcBreak(USERBREAK_ASSERT);
+    svcGetSystemInfo(&out, 0x10000, 3);
     config = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
+    svcGetSystemInfo(&out, 0x10000, 4);
     multiConfig = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
+    svcGetSystemInfo(&out, 0x10000, 5);
     bootConfig = (u32)out;
-    if(R_FAILED(svcGetSystemInfo(&out, 0x10000, 0x203))) svcBreak(USERBREAK_ASSERT);
+    svcGetSystemInfo(&out, 0x10000, 6);
+    splashDurationMsec = (u32)out;
+    svcGetSystemInfo(&out, 0x10000, 0x203);
     isSdMode = (bool)out;
 
-    memcpy(configData.magic, "CONF", 4);
     configData.formatVersionMajor = (u16)(formatVersion >> 16);
     configData.formatVersionMinor = (u16)formatVersion;
     configData.config = config;
     configData.multiConfig = multiConfig;
     configData.bootConfig = bootConfig;
+    configData.splashDurationMsec = splashDurationMsec;
     configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
     configData.rosalinaFlags = PluginLoader__IsEnabled();
+    configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
+    configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
 
+    size_t n = saveLumaIniConfigToStr(inibuf, &configData);
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
-    res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/config.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
+    if (n > 0)
+        res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/config.ini"), FS_OPEN_CREATE | FS_OPEN_WRITE);
+    else
+        res = -1;
 
     if(R_SUCCEEDED(res))
-        res = IFile_SetSize(&file, sizeof(configData));
+        res = IFile_SetSize(&file, n);
     if(R_SUCCEEDED(res))
-        res = IFile_Write(&file, &total, &configData, sizeof(configData), 0);
+        res = IFile_Write(&file, &total, inibuf, n, 0);
     IFile_Close(&file);
 
     IFile_Close(&file);
@@ -402,8 +518,9 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
     res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
     cantStart = R_FAILED(res) || !isSocURegistered;
 
-    int utcOffset = 12;
-	int utcOffsetMinute = 0;
+    int dt = 12*60 + lastNtpTzOffset;
+    int utcOffset = dt / 60;
+    int utcOffsetMinute = dt%60;
     int absOffset;
     do
     {
@@ -417,8 +534,8 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
 
         input = waitInput();
 
-        if(input & KEY_LEFT) utcOffset = (24 + utcOffset - 1) % 24; // ensure utcOffset >= 0
-        if(input & KEY_RIGHT) utcOffset = (utcOffset + 1) % 24;
+        if(input & KEY_LEFT) utcOffset = (27 + utcOffset - 1) % 27; // ensure utcOffset >= 0
+        if(input & KEY_RIGHT) utcOffset = (utcOffset + 1) % 27;
         if(input & KEY_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
         if(input & KEY_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
         Draw_FlushFramebuffer();
@@ -430,6 +547,7 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
         return;
 
     utcOffset -= 12;
+    lastNtpTzOffset = 60 * utcOffset + utcOffsetMinute;
 
     res = srvIsServiceRegistered(&isSocURegistered, "soc:U");
     cantStart = R_FAILED(res) || !isSocURegistered;

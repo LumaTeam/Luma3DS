@@ -30,7 +30,7 @@ Result      MemoryBlock__IsReady(void)
         u32     appMemAlloc = *appMemAllocPtr;
         u32     temp;
 
-        svcGetSystemInfo(&appRegionSize, 0x10000, 6);
+        svcGetSystemInfo(&appRegionSize, 0x10000, 0x80);
         svcGetSystemInfo(&appRegionUsed, 0, 1);
 
         appRegionFree = appRegionSize - appRegionUsed;
@@ -79,7 +79,7 @@ Result      MemoryBlock__IsReady(void)
             s64     appRegionSize = 0;
             vu32*   appMemAlloc = (vu32 *)PA_FROM_VA_PTR(0x1FF80040);
 
-            svcGetSystemInfo(&appRegionSize, 0x10000, 6);
+            svcGetSystemInfo(&appRegionSize, 0x10000, 0x80);
             if ((u32)appRegionSize == *appMemAlloc)
                 *appMemAlloc -= MemBlockSize; ///< Remove plugin share from available memory
         } */

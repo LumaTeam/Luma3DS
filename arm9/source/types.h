@@ -61,16 +61,26 @@ typedef volatile s64 vs64;
 #define ISN3DS       (CFG11_SOCINFO & 2)
 #define ISDEVUNIT    (CFG_UNITINFO != 0)
 
-typedef struct __attribute__((packed, aligned(4)))
-{
-    char magic[4];
+typedef struct {
     u16 formatVersionMajor, formatVersionMinor;
 
     u32 config, multiConfig, bootConfig;
+    u32 splashDurationMsec;
+
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
     u32 rosalinaFlags;
+    u16 screenFiltersCct;
+    s16 ntpTzOffetMinutes;
 } CfgData;
+
+typedef struct
+{
+    u16 lumaVersion;
+    u8 bootCfg;
+    u8 reserved[2];
+    u8 checksum;
+} CfgDataMcu;
 
 typedef struct
 {
@@ -131,3 +141,6 @@ extern BootType bootType;
 
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[80+1];
+
+extern u16 mcuFwVersion;
+extern u8 mcuConsoleInfo[9];

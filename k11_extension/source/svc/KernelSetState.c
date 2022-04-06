@@ -37,6 +37,8 @@ static u32 maskedPids[MAX_DEBUG];
 static u32 masks[MAX_DEBUG][8] = {0};
 static bool forceBetterSoc = false;
 
+u8 svcSignalingEnabled = 0;
+
 bool shouldSignalSyscallDebugEvent(KProcess *process, u8 svcId)
 {
     u32 pid = idOfProcess(process);
@@ -66,6 +68,7 @@ Result SetSyscallDebugEventMask(u32 pid, bool enable, const u32 *mask)
     {
         maskedPids[nbEnabled] = pid;
         memcpy(&masks[nbEnabled++], tmpMask, 32);
+        svcSignalingEnabled |= 1;
     }
     else
     {
@@ -85,6 +88,7 @@ Result SetSyscallDebugEventMask(u32 pid, bool enable, const u32 *mask)
         }
         maskedPids[--nbEnabled] = 0;
         memset(&masks[nbEnabled], 0, 32);
+        svcSignalingEnabled &= ~1;
     }
 
     KRecursiveLock__Unlock(&syscallDebugEventMaskLock);

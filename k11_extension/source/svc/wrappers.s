@@ -69,6 +69,14 @@ ControlMemoryHookWrapper:
     add sp, #12
     pop {pc}
 
+
+.global ExitProcessHookWrapper
+.type   ExitProcessHookWrapper, %function
+ExitProcessHookWrapper:
+    push {lr}
+    bl ExitProcessHook
+    pop {pc}
+
 .global ControlMemoryEx
 .type   ControlMemoryEx, %function
 ControlMemoryEx:
