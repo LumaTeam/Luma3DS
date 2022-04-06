@@ -75,6 +75,8 @@ extern bool  isN3DS;
 
 Result OpenProcessByName(const char *name, Handle *h);
 Result SaveSettings(void);
+extern bool saveSettingsRequest;
+void RequestSaveSettings(void);
 static inline bool isServiceUsable(const char *name)
 {
     bool r;

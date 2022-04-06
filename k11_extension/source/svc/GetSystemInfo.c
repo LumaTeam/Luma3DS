@@ -76,7 +76,7 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     *out = (s64)cfwInfo.ntpTzOffetMinutes;
                     break;
                 case 0x180:
-                    *out = cfwInfo.rosalinaFlags;
+                    *out = cfwInfo.pluginLoaderFlags;
                     break;
                 case 0x200: // isRelease
                     *out = cfwInfo.flags & 1;

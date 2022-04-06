@@ -143,7 +143,7 @@ typedef struct CfwInfo
     u32 splashDurationMsec;
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
-    u32 rosalinaFlags;
+    u32 pluginLoaderFlags;
     u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
 } CfwInfo;

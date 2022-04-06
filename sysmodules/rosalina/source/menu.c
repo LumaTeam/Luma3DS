@@ -147,8 +147,6 @@ u32 waitCombo(void)
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[0x3000];
 
-static u32 homeBtnPressed = 0;
-
 static float batteryPercentage;
 static float batteryVoltage;
 static u8 batteryTemperature;
@@ -229,8 +227,6 @@ MyThread *menuCreateThread(void)
 u32 menuCombo;
 u32 g_blockMenuOpen = 0;
 
-u32     DispWarningOnHome(void);
-
 void menuThreadMain(void)
 {
     if(isN3DS)
@@ -269,13 +265,9 @@ void menuThreadMain(void)
             menuLeave();
         }
 
-        // Check for home button on O3DS Mode3 with plugin loaded
-        if (homeBtnPressed != 0)
-        {
-            if (DispWarningOnHome())
-                svcKernelSetState(7); ///< reboot is fine since exiting a mode3 game reboot anyway
-
-            homeBtnPressed = 0;
+        if (saveSettingsRequest) {
+            SaveSettings();
+            saveSettingsRequest = false;
         }
     }
 }

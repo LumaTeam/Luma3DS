@@ -59,35 +59,6 @@ u32    DispErrMessage(const char *title, const char *message, const Result error
     return error;
 }
 
-u32     DispWarningOnHome(void)
-{
-    menuEnter();
-
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-
-    Draw_DrawString(10, 10, COLOR_TITLE, "Warning");
-
-    u32 posY = Draw_DrawString(30, 40, COLOR_WHITE, "Due to memory shortage the home button\nis disabled.");
-    Draw_DrawString(30, posY + 20, COLOR_WHITE, "Press [DPAD UP + B] to exit the application.");
-    Draw_DrawString(200, 220, COLOR_TITLE, __press_b_to_close);
-
-
-    u32 keys = 0;
-
-    do
-    {
-        keys = waitComboWithTimeout(1000);
-    }while (!preTerminationRequested && !(keys & KEY_B));
-
-    Draw_Unlock(); ///< Keep it locked until we exit the message
-    menuLeave();
-
-    return (keys & KEY_UP) > 0;
-}
-
-
 typedef char string[50];
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

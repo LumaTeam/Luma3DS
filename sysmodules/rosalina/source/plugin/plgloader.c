@@ -26,10 +26,10 @@ void        PluginLoader__Init(void)
 
     memset(ctx, 0, sizeof(PluginLoaderContext));
 
-    s64 rosalinaFlags = 0;
+    s64 pluginLoaderFlags = 0;
 
-    svcGetSystemInfo(&rosalinaFlags, 0x10000, 0x180);
-    ctx->isEnabled = rosalinaFlags & 1;
+    svcGetSystemInfo(&pluginLoaderFlags, 0x10000, 0x180);
+    ctx->isEnabled = pluginLoaderFlags & 1;
 
     ctx->plgEventPA = (s32 *)PA_FROM_VA_PTR(&ctx->plgEvent);
     ctx->plgReplyPA = (s32 *)PA_FROM_VA_PTR(&ctx->plgReply);
@@ -55,7 +55,7 @@ bool        PluginLoader__IsEnabled(void)
 void        PluginLoader__MenuCallback(void)
 {
     PluginLoaderCtx.isEnabled = !PluginLoaderCtx.isEnabled;
-    //SaveSettings();
+    RequestSaveSettings();
     PluginLoader__UpdateMenu();
 }
 
@@ -163,7 +163,7 @@ void     PluginLoader__HandleCommands(void *_ctx)
             if (cmdbuf[1] != ctx->isEnabled)
             {
                 ctx->isEnabled = cmdbuf[1];
-                //SaveSettings();
+                RequestSaveSettings();
                 PluginLoader__UpdateMenu();
             }
 

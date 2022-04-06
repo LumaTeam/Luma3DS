@@ -132,7 +132,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u32 splashDurationMsec;
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
-            u32 rosalinaFlags;
+            u32 pluginLoaderFlags;
             u16 screenFiltersCct;
             s16 ntpTzOffetMinutes;
         } info;
@@ -208,7 +208,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->splashDurationMsec = configData.splashDurationMsec;
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
-    info->rosalinaFlags = configData.rosalinaFlags;
+    info->pluginLoaderFlags = configData.pluginLoaderFlags;
     info->screenFiltersCct = configData.screenFiltersCct;
     info->ntpTzOffetMinutes = configData.ntpTzOffetMinutes;
     info->versionMajor = VERSION_MAJOR;

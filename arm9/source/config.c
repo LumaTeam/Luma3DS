@@ -333,6 +333,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseKeyComboOption(&opt, value));
             cfg->rosalinaMenuCombo = opt;
             return 1;
+        } else if (strcmp(name, "plugin_loader_enabled") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | 1 : cfg->pluginLoaderFlags & ~1;
+            return 1;
         } else if (strcmp(name, "screen_filters_cct") == 0) {
             s64 opt;
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 1000, 25100));
@@ -416,7 +421,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
         pinNumDigits, n3dsCpuStr,
 
-        cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
+        cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
         (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
