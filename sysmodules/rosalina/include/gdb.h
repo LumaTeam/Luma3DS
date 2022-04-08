@@ -124,6 +124,7 @@ typedef struct GDBContext
     Handle processAttachedEvent, continuedEvent;
     Handle eventToWaitFor;
 
+    bool multiprocessExtEnabled;
     bool catchThreadEvents;
     bool processEnded, processExited;
 
