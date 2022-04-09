@@ -524,7 +524,20 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                 }
 
                 case EXCEVENT_ATTACH_BREAK:
-                    return GDB_SendPacket(ctx, "S00", 3);
+                {
+                    // Try to deduce which thread we can consider "current"
+                    ctx->currentThreadId = ctx->currentThreadId == 0 ? GDB_GetCurrentThread(ctx) : ctx->currentThreadId;
+                    if (ctx->currentThreadId != 0)
+                    {
+                        GDB_ParseCommonThreadInfo(buffer, ctx, 0);
+                        return GDB_SendFormattedPacket(ctx, "%s", buffer);
+                    }
+                    else
+                    {
+                        // Should not happen
+                        return GDB_SendPacket(ctx, "S00", 3);
+                    }
+                }
 
                 case EXCEVENT_STOP_POINT:
                 {
@@ -593,13 +606,26 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                     svcGetDebugThreadParam(&dummy, &mask, ctx->debug, currentThreadId, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
 
                     if(mask == 1)
-                    {
                         ctx->currentThreadId = currentThreadId;
+                    else
+                    {
+                        // All threads are in sleeping/wait state, in which case we should try not to
+                        // change the current thread as GDB sees it.
+                        if (ctx->currentThreadId == 0)
+                            ctx->currentThreadId = currentThreadId;
+                    }
+
+                    if (ctx->currentThreadId == 0)
+                    {
+                        // No thread.
+                        // This should not be happening.
+                        return GDB_SendPacket(ctx, "S02", 3);
+                    }
+                    else
+                    {
                         GDB_ParseCommonThreadInfo(buffer, ctx, SIGINT);
                         return GDB_SendFormattedPacket(ctx, "%s", buffer);
                     }
-                    else
-                        return GDB_SendPacket(ctx, "S02", 3);
                 }
 
                 default:
