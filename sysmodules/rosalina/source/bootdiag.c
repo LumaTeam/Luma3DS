@@ -108,9 +108,12 @@ MyThread *bootdiagCreateThread(void)
         svcBreak(USERBREAK_PANIC);
     return &bootdiagThread;
 }
-#endif
+
+#else
 
 MyThread *bootdiagCreateThread(void)
 {
     return NULL;
 }
+
+#endif
