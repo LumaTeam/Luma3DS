@@ -9,6 +9,20 @@
 
 #include "gdb.h"
 
+static inline u32 GDB_ConvertFromRealPid(u32 pid)
+{
+    return pid + 1;
+}
+
+static inline u32 GDB_ConvertToRealPid(u32 pid)
+{
+    return pid - 1;
+}
+
+const char *GDB_ParseThreadId(GDBContext *ctx, u32 *outPid, u32 *outTid, const char *str, char lastSep);
+u32 GDB_ParseDecodeSingleThreadId(GDBContext *ctx, const char *str, char lastSep);
+int GDB_EncodeThreadId(GDBContext *ctx, char *outbuf, u32 tid);
+
 u32 GDB_GetCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThreads);
 u32 GDB_GetCurrentThread(GDBContext *ctx);
 

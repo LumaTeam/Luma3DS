@@ -42,7 +42,12 @@ Result ConnectToPortHook(Handle *out, const char *name)
     }
     res = ConnectToPort(out, name);
     if(res != 0)
+    {
+        // Prior to 11.0 kernel didn't zero-initialize output handles, and thus
+        // you could accidentaly close things like the KAddressArbiter handle by mistake...
+        *out = 0;
         return res;
+    }
 
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
     KClientSession *clientSession = (KClientSession *)KProcessHandleTable__ToKAutoObject(handleTable, *out);

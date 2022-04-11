@@ -10,7 +10,104 @@
 #include "fmt.h"
 #include <stdlib.h>
 
-s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
+const char *GDB_ParseThreadId(GDBContext *ctx, u32 *outPid, u32 *outTid, const char *str, char lastSep)
+{
+    const char *pos = str;
+    u32 pid = ctx->pid;
+    u32 tid = 0;
+
+    // pPID.TID | PID
+    if (ctx->multiprocessExtEnabled)
+    {
+        // Check for 'p'
+        if (*pos != 'p')
+        {
+            // Test -1 first.
+            // Note: this means we parse -1, p-1.0, p0.0 the same which is a bug
+            if (strcmp(pos, "-1") == 0)
+            {
+                pid = (u32)-1;
+                tid = 0;
+                pos += 2;
+            }
+            else
+            {
+                pos = GDB_ParseHexIntegerList(&pid, pos, 1, 0);
+                if (pos == NULL)
+                    return NULL;
+                pid = GDB_ConvertToRealPid(pid);
+                tid = 0;
+            }
+            *outPid = pid;
+            *outTid = 0;
+            return pos;
+        }
+        else
+            ++pos;
+
+        // -1 pid?
+        if (strncmp(pos, "-1.", 3) == 0)
+        {
+            pid = (u32)-1; // Should encode as 0 but oh well
+            pos += 3;
+        }
+        else
+        {
+            pos = GDB_ParseHexIntegerList(&pid, pos, 1, '.');
+            if (pos == NULL)
+                return NULL;
+            pid = GDB_ConvertToRealPid(pid);
+            ++pos;
+        }
+    }
+
+    // Fallthrough
+    // TID
+    if (strncmp(pos, "-1", 2) == 0)
+    {
+        tid = 0; // TID 0 is always invalid
+        pos += 2;
+    }
+    else
+    {
+        pos = GDB_ParseHexIntegerList(&tid, pos, 1, lastSep);
+        if (pos == NULL)
+            return NULL;
+    }
+
+    if (pid == (u32)-1 && tid != 0)
+        return NULL; // this is never allowed
+
+    if (pos != NULL)
+    {
+        *outPid = pid;
+        *outTid = tid;
+    }
+    return pos;
+}
+
+
+u32 GDB_ParseDecodeSingleThreadId(GDBContext *ctx, const char *str, char lastSep)
+{
+    u32 pid, tid;
+    if (GDB_ParseThreadId(ctx, &pid, &tid, str, lastSep) == NULL)
+        return 0;
+
+    if (pid != ctx->pid)
+        return 0;
+
+    return tid;
+}
+
+int GDB_EncodeThreadId(GDBContext *ctx, char *outbuf, u32 tid)
+{
+    if (ctx->multiprocessExtEnabled)
+        return sprintf(outbuf, "p%lx.%lx", GDB_ConvertFromRealPid(ctx->pid), tid);
+    else
+        return sprintf(outbuf, "%lx", tid);
+}
+
+static s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
 {
     Handle process, thread;
     Result r;
@@ -95,27 +192,30 @@ GDB_DECLARE_HANDLER(SetThreadId)
 {
     if(ctx->commandData[0] == 'g')
     {
-        if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
-            return GDB_ReplyErrno(ctx, EILSEQ); // a thread must be specified
-
-        u32 id;
-        if(GDB_ParseHexIntegerList(&id, ctx->commandData + 1, 1, 0) == NULL)
+        u32 pid = 0, tid = 0;
+        if (GDB_ParseThreadId(ctx, &pid, &tid, ctx->commandData + 1, 0) == NULL)
             return GDB_ReplyErrno(ctx, EILSEQ);
-        ctx->selectedThreadId = id;
+
+        // Allow ptid = p0.0; note that this catches some -1 forms, which is a bug
+        if (pid != (u32)-1 && pid != ctx->pid)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        ctx->selectedThreadId = tid;
         return GDB_ReplyOk(ctx);
     }
     else if(ctx->commandData[0] == 'c')
     {
         // We can't stop/continue particular threads (uncompliant behavior)
-        if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
-            ctx->selectedThreadIdForContinuing = 0;
-        else
-        {
-            u32 id;
-            if(GDB_ParseHexIntegerList(&id, ctx->commandData + 1, 1, 0) == NULL)
-                return GDB_ReplyErrno(ctx, EILSEQ);
-            ctx->selectedThreadIdForContinuing = id;
-        }
+
+        u32 pid, tid;
+        if (GDB_ParseThreadId(ctx, &pid, &tid, ctx->commandData + 1, 0) == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        // Allow gdb pid.tid = -1.-1, (we're also accepting pid = 0 but that's a bug)
+        if (pid != (u32)-1 && pid != ctx->pid)
+            return GDB_ReplyErrno(ctx, EPERM);
+
+        ctx->selectedThreadIdForContinuing = tid;
 
         return GDB_ReplyOk(ctx);
     }
@@ -125,14 +225,14 @@ GDB_DECLARE_HANDLER(SetThreadId)
 
 GDB_DECLARE_HANDLER(IsThreadAlive)
 {
-    u32 threadId;
     s64 dummy;
     u32 mask;
 
-    if(GDB_ParseHexIntegerList(&threadId, ctx->commandData, 1, 0) == NULL)
+    u32 tid = GDB_ParseDecodeSingleThreadId(ctx, ctx->commandData, 0);
+    if (tid == 0)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
-    Result r = svcGetDebugThreadParam(&dummy, &mask, ctx->debug, threadId, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+    Result r = svcGetDebugThreadParam(&dummy, &mask, ctx->debug, tid, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
     if(R_SUCCEEDED(r) && mask != 2)
         return GDB_ReplyOk(ctx);
     else
@@ -144,7 +244,9 @@ GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
     if(ctx->currentThreadId == 0)
         ctx->currentThreadId = GDB_GetCurrentThread(ctx);
 
-    return ctx->currentThreadId != 0 ? GDB_SendFormattedPacket(ctx, "QC%lx", ctx->currentThreadId) : GDB_ReplyErrno(ctx, EPERM);
+    char buf[32];
+    GDB_EncodeThreadId(ctx, buf, ctx->currentThreadId);
+    return ctx->currentThreadId != 0 ? GDB_SendFormattedPacket(ctx, "QC%s", buf) : GDB_ReplyErrno(ctx, EPERM);
 }
 
 static void GDB_GenerateThreadListData(GDBContext *ctx)
@@ -168,7 +270,11 @@ static void GDB_GenerateThreadListData(GDBContext *ctx)
     char *bufptr = ctx->threadListData;
 
     for(u32 i = 0; i < nbAliveThreads; i++)
-        bufptr += sprintf(bufptr, i == (nbAliveThreads - 1) ? "%lx" : "%lx,", aliveThreadIds[i]);
+    {
+        bufptr += GDB_EncodeThreadId(ctx, bufptr, aliveThreadIds[i]);
+        if (i < nbAliveThreads - 1)
+            *bufptr++ = ',';
+    }
 }
 
 static int GDB_SendThreadData(GDBContext *ctx)
@@ -242,7 +348,8 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
 
     u32 tls = 0;
 
-    if(GDB_ParseHexIntegerList(&id, ctx->commandData, 1, 0) == NULL)
+    id = GDB_ParseDecodeSingleThreadId(ctx, ctx->commandData, 0);
+    if (id == 0)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
     for(u32 i = 0; i < MAX_DEBUG_THREAD; i++)

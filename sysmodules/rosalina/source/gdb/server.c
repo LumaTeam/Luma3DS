@@ -199,6 +199,7 @@ int GDB_CloseClient(GDBContext *ctx)
     ctx->state = GDB_STATE_DISCONNECTED;
 
     ctx->catchThreadEvents = false;
+    ctx->multiprocessExtEnabled = false;
 
     memset(&ctx->latestDebugEvent, 0, sizeof(DebugEventInfo));
     memset(ctx->memoryOsInfoXmlData, 0, sizeof(ctx->memoryOsInfoXmlData));

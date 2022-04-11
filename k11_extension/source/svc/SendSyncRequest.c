@@ -126,6 +126,12 @@ Result SendSyncRequestHook(Handle handle)
                             outClientSession->syncObject.autoObject.vtable->DecrementReferenceCount(&outClientSession->syncObject.autoObject);
                         }
                     }
+                    else
+                    {
+                        // Prior to 11.0 kernel didn't zero-initialize output handles, and thus
+                        // you could accidentaly close things like the KAddressArbiter handle by mistake...
+                        cmdbuf[3] = 0;
+                    }
                 }
 
                 break;

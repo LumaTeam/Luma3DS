@@ -42,6 +42,7 @@
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
+#include "bootdiag.h"
 
 #include "task_runner.h"
 #include "plugin.h"
@@ -276,6 +277,7 @@ int main(void)
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
+    bootdiagCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
