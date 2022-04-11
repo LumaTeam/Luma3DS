@@ -308,9 +308,9 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     void **arm11SvcTable = (void**)originalHandlers[2];
     while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
-    buildAlteredSvcTable();
 
     findUsefulSymbols();
+    buildAlteredSvcTable();
 
     GetSystemInfo(&nb, 26, 0);
     nbSection0Modules = (u32)nb;

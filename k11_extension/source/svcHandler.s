@@ -85,7 +85,7 @@ svcHandler:
     add sp, #4
 
     ldr r10, =svcSignalingEnabled @ should work, I guess
-    ldr r10, [r10]
+    ldrb r10, [r10]
     cmp r10, #0
     bne _signal_svc_end @ returns to _no_signal_return
 
