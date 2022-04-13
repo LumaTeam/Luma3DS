@@ -24,7 +24,7 @@
 
 .text
 .arm
-.balign 4
+.align 5
 
 .global svcHandler
 .type   svcHandler, %function
@@ -45,14 +45,6 @@ svcHandler:
 
     ldr r8, =alteredSvcTable
     ldr r8, [r8, r9,lsl#2]
-    /*@ sp = page end - 0x110
-    add r0, sp, #0x110       @ page end
-    bl svcHook
-    cpsid i
-    mov r8, r0
-    ldmfd sp, {r0-r7, r12, lr}
-    */
-
     cmp r8, #0
     beq _fallback            @ invalid svc, or svc 0xff (stop point)
 
