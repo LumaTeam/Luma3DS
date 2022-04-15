@@ -161,7 +161,7 @@ bool fileCopy(const char *pathSrc, const char *pathDst, bool replace, void *tmpB
         {
             char path[FF_MAX_LFN + 1];
             strncpy(path, pathDst, c - pathDst);
-            path[FF_MAX_LFN] = '\0';
+            path[c - pathDst] = '\0';
             res = f_mkdir(path);
         }
 
