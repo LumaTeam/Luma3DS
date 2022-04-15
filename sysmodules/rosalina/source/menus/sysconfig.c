@@ -39,6 +39,7 @@ Menu sysconfigMenu = {
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
+        { "Toggle power to card slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
         {},
     }
 };
@@ -330,6 +331,49 @@ void SysConfigMenu_DisableForcedWifiConnection(void)
 
         u32 pressed = waitInputWithTimeout(1000);
         if(pressed & KEY_B)
+            return;
+    }
+    while(!menuShouldExit);
+}
+
+void SysConfigMenu_ToggleCardIfPower(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    bool cardIfStatus = false;
+    bool updatedCardIfStatus = false;
+
+    do
+    {
+        Result res = FSUSER_CardSlotGetCardIFPowerStatus(&cardIfStatus);
+        if (R_FAILED(res)) cardIfStatus = false;
+
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.\n\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Inserting or removing a card will reset the status,\nand you'll need to reinsert the cart if you want to\nplay it.\n\n");
+        Draw_DrawString(10, posY, COLOR_WHITE, "Current status:");
+        Draw_DrawString(100, posY, !cardIfStatus ? COLOR_RED : COLOR_GREEN, !cardIfStatus ? " DISABLED" : " ENABLED ");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & KEY_A)
+        {
+            if (!cardIfStatus)
+                res = FSUSER_CardSlotPowerOn(&updatedCardIfStatus);
+            else
+                res = FSUSER_CardSlotPowerOff(&updatedCardIfStatus);
+
+            if (R_SUCCEEDED(res))
+                cardIfStatus = !updatedCardIfStatus;
+        }
+        else if(pressed & KEY_B)
             return;
     }
     while(!menuShouldExit);
