@@ -520,7 +520,7 @@ bool readConfig(void)
         memset(&configData, 0, sizeof(CfgData));
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
-        configData.config |= 1 << PATCHGAMES;
+        configData.config |= 1u << PATCHVERSTRING;
         configData.splashDurationMsec = 3000;
         configData.hbldr3dsxTitleId = 0x000400000D921E00ull;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
