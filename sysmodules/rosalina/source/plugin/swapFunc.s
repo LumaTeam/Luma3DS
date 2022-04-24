@@ -2,9 +2,9 @@
 .balign 4
 .arm
 
-.global encSwapFunc
-.type   encSwapFunc, %function
-encSwapFunc:
+.global saveSwapFunc
+.type   saveSwapFunc, %function
+saveSwapFunc:
 	BX LR
 	NOP
 	NOP
@@ -38,9 +38,9 @@ encSwapFunc:
 	NOP
 	NOP
 
-.global decSwapFunc
-.type   decSwapFunc, %function
-decSwapFunc:
+.global loadSwapFunc
+.type   loadSwapFunc, %function
+loadSwapFunc:
 	BX LR
 	NOP
 	NOP
@@ -74,9 +74,9 @@ decSwapFunc:
 	NOP
 	NOP
 
-.global decExeFunc
-.type   decExeFunc, %function
-decExeFunc:
+.global loadExeFunc
+.type   loadExeFunc, %function
+loadExeFunc:
 	BX LR
 	NOP
 	NOP

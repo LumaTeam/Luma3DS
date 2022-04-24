@@ -4,8 +4,6 @@
 #include "MyThread.h"
 #include "plgldr.h"
 
-#define MemBlockSize (5*1024*1024) /* 5 MiB */
-
 void        PluginLoader__Init(void);
 bool        PluginLoader__IsEnabled(void);
 void        PluginLoader__MenuCallback(void);
@@ -15,6 +13,7 @@ void        PluginLoader__HandleCommands(void *ctx);
 
 void    PluginLoader__Error(const char *message, Result res);
 
+Result     MemoryBlock__SetSize(u32 size);
 Result     MemoryBlock__IsReady(void);
 Result     MemoryBlock__Free(void);
 Result     MemoryBlock__ToSwapFile(void);
@@ -24,12 +23,14 @@ Result     MemoryBlock__UnmountFromProcess(void);
 Result     MemoryBlock__SetSwapSettings(u32* func, bool isDec, u32* params);
 void       MemoryBlock__ResetSwapSettings(void);
 
-extern u32  g_encDecSwapArgs[0x4];
-extern u32  g_decExeArgs[0x4];
+extern u32  g_loadSaveSwapArgs[0x4];
+extern u32  g_loadExeArgs[0x4];
 extern char g_swapFileName[256];
-u32         encSwapFunc(void* startAddr, void* endAddr, void* args);
-u32         decSwapFunc(void* startAddr, void* endAddr, void* args);
-u32		    decExeFunc(void* startAddr, void* endAddr, void* args);
+extern u32  g_memBlockSize;
+
+u32         saveSwapFunc(void* startAddr, void* endAddr, void* args);
+u32         loadSwapFunc(void* startAddr, void* endAddr, void* args);
+u32		    loadExeFunc(void* startAddr, void* endAddr, void* args);
 
 bool     TryToLoadPlugin(Handle process);
 void    PLG__NotifyEvent(PLG_Event event, bool signal);
@@ -76,10 +77,10 @@ typedef struct
     s32 *        plgEventPA;
     s32 *        plgReplyPA;
     
-    bool            isExeDecFunctionset;
+    bool            isExeLoadFunctionset;
     bool            isSwapFunctionset;
-    u32             exeDecChecksum;
-    u32             swapDecChecksum;    
+    u32             exeLoadChecksum;
+    u32             swapLoadChecksum;    
 }   PluginLoaderContext;
 
 extern PluginLoaderContext PluginLoaderCtx;

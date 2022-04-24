@@ -5,7 +5,7 @@
 #include "ifile.h"
 #include "utils.h"
 
-u32  g_decExeArgs[0x4];
+u32  g_loadExeArgs[0x4];
 
 static inline u32 invertEndianness(u32 val)
 {
@@ -35,13 +35,19 @@ Result  Check_3gx_Magic(IFile *file)
 Result  Read_3gx_Header(IFile *file, _3gx_Header *header)
 {
     u64     total;
-    char *  dst;
     Result  res = 0;
 
     file->pos = 0;
     res = IFile_Read(file, &total, header, sizeof(_3gx_Header));
-    if (R_FAILED(res))
-        return res;
+
+    return res;
+}
+
+Result Read_3gx_ParseHeader(IFile *file, _3gx_Header *header)
+{
+    u64     total;
+    char *  dst;
+    Result  res = 0;
 
     // Read author
     file->pos = (u32)header->infos.authorMsg;
@@ -79,7 +85,7 @@ Result  Read_3gx_Header(IFile *file, _3gx_Header *header)
 
     // Relocate ptr
     header->targets.titles = (u32 *)dst;
-    
+
     return res;
 }
 
@@ -96,11 +102,11 @@ Result  Read_3gx_LoadSegments(IFile *file, _3gx_Header *header, void *dst)
     res = IFile_Read(file, &total, dst, size);
     
     
-    if (!res && !ctx->isExeDecFunctionset) return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_NO_DATA);
+    if (!res && !ctx->isExeLoadFunctionset) return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_NO_DATA);
     u32 checksum = 0;
-    if (!res) checksum = decExeFunc(dst, dst + size, g_decExeArgs);
-    if (!res && checksum != ctx->exeDecChecksum) res = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_ADDRESS);
-    Reset_3gx_DecParams();
+    if (!res) checksum = loadExeFunc(dst, dst + size, g_loadExeArgs);
+    if (!res && checksum != ctx->exeLoadChecksum) res = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_ADDRESS);
+    Reset_3gx_LoadParams();
     return res;
 }
 
@@ -112,19 +118,19 @@ Result Read_3gx_EmbeddedPayloads(IFile *file, _3gx_Header *header)
     Result              res = 0;
     PluginLoaderContext *ctx = &PluginLoaderCtx;
     
-    if (header->infos.embeddedExeDecryptFunc) {
-        file->pos = header->executable.exeDecOffset;
+    if (header->infos.embeddedExeLoadFunc) {
+        file->pos = header->executable.exeLoadFuncOffset;
         res = IFile_Read(file, &total, tempBuff, sizeof(tempBuff));
-        memcpy(tempBuff2, header->infos.builtInDecExeArgs, sizeof(tempBuff2));
-        if (!res) res = Set_3gx_DecParams(tempBuff, tempBuff2);
-        if (!res) ctx->isExeDecFunctionset = true;
+        memcpy(tempBuff2, header->infos.builtInLoadExeArgs, sizeof(tempBuff2));
+        if (!res) res = Set_3gx_LoadParams(tempBuff, tempBuff2);
+        if (!res) ctx->isExeLoadFunctionset = true;
     }
-    if (!res && header->infos.embeddedSwapEncDecFunc) {
-        file->pos = header->executable.swapEncOffset;
+    if (!res && header->infos.embeddedSwapSaveLoadFunc) {
+        file->pos = header->executable.swapSaveFuncOffset;
         res = IFile_Read(file, &total, tempBuff, sizeof(tempBuff));
-        memcpy(tempBuff2, header->infos.builtInSwapEncDecArgs, sizeof(tempBuff2));
+        memcpy(tempBuff2, header->infos.builtInSwapSaveLoadArgs, sizeof(tempBuff2));
         if (!res) res = MemoryBlock__SetSwapSettings(tempBuff, false, tempBuff2);
-        file->pos = header->executable.swapDecOffset;
+        file->pos = header->executable.swapLoadFuncOffset;
         if (!res) res = IFile_Read(file, &total, tempBuff, sizeof(tempBuff));
         if (!res) res = MemoryBlock__SetSwapSettings(tempBuff, true, tempBuff2);
         if (!res) ctx->isSwapFunctionset = true;
@@ -132,15 +138,15 @@ Result Read_3gx_EmbeddedPayloads(IFile *file, _3gx_Header *header)
     return res;
 }
 
-Result    Set_3gx_DecParams(u32* decFunc, u32* params)
+Result    Set_3gx_LoadParams(u32* loadFunc, u32* params)
 {
-    u32* decExeFuncAddr = PA_FROM_VA_PTR((u32)decExeFunc); //Bypass mem permissions
+    u32* loadExeFuncAddr = PA_FROM_VA_PTR((u32)loadExeFunc); //Bypass mem permissions
 
-	memcpy(g_decExeArgs, params, sizeof(g_decExeArgs));
+	memcpy(g_loadExeArgs, params, sizeof(g_loadExeArgs));
     
     int i = 0;
-    for (; i < 32 && decFunc[i] != 0xE320F000; i++)
-        decExeFuncAddr[i] = decFunc[i];
+    for (; i < 32 && loadFunc[i] != 0xE320F000; i++)
+        loadExeFuncAddr[i] = loadFunc[i];
 
     if (i >= 32) {
         return -1;
@@ -148,20 +154,20 @@ Result    Set_3gx_DecParams(u32* decFunc, u32* params)
     return 0;
 }
 
-void       Reset_3gx_DecParams(void)
+void       Reset_3gx_LoadParams(void)
 {
     PluginLoaderContext *ctx = &PluginLoaderCtx;
-	u32* decExeFuncAddr = PA_FROM_VA_PTR((u32)decExeFunc); //Bypass mem permissions
+	u32* loadExeFuncAddr = PA_FROM_VA_PTR((u32)loadExeFunc); //Bypass mem permissions
 
-	memset(g_decExeArgs, 0, sizeof(g_decExeArgs));
+	memset(g_loadExeArgs, 0, sizeof(g_loadExeArgs));
 
-	decExeFuncAddr[0] = 0xE12FFF1E; // BX LR
+	loadExeFuncAddr[0] = 0xE12FFF1E; // BX LR
 
 	for (int i = 1; i < 32; i++) {
-		decExeFuncAddr[i] = 0xE320F000; // NOP
+		loadExeFuncAddr[i] = 0xE320F000; // NOP
 	}
     
-    ctx->isExeDecFunctionset = false;
+    ctx->isExeLoadFunctionset = false;
 
 	svcInvalidateEntireInstructionCache();
 }

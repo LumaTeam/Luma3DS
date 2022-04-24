@@ -148,10 +148,18 @@ bool     TryToLoadPlugin(Handle process)
     u64             fileSize;
     IFile           plugin;
     Result          res;
-    _3gx_Header     *header;
-    _3gx_Executable *exeHdr;
+    _3gx_Header     fileHeader;
+    _3gx_Header     *header = NULL;
+    _3gx_Executable *exeHdr = NULL;
     PluginLoaderContext *ctx = &PluginLoaderCtx;
     PluginHeader        *pluginHeader = &ctx->header;
+    const u32           memRegionSizes[] = 
+    {
+        5 * 1024 * 1024, // 5 MiB
+        2 * 1024 * 1024, // 2 MiB
+        3 * 1024 * 1024, // 3 MiB
+        4 * 1024 * 1024  // 4 MiB
+    };
 
     // Get title id
     svcGetProcessInfo((s64 *)&tid, process, 0x10001);
@@ -167,11 +175,6 @@ bool     TryToLoadPlugin(Handle process)
             return false;
 
         ctx->pluginPath = ctx->userLoadParameters.path;
-        if (MemoryBlock__IsReady())
-        {
-            IFile_Close(&plugin);
-            return false;
-        }
 
         memcpy(pluginHeader->config, ctx->userLoadParameters.config, 32 * sizeof(u32));
     }
@@ -179,12 +182,6 @@ bool     TryToLoadPlugin(Handle process)
     {
         if (R_FAILED(OpenPluginFile(tid, &plugin)))
             return false;
-
-        if (MemoryBlock__IsReady())
-        {
-            IFile_Close(&plugin);
-            return false;
-        }
     }
 
     if (R_FAILED((res = IFile_GetSize(&plugin, &fileSize))))
@@ -202,27 +199,44 @@ bool     TryToLoadPlugin(Handle process)
 
         ctx->error.message = errors[R_MODULE(res) == RM_LDR ? R_DESCRIPTION(res) : 0];
     }
-    // Plugins will not exceed 5MB so this is fine
-    header = (_3gx_Header *)(ctx->memblock.memblock + MemBlockSize - (u32)fileSize);
 
     // Read header
-    if (!res && R_FAILED((res = Read_3gx_Header(&plugin, header))))
+    if (!res && R_FAILED((res = Read_3gx_Header(&plugin, &fileHeader))))
         ctx->error.message = "Couldn't read file";
+
+    // Set memory region size according to header
+    if (!res && R_FAILED((res = MemoryBlock__SetSize(memRegionSizes[fileHeader.infos.memoryRegionSize])))) {
+        ctx->error.message = "Couldn't set memblock size.";
+    }
     
-    // Read embedded enc/dec functions
+    // Ensure memory block is mounted
+    if (!res && R_FAILED((res = MemoryBlock__IsReady())))
+        ctx->error.message = "Failed to allocate memory.";
+
+    // Plugins will not exceed 5MB so this is fine
+    if (!res) {
+        header = (_3gx_Header *)(ctx->memblock.memblock + g_memBlockSize - (u32)fileSize);
+        memcpy(header, &fileHeader, sizeof(_3gx_Header));
+    }
+
+    // Parse rest of header
+    if (!res && R_FAILED((res = Read_3gx_ParseHeader(&plugin, header))))
+        ctx->error.message = "Couldn't read file";
+
+    // Read embedded save/load functions
     if (!res && R_FAILED((res = Read_3gx_EmbeddedPayloads(&plugin, header))))
-        ctx->error.message = "Invalid encryption payloads.";
+        ctx->error.message = "Invalid save/load payloads.";
     
     // Save exe checksum
     if (!res)
-        ctx->exeDecChecksum = header->infos.exeDecChecksum;
+        ctx->exeLoadChecksum = header->infos.exeLoadChecksum;
     
     // Check titles compatibility
     if (!res) res = CheckPluginCompatibility(header, (u32)tid);
 
     // Read code
     if (!res && R_FAILED(res = Read_3gx_LoadSegments(&plugin, header, ctx->memblock.memblock + sizeof(PluginHeader)))) {
-        if (res == MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_NO_DATA)) ctx->error.message = "This plugin requires a decryption function.";
+        if (res == MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_NO_DATA)) ctx->error.message = "This plugin requires a loading function.";
         else if (res == MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_ADDRESS)) ctx->error.message = "This plugin file is corrupted.";
         else ctx->error.message = "Couldn't read plugin's code";
     }
@@ -238,7 +252,7 @@ bool     TryToLoadPlugin(Handle process)
     exeHdr = &header->executable;
     pluginHeader->exeSize = (sizeof(PluginHeader) + exeHdr->codeSize + exeHdr->rodataSize + exeHdr->dataSize + exeHdr->bssSize + 0x1000) & ~0xFFF;
     pluginHeader->heapVA = 0x06000000;
-    pluginHeader->heapSize = MemBlockSize - pluginHeader->exeSize;
+    pluginHeader->heapSize = g_memBlockSize - pluginHeader->exeSize;
     pluginHeader->plgldrEvent = ctx->plgEventPA;
     pluginHeader->plgldrReply = ctx->plgReplyPA;
 

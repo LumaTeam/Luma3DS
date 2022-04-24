@@ -17,14 +17,15 @@ typedef struct PACKED
     union {
         u32         flags;
         struct {
-            u32     embeddedExeDecryptFunc : 1;
-            u32     embeddedSwapEncDecFunc : 1;
-            u32     unused : 30;
+            u32     embeddedExeLoadFunc : 1;
+            u32     embeddedSwapSaveLoadFunc : 1;
+            u32     memoryRegionSize : 2;
+            u32     unused : 28;
         };
     };
-    u32             exeDecChecksum;
-    u32             builtInDecExeArgs[4];
-    u32             builtInSwapEncDecArgs[4];
+    u32             exeLoadChecksum;
+    u32             builtInLoadExeArgs[4];
+    u32             builtInSwapSaveLoadArgs[4];
 } _3gx_Infos;
 
 typedef struct PACKED
@@ -49,9 +50,9 @@ typedef struct PACKED
     u32             rodataSize;
     u32             dataSize;
     u32             bssSize;
-    u32             exeDecOffset; // NOP terminated
-    u32             swapEncOffset; // NOP terminated
-    u32             swapDecOffset; // NOP terminated
+    u32             exeLoadFuncOffset; // NOP terminated
+    u32             swapSaveFuncOffset; // NOP terminated
+    u32             swapLoadFuncOffset; // NOP terminated
 } _3gx_Executable;
 
 typedef struct PACKED
@@ -68,7 +69,8 @@ typedef struct PACKED
 
 Result  Check_3gx_Magic(IFile *file);
 Result  Read_3gx_Header(IFile *file, _3gx_Header *header);
+Result  Read_3gx_ParseHeader(IFile *file, _3gx_Header *header);
 Result  Read_3gx_LoadSegments(IFile *file, _3gx_Header *header, void *dst);
 Result  Read_3gx_EmbeddedPayloads(IFile *file, _3gx_Header *header);
-Result  Set_3gx_DecParams(u32* decFunc, u32* params);
-void	Reset_3gx_DecParams(void);
+Result  Set_3gx_LoadParams(u32* loadFunc, u32* params);
+void	Reset_3gx_LoadParams(void);

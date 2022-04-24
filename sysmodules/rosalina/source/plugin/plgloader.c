@@ -325,11 +325,11 @@ void     PluginLoader__HandleCommands(void *_ctx)
                 break;
             }
 
-            u32* remoteEncPhysAddr = (u32*)(cmdbuf[1] | (1 << 31));
-            u32* remoteDecPhysAddr = (u32*)(cmdbuf[2] | (1 << 31));
+            u32* remoteSavePhysAddr = (u32*)(cmdbuf[1] | (1 << 31));
+            u32* remoteLoadPhysAddr = (u32*)(cmdbuf[2] | (1 << 31));
 
-            Result ret = MemoryBlock__SetSwapSettings(remoteEncPhysAddr, false, (u32*)cmdbuf[4]);
-            if (!ret) ret = MemoryBlock__SetSwapSettings(remoteDecPhysAddr, true, (u32*)cmdbuf[4]);
+            Result ret = MemoryBlock__SetSwapSettings(remoteSavePhysAddr, false, (u32*)cmdbuf[4]);
+            if (!ret) ret = MemoryBlock__SetSwapSettings(remoteLoadPhysAddr, true, (u32*)cmdbuf[4]);
 
             if (ret) {
                 cmdbuf[1] = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_TOO_LARGE);
@@ -347,7 +347,7 @@ void     PluginLoader__HandleCommands(void *_ctx)
             break;
         }
 
-        case 13: // Set plugin exe dec
+        case 13: // Set plugin exe load func
         {
             if (cmdbuf[0] != IPC_MakeHeader(13, 1, 2))
             {
@@ -355,22 +355,22 @@ void     PluginLoader__HandleCommands(void *_ctx)
                 break;
             }
             cmdbuf[0] = IPC_MakeHeader(13, 1, 0);
-            Reset_3gx_DecParams();
+            Reset_3gx_LoadParams();
             if (!cmdbuf[1]) {
                 cmdbuf[1] = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_ADDRESS);
                 break;
             }
 
-            u32* remoteDecExeFuncAddr = (u32*)(cmdbuf[1] | (1 << 31));
-            Result ret = Set_3gx_DecParams(remoteDecExeFuncAddr, (u32*)cmdbuf[3]);
+            u32* remoteLoadExeFuncAddr = (u32*)(cmdbuf[1] | (1 << 31));
+            Result ret = Set_3gx_LoadParams(remoteLoadExeFuncAddr, (u32*)cmdbuf[3]);
             if (ret)
             {
                 cmdbuf[1] = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_TOO_LARGE);
-                Reset_3gx_DecParams();
+                Reset_3gx_LoadParams();
                 break;
             }
             
-            ctx->isExeDecFunctionset = true;
+            ctx->isExeLoadFunctionset = true;
 
             svcInvalidateEntireInstructionCache(); // Could use the range one
 
@@ -439,7 +439,7 @@ static void WaitForProcessTerminated(void *arg)
     SetConfigMemoryStatus(PLG_CFG_NONE);
     ctx->pluginIsSwapped = false;
     ctx->target = 0;
-    ctx->isExeDecFunctionset = false;
+    ctx->isExeLoadFunctionset = false;
     ctx->isSwapFunctionset = false;
     g_blockMenuOpen = 0;
     MemoryBlock__ResetSwapSettings();
