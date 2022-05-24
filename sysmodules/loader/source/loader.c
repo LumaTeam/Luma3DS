@@ -201,26 +201,21 @@ static Result PLGLDR_LoadPlugin(Handle *process)
     return svcSendSyncRequest(plgldrHandle);
 }
 
+static inline bool IsHioId(u64 id)
+{
+    // FS load HIO titles at boot when it can. For HIO titles, title/programId and "program handle"
+    // are the same thing, although some of them can be aliased with their "real" titleId (i.e. in ExHeader).
+
+    if (id >> 32 == 0xFFFF0000u)
+        return true;
+    else
+        return R_LEVEL(FSREG_CheckHostLoadId(id)) == RL_SUCCESS; // check if this is an alias to an HIO-loaded title
+}
+
 static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
 {
-    Result res = 0;
-
-    if (programHandle >> 32 == 0xFFFF0000)
-        res = FSREG_GetProgramInfo(exheaderInfo, 1, programHandle);
-    else
-    {
-        res = FSREG_CheckHostLoadId(programHandle);
-        //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-        //so use PXIPM if FSREG fails OR returns "info", is the second condition a bug?
-        if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-        {
-            TRY(PXIPM_GetProgramInfo(exheaderInfo, programHandle));
-        }
-        else
-        {
-            TRY(FSREG_GetProgramInfo(exheaderInfo, 1, programHandle));
-        }
-    }
+    Result res;
+    TRY(IsHioId(programHandle) ? FSREG_GetProgramInfo(exheaderInfo, 1, programHandle) : PXIPM_GetProgramInfo(exheaderInfo, programHandle));
 
     // Tweak 3dsx placeholder title exheaderInfo
     if (hbldrIs3dsxTitle(exheaderInfo->aci.local_caps.title_id))
@@ -345,56 +340,29 @@ static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_Prog
     u64 titleId;
 
     titleId = title->programId;
-    if (titleId >> 32 != 0xFFFF0000)
+    if (IsHioId(titleId))
     {
-        res = FSREG_CheckHostLoadId(titleId);
-        //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-        if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-        {
-            TRY(PXIPM_RegisterProgram(programHandle, title, update));
-            if (*programHandle >> 32 != 0xFFFF0000)
-            {
-                res = FSREG_CheckHostLoadId(*programHandle);
-                //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-                if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-                {
-                    return 0;
-                }
-            }
-            panic(0);
-        }
+        if ((title->mediaType != update->mediaType) || (titleId != update->programId))
+            panic(1);
+
+        TRY(FSREG_LoadProgram(programHandle, title));
+
+        if (!IsHioId(*programHandle)) // double check this is indeed HIO
+            panic(2);
     }
-
-    if ((title->mediaType != update->mediaType) || (titleId != update->programId))
-        panic(1);
-
-    TRY(FSREG_LoadProgram(programHandle, title));
-    if (*programHandle >> 32 == 0xFFFF0000)
-        return 0;
-
-    res = FSREG_CheckHostLoadId(*programHandle);
-    //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-    if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-        panic(2);
+    else
+    {
+        TRY(PXIPM_RegisterProgram(programHandle, title, update));
+        if (IsHioId(*programHandle)) // double check this is indeed *not* HIO
+            panic(0);
+    }
 
     return res;
 }
 
 static Result UnregisterProgram(u64 programHandle)
 {
-    Result res;
-
-    if (programHandle >> 32 == 0xFFFF0000)
-        return FSREG_UnloadProgram(programHandle);
-    else
-    {
-        res = FSREG_CheckHostLoadId(programHandle);
-        //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
-        if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
-            return PXIPM_UnregisterProgram(programHandle);
-        else
-            return FSREG_UnloadProgram(programHandle);
-    }
+    return IsHioId(programHandle) ? FSREG_UnloadProgram(programHandle) : PXIPM_UnregisterProgram(programHandle);
 }
 
 void loaderHandleCommands(void *ctx)

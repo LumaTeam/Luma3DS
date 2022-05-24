@@ -73,14 +73,11 @@ Result ControlService(ServiceOp op, u32 varg1, u32 varg2)
         {
             char name[12] = { 0 };
             SessionInfo *info = NULL;
-            if(name != NULL)
-            {
-                s32 nb = usrToKernelStrncpy(name, (const char *)varg2, 12);
-                if(nb < 0)
-                    return 0xD9001814;
-                else if(nb == 12 && name[11] != 0)
-                    return 0xE0E0181E;
-            }
+            s32 nb = usrToKernelStrncpy(name, (const char *)varg2, 12);
+            if(nb < 0)
+                return 0xD9001814;
+            else if(nb == 12 && name[11] != 0)
+                return 0xE0E0181E;
 
             info = SessionInfo_FindFirst(name);
 

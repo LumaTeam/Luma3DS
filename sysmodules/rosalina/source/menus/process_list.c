@@ -42,6 +42,7 @@
 typedef struct ProcessInfo
 {
     u32 pid;
+    u32 creationTimeMs;
     u64 titleId;
     char name[8];
     bool isZombie;
@@ -85,6 +86,13 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
             checkbox = "(W) ";
             sprintf(commentBuf, "Port: %hu", ctx->localPort);
         }
+    }
+
+    else
+    {
+#ifdef ROSALINA_PRINT_PROCESS_CREATION_TIME
+        sprintf(commentBuf, "%lums\n", info->creationTimeMs);
+#endif
     }
 
     if (gdbServer.super.running)
@@ -422,7 +430,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 const u32 infoY = instructionsY + SPACING_Y;
                 viewerY += SPACING_Y;
                 if(codeAvailable && heapAvailable)
-                {    
+                {
                     Draw_DrawString(10, infoY, COLOR_WHITE, "Press L or R to switch between heap and code.");
                     if((u32)menus[MENU_MODE_NORMAL].buf == heapDestAddress)
                         Draw_DrawString(10 + SPACING_X * 31, infoY, COLOR_GREEN, "heap");
@@ -463,7 +471,7 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                                 color = COLOR_WHITE;
 
                             u8 val = menus[menuMode].buf[address];
-                            
+
                             if(ascii)
                                 Draw_DrawFormattedString(x, y, color, "%c ", u8ToChar(val));
                             else
@@ -661,7 +669,8 @@ s32 ProcessListMenu_FetchInfo(void)
 
     for(s32 i = 0; i < processAmount; i++)
     {
-        Handle processHandle;
+        Handle processHandle = 0;
+        s64 creationTimeTicks = 0;
         Result res = svcOpenProcess(&processHandle, pidList[i]);
         if(R_FAILED(res))
             continue;
@@ -670,6 +679,8 @@ s32 ProcessListMenu_FetchInfo(void)
         svcGetProcessInfo((s64 *)&infos[i].name, processHandle, 0x10000);
         svcGetProcessInfo((s64 *)&infos[i].titleId, processHandle, 0x10001);
         infos[i].isZombie = svcWaitSynchronization(processHandle, 0) == 0;
+        svcGetHandleInfo(&creationTimeTicks, processHandle, 0);
+        infos[i].creationTimeMs = (u32)(1000 * creationTimeTicks / SYSCLOCK_ARM11);
         svcCloseHandle(processHandle);
     }
 

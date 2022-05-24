@@ -29,15 +29,40 @@
 #include "ifile.h"
 #include "fmt.h"
 
+//#define BOOTDIAG_ENABLED
 #ifdef  BOOTDIAG_ENABLED
 
 static MyThread bootdiagThread;
 static u8 ALIGN(0x1000) bootdiagThreadStack[0x1000];
 
-#define BOOTDIAG_WAIT_TIME      (2000 * 1000 * 1000u) // 2 seconds
-#define BOOTDIAG_PID            2u                    // PM
+#define BOOTDIAG_WAIT_TIME      (3500 * 1000 * 1000u) // 2 seconds
+#define BOOTDIAG_DUMP_PLIST     1
+#define BOOTDIAG_PID            1u
 #define BOOTDIAG_DUMP_TO_FILE   0
 
+static int bootdiagDumpProcessList(char *buf)
+{
+    int n = 0;
+    u32 pids[40];
+    s32 numProcesses = 0;
+    if (R_FAILED(svcGetProcessList(&numProcesses, pids, 0x40))) __builtin_trap();
+
+    for (s32 i = 0; i < numProcesses; i++)
+    {
+        s64 tmp = 0;
+        char name[9] = {0};
+        Handle h;
+        svcOpenProcess(&h, pids[i]);
+        svcGetProcessInfo(&tmp, h, 0x10000);
+        memcpy(name, &tmp, 8);
+        svcGetHandleInfo(&tmp, h, 0);
+        u32 creationTimeMs = (u32)(1000 * tmp / SYSCLOCK_ARM11);
+        svcCloseHandle(h);
+        n += sprintf(buf + n, "#%4lu - %8s %lums\n", pids[i], name, creationTimeMs);
+    }
+
+    return n;
+}
 static int bootdiagDumpThread(char *buf, Handle debug, u32 tid)
 {
     ThreadContext ctx;
@@ -78,10 +103,16 @@ static int bootdiagDumpProcess(char *buf, u32 pid)
 
 static void bootdiagThreadMain(void)
 {
-    char buf[512];
+    char buf[1024];
 
     svcSleepThread(BOOTDIAG_WAIT_TIME);
-    int n = bootdiagDumpProcess(buf, BOOTDIAG_PID);
+    int n = 0;
+#if BOOTDIAG_DUMP_PLIST == 1
+    n += bootdiagDumpProcessList(buf + n);
+#else
+    (void)bootdiagDumpProcessList;
+#endif
+    n += bootdiagDumpProcess(buf + n, BOOTDIAG_PID);
 
 #if BOOTDIAG_DUMP_TO_FILE
     IFile file;
