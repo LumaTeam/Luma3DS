@@ -175,7 +175,7 @@ static Result menuUpdateMcuInfo(void)
         batteryPercentage = (u32)((batteryPercentage + 0.05f) * 10.0f) / 10.0f;
 
         // Round battery voltage to 0.01V
-        batteryVoltage = (5u * data[3]) / 256.0f;
+        batteryVoltage = 0.02f * data[3];
         batteryVoltage = (u32)((batteryVoltage + 0.005f) * 100.0f) / 100.0f;
     }
 
