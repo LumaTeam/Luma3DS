@@ -546,20 +546,13 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                     switch(exc.stop_point.type)
                     {
                         case STOPPOINT_SVC_FF:
-                        {
-                            GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%sswbreak:;", buffer);
-                            break;
-                        }
-
                         case STOPPOINT_BREAKPOINT:
                         {
-                            // Note: this includes both "bkpt" and hw breakpoints, but we never use the latter...
-                            // However, since our GDB executable only knows about svc 0xFF as sw breakpoint for the 3DS ABI,
-                            // we can use swbreak as reason (it'll dismiss the bkpt instruction and try to auto-step over it).
+                            // Note: STOPPOINT_BREAKPOINT includes both "bkpt" and hw breakpoints, but we never use the latter...
+                            // Use swbreak as a reason for both 'svc 0xFF' and 'bkpt' too (GDB doc mention we should use 'swbreak'
+                            // even if the breakpoint was already present/hardcoded).
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%s", buffer);
-                            break;
+                            return GDB_SendFormattedPacket(ctx, "%sswbreak:;", buffer);
                         }
 
                         case STOPPOINT_WATCHPOINT:
@@ -571,7 +564,6 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
                             return GDB_SendFormattedPacket(ctx, "%s%swatch:%08lx;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
-                            break;
                         }
 
                         default:
