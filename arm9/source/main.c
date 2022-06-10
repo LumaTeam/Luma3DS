@@ -121,8 +121,13 @@ void main(int argc, char **argv, u32 magicWord)
     memset(__itcm_bss_start__, 0, __itcm_end__ - __itcm_bss_start__);
     I2C_init();
 
-    I2C_readRegBuf(I2C_DEV_MCU, 0x00, (u8 *)&mcuFwVersion, 2);
-    if ((mcuFwVersion & 0xFFF) < 0x0100) error("Unsupported MCU FW version.");
+    u8 mcuFwVerHi = I2C_readReg(I2C_DEV_MCU, 0) - 0x10;
+    u8 mcuFwVerLo = I2C_readReg(I2C_DEV_MCU, 1);
+    mcuFwVersion = ((u16)mcuFwVerHi << 16) | mcuFwVerLo;
+
+    // Check if fw is older than factory. See https://www.3dbrew.org/wiki/MCU_Services#MCU_firmware_versions for a table
+    if (mcuFwVerHi < 1) error("Unsupported MCU FW version %d.%d.", (int)mcuFwVerHi, (int)mcuFwVerLo);
+
     I2C_readRegBuf(I2C_DEV_MCU, 0x7F, mcuConsoleInfo, 9);
 
     if(isInvalidLoader) error("Launched using an unsupported loader.");
