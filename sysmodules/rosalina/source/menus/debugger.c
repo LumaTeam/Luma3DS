@@ -72,6 +72,8 @@ MyThread *debuggerCreateDebugThread(void)
 void debuggerFetchAndSetNextApplicationDebugHandleTask(void *argdata)
 {
     (void)argdata;
+    if(!nextApplicationGdbCtx)
+        return;
     Handle debug = 0;
     PMDBG_RunQueuedProcess(&debug);
     GDB_LockAllContexts(&gdbServer);
