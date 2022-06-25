@@ -769,16 +769,16 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         }
         while(!pressed);
 
-        if(pressed == BUTTON_START) break;
+        if(pressed & BUTTON_START) break;
 
-        if(pressed != BUTTON_A)
+        if(pressed & DPAD_BUTTONS)
         {
             //Remember the previously selected option
             u32 oldSelectedOption = selectedOption;
 
             while(true)
             {
-                switch(pressed)
+                switch(pressed & DPAD_BUTTONS)
                 {
                     case BUTTON_UP:
                         selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
@@ -837,7 +837,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
             drawString(false, 10, 10, COLOR_BLACK, optionsDescription[oldSelectedOption]);
             drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
         }
-        else
+        else if (pressed & BUTTON_A)
         {
             //The selected option's status changed, print the 'x's accordingly
             if(isMultiOption)
