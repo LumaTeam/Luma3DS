@@ -121,6 +121,12 @@ void configHook(vu8 *cfgPage)
     *(vu32 *)(configPage + 0x44) = fcramLayout.systemSize;
     *(vu32 *)(configPage + 0x48) = fcramLayout.baseSize;
     *isDevUnit = true; // enable debug features
+
+    pidOffsetKProcess = KPROCESS_OFFSETOF(processId);
+    hwInfoOffsetKProcess = KPROCESS_OFFSETOF(hwInfo);
+    codeSetOffsetKProcess = KPROCESS_OFFSETOF(codeSet);
+    handleTableOffsetKProcess = KPROCESS_OFFSETOF(handleTable);
+    debugOffsetKProcess = KPROCESS_OFFSETOF(debug);
 }
 
 static void findUsefulSymbols(void)
@@ -304,6 +310,7 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
 
     findUsefulSymbols();
+    buildAlteredSvcTable();
 
     GetSystemInfo(&nb, 26, 0);
     nbSection0Modules = (u32)nb;

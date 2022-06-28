@@ -33,8 +33,8 @@
 #define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
 #define CONFIG_FILE         "config.bin"
-#define CONFIG_VERSIONMAJOR 2
-#define CONFIG_VERSIONMINOR 4
+#define CONFIG_VERSIONMAJOR 3
+#define CONFIG_VERSIONMINOR 0
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -46,7 +46,6 @@ enum multiOptions
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
-    SPLASH_DURATION,
     PIN,
     NEWCPU
 };
@@ -62,6 +61,8 @@ enum singleOptions
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
+
+    NUMCONFIGURABLE = PATCHUNITINFO,
 };
 
 typedef enum ConfigurationStatus

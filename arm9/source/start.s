@@ -160,7 +160,7 @@ disableMpuAndJumpToEntrypoints:
     @ Jump to the Arm9 entrypoint
     mov r0, r4
     mov r1, r5
-    ldr r2, =0x3BEEF
+    ldr r2, =0x4BEEF
     bx r6
 
 .pool

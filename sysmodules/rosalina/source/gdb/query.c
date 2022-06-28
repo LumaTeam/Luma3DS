@@ -5,6 +5,7 @@
 *   SPDX-License-Identifier: (MIT OR GPL-2.0-or-later)
 */
 
+#define _GNU_SOURCE
 #include "gdb/query.h"
 #include "gdb/xfer.h"
 #include "gdb/thread.h"
@@ -89,11 +90,23 @@ int GDB_HandleWriteQuery(GDBContext *ctx)
 
 GDB_DECLARE_QUERY_HANDLER(Supported)
 {
+    const char *pos = ctx->commandData, *nextpos = pos;
+    do
+    {
+        pos = nextpos;
+        nextpos = strchrnul(pos, ';');
+        if (*nextpos != ';' && *nextpos != '\0')
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        if (strncmp(pos, "multiprocess+", nextpos - pos) == 0)
+            ctx->multiprocessExtEnabled = true;
+    } while (*nextpos++ != '\0');
+
     return GDB_SendFormattedPacket(ctx,
         "PacketSize=%x;"
         "qXfer:features:read+;qXfer:osdata:read+;"
         "QStartNoAckMode+;QThreadEvents+;QCatchSyscalls+;"
-        "vContSupported+;swbreak+",
+        "vContSupported+;swbreak+;multiprocess+",
 
         GDB_BUF_LEN // should have been sizeof(ctx->buffer) but GDB memory functions are bugged
     );

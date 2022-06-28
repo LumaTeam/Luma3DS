@@ -12,6 +12,8 @@ Result registerProgram(u64 *programHandle, const FS_ProgramInfo *programInfo, co
 
     if (IS_N3DS) {
         if (pi.programId >> 48 == 0xFFFF) {
+            // Check for HIO TIDs. PM is a bit more lax, as the condition
+            // in Loader and FS is (x >> 32) == 0xFFFF0000 instead.
             return LOADER_RegisterProgram(programHandle, &pi, &piu);
         }
         pi.programId = (pi.programId  & ~N3DS_TID_MASK) | N3DS_TID_BIT;

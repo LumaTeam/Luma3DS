@@ -19,14 +19,14 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source source/gdb source/menus source/redshift
-DATA		:=	source/gdb/xml
+DATA		:=	source/gdb/xml data
 INCLUDES	:=	include include/gdb include/menus include/redshift
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
-DEFINES :=	-DARM11 -D_3DS
+DEFINES :=	-D__3DS__
 
 FALSEPOSITIVES := -Wno-array-bounds -Wno-stringop-overflow -Wno-stringop-overread
 CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Werror -Wno-unused-value -Os -mword-relocations \
@@ -144,6 +144,11 @@ $(OFILES_SRC)	: $(HFILES_BIN)
 	@$(bin2o)
 #---------------------------------------------------------------------------------
 %.xml.o	%_xml.h:	%.xml
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(bin2o)
+#---------------------------------------------------------------------------------
+%.ini.o	%_ini.h:	%.ini
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)

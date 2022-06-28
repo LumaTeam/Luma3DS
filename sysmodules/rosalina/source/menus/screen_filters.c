@@ -45,7 +45,7 @@ typedef union {
 static u16 g_c[0x600];
 static Pixel g_px[0x400];
 
-int screenFiltersCurrentTemperature = -1;
+int screenFiltersCurrentTemperature = 6500;
 
 static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
 {
@@ -90,7 +90,7 @@ static void ScreenFiltersMenu_ApplyColorSettings(color_setting_t* cs)
     ScreenFiltersMenu_WriteLut(g_px);
 }
 
-static void ScreenFiltersMenu_SetCct(int cct)
+void ScreenFiltersMenu_SetCct(int cct)
 {
     color_setting_t cs;
     memset(&cs, 0, sizeof(cs));
@@ -102,6 +102,7 @@ static void ScreenFiltersMenu_SetCct(int cct)
     cs.brightness = 1.0F;*/
 
     ScreenFiltersMenu_ApplyColorSettings(&cs);
+    screenFiltersCurrentTemperature = cct;
 }
 
 Menu screenFiltersMenu = {
@@ -124,14 +125,13 @@ Menu screenFiltersMenu = {
 #define DEF_CCT_SETTER(temp, name)\
 void ScreenFiltersMenu_Set##name(void)\
 {\
-    screenFiltersCurrentTemperature = temp;\
     ScreenFiltersMenu_SetCct(temp);\
 }
 
 void ScreenFiltersMenu_RestoreCct(void)
 {
-    // Not initialized: return
-    if (screenFiltersCurrentTemperature == -1)
+    // Not initialized/default: return
+    if (screenFiltersCurrentTemperature == 6500)
         return;
 
     // Wait for GSP to restore the CCT table

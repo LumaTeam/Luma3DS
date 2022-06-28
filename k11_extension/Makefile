@@ -25,7 +25,8 @@ INCLUDES	:=	include include/svc
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+# -mgeneral-regs-only so that the C code is guaranteed not to use FPU regs
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft -mgeneral-regs-only
 DEFINES :=	-DARM11 -D_3DS
 
 FALSEPOSITIVES := -Wno-array-bounds -Wno-stringop-overflow -Wno-stringop-overread

@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@
 typedef struct ProcessInfo
 {
     u32 pid;
+    u32 creationTimeMs;
     u64 titleId;
     char name[8];
     bool isZombie;
@@ -49,6 +50,8 @@ typedef struct ProcessInfo
 
 static ProcessInfo infos[0x40] = {0}, infosPrev[0x40] = {0};
 extern GDBServer gdbServer;
+
+bool ascii = false;
 
 static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *info)
 {
@@ -83,6 +86,13 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
             checkbox = "(W) ";
             sprintf(commentBuf, "Port: %hu", ctx->localPort);
         }
+    }
+
+    else
+    {
+#ifdef ROSALINA_PRINT_PROCESS_CREATION_TIME
+        sprintf(commentBuf, "%lums\n", info->creationTimeMs);
+#endif
     }
 
     if (gdbServer.super.running)
@@ -382,6 +392,11 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
             menus[MENU_MODE_SEARCH].buf = searchPattern;
             menus[MENU_MODE_SEARCH].max = 1;
             // ------------------------------------------
+            char u8ToChar(u8 val) {
+                if(val < 32 || val > 126)
+                    return '-';
+                return val;
+            }
 
             void drawMenu(void)
             {
@@ -412,15 +427,21 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 // ------------------------------------------
 
                 // Location
+                const u32 infoY = instructionsY + SPACING_Y;
+                viewerY += SPACING_Y;
                 if(codeAvailable && heapAvailable)
                 {
-                    const u32 infoY = instructionsY + SPACING_Y;
-                    viewerY += SPACING_Y;
                     Draw_DrawString(10, infoY, COLOR_WHITE, "Press L or R to switch between heap and code.");
                     if((u32)menus[MENU_MODE_NORMAL].buf == heapDestAddress)
                         Draw_DrawString(10 + SPACING_X * 31, infoY, COLOR_GREEN, "heap");
                     if((u32)menus[MENU_MODE_NORMAL].buf == codeDestAddress)
                         Draw_DrawString(10 + SPACING_X * 40, infoY, COLOR_GREEN, "code");
+                }
+                else
+                {
+                    Draw_DrawString(10, infoY, COLOR_WHITE, "SELECT to dump memory, START to toggle ASCII view.");
+                    if(ascii)
+                        Draw_DrawString(10 + SPACING_X * 39, infoY, COLOR_GREEN, "ASCII");
                 }
                 // ------------------------------------------
 
@@ -438,10 +459,23 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
 
                         if(address < menus[menuMode].max)
                         {
-                            Draw_DrawFormattedString(x, y,
-                            address == menus[menuMode].selected ? (editing ? COLOR_RED : COLOR_GREEN) : COLOR_WHITE,
-                            "%.2x",
-                            menus[menuMode].buf[address]);
+                            u32 color;
+                            if(address == menus[menuMode].selected)
+                            {
+                                if(editing)
+                                    color = COLOR_RED;
+                                else
+                                    color = COLOR_GREEN;
+                            }
+                            else
+                                color = COLOR_WHITE;
+
+                            u8 val = menus[menuMode].buf[address];
+
+                            if(ascii)
+                                Draw_DrawFormattedString(x, y, color, "%c ", u8ToChar(val));
+                            else
+                                Draw_DrawFormattedString(x, y, color, "%.2x", val);
                         }
                         else
                             Draw_DrawString(x, y, COLOR_WHITE, "  ");
@@ -514,6 +548,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                     ProcessListMenu_DumpMemory(info->name, menus[MENU_MODE_NORMAL].buf, menus[MENU_MODE_NORMAL].max);
                     clearMenu();
                 }
+                else if(pressed & KEY_START)
+                    ascii = !ascii;
 
                 if(editing)
                 {
@@ -633,7 +669,8 @@ s32 ProcessListMenu_FetchInfo(void)
 
     for(s32 i = 0; i < processAmount; i++)
     {
-        Handle processHandle;
+        Handle processHandle = 0;
+        s64 creationTimeTicks = 0;
         Result res = svcOpenProcess(&processHandle, pidList[i]);
         if(R_FAILED(res))
             continue;
@@ -642,6 +679,8 @@ s32 ProcessListMenu_FetchInfo(void)
         svcGetProcessInfo((s64 *)&infos[i].name, processHandle, 0x10000);
         svcGetProcessInfo((s64 *)&infos[i].titleId, processHandle, 0x10001);
         infos[i].isZombie = svcWaitSynchronization(processHandle, 0) == 0;
+        svcGetHandleInfo(&creationTimeTicks, processHandle, 0);
+        infos[i].creationTimeMs = (u32)(1000 * creationTimeTicks / SYSCLOCK_ARM11);
         svcCloseHandle(processHandle);
     }
 

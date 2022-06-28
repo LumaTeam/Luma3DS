@@ -9,6 +9,7 @@
 
 #include "gdb/xfer.h"
 #include "gdb/net.h"
+#include "gdb/thread.h"
 #include "fmt.h"
 
 #include "osdata_cfw_version_template_xml.h"
@@ -161,7 +162,7 @@ GDB_DECLARE_XFER_OSDATA_HANDLER(Processes)
                 memcpy(name, &out, 8);
                 svcCloseHandle(processHandle);
 
-                n = sprintf(ctx->processesOsInfoXmlData + pos, item, pid, name);
+                n = sprintf(ctx->processesOsInfoXmlData + pos, item, GDB_ConvertFromRealPid(pid), name);
                 pos += (u32)n;
             }
 
