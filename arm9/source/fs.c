@@ -75,6 +75,11 @@ bool mountFs(bool isSd, bool switchToCtrNand)
     }
 }
 
+bool fileExists(const char *path)
+{
+    return f_stat(path, NULL) == FR_OK;
+}
+
 u32 fileRead(void *dest, const char *path, u32 maxSize)
 {
     FIL file;
@@ -460,7 +465,7 @@ bool doLumaUpgradeProcess(void)
         return false;
 
     // Try to boot.firm to CTRNAND, when applicable
-    if (isSdMode)
+    if (isSdMode && !fileExists("0:/boot.firm.nocopy"))
         ok = fileCopy("0:/boot.firm", "1:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
 
     // Try to backup essential files

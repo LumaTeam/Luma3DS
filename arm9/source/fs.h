@@ -31,6 +31,7 @@
 #define PATTERN(a) a "_*.firm"
 
 bool mountFs(bool isSd, bool switchToCtrNand);
+bool fileExists(const char *path);
 u32 fileRead(void *dest, const char *path, u32 maxSize);
 u32 getFileSize(const char *path);
 bool fileWrite(const void *buffer, const char *path, u32 size);
