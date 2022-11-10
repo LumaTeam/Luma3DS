@@ -361,19 +361,8 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
 
-        /*
-        Patch svcCreateThread()
-        for core #2
-        if(processorid == 0x2 && memory_region != BASE && !(kernel_flags & 0x2000)) return 0xD9001BEA; -> if(processorid == 0x4 && memory_region != BASE && !(kernel_flags & 0x2000)) return 0xD9001BEA;
-        for core #3
-        if(processorid == 0x3 && memory_region != BASE) return 0xD9001BEA; -> if(processorid == 0x4 && memory_region != BASE) return 0xD9001BEA;
-
-        So we can always create thread on core #2 and #3 even process is not running on BASE memory region.
-        */
-        if(*(u32*)(arm11Section1 + 0x7D18) == 0xE3590002)//Make sure previous value is 0xE3590002 otherwise don't modify.
-            *(u32*)(arm11Section1 + 0x7D18) = 0xE3590004;//0xE3590002(cmp sb, #2) -> 0xE3590004(cmp sb, #4)
-        if(*(u32*)(arm11Section1 + 0x7D20) == 0xE3590003)//Make sure previous value is 0xE3590003 otherwise don't modify.
-            *(u32*)(arm11Section1 + 0x7D20) = 0xE3590004;//0xE3590003(cmp sb, #3) -> 0xE3590004(cmp sb, #4)
+        patchCore2(arm11Section1, firm->section[1].size);
+        patchCore3(arm11Section1, firm->section[1].size);
     }
 
     //Find the Process9 .code location, size and memory address

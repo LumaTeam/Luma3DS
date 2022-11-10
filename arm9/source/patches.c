@@ -709,3 +709,49 @@ u32 patchAgbBootSplash(u8 *pos, u32 size)
 
     return 0;
 }
+
+u32 patchCore2(u8 *pos, u32 size)
+{
+    //cmp r9, #0x2
+    //beq #0x38
+    static const u8 pattern[] = { 0x02, 0x00, 0x59, 0xE3, 0x0C, 0x00, 0x00, 0x0A, };
+
+    u32* offset = (u32*)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(!offset)
+        return 1;
+
+    /*
+    Patch svcCreateThread()
+    if(processorid == 0x2 && memory_region != BASE && !(kernel_flags & 0x2000)) return 0xD9001BEA;
+    -> if(processorid == 0x4 && memory_region != BASE && !(kernel_flags & 0x2000)) return 0xD9001BEA;
+    So we can always create thread on core #2 even process is not running on BASE memory region.
+    */
+    //cmp r9, #0x2 -> cmp r9, #0x4
+    offset[1] = __builtin_bswap32(0x040059E3);
+
+    return 0;
+}
+
+u32 patchCore3(u8 *pos, u32 size)
+{
+    //cmp r9, #0x3
+    //beq #0x3C
+    static const u8 pattern[] = { 0x03, 0x00, 0x59, 0xE3, 0x0D, 0x00, 0x00, 0x0A, };
+
+    u32* offset = (u32*)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(!offset)
+        return 1;
+
+    /*
+    Patch svcCreateThread()
+    if(processorid == 0x3 && memory_region != BASE && !(kernel_flags & 0x2000)) return 0xD9001BEA;
+    -> if(processorid == 0x4 && memory_region != BASE && !(kernel_flags & 0x2000)) return 0xD9001BEA;
+    So we can always create thread on core #3 even process is not running on BASE memory region.
+    */
+    //cmp r9, #0x3 -> cmp r9, #0x4
+    offset[1] = __builtin_bswap32(0x040059E3);
+
+    return 0;
+}

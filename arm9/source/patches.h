@@ -65,3 +65,5 @@ u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion);
 u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size);
 u32 patchTwlShaHashChecks(u8 *pos, u32 size);
 u32 patchAgbBootSplash(u8 *pos, u32 size);
+u32 patchCore2(u8 *pos, u32 size);
+u32 patchCore3(u8 *pos, u32 size);
