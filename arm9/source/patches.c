@@ -751,7 +751,7 @@ u32 patchCore3(u8 *pos, u32 size)
     So we can always create thread on core #3 even process is not running on BASE memory region.
     */
     //cmp r9, #0x3 -> cmp r9, #0x4
-    offset[1] = __builtin_bswap32(0x040059E3);
+    offset[1] = 0xE3590004
 
     return 0;
 }
