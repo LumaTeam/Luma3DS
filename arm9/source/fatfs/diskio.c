@@ -1,5 +1,5 @@
 /*-----------------------------------------------------------------------*/
-/* Low level disk I/O module skeleton for FatFs     (C)ChaN, 2014        */
+/* Low level disk I/O module SKELETON for FatFs     (C)ChaN, 2019        */
 /*-----------------------------------------------------------------------*/
 /* If a working storage control module is available, it should be        */
 /* attached to the FatFs via a glue function rather than modifying it.   */
@@ -7,12 +7,13 @@
 /* storage control modules to the FatFs module with a defined API.       */
 /*-----------------------------------------------------------------------*/
 
-#include "diskio.h"		/* FatFs lower layer API */
+#include "ff.h"			/* Obtains integer types */
+#include "diskio.h"		/* Declarations of disk functions */
 #include "sdmmc/sdmmc.h"
 #include "../crypto.h"
 #include "../i2c.h"
 
-/* Definitions of physical drive number for each media */
+/* Definitions of physical drive number for each drive */
 #define SDCARD        0
 #define CTRNAND       1
 
@@ -21,10 +22,10 @@
 /*-----------------------------------------------------------------------*/
 
 DSTATUS disk_status (
-    __attribute__((unused))
     BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
+    (void)pdrv;
     return RES_OK;
 }
 
@@ -55,7 +56,7 @@ DSTATUS disk_initialize (
 DRESULT disk_read (
     BYTE pdrv,		/* Physical drive nmuber to identify the drive */
     BYTE *buff,		/* Data buffer to store read data */
-    DWORD sector,	/* Sector address in LBA */
+    LBA_t sector,	/* Start sector in LBA */
     UINT count		/* Number of sectors to read */
 )
 {
@@ -69,11 +70,12 @@ DRESULT disk_read (
 /* Write Sector(s)                                                       */
 /*-----------------------------------------------------------------------*/
 
-#if _USE_WRITE
+#if FF_FS_READONLY == 0
+
 DRESULT disk_write (
     BYTE pdrv,			/* Physical drive nmuber to identify the drive */
-    const BYTE *buff,       	/* Data to be written */
-    DWORD sector,		/* Sector address in LBA */
+    const BYTE *buff,	/* Data to be written */
+    LBA_t sector,		/* Start sector in LBA */
     UINT count			/* Number of sectors to write */
 )
 {
@@ -83,23 +85,20 @@ DRESULT disk_write (
 #endif
 
 
-
 /*-----------------------------------------------------------------------*/
 /* Miscellaneous Functions                                               */
 /*-----------------------------------------------------------------------*/
 
-#if _USE_IOCTL
 DRESULT disk_ioctl (
-    __attribute__((unused))
     BYTE pdrv,		/* Physical drive nmuber (0..) */
     BYTE cmd,		/* Control code */
-    __attribute__((unused))
     void *buff		/* Buffer to send/receive control data */
 )
 {
+    (void)pdrv;
+    (void)buff;
     return cmd == CTRL_SYNC ? RES_OK : RES_PARERR;
 }
-#endif
 
 // From GodMode9
 #define BCDVALID(b) (((b)<=0x99)&&(((b)&0xF)<=0x9)&&((((b)>>4)&0xF)<=0x9))
@@ -133,6 +132,6 @@ DWORD get_fattime( void ) {
         ((DSTIMEGET(&dstime, bcd_D)&0x1F) << 16) |
         ((DSTIMEGET(&dstime, bcd_M)&0x0F) << 21) |
         (((DSTIMEGET(&dstime, bcd_Y)+(2000-1980))&0x7F) << 25);
-    
+
     return fattime;
 }
