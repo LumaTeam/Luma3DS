@@ -37,6 +37,7 @@
 #include "memory.h"
 #include "screen.h"
 #include "i2c.h"
+#include "fmt.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 extern u8 __itcm_start__[], __itcm_lma__[], __itcm_bss_start__[], __itcm_end__[];
@@ -46,6 +47,7 @@ extern ConfigurationStatus needConfig;
 extern FirmwareSource firmSource;
 
 bool isSdMode;
+char launchedPathForFatfs[256];
 u16 launchedPath[80+1];
 BootType bootType;
 
@@ -72,6 +74,8 @@ void main(int argc, char **argv, u32 magicWord)
     if((magicWord & 0xFFFF) == 0xBEEF && argc >= 1) //Normal (B9S) boot
     {
         bootType = isNtrBoot ? B9SNTR : B9S;
+        strncpy(launchedPathForFatfs, argv[0], sizeof(launchedPathForFatfs) - 1);
+        launchedPathForFatfs[sizeof(launchedPathForFatfs) - 1] = 0;
 
         u32 i;
         for(i = 0; i < sizeof(launchedPath)/2 - 1 && argv[0][i] != 0; i++) //Copy and convert the path to UTF-16
@@ -85,7 +89,10 @@ void main(int argc, char **argv, u32 magicWord)
         u32 i;
         u16 *p = (u16 *)argv[0];
         for(i = 0; i < sizeof(launchedPath)/2 - 1 && p[i] != 0; i++)
+        {
             launchedPath[i] = p[i];
+            launchedPathForFatfs[i] = (u8)p[i]; // UCS-2 to ascii. Meh.
+        }
         launchedPath[i] = 0;
 
         for(i = 0; i < 8; i++)
@@ -110,6 +117,7 @@ void main(int argc, char **argv, u32 magicWord)
 
             for(u32 i = 0; i < 7; i++) //Copy and convert the path to UTF-16
                 launchedPath[i] = path[i];
+            strcpy(launchedPathForFatfs, path);
         }
 
         setupKeyslots();
