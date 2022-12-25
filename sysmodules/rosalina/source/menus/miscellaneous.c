@@ -30,7 +30,6 @@
 #include "ntp.h"
 #include "memory.h"
 #include "draw.h"
-#include "hbloader.h"
 #include "fmt.h"
 #include "utils.h" // for makeArmBranch
 #include "minisoc.h"

@@ -13,7 +13,15 @@ static u8 g_ret_buf[sizeof(ExHeader_Info)];
 static u64 g_cached_programHandle;
 static ExHeader_Info g_exheaderInfo;
 
-const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
+typedef struct ContentPath {
+    u32 contentType;
+    char fileName[8]; // for exefs
+} ContentPath;
+
+static const ContentPath codeContentPath = {
+    .contentType = 1, // ExeFS (with code)
+    .fileName = ".code", // last 3 bytes have to be 0, but this is guaranteed here.s
+};
 
 typedef struct prog_addrs_t
 {
@@ -92,12 +100,7 @@ static int lzss_decompress(u8 *end)
     return ret;
 }
 
-static inline bool hbldrIs3dsxTitle(u64 tid)
-{
-    return Luma_SharedConfig->use_hbldr && tid == Luma_SharedConfig->hbldr_3dsx_tid;
-}
-
-static Result allocateSharedMem(prog_addrs_t *shared, prog_addrs_t *vaddr, int flags)
+static Result allocateSharedMem(prog_addrs_t *shared, const prog_addrs_t *vaddr, int flags)
 {
     u32 dummy;
 
@@ -108,7 +111,7 @@ static Result allocateSharedMem(prog_addrs_t *shared, prog_addrs_t *vaddr, int f
     return svcControlMemory(&dummy, shared->text_addr, 0, shared->total_size << 12, (flags & 0xF00) | MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
 }
 
-static Result loadCode(u64 titleId, prog_addrs_t *shared, u64 programHandle, int isCompressed)
+static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_addrs_t *shared)
 {
     IFile file;
     FS_Path archivePath;
@@ -116,17 +119,22 @@ static Result loadCode(u64 titleId, prog_addrs_t *shared, u64 programHandle, int
     u64 size;
     u64 total;
 
+    u64 titleId = exhi->aci.local_caps.title_id;
+    const ExHeader_CodeSetInfo *csi = &exhi->sci.codeset_info;
+    bool isCompressed = csi->flags.compress_exefs_code;
+
     if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)shared->text_addr, (u64)shared->total_size << 12))
     {
         archivePath.type = PATH_BINARY;
         archivePath.data = &programHandle;
-        archivePath.size = 8;
+        archivePath.size = sizeof(programHandle);
 
         filePath.type = PATH_BINARY;
-        filePath.data = CODE_PATH;
-        filePath.size = sizeof(CODE_PATH);
-        if (R_FAILED(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
-            svcBreak(USERBREAK_ASSERT);
+        filePath.data = &codeContentPath;
+        filePath.size = sizeof(codeContentPath);
+        Result res;
+        if (R_FAILED(res = IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
+            *(u64 *)0x1238 = programHandle;//panic(programHandle);//svcBreak(USERBREAK_ASSERT);
 
         // get file size
         assertSuccess(IFile_GetSize(&file, &size));
@@ -146,8 +154,6 @@ static Result loadCode(u64 titleId, prog_addrs_t *shared, u64 programHandle, int
         if (isCompressed)
             lzss_decompress((u8 *)shared->text_addr + size);
     }
-
-    ExHeader_CodeSetInfo *csi = &g_exheaderInfo.sci.codeset_info;
 
     patchCode(titleId, csi->flags.remaster_version, (u8 *)shared->text_addr, shared->total_size << 12, csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
 
@@ -173,70 +179,40 @@ static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
     // Tweak 3dsx placeholder title exheaderInfo
     if (hbldrIs3dsxTitle(exheaderInfo->aci.local_caps.title_id))
     {
-        assertSuccess(hbldrInit());
-        HBLDR_PatchExHeaderInfo(exheaderInfo);
-        hbldrExit();
+        hbldrPatchExHeaderInfo(exheaderInfo);
     }
     else
     {
-        u64 originaltitleId = exheaderInfo->aci.local_caps.title_id;
+        u64 originalTitleId = exheaderInfo->aci.local_caps.title_id;
         if(CONFIG(PATCHGAMES) && loadTitleExheaderInfo(exheaderInfo->aci.local_caps.title_id, exheaderInfo))
-            exheaderInfo->aci.local_caps.title_id = originaltitleId;
+            exheaderInfo->aci.local_caps.title_id = originalTitleId;
     }
 
     return res;
 }
 
-static Result LoadProcess(Handle *process, u64 programHandle)
+static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exhi, u64 programHandle)
 {
-    Result res;
-    int count;
-    u32 flags;
-    u32 desc;
+    const ExHeader_CodeSetInfo *csi = &exhi->sci.codeset_info;
+
+    Result res = 0;
     u32 dummy;
     prog_addrs_t sharedAddr;
     prog_addrs_t vaddr;
     Handle codeset;
     CodeSetInfo codesetinfo;
     u32 dataMemSize;
-    u64 titleId;
 
-    // make sure the cached info corrosponds to the current programHandle
-    if (g_cached_programHandle != programHandle || hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
-    {
-        res = GetProgramInfo(&g_exheaderInfo, programHandle);
-        g_cached_programHandle = programHandle;
-        if (R_FAILED(res))
-        {
-            g_cached_programHandle = 0;
-            return res;
-        }
-    }
-
-    // get kernel flags
-    flags = 0;
+    u32 region = 0;
+    u32 count;
     for (count = 0; count < 28; count++)
     {
-        desc = g_exheaderInfo.aci.kernel_caps.descriptors[count];
+        u32 desc = exhi->aci.kernel_caps.descriptors[count];
         if (0x1FE == desc >> 23)
-            flags = desc & 0xF00;
+            region = desc & 0xF00;
     }
-    if (flags == 0)
-        return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, 1, 2);
-
-    // check for 3dsx process
-    titleId = g_exheaderInfo.aci.local_caps.title_id;
-    ExHeader_CodeSetInfo *csi = &g_exheaderInfo.sci.codeset_info;
-
-    if (hbldrIs3dsxTitle(titleId))
-    {
-        assertSuccess(hbldrInit());
-        assertSuccess(HBLDR_LoadProcess(&codeset, csi->text.address, flags & 0xF00, titleId, csi->name));
-        res = svcCreateProcess(process, codeset, g_exheaderInfo.aci.kernel_caps.descriptors, count);
-        svcCloseHandle(codeset);
-        hbldrExit();
-        return res;
-    }
+    if (region == 0)
+            return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, 1, 2);
 
     // allocate process memory
     vaddr.text_addr = csi->text.address;
@@ -247,10 +223,11 @@ static Result LoadProcess(Handle *process, u64 programHandle)
     vaddr.data_size = (csi->data.size + 4095) >> 12;
     dataMemSize = (csi->data.size + csi->bss_size + 4095) >> 12;
     vaddr.total_size = vaddr.text_size + vaddr.ro_size + vaddr.data_size;
-    TRY(allocateSharedMem(&sharedAddr, &vaddr, flags));
+    TRY(allocateSharedMem(&sharedAddr, &vaddr, region));
 
     // load code
-    if (R_SUCCEEDED(res = loadCode(titleId, &sharedAddr, programHandle, csi->flags.compress_exefs_code)))
+    u64 titleId = exhi->aci.local_caps.title_id;
+    if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &sharedAddr)))
     {
         memcpy(&codesetinfo.name, csi->name, 8);
         codesetinfo.program_id = titleId;
@@ -266,7 +243,8 @@ static Result LoadProcess(Handle *process, u64 programHandle)
         res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)sharedAddr.text_addr, (void *)sharedAddr.ro_addr, (void *)sharedAddr.data_addr);
         if (R_SUCCEEDED(res))
         {
-            res = svcCreateProcess(process, codeset, g_exheaderInfo.aci.kernel_caps.descriptors, count);
+            // There are always 28 descriptors
+            res = svcCreateProcess(outProcessHandle, codeset, exhi->aci.kernel_caps.descriptors, count);
             svcCloseHandle(codeset);
             res = R_SUCCEEDED(res) ? 0 : res;
         }
@@ -274,6 +252,28 @@ static Result LoadProcess(Handle *process, u64 programHandle)
 
     svcControlMemory(&dummy, sharedAddr.text_addr, 0, sharedAddr.total_size << 12, MEMOP_FREE, 0);
     return res;
+}
+
+static Result LoadProcess(Handle *process, u64 programHandle)
+{
+    Result res;
+
+    // make sure the cached info corresponds to the current programHandle
+    if (g_cached_programHandle != programHandle || hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
+    {
+        res = GetProgramInfo(&g_exheaderInfo, programHandle);
+        g_cached_programHandle = programHandle;
+        if (R_FAILED(res))
+        {
+            g_cached_programHandle = 0;
+            return res;
+        }
+    }
+
+    if (hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
+        return hbldrLoadProcess(process, &g_exheaderInfo);
+    else
+        return LoadProcessImpl(process, &g_exheaderInfo, programHandle);
 }
 
 static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_ProgramInfo *update)

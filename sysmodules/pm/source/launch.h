@@ -20,3 +20,5 @@ Result autolaunchSysmodules(void);
 // Custom
 Result DebugNextApplicationByForce(bool debug);
 Result LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags);
+
+Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags);

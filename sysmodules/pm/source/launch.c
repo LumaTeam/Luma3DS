@@ -290,7 +290,7 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     return res;
 }
 
-static Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags)
+Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags)
 {
     ExHeader_Info *exheaderInfo = ExHeaderInfoHeap_New();
     if (exheaderInfo == NULL) {
@@ -389,18 +389,18 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
 
 Result LaunchTitleUpdate(const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags)
 {
-    ProcessList_Lock(&g_manager.processList);
     if (g_manager.preparingForReboot) {
         return 0xC8A05801;
-    }
-    if (g_manager.runningApplicationData != NULL) {
-        ProcessList_Unlock(&g_manager.processList);
-        return 0xC8A05BF0;
     }
     if (!(launchFlags & ~PMLAUNCHFLAG_NORMAL_APPLICATION)) {
         return 0xD8E05802;
     }
-    ProcessList_Unlock(&g_manager.processList);
+
+    ProcessList_Lock(&g_manager.processList);
+    if (g_manager.runningApplicationData != NULL) {
+        ProcessList_Unlock(&g_manager.processList);
+        return 0xC8A05BF0;
+    }
 
     bool originallyDebugged = launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION;
 

@@ -5,6 +5,7 @@
 #include "util.h"
 #include "exheader_info_heap.h"
 #include "task_runner.h"
+#include "launch.h"
 
 void forceMountSdCard(void)
 {
@@ -386,4 +387,79 @@ Result PrepareForReboot(u32 pid, s64 timeout)
     g_manager.preparingForReboot = true;
     TaskRunner_RunTask(PrepareForRebootAsync, &args, sizeof(args));
     return 0;
+}
+
+static void ChainloadHomebrewDirtyAsync(void *argdata)
+{
+    (void)argdata;
+    Result res = 0;
+    ProcessData *app = NULL;
+    u32 launchFlags;
+    FS_ProgramInfo programInfo;
+
+    ExHeader_Info *exheaderInfo = ExHeaderInfoHeap_New();
+    if (exheaderInfo == NULL) {
+        panic(0);
+    }
+
+    assertSuccess(svcClearEvent(g_manager.allNotifiedTerminationEvent));
+    g_manager.waitingForTermination = true;
+
+    ProcessList_Lock(&g_manager.processList);
+    app = g_manager.runningApplicationData;
+    if (app != NULL) {
+        // Clear the "notify on termination, don't cleanup" flag, so that for ex. APT isn't notified & no need for
+        // UnregisterProcess, and the "dependencies loaded" flag, so that the dependencies aren't killed (for ex. when
+        // booting hbmenu instead of Home Menu, in which case the same title is going to be launched...)
+        launchFlags = app->launchFlags;
+        programInfo.programId = app->titleId;
+        programInfo.mediaType = app->mediaType;
+        app->flags &= ~(PROCESSFLAG_DEPENDENCIES_LOADED | PROCESSFLAG_NOTIFY_TERMINATION);
+        terminateProcessImpl(app, exheaderInfo);
+    }
+    ProcessList_Unlock(&g_manager.processList);
+
+    res = commitPendingTerminations(3 * 1000 * 1000 * 1000LL); // 3s, what NS is using
+    ExHeaderInfoHeap_Delete(exheaderInfo);
+    g_manager.waitingForTermination = false;
+
+    if (app == NULL) {
+        res = MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
+    } else if (R_SUCCEEDED(res)) {
+        // Wait for process monitor thread to clean the terminated process up
+        app = NULL;
+        do {
+            svcSleepThread(100 * 1000 * 1000LL);
+            ProcessList_Lock(&g_manager.processList);
+            app = g_manager.runningApplicationData;
+            ProcessList_Unlock(&g_manager.processList);
+        } while (app != NULL);
+
+        // Since this is a dirty workaround for hb support on SAFE_FIRM, we can opt not to support
+        // launch-from-gamecard/update support.
+        launchFlags &= ~PMLAUNCHFLAG_USE_UPDATE_TITLE;
+        launchFlags |= PMLAUNCHFLAGEXT_FAKE_DEPENDENCY_LOADING;
+        res = launchTitleImplWrapper(NULL, NULL, &programInfo, NULL, launchFlags);
+    }
+}
+
+Result ChainloadHomebrewDirty(void) {
+    ProcessData *app = NULL;
+    Result res = 0;
+
+    if (g_manager.preparingForReboot) {
+        return 0xC8A05801;
+    }
+    ProcessList_Lock(&g_manager.processList);
+    app = g_manager.runningApplicationData;
+    ProcessList_Unlock(&g_manager.processList);
+
+    if (app == NULL) {
+        res = MAKERESULT(RL_TEMPORARY, RS_NOTFOUND, RM_PM, 0x100);
+    } else {
+        TaskRunner_RunTask(ChainloadHomebrewDirtyAsync, NULL, 0);
+        res = 0;
+    }
+
+    return res;
 }
