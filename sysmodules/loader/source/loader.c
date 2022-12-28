@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include "memory.h"
 #include "patcher.h"
+#include "paslr.h"
 #include "ifile.h"
 #include "util.h"
 #include "hbldr.h"
@@ -9,8 +10,8 @@
 extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode;
 
-static u8 g_ret_buf[sizeof(ExHeader_Info)];
 static u64 g_cached_programHandle;
+static u64 g_cached_hbldr3dsxTid;
 static ExHeader_Info g_exheaderInfo;
 
 typedef struct ContentPath {
@@ -20,7 +21,7 @@ typedef struct ContentPath {
 
 static const ContentPath codeContentPath = {
     .contentType = 1, // ExeFS (with code)
-    .fileName = ".code", // last 3 bytes have to be 0, but this is guaranteed here.s
+    .fileName = ".code", // last 3 bytes have to be 0, but this is guaranteed here.
 };
 
 typedef struct prog_addrs_t
@@ -100,18 +101,16 @@ static int lzss_decompress(u8 *end)
     return ret;
 }
 
-static Result allocateSharedMem(prog_addrs_t *shared, const prog_addrs_t *vaddr, int flags)
+static Result allocateProgramMemoryWrapper(prog_addrs_t *mapped, const ExHeader_Info *exhi, const prog_addrs_t *vaddr)
 {
-    u32 dummy;
-
-    memcpy(shared, vaddr, sizeof(prog_addrs_t));
-    shared->text_addr = 0x10000000;
-    shared->ro_addr = shared->text_addr + (shared->text_size << 12);
-    shared->data_addr = shared->ro_addr + (shared->ro_size << 12);
-    return svcControlMemory(&dummy, shared->text_addr, 0, shared->total_size << 12, (flags & 0xF00) | MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+    memcpy(mapped, vaddr, sizeof(prog_addrs_t));
+    mapped->text_addr = 0x10000000;
+    mapped->ro_addr = mapped->text_addr + (mapped->text_size << 12);
+    mapped->data_addr = mapped->ro_addr + (mapped->ro_size << 12);
+    return allocateProgramMemory(exhi, mapped->text_addr, mapped->total_size << 12);
 }
 
-static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_addrs_t *shared)
+static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_addrs_t *mapped)
 {
     IFile file;
     FS_Path archivePath;
@@ -123,7 +122,7 @@ static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_
     const ExHeader_CodeSetInfo *csi = &exhi->sci.codeset_info;
     bool isCompressed = csi->flags.compress_exefs_code;
 
-    if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)shared->text_addr, (u64)shared->total_size << 12))
+    if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12))
     {
         archivePath.type = PATH_BINARY;
         archivePath.data = &programHandle;
@@ -132,30 +131,27 @@ static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_
         filePath.type = PATH_BINARY;
         filePath.data = &codeContentPath;
         filePath.size = sizeof(codeContentPath);
-        Result res;
-        if (R_FAILED(res = IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
-            *(u64 *)0x1238 = programHandle;//panic(programHandle);//svcBreak(USERBREAK_ASSERT);
 
-        // get file size
+        assertSuccess(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ));
         assertSuccess(IFile_GetSize(&file, &size));
 
         // check size
-        if (size > (u64)shared->total_size << 12)
+        if (size > (u64)mapped->total_size << 12)
         {
             IFile_Close(&file);
             return 0xC900464F;
         }
 
         // read code
-        assertSuccess(IFile_Read(&file, &total, (void *)shared->text_addr, size));
+        assertSuccess(IFile_Read(&file, &total, (void *)mapped->text_addr, size));
         IFile_Close(&file); // done reading
 
         // decompress
         if (isCompressed)
-            lzss_decompress((u8 *)shared->text_addr + size);
+            lzss_decompress((u8 *)mapped->text_addr + size);
     }
 
-    patchCode(titleId, csi->flags.remaster_version, (u8 *)shared->text_addr, shared->total_size << 12, csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
+    patchCode(titleId, csi->flags.remaster_version, (u8 *)mapped->text_addr, mapped->total_size << 12, csi->text.size, csi->rodata.size, csi->data.size, csi->rodata.address, csi->data.address);
 
     return 0;
 }
@@ -171,7 +167,7 @@ static inline bool IsHioId(u64 id)
         return R_LEVEL(FSREG_CheckHostLoadId(id)) == RL_SUCCESS; // check if this is an alias to an HIO-loaded title
 }
 
-static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
+static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
 {
     Result res;
     TRY(IsHioId(programHandle) ? FSREG_GetProgramInfo(exheaderInfo, 1, programHandle) : PXIPM_GetProgramInfo(exheaderInfo, programHandle));
@@ -191,13 +187,31 @@ static Result GetProgramInfo(ExHeader_Info *exheaderInfo, u64 programHandle)
     return res;
 }
 
+static Result GetProgramInfo(u64 programHandle)
+{
+    Result res = 0;
+
+    u64 cachedTid = g_exheaderInfo.aci.local_caps.title_id;
+    u64 hbldr3dsxTid = Luma_SharedConfig->hbldr_3dsx_tid;
+    bool hbTitleChanged = hbldr3dsxTid != g_cached_hbldr3dsxTid;
+    g_cached_hbldr3dsxTid = Luma_SharedConfig->hbldr_3dsx_tid;
+
+    if (programHandle != g_cached_programHandle || (hbldrIs3dsxTitle(cachedTid) && hbTitleChanged))
+    {
+        res = GetProgramInfoImpl(&g_exheaderInfo, programHandle);
+        g_cached_programHandle = R_SUCCEEDED(res) ? programHandle : 0;
+    }
+
+    return res;
+}
+
 static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exhi, u64 programHandle)
 {
     const ExHeader_CodeSetInfo *csi = &exhi->sci.codeset_info;
 
     Result res = 0;
     u32 dummy;
-    prog_addrs_t sharedAddr;
+    prog_addrs_t mapped;
     prog_addrs_t vaddr;
     Handle codeset;
     CodeSetInfo codesetinfo;
@@ -223,11 +237,11 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
     vaddr.data_size = (csi->data.size + 4095) >> 12;
     dataMemSize = (csi->data.size + csi->bss_size + 4095) >> 12;
     vaddr.total_size = vaddr.text_size + vaddr.ro_size + vaddr.data_size;
-    TRY(allocateSharedMem(&sharedAddr, &vaddr, region));
+    TRY(allocateProgramMemoryWrapper(&mapped, exhi, &vaddr));
 
     // load code
     u64 titleId = exhi->aci.local_caps.title_id;
-    if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &sharedAddr)))
+    if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &mapped)))
     {
         memcpy(&codesetinfo.name, csi->name, 8);
         codesetinfo.program_id = titleId;
@@ -240,7 +254,7 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
         codesetinfo.rw_addr = vaddr.data_addr;
         codesetinfo.rw_size = vaddr.data_size;
         codesetinfo.rw_size_total = dataMemSize;
-        res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)sharedAddr.text_addr, (void *)sharedAddr.ro_addr, (void *)sharedAddr.data_addr);
+        res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)mapped.text_addr, (void *)mapped.ro_addr, (void *)mapped.data_addr);
         if (R_SUCCEEDED(res))
         {
             // There are always 28 descriptors
@@ -250,25 +264,14 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
         }
     }
 
-    svcControlMemory(&dummy, sharedAddr.text_addr, 0, sharedAddr.total_size << 12, MEMOP_FREE, 0);
+    svcControlMemory(&dummy, mapped.text_addr, 0, mapped.total_size << 12, MEMOP_FREE, 0);
     return res;
 }
 
 static Result LoadProcess(Handle *process, u64 programHandle)
 {
-    Result res;
-
-    // make sure the cached info corresponds to the current programHandle
-    if (g_cached_programHandle != programHandle || hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
-    {
-        res = GetProgramInfo(&g_exheaderInfo, programHandle);
-        g_cached_programHandle = programHandle;
-        if (R_FAILED(res))
-        {
-            g_cached_programHandle = 0;
-            return res;
-        }
-    }
+    Result res = 0;
+    TRY(GetProgramInfo(programHandle));
 
     if (hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
         return hbldrLoadProcess(process, &g_exheaderInfo);
@@ -348,16 +351,11 @@ void loaderHandleCommands(void *ctx)
             break;
         case 4: // GetProgramInfo
             memcpy(&programHandle, &cmdbuf[1], 8);
-            if (programHandle != g_cached_programHandle || hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
-            {
-                res = GetProgramInfo(&g_exheaderInfo, programHandle);
-                g_cached_programHandle = R_SUCCEEDED(res) ? programHandle : 0;
-            }
-            memcpy(&g_ret_buf, &g_exheaderInfo, sizeof(ExHeader_Info));
+            res = GetProgramInfo(programHandle);
             cmdbuf[0] = IPC_MakeHeader(4, 1, 2);
             cmdbuf[1] = res;
             cmdbuf[2] = IPC_Desc_StaticBuffer(sizeof(ExHeader_Info), 0); //0x1000002;
-            cmdbuf[3] = (u32)&g_ret_buf;
+            cmdbuf[3] = (u32)&g_exheaderInfo; // official Loader makes a copy here, but this is isn't necessary
             break;
         default: // error
             cmdbuf[0] = IPC_MakeHeader(0, 1, 0);

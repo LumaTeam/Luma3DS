@@ -27,9 +27,12 @@
 #include <3ds.h>
 #include <string.h>
 #include <assert.h>
+#include "paslr.h"
 #include "util.h"
 #include "hbldr.h"
 #include "3dsx.h"
+
+extern bool isN3DS;
 
 static const char serviceList[32][8] =
 {
@@ -225,8 +228,6 @@ void hbldrPatchExHeaderInfo(ExHeader_Info *exhi)
         u64 lastdep = sizeof(dependencyListNativeFirm)/8;
         exhi->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
         strncpy((char*)&localcaps0->service_access[0x20], "nfc:u", 8);
-        s64 dummy = 0;
-        bool isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
         if (isN3DS)
         {
             exhi->sci.dependencies[lastdep++] = 0x0004013020004102ULL; // mvd
@@ -275,7 +276,7 @@ Result hbldrLoadProcess(Handle *outProcessHandle, const ExHeader_Info *exhi)
 
     u32 tmp = 0;
     u32 addr = 0x10000000;
-    res = svcControlMemory(&tmp, addr, 0, totalSize, MEMOP_ALLOC | region, MEMPERM_READ | MEMPERM_WRITE);
+    res = allocateProgramMemory(exhi, addr, totalSize);
     if (R_FAILED(res))
     {
         IFile_Close(&file);

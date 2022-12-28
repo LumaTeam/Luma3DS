@@ -35,8 +35,10 @@ void hbldrHandleCommands(void *ctx);
 
 static inline bool hbldrIs3dsxTitle(u64 tid)
 {
-    return Luma_SharedConfig->use_hbldr && tid == Luma_SharedConfig->hbldr_3dsx_tid;
-}
+    if (!Luma_SharedConfig->use_hbldr)
+        return false;
+    u64 hbldrTid = Luma_SharedConfig->hbldr_3dsx_tid;
 
-void HBLDR_RestartHbApplication(void *p);
-void HBLDR_HandleCommands(void *ctx);
+    // Just like p9 clears them, ignore platform/N3DS bits
+    return ((tid ^ hbldrTid) & ~0xF0000000ull) == 0;
+}
