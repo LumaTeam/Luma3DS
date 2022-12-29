@@ -11,7 +11,6 @@ extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode;
 
 static u64 g_cached_programHandle;
-static u64 g_cached_hbldr3dsxTid;
 static ExHeader_Info g_exheaderInfo;
 
 typedef struct ContentPath {
@@ -158,7 +157,7 @@ static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_
 
 static inline bool IsHioId(u64 id)
 {
-    // FS load HIO titles at boot when it can. For HIO titles, title/programId and "program handle"
+    // FS loads HIO titles at boot when it can. For HIO titles, title/programId and "program handle"
     // are the same thing, although some of them can be aliased with their "real" titleId (i.e. in ExHeader).
 
     if (id >> 32 == 0xFFFF0000u)
@@ -190,13 +189,9 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
 static Result GetProgramInfo(u64 programHandle)
 {
     Result res = 0;
+    u64 cachedTitleId = g_exheaderInfo.aci.local_caps.title_id;
 
-    u64 cachedTid = g_exheaderInfo.aci.local_caps.title_id;
-    u64 hbldr3dsxTid = Luma_SharedConfig->hbldr_3dsx_tid;
-    bool hbTitleChanged = hbldr3dsxTid != g_cached_hbldr3dsxTid;
-    g_cached_hbldr3dsxTid = Luma_SharedConfig->hbldr_3dsx_tid;
-
-    if (programHandle != g_cached_programHandle || (hbldrIs3dsxTitle(cachedTid) && hbTitleChanged))
+    if (programHandle != g_cached_programHandle || hbldrIs3dsxTitle(cachedTitleId))
     {
         res = GetProgramInfoImpl(&g_exheaderInfo, programHandle);
         g_cached_programHandle = R_SUCCEEDED(res) ? programHandle : 0;
