@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include "pin.h"
 #include "crypto.h"
 #include "memory.h"
+#include "deliver_arg.h"
 #include "screen.h"
 #include "i2c.h"
 #include "fmt.h"
@@ -216,8 +217,15 @@ void main(int argc, char **argv, u32 magicWord)
     //If it's a MCU reboot, try to force boot options
     if(CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
-        //Always force a SysNAND boot when quitting AGB_FIRM
-        if(CFG_BOOTENV == 7)
+        u32 bootenv = CFG_BOOTENV;
+        bool validTlnc = bootenv == 3 && hasValidTlncAutobootParams();
+        bool twlIntoCtr = validTlnc && isTwlToCtrLaunch();
+
+        if (validTlnc)
+            needToInitSd = true;
+
+        //Always force a SysNAND boot when quitting AGB_FIRM, or when doing a TWL -> (ns ->) TWL reboot
+        if(bootenv == 7 || (validTlnc && !twlIntoCtr))
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
@@ -228,16 +236,9 @@ void main(int argc, char **argv, u32 magicWord)
             goto boot;
         }
 
-        //Account for DSiWare soft resets if exiting TWL_FIRM
-        if(CFG_BOOTENV == 3)
-        {
-            static const u8 TLNC[] = {0x54, 0x4C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x43};
-            if(memcmp((void *)0x20000C00, TLNC, 10) == 0) needToInitSd = true;
-        }
-
-        /* Force the last used boot options if autobooting a TWL title, or unless a button is pressed
+        /* Force the last used boot options if doing TWL->CTR, or unless a button is pressed
            or the no-forcing flag is set */
-        if(needToInitSd || memcmp((void *)0x20000300, "TLNC", 4) == 0 || (!pressed && !BOOTCFG_NOFORCEFLAG))
+        if(twlIntoCtr || !(pressed || BOOTCFG_NOFORCEFLAG))
         {
             nandType = (FirmwareSource)BOOTCFG_NAND;
             firmSource = (FirmwareSource)BOOTCFG_FIRM;
@@ -307,6 +308,17 @@ void main(int argc, char **argv, u32 magicWord)
         needToInitSd = true;
 
         goto boot;
+    }
+
+    // Set-up autoboot, and if we're booting into TWL mode, always use SysNAND
+    if (MULTICONFIG(AUTOBOOTMODE) != 0)
+    {
+        bool ok = configureHomebrewAutoboot();
+        if (ok && MULTICONFIG(AUTOBOOTMODE) == 2)
+        {
+            nandType = FIRMWARE_SYSNAND;
+            firmSource = FIRMWARE_SYSNAND;
+        }
     }
 
     //If booting from CTRNAND, always use SysNAND
@@ -387,8 +399,10 @@ boot:
     switch(firmType)
     {
         case NATIVE_FIRM:
+        {
             res = patchNativeFirm(firmVersion, nandType, loadFromStorage, isFirmProtEnabled, needToInitSd, doUnitinfoPatch);
             break;
+        }
         case TWL_FIRM:
             res = patchTwlFirm(firmVersion, loadFromStorage, doUnitinfoPatch);
             break;

@@ -134,6 +134,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u32 rosalinaMenuCombo;
             u16 screenFiltersCct;
             s16 ntpTzOffetMinutes;
+            u64 autobootTwlTitleId;
+            u8 autobootCtrAppmemtype;
         } info;
     };
 
@@ -209,6 +211,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->screenFiltersCct = configData.screenFiltersCct;
     info->ntpTzOffetMinutes = configData.ntpTzOffetMinutes;
+    info->autobootTwlTitleId = configData.autobootTwlTitleId;
+    info->autobootCtrAppmemtype = configData.autobootCtrAppmemtype;
     info->versionMajor = VERSION_MAJOR;
     info->versionMinor = VERSION_MINOR;
     info->versionBuild = VERSION_BUILD;

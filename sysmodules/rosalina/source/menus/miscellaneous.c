@@ -62,7 +62,8 @@ enum multiOptions
     BRIGHTNESS,
     SPLASH,
     PIN,
-    NEWCPU
+    NEWCPU,
+    AUTOBOOTMODE,
 };
 typedef struct DspFirmSegmentHeader {
     u32 offset;
@@ -99,6 +100,9 @@ typedef struct CfgData {
     u32 rosalinaMenuCombo;
     u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+
+    u64 autobootTwlTitleId;
+    u8 autobootCtrAppmemtype;
 } CfgData;
 
 Menu miscellaneousMenu = {
@@ -291,10 +295,12 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
-        pinNumDigits, n3dsCpuStr,
+        pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
         (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+
+        cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
         (int)CONFIG(ENABLESAFEFIRMROSALINA)
@@ -318,8 +324,12 @@ void MiscellaneousMenu_SaveSettings(void)
     u32 config, multiConfig, bootConfig;
     u32 splashDurationMsec;
 
+    u8 autobootCtrAppmemtype;
+    u64 autobootTwlTitleId;
+
     s64 out;
     bool isSdMode;
+
     svcGetSystemInfo(&out, 0x10000, 2);
     formatVersion = (u32)out;
     svcGetSystemInfo(&out, 0x10000, 3);
@@ -330,6 +340,12 @@ void MiscellaneousMenu_SaveSettings(void)
     bootConfig = (u32)out;
     svcGetSystemInfo(&out, 0x10000, 6);
     splashDurationMsec = (u32)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x10);
+    autobootTwlTitleId = (u64)out;
+    svcGetSystemInfo(&out, 0x10000, 0x11);
+    autobootCtrAppmemtype = (u8)out;
+
     svcGetSystemInfo(&out, 0x10000, 0x203);
     isSdMode = (bool)out;
 
@@ -343,6 +359,8 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.rosalinaMenuCombo = menuCombo;
     configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
+    configData.autobootTwlTitleId = autobootTwlTitleId;
+    configData.autobootCtrAppmemtype = autobootCtrAppmemtype;
 
     size_t n = saveLumaIniConfigToStr(inibuf, &configData);
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
