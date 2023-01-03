@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2023 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -219,13 +219,12 @@ void main(int argc, char **argv, u32 magicWord)
     {
         u32 bootenv = CFG_BOOTENV;
         bool validTlnc = bootenv == 3 && hasValidTlncAutobootParams();
-        bool twlIntoCtr = validTlnc && isTwlToCtrLaunch();
 
         if (validTlnc)
             needToInitSd = true;
 
-        //Always force a SysNAND boot when quitting AGB_FIRM, or when doing a TWL -> (ns ->) TWL reboot
-        if(bootenv == 7 || (validTlnc && !twlIntoCtr))
+        //Always force a SysNAND boot when quitting AGB_FIRM
+        if(bootenv == 7)
         {
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
@@ -236,9 +235,9 @@ void main(int argc, char **argv, u32 magicWord)
             goto boot;
         }
 
-        /* Force the last used boot options if doing TWL->CTR, or unless a button is pressed
+        /* Force the last used boot options if doing autolaunch from TWL, or unless a button is pressed
            or the no-forcing flag is set */
-        if(twlIntoCtr || !(pressed || BOOTCFG_NOFORCEFLAG))
+        if(validTlnc || !(pressed || BOOTCFG_NOFORCEFLAG))
         {
             nandType = (FirmwareSource)BOOTCFG_NAND;
             firmSource = (FirmwareSource)BOOTCFG_FIRM;
@@ -310,16 +309,9 @@ void main(int argc, char **argv, u32 magicWord)
         goto boot;
     }
 
-    // Set-up autoboot, and if we're booting into TWL mode, always use SysNAND
+    // Set-up autoboot
     if (MULTICONFIG(AUTOBOOTMODE) != 0)
-    {
-        bool ok = configureHomebrewAutoboot();
-        if (ok && MULTICONFIG(AUTOBOOTMODE) == 2)
-        {
-            nandType = FIRMWARE_SYSNAND;
-            firmSource = FIRMWARE_SYSNAND;
-        }
-    }
+        configureHomebrewAutoboot();
 
     //If booting from CTRNAND, always use SysNAND
     if(!isSdMode) nandType = FIRMWARE_SYSNAND;
