@@ -93,6 +93,14 @@ void timelockThreadMain(void)
 
             continue;
         }
+
+
+        if (menuShouldExit)
+        {
+            // Check if the console is still sleeping in 10s
+            svcSleepThread(1000 * 1000 * 1000 * 10LL);
+            continue;
+        }
         
 
         resetEnteredPIN();
@@ -100,6 +108,14 @@ void timelockThreadMain(void)
         timelockEnter();
         timelockShow();
         timelockLeave();
+
+
+        // Since we force exited the timelock screen to go to sleep mode, we should not treat it as 'unlocked'
+        if (menuShouldExit)
+        {
+            continue;
+        }
+
 
         timelockData.elapsedMinutes = 0;
         saveElapsedTime();
@@ -237,7 +253,7 @@ void timelockShow(void)
         timelockDraw();
         Draw_Unlock();
     }
-    while (isTimeLocked);
+    while (isTimeLocked && !menuShouldExit);
 }
 
 void saveElapsedTime(void)

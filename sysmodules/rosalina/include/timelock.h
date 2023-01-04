@@ -38,6 +38,7 @@
 
 
 // From main.c
+extern bool menuShouldExit;
 extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
 
