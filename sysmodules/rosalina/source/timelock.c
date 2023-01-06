@@ -84,6 +84,14 @@ void timelockThreadMain(void)
         }
 
 
+        if (menuShouldExit)
+        {
+            // Check if the console is still sleeping in 10s
+            svcSleepThread(1000 * 1000 * 1000 * 10LL);
+            continue;
+        }
+
+
         if (timelockData.elapsedMinutes <= timelockData.minutes)
         {
             svcSleepThread(1000 * 1000 * 1000 * 60LL * MINUTES_TO_CHECK);
@@ -91,14 +99,6 @@ void timelockThreadMain(void)
             timelockData.elapsedMinutes += MINUTES_TO_CHECK;
             saveElapsedTime();
 
-            continue;
-        }
-
-
-        if (menuShouldExit)
-        {
-            // Check if the console is still sleeping in 10s
-            svcSleepThread(1000 * 1000 * 1000 * 10LL);
             continue;
         }
         
