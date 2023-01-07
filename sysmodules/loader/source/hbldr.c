@@ -134,12 +134,15 @@ static const u64 dependencyListSafeFirm[] =
 static const u32 kernelCaps[] =
 {
     0xFC00022C, // Kernel release version 8.0 is necessary for using the new linear mapping. Modified below.
-    0xFF81FF50, // RW static range mapping: 0x1FF50000 (DSP Shared Mem 1, start)
-    0xFF81FF58, // RW static range mapping: 0x1FF58000 (DSP Shared Mem 1, end)
-    0xFF81FF70, // RW static range mapping: 0x1FF70000 (DSP Shared Mem 2, start)
-    0xFF81FF78, // RW static range mapping: 0x1FF78000 (DSP Shared Mem 2, end)
+
+    // Normal applications only have access to 0x1FF50000-0x1FF58000, 0x1FF70000-0x1FF78000,
+    // however we can load unsigned DSP firmware binaries.
+    0xFF81FF00, // RW static range mapping: 0x1FF00000 (DSP RAM, start)
+    0xFF81FF80, // RW static range mapping: 0x1FF80000 (DSP RAM, end)
+
     0xFF91F000, // RO static range mapping: 0x1F000000 (VRAM, start)
     0xFF91F600, // RO static range mapping: 0x1F600000 (VRAM, end)
+
     0xFF002109, // Exflags: APPLICATION memtype + "Shared page writing" + "Allow debug" + "Access core2"
     0xFE000200, // Handle table size: 0x200
 
