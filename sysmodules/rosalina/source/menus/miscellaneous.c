@@ -120,12 +120,20 @@ Menu miscellaneousMenu = {
 };
 int lastNtpTzOffset = 0;
 
+static inline bool compareTids(u64 tidA, u64 tidB)
+{
+    // Just like p9 clears them, ignore platform/N3DS bits
+    return ((tidA ^ tidB) & ~0xF0000000ull) == 0;
+}
+
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
     Result res;
     char failureReason[64];
+    u64 currentTid = Luma_SharedConfig->hbldr_3dsx_tid;
+    u64 newTid = currentTid;
 
-    if(Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID)
+    if(compareTids(currentTid, HBLDR_DEFAULT_3DSX_TID))
     {
         FS_ProgramInfo progInfo;
         u32 pid;
@@ -133,8 +141,8 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
         if(R_SUCCEEDED(res))
         {
+            newTid = progInfo.programId;
             Luma_SharedConfig->hbldr_3dsx_tid = progInfo.programId;
-            miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else
         {
@@ -145,9 +153,14 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     else
     {
         res = 0;
-        Luma_SharedConfig->hbldr_3dsx_tid = HBLDR_DEFAULT_3DSX_TID;
-        miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
+        newTid = HBLDR_DEFAULT_3DSX_TID;
     }
+
+    Luma_SharedConfig->hbldr_3dsx_tid = newTid;
+    if (compareTids(newTid, HBLDR_DEFAULT_3DSX_TID))
+        miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
+    else
+        miscellaneousMenu.items[0].title = "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
 
     Draw_Lock();
     Draw_ClearFramebuffer();

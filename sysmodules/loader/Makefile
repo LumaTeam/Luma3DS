@@ -9,6 +9,9 @@ endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
+# Default 3DSX TitleID for hb:ldr (note: also defined in top-level Makefile)
+export HBLDR_DEFAULT_3DSX_TID ?= 000400000D921E00
+
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
@@ -26,13 +29,35 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
-DEFINES :=	-D__3DS__
 
-COMMON_FLAGS = -g -Wall -Wextra -Werror -O2 -mword-relocations \
-			-fomit-frame-pointer -ffunction-sections -fdata-sections \
-			$(ARCH) $(DEFINES) $(INCLUDE)
+ifeq ($(BUILD_FOR_EXPLOIT_DEV),1)
+	DEFINES :=	-D__3DS__ -DHBLDR_DEFAULT_3DSX_TID="0x$(HBLDR_DEFAULT_3DSX_TID)ULL" -DBUILD_FOR_EXPLOIT_DEV=1
+else
+	DEFINES :=	-D__3DS__ -DHBLDR_DEFAULT_3DSX_TID="0x$(HBLDR_DEFAULT_3DSX_TID)ULL"
+endif
 
-CFLAGS	:=	-std=gnu11 $(COMMON_FLAGS)
+ifeq ($(BUILD_FOR_GDB),1)
+	OPTFLAGS := -O0
+	LIBS := -lctrud
+else
+	OPTFLAGS := -O2 -fomit-frame-pointer
+	LIBS := -lctru
+endif
+
+COMMON_FLAGS =\
+		-g \
+		-Wall \
+		-Wextra \
+		-Werror \
+		-mword-relocations \
+		-ffunction-sections \
+		-fdata-sections \
+		$(OPTFLAGS) \
+		$(ARCH) \
+		$(DEFINES) \
+		$(INCLUDE)
+
+CFLAGS		:= -std=gnu11 $(COMMON_FLAGS)
 
 CXXFLAGS	:= -fno-rtti -fno-exceptions -std=gnu++17 $(COMMON_FLAGS)
 

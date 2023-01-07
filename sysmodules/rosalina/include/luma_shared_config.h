@@ -18,9 +18,6 @@
 
 #include <3ds/types.h>
 
-/// Default TitleID for 3DSX loading
-#define HBLDR_DEFAULT_3DSX_TID  0x000400000D921E00ULL
-
 /// Luma shared config type.
 typedef struct LumaSharedConfig {
     u64 hbldr_3dsx_tid;         ///< Title ID to use for 3DSX loading.

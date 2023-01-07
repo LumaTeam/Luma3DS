@@ -5,7 +5,6 @@
 #include "ifile.h"
 #include "util.h"
 #include "hbldr.h"
-#include "luma_shared_config.h"
 
 extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode;

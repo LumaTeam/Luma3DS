@@ -47,7 +47,7 @@ static bool needsPaslr(u32 *outRegion, const ExHeader_Info *exhi)
 
     *outRegion = region;
 
-#ifdef LOADER_ENABLE_PASLR
+#if defined(LOADER_ENABLE_PASLR) || defined(BUILD_FOR_EXPLOIT_DEV)
     // Only applications and system applets (HM, Internet Browser...) are eligible for PASLR
     if (region != MEMOP_REGION_APP && region != MEMOP_REGION_SYSTEM)
         return false;

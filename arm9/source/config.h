@@ -28,7 +28,6 @@
 
 #include "types.h"
 
-#define HBLDR_DEFAULT_3DSX_TID      0x000400000D921E00ull
 #define AUTOBOOT_DEFAULT_TWL_TID    0x0003000448424C41ull
 
 #define CONFIG(a)        (((configData.config >> (a)) & 1) != 0)
