@@ -419,6 +419,11 @@ static void ChainloadHomebrewDirtyAsync(void *argdata)
     }
     ProcessList_Unlock(&g_manager.processList);
 
+    // Account for race condition with libctru (till January 2023), causing
+    // a deadlock between svcExitProcess and svcTerminateProcess, which wouldn't happen
+    // if Nintendo were using proper atomics.
+    svcSleepThread(50 * 1000 * 1000LL);
+
     res = commitPendingTerminations(3 * 1000 * 1000 * 1000LL); // 3s, what NS is using
     ExHeaderInfoHeap_Delete(exheaderInfo);
     g_manager.waitingForTermination = false;
