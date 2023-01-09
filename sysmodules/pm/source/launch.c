@@ -389,18 +389,24 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
 
 Result LaunchTitleUpdate(const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags)
 {
+    ProcessList_Lock(&g_manager.processList);
+
     if (g_manager.preparingForReboot) {
+        ProcessList_Unlock(&g_manager.processList);
         return 0xC8A05801;
     }
-    if (!(launchFlags & ~PMLAUNCHFLAG_NORMAL_APPLICATION)) {
-        return 0xD8E05802;
-    }
 
-    ProcessList_Lock(&g_manager.processList);
     if (g_manager.runningApplicationData != NULL) {
         ProcessList_Unlock(&g_manager.processList);
         return 0xC8A05BF0;
     }
+
+    if (!(launchFlags & ~PMLAUNCHFLAG_NORMAL_APPLICATION)) {
+        ProcessList_Unlock(&g_manager.processList);
+        return 0xD8E05802;
+    }
+
+    ProcessList_Unlock(&g_manager.processList);
 
     bool originallyDebugged = launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION;
 
