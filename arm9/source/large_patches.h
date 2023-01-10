@@ -36,3 +36,7 @@ extern const u8 rebootPatch[];
 extern const u32 rebootPatchSize;
 extern u32 rebootPatchFopenPtr;
 extern u16 rebootPatchFileName[80+1];
+
+extern const u8 readFileSHA256Vtab11Patch[];
+extern const u32 readFileSHA256Vtab11PatchSize;
+extern u32 readFileSHA256Vtab11PatchCtorPtr, readFileSHA256Vtab11PatchInitPtr, readFileSHA256Vtab11PatchProcessPtr;
