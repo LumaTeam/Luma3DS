@@ -587,6 +587,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 
     ret += patchP9AccessChecks(process9Offset, process9Size);
 
+    //Patch stubbed vtable function 11 of an FSPXI:ReadFileSHA256 auxiliary object
+    ret += patchReadFileSHA256Vtab11(process9Offset, process9Size, process9MemAddr);
+
     mergeSection0(NATIVE_FIRM, firmVersion, loadFromStorage);
     firm->section[0].size = 0;
 
