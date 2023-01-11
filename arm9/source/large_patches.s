@@ -236,6 +236,7 @@ rebootPatchSize:
 readFileSHA256Vtab11Patch: //Result Write(this, u32 off, u8 *data, u32 size)
     push {r0-r4, lr}
 
+    @ Allocate memory for DataChainProcessor struct
     sub sp, #0x14
     push {sp}
 
@@ -254,8 +255,8 @@ readFileSHA256Vtab11Patch: //Result Write(this, u32 off, u8 *data, u32 size)
     @ DataChainProcessor::Process(&proc, this, off, 0, size);
     ldr r0, [sp]
 
-    ldr r2, [sp, #0x24]
-    str r2, [sp] @ Set size field on stack
+    ldr r1, [sp, #0x24]
+    str r1, [sp] @ size argument
 
     ldr r1, [sp, #0x18]
     ldr r2, [sp, #0x1c]
