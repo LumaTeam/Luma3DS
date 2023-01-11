@@ -880,13 +880,13 @@ u32 patchReadFileSHA256Vtab11(u8 *pos, u32 size, u32 process9MemAddr)
 
     if((*ncchVtable11Ptr & 0x1) == 0 || (*shaVtable11Ptr & 0x1) == 0) return 1; //Must be Thumb
 
-    //Find our function address by inspecting all bl branch targets
+    //Find needed function addresses by inspecting all bl branch targets
     u16 *ncchWriteFnc = (u16 *)(pos + ((*ncchVtable11Ptr & ~0x1) - process9MemAddr));
     if(*(u32 *)ncchWriteFnc != 0x0005b5f0) return 1; //Check if we got the right function
 
     readFileSHA256Vtab11PatchCtorPtr = readFileSHA256Vtab11PatchInitPtr = readFileSHA256Vtab11PatchProcessPtr = 0;
 
-    for(; ((*ncchWriteFnc) & 0xff00) != 0xbd00; ncchWriteFnc++) {
+    for(; ((*ncchWriteFnc) & 0xff00) != 0xbd00; ncchWriteFnc++) { //Stop whe encountering a pop {..., pc}
         if((ncchWriteFnc[0] & 0xf800) != 0xf000 || (ncchWriteFnc[1] & 0xf800) != 0xf800) continue; //Check the instruction opcode
 
         s32 callOff = ((ncchWriteFnc[0] & 0x07ff) << 11) | (ncchWriteFnc[1] & 0x07ff);
