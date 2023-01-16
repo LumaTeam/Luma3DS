@@ -867,18 +867,23 @@ static bool getVtableAddress(u8 *pos, u32 size, const u8 *pattern, u32 patternSi
 u32 patchReadFileSHA256Vtab11(u8 *pos, u32 size, u32 process9MemAddr)
 {
     static const u8 ncchVtableRefPattern[] = {0x77, 0x46, 0x06, 0x74, 0x47, 0x74};
-    static const u8 shaVtableRefPattern[] = {0x00, 0x1f, 0x01, 0x60, 0x20, 0x30};
+    static const u8 shaVtable1RefPattern[] = {0x00, 0x1f, 0x01, 0x60, 0x20, 0x30};
+    static const u8 shaVtable2RefPattern[] = {0x00, 0x1f, 0x01, 0x60, 0x01, 0x00, 0x20, 0x31};
 
     u32 ncchVtableAddr;
     if(!getVtableAddress(pos, size, ncchVtableRefPattern, sizeof(ncchVtableRefPattern), sizeof(ncchVtableRefPattern), process9MemAddr, &ncchVtableAddr)) return 1;
 
-    u32 shaVtableAddr;
-    if(!getVtableAddress(pos, size, shaVtableRefPattern, sizeof(shaVtableRefPattern), -2, process9MemAddr, &shaVtableAddr)) return 1;
+    u32 shaVtable1Addr;
+    if(!getVtableAddress(pos, size, shaVtable1RefPattern, sizeof(shaVtable1RefPattern), -2, process9MemAddr, &shaVtable1Addr)) return 1;
+
+    u32 shaVtable2Addr;
+    if(!getVtableAddress(pos, size, shaVtable2RefPattern, sizeof(shaVtable2RefPattern), -2, process9MemAddr, &shaVtable2Addr)) return 1;
 
     u32 *ncchVtable11Ptr = (u32 *)(pos + (ncchVtableAddr - process9MemAddr)) + 11,
-        *shaVtable11Ptr = (u32 *)(pos + (shaVtableAddr - process9MemAddr)) + 11;
+        *shaVtable1_11Ptr = (u32 *)(pos + (shaVtable1Addr - process9MemAddr)) + 11,
+        *shaVtable2_11Ptr = (u32 *)(pos + (shaVtable2Addr - process9MemAddr)) + 11;
 
-    if((*ncchVtable11Ptr & 0x1) == 0 || (*shaVtable11Ptr & 0x1) == 0) return 1; //Must be Thumb
+    if((*ncchVtable11Ptr & 0x1) == 0 || (*shaVtable1_11Ptr & 0x1) == 0 || (*shaVtable2_11Ptr & 0x1) == 0) return 1; //Must be Thumb
 
     //Find needed function addresses by inspecting all bl branch targets
     u16 *ncchWriteFnc = (u16 *)(pos + ((*ncchVtable11Ptr & ~0x1) - process9MemAddr));
@@ -911,7 +916,7 @@ u32 patchReadFileSHA256Vtab11(u8 *pos, u32 size, u32 process9MemAddr)
 
     if(readFileSHA256Vtab11PatchCtorPtr == 0 || readFileSHA256Vtab11PatchInitPtr == 0 || readFileSHA256Vtab11PatchProcessPtr == 0) return 1;
 
-    *shaVtable11Ptr = (u32) &readFileSHA256Vtab11Patch; //The patched vtable11 function is in ITCM, so we don't have to copy it somewhere else
+    *shaVtable1_11Ptr = *shaVtable2_11Ptr = (u32) &readFileSHA256Vtab11Patch; //The patched vtable11 function is in ITCM, so we don't have to copy it somewhere else
 
     return 0;
 }
