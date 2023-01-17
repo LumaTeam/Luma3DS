@@ -290,8 +290,16 @@ static Result launchTitleImpl(Handle *debug, ProcessData **outProcessData, const
     return res;
 }
 
-Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags)
+static Result launchTitleImplWrapper(Handle *outDebug, u32 *outPid, const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags)
 {
+    // Not in official PM, but we need to check here as well to avoid a race condition
+    ProcessList_Lock(&g_manager.processList);
+    if (g_manager.runningApplicationData != NULL && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION) != 0) {
+        ProcessList_Unlock(&g_manager.processList);
+        return 0xC8A05BF0;
+    }
+    ProcessList_Unlock(&g_manager.processList);
+
     ExHeader_Info *exheaderInfo = ExHeaderInfoHeap_New();
     if (exheaderInfo == NULL) {
         panic(0);
@@ -319,7 +327,7 @@ static void LaunchTitleAsync(void *argdata)
     launchTitleImplWrapper(NULL, NULL, &args->programInfo, &args->programInfoUpdate, args->launchFlags);
 }
 
-Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFlags)
+Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFlags, bool allowAsync)
 {
     ProcessData *process, *foundProcess = NULL;
     bool originallyDebugged = launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION;
@@ -362,7 +370,7 @@ Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFla
         }
         return 0;
     } else {
-        if (launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION || !(launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION)) {
+        if (!allowAsync || launchFlags & PMLAUNCHFLAG_QUEUE_DEBUG_APPLICATION || !(launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION)) {
             Result res = launchTitleImplWrapper(NULL, outPid, programInfo, programInfo, launchFlags);
             if (R_SUCCEEDED(res) && (launchFlags & PMLAUNCHFLAG_NORMAL_APPLICATION)) {
                 g_debugNextApplication = false;
@@ -445,7 +453,7 @@ Result LaunchApp(const FS_ProgramInfo *programInfo, u32 launchFlags)
     assertSuccess(setAppCpuTimeLimit(0));
     ProcessList_Unlock(&g_manager.processList);
 
-    return LaunchTitle(NULL, programInfo, launchFlags | PMLAUNCHFLAG_LOAD_DEPENDENCIES | PMLAUNCHFLAG_NORMAL_APPLICATION);
+    return LaunchTitle(NULL, programInfo, launchFlags | PMLAUNCHFLAG_LOAD_DEPENDENCIES | PMLAUNCHFLAG_NORMAL_APPLICATION, true);
 }
 
 Result RunQueuedProcess(Handle *outDebug)
