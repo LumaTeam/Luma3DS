@@ -1,9 +1,15 @@
-SUBFOLDERS	:=	loader sm pm pxi rosalina
-CXIS		:=	$(foreach dir, $(SUBFOLDERS), $(dir)/$(dir).cxi)
+ifeq ($(BUILD_FOR_EXPLOIT_DEV),1)
+	# Keep Loader so that we can execute 3DSX
+	SUBFOLDERS := loader
+else
+	SUBFOLDERS := loader sm pm pxi rosalina
+endif
 
-.PHONY:	all clean $(SUBFOLDERS)
+CXIS := $(foreach dir, $(SUBFOLDERS), $(dir)/$(dir).cxi)
 
-all:	sysmodules.bin
+.PHONY: all clean $(SUBFOLDERS)
+
+all: sysmodules.bin
 
 clean:
 	@$(foreach dir, $(SUBFOLDERS), $(MAKE) -C $(dir) clean &&) true

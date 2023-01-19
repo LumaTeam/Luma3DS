@@ -72,6 +72,9 @@ typedef struct {
     u32 pluginLoaderFlags;
     u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+
+    u64 autobootTwlTitleId;
+    u8 autobootCtrAppmemtype;
 } CfgData;
 
 typedef struct
@@ -139,6 +142,7 @@ extern bool isSdMode;
 
 extern BootType bootType;
 
+extern char launchedPathForFatfs[256];
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[80+1];
 

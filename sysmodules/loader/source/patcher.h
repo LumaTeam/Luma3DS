@@ -22,7 +22,8 @@ enum multiOptions
     BRIGHTNESS,
     SPLASH,
     PIN,
-    NEWCPU
+    NEWCPU,
+    AUTOBOOTMODE,
 };
 
 enum singleOptions

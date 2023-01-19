@@ -146,6 +146,8 @@ typedef struct CfwInfo
     u32 pluginLoaderFlags;
     u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+    u64 autobootTwlTitleId;
+    u8 autobootCtrAppmemtype;
 } CfwInfo;
 
 extern CfwInfo cfwInfo;

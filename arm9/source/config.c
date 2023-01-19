@@ -319,8 +319,14 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             } else {
                 CHECK_PARSE_OPTION(-1);
             }
+        } else if (strcmp(name, "autoboot_mode") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 0, 2));
+            cfg->multiConfig |= (u32)opt << (2 * (u32)AUTOBOOTMODE);
+            return 1;
+        } else {
+            CHECK_PARSE_OPTION(-1);
         }
-        CHECK_PARSE_OPTION(-1);
     } else if (strcmp(section, "rosalina") == 0) {
         // Rosalina options
         if (strcmp(name, "hbldr_3dsx_titleid") == 0) {
@@ -350,6 +356,20 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             return 1;
         }
         else {
+            CHECK_PARSE_OPTION(-1);
+        }
+    } else if (strcmp(section, "autoboot") == 0) {
+        if (strcmp(name, "autoboot_dsi_titleid") == 0) {
+            u64 opt;
+            CHECK_PARSE_OPTION(parseHexIntOption(&opt, value, 0, 0xFFFFFFFFFFFFFFFFull));
+            cfg->autobootTwlTitleId = opt;
+            return 1;
+        } else if (strcmp(name, "autoboot_3ds_app_mem_type") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 0, 4));
+            cfg->autobootCtrAppmemtype = (u8)opt;
+            return 1;
+        } else {
             CHECK_PARSE_OPTION(-1);
         }
     } else if (strcmp(section, "misc") == 0) {
@@ -419,10 +439,12 @@ static size_t saveLumaIniConfigToStr(char *out)
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
-        pinNumDigits, n3dsCpuStr,
+        pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
         (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+
+        cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
         (int)CONFIG(ENABLESAFEFIRMROSALINA)
@@ -527,9 +549,10 @@ bool readConfig(void)
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
         configData.config |= 1u << PATCHVERSTRING;
         configData.splashDurationMsec = 3000;
-        configData.hbldr3dsxTitleId = 0x000400000D921E00ull;
+        configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
         configData.screenFiltersCct = 6500; // default temp, no-op
+        configData.autobootTwlTitleId = AUTOBOOT_DEFAULT_TWL_TID;
         ret = false;
     }
     else
@@ -571,6 +594,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "Splash: Off( ) Before( ) After( ) payloads",
                                                "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                                "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
+                                               "Homebrew autoboot: Off( ) 3DS( ) DSi( )",
                                              };
 
     static const char *singleOptionsText[] = { "( ) Autoboot EmuNAND",
@@ -611,6 +635,14 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "New 3DS exclusive/enhanced games.\n\n"
                                                  "'Clock+L2' can cause issues with some\n"
                                                  "games.",
+
+                                                 "Enable autobooting into homebrew,\n"
+                                                 "either into 3DS or DSi mode.\n\n"
+                                                 "Autobooting into a gamecard title is\n"
+                                                 "not supported.\n\n"
+                                                 "Refer to the \"autoboot\" section in the\n"
+                                                 "configuration file to configure\n"
+                                                 "this feature.",
 
                                                  "If enabled, an EmuNAND\n"
                                                  "will be launched on boot.\n\n"
@@ -680,6 +712,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = ISN3DS },
+        { .visible = true },
     };
 
     struct singleOption {
@@ -774,16 +807,16 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         }
         while(!pressed);
 
-        if(pressed == BUTTON_START) break;
+        if(pressed & BUTTON_START) break;
 
-        if(pressed != BUTTON_A)
+        if(pressed & DPAD_BUTTONS)
         {
             //Remember the previously selected option
             u32 oldSelectedOption = selectedOption;
 
             while(true)
             {
-                switch(pressed)
+                switch(pressed & DPAD_BUTTONS)
                 {
                     case BUTTON_UP:
                         selectedOption = !selectedOption ? totalIndexes : selectedOption - 1;
@@ -842,7 +875,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
             drawString(false, 10, 10, COLOR_BLACK, optionsDescription[oldSelectedOption]);
             drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
         }
-        else
+        else if (pressed & BUTTON_A)
         {
             //The selected option's status changed, print the 'x's accordingly
             if(isMultiOption)

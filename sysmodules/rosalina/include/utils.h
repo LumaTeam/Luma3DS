@@ -86,3 +86,4 @@ static inline bool isServiceUsable(const char *name)
 void formatMemoryPermission(char *outbuf, MemPerm perm);
 void formatUserMemoryState(char *outbuf, MemState state);
 u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);
+int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat);

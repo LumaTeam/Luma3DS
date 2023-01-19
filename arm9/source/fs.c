@@ -64,14 +64,14 @@ bool mountFs(bool isSd, bool switchToCtrNand)
     if (isSd)
     {
         if (!sdInitialized)
-            sdInitialized = f_mount(&sdFs, "0:", 1) == FR_OK;
+            sdInitialized = f_mount(&sdFs, "sdmc:", 1) == FR_OK;
         return sdInitialized && switchToMainDir(true);
     }
     else
     {
         if (!nandInitialized)
-            nandInitialized = f_mount(&nandFs, "1:", 1) == FR_OK;
-        return nandInitialized && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
+            nandInitialized = f_mount(&nandFs, "nand:", 1) == FR_OK;
+        return nandInitialized && (!switchToCtrNand || (f_chdrive("nand:") == FR_OK && switchToMainDir(false)));
     }
 }
 
@@ -183,7 +183,7 @@ bool fileCopy(const char *pathSrc, const char *pathDst, bool replace, void *tmpB
         res = f_read(&fileSrc, tmpBuffer, sz, &n);
         if (n != sz)
             res = FR_INT_ERR; // should not happen
-        
+
         if (res == FR_OK)
         {
             res = f_write(&fileDst, tmpBuffer, sz, &n);
@@ -343,10 +343,10 @@ u32 firmRead(void *dest, u32 firmType)
                                            {"00000003", "20000003"},
                                            {"00000001", "20000001"}};
 
-    char folderPath[35],
-         path[48];
+    char folderPath[64],
+         path[128];
 
-    sprintf(folderPath, "1:/title/00040138/%s/content", firmFolders[firmType][ISN3DS ? 1 : 0]);
+    sprintf(folderPath, "nand:/title/00040138/%s/content", firmFolders[firmType][ISN3DS ? 1 : 0]);
 
     DIR dir;
     u32 firmVersion = 0xFFFFFFFF;
@@ -414,14 +414,14 @@ static bool backupEssentialFiles(void)
 
     bool ok = !(isSdMode && !mountFs(false, false));
 
-    ok = ok && fileCopy("1:/ro/sys/HWCAL0.dat", "backups/HWCAL0.dat", false, fileCopyBuffer, sz);
-    ok = ok && fileCopy("1:/ro/sys/HWCAL1.dat", "backups/HWCAL1.dat", false, fileCopyBuffer, sz);
+    ok = ok && fileCopy("nand:/ro/sys/HWCAL0.dat", "backups/HWCAL0.dat", false, fileCopyBuffer, sz);
+    ok = ok && fileCopy("nand:/ro/sys/HWCAL1.dat", "backups/HWCAL1.dat", false, fileCopyBuffer, sz);
 
-    ok = ok && fileCopy("1:/rw/sys/LocalFriendCodeSeed_A", "backups/LocalFriendCodeSeed_A", false, fileCopyBuffer, sz); // often doesn't exist
-    ok = ok && fileCopy("1:/rw/sys/LocalFriendCodeSeed_B", "backups/LocalFriendCodeSeed_B", false, fileCopyBuffer, sz);
+    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_A", "backups/LocalFriendCodeSeed_A", false, fileCopyBuffer, sz); // often doesn't exist
+    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_B", "backups/LocalFriendCodeSeed_B", false, fileCopyBuffer, sz);
 
-    ok = ok && fileCopy("1:/rw/sys/SecureInfo_A", "backups/SecureInfo_A", false, fileCopyBuffer, sz);
-    ok = ok && fileCopy("1:/rw/sys/SecureInfo_B", "backups/SecureInfo_B", false, fileCopyBuffer, sz); // often doesn't exist
+    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_A", "backups/SecureInfo_A", false, fileCopyBuffer, sz);
+    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_B", "backups/SecureInfo_B", false, fileCopyBuffer, sz); // often doesn't exist
 
     if (!ok) return false;
 
@@ -460,15 +460,15 @@ bool doLumaUpgradeProcess(void)
         return false;
 
     // Try to boot.firm to CTRNAND, when applicable
-    if (isSdMode)
-        ok = fileCopy("0:/boot.firm", "1:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
+    if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
+        ok = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
 
     // Try to backup essential files
     ok2 = backupEssentialFiles();
 
     // Clean up some of the old files
-    fileDelete("0:/luma/config.bin");
-    fileDelete("1:/rw/luma/config.bin");
+    fileDelete("sdmc:/luma/config.bin");
+    fileDelete("nand:/rw/luma/config.bin");
 
     return ok && ok2;
 }

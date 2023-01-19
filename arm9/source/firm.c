@@ -352,8 +352,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
 
 u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isFirmProtEnabled, bool needToInitSd, bool doUnitinfoPatch)
 {
-    u8 *arm9Section = (u8 *)firm + firm->section[2].offset,
-       *arm11Section1 = (u8 *)firm + firm->section[1].offset;
+    u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
 
     if(ISN3DS)
     {
@@ -367,22 +366,27 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         process9MemAddr;
     u8 *process9Offset = getProcess9Info(arm9Section, firm->section[2].size, &process9Size, &process9MemAddr);
 
-    //Find the Kernel11 SVC table and handler, exceptions page and free space locations
-    u32 baseK11VA;
-    u8 *freeK11Space;
-    u32 *arm11SvcHandler,
-        *arm11ExceptionsPage,
-        *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
-
     u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
         ret = 0;
 
+#ifndef BUILD_FOR_EXPLOIT_DEV
     //Skip on FIRMs < 4.0
     if(ISN3DS || firmVersion >= 0x1D)
     {
+        //Find the Kernel11 SVC table and handler, exceptions page and free space locations
+        u8 *arm11Section1 = (u8 *)firm + firm->section[1].offset;
+        u32 baseK11VA;
+        u8 *freeK11Space;
+        u32 *arm11SvcHandler,
+            *arm11ExceptionsPage,
+            *arm11SvcTable = getKernel11Info(arm11Section1, firm->section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+
         ret += installK11Extension(arm11Section1, firm->section[1].size, needToInitSd, baseK11VA, arm11ExceptionsPage, &freeK11Space);
         ret += patchKernel11(arm11Section1, firm->section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage);
     }
+#else
+    (void)needToInitSd;
+#endif
 
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
@@ -393,8 +397,10 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
     else if(isFirmProtEnabled) ret += patchFirmWrites(process9Offset, process9Size);
 
+#ifndef BUILD_FOR_EXPLOIT_DEV
     //Apply firmlaunch patches
     ret += patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+#endif
 
     //Apply dev unit check patches related to NCCH encryption
     if(!ISDEVUNIT)
