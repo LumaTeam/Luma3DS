@@ -88,13 +88,6 @@ void RosalinaMenu_ShowDebugInfo(void)
     u32 kernelVer = osGetKernelVersion();
     FS_SdMmcSpeedInfo speedInfo;
 
-    Handle hm = 0;
-    OpenProcessByName("menu", &hm);
-    s64 out = 0;
-    svcGetHandleInfo(&out, hm, 0);
-    svcCloseHandle(hm);
-    u64 timeToBootHm = 1000u * out / SYSCLOCK_ARM11;
-
     do
     {
         Draw_Lock();
@@ -130,11 +123,10 @@ void RosalinaMenu_ShowDebugInfo(void)
                 (int)speedInfo.highSpeedModeEnabled, SYSCLOCK_SDMMC / (1000 * clkDiv)
             );
         }
-        if (timeToBootHm != 0)
         {
             posY = Draw_DrawFormattedString(
-                10, posY, COLOR_WHITE, "Time to boot to Home Menu: %llums\n",
-                timeToBootHm
+                10, posY, COLOR_WHITE, "APPMEMTYPE: %lu\n",
+                OS_KernelConfig->app_memtype
             );
         }
         Draw_FlushFramebuffer();
@@ -386,6 +378,7 @@ void RosalinaMenu_TakeScreenshot(void)
     Result res = 0;
 
     char filename[64];
+    char dateTimeStr[32];
 
     FS_Archive archive;
     FS_ArchiveID archiveId;
@@ -420,64 +413,21 @@ void RosalinaMenu_TakeScreenshot(void)
         FSUSER_CloseArchive(archive);
     }
 
-    // Conversion code adapted from https://stackoverflow.com/questions/21593692/convert-unix-timestamp-to-date-without-system-libs
-    // (original author @gnif under CC-BY-SA 4.0)
-    u32 seconds, minutes, hours, days, year, month;
-    u64 milliseconds = osGetTime();
-    seconds = milliseconds/1000;
-    milliseconds %= 1000;
-    minutes = seconds / 60;
-    seconds %= 60;
-    hours = minutes / 60;
-    minutes %= 60;
-    days = hours / 24;
-    hours %= 24;
+    dateTimeToString(dateTimeStr, osGetTime(), true);
 
-    year = 1900; // osGetTime starts in 1900
-
-    while(true)
-    {
-        bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
-        u16 daysInYear = leapYear ? 366 : 365;
-        if(days >= daysInYear)
-        {
-            days -= daysInYear;
-            ++year;
-        }
-        else
-        {
-            static const u8 daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-            for(month = 0; month < 12; ++month)
-            {
-                u8 dim = daysInMonth[month];
-
-                if (month == 1 && leapYear)
-                    ++dim;
-
-                if (days >= dim)
-                    days -= dim;
-                else
-                    break;
-            }
-            break;
-        }
-    }
-    days++;
-    month++;
-
-    sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top.bmp", year, month, days, hours, minutes, seconds, milliseconds);
+    sprintf(filename, "/luma/screenshots/%s_top.bmp", dateTimeStr);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, true));
     TRY(IFile_Close(&file));
 
-    sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_bot.bmp", year, month, days, hours, minutes, seconds, milliseconds);
+    sprintf(filename, "/luma/screenshots/%s_bot.bmp", dateTimeStr);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     TRY(RosalinaMenu_WriteScreenshot(&file, bottomWidth, false, true));
     TRY(IFile_Close(&file));
 
     if(is3d && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
     {
-        sprintf(filename, "/luma/screenshots/%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu_top_right.bmp", year, month, days, hours, minutes, seconds, milliseconds);
+        sprintf(filename, "/luma/screenshots/%s_top_right.bmp", dateTimeStr);
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
         TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, false));
         TRY(IFile_Close(&file));

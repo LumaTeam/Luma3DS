@@ -25,11 +25,11 @@
 */
 
 #include <3ds.h>
+#include <math.h>
 #include "memory.h"
 #include "menu.h"
 #include "menus/screen_filters.h"
 #include "draw.h"
-#include "redshift/redshift.h"
 #include "redshift/colorramp.h"
 
 typedef union {
@@ -42,67 +42,54 @@ typedef union {
     u32 raw;
 } Pixel;
 
-static u16 g_c[0x600];
-static Pixel g_px[0x400];
-
 int screenFiltersCurrentTemperature = 6500;
+float screenFiltersCurrentGamma = 1.0f;
+float screenFiltersCurrentContrast = 1.0f;
+float screenFiltersCurrentBrightness = 0.0f;
 
-static void ScreenFiltersMenu_WriteLut(const Pixel* lut)
+static inline bool ScreenFiltersMenu_IsDefaultSettings(void)
+{
+    bool ret = screenFiltersCurrentTemperature == 6500;
+    ret = ret && screenFiltersCurrentGamma == 1.0f;
+    ret = ret && screenFiltersCurrentContrast == 1.0f;
+    ret = ret && screenFiltersCurrentBrightness == 0.0f;
+    return ret;
+}
+
+static inline u8 ScreenFiltersMenu_GetColorLevel(int inLevel, float wp, float a, float b, float g)
+{
+    float level = inLevel / 255.0f;
+    level = powf(a * wp * level + b, g);
+    s32 levelInt = (s32)(255.0f * level + 0.5f); // round to nearest integer
+    return levelInt <= 0 ? 0 : levelInt >= 255 ? 255 : (u8)levelInt; // clamp
+}
+
+static void ScreenFiltersMenu_ApplyColorSettings(void)
 {
     GPU_FB_TOP_COL_LUT_INDEX = 0;
     GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
 
+    float wp[3];
+    colorramp_get_white_point(wp, screenFiltersCurrentTemperature);
+    float a = screenFiltersCurrentContrast;
+    float g = screenFiltersCurrentGamma;
+    float b = screenFiltersCurrentBrightness;
+
     for (int i = 0; i <= 255; i++) {
-        GPU_FB_TOP_COL_LUT_ELEM = lut->raw;
-        GPU_FB_BOTTOM_COL_LUT_ELEM = lut->raw;
-        lut++;
+        Pixel px;
+        px.r = ScreenFiltersMenu_GetColorLevel(i, wp[0], a, b, g);
+        px.g = ScreenFiltersMenu_GetColorLevel(i, wp[1], a, b, g);
+        px.b = ScreenFiltersMenu_GetColorLevel(i, wp[2], a, b, g);
+        px.z = 0;
+        GPU_FB_TOP_COL_LUT_ELEM = px.raw;
+        GPU_FB_BOTTOM_COL_LUT_ELEM = px.raw;
     }
-}
-
-static void ScreenFiltersMenu_ApplyColorSettings(color_setting_t* cs)
-{
-    u8 i = 0;
-
-    memset(g_c, 0, sizeof(g_c));
-    memset(g_px, 0, sizeof(g_px));
-
-    do {
-        g_px[i].r = i;
-        g_px[i].g = i;
-        g_px[i].b = i;
-        g_px[i].z = 0;
-    } while(++i);
-
-    do {
-        *(g_c + i + 0x000) = g_px[i].r | (g_px[i].r << 8);
-        *(g_c + i + 0x100) = g_px[i].g | (g_px[i].g << 8);
-        *(g_c + i + 0x200) = g_px[i].b | (g_px[i].b << 8);
-    } while(++i);
-
-    colorramp_fill(g_c + 0x000, g_c + 0x100, g_c + 0x200, 0x100, cs);
-
-    do {
-        g_px[i].r = *(g_c + i + 0x000) >> 8;
-        g_px[i].g = *(g_c + i + 0x100) >> 8;
-        g_px[i].b = *(g_c + i + 0x200) >> 8;
-    } while(++i);
-
-    ScreenFiltersMenu_WriteLut(g_px);
 }
 
 void ScreenFiltersMenu_SetCct(int cct)
 {
-    color_setting_t cs;
-    memset(&cs, 0, sizeof(cs));
-
-    cs.temperature = cct;
-    /*cs.gamma[0] = 1.0F;
-    cs.gamma[1] = 1.0F;
-    cs.gamma[2] = 1.0F;
-    cs.brightness = 1.0F;*/
-
-    ScreenFiltersMenu_ApplyColorSettings(&cs);
     screenFiltersCurrentTemperature = cct;
+    ScreenFiltersMenu_ApplyColorSettings();
 }
 
 Menu screenFiltersMenu = {
@@ -131,15 +118,12 @@ void ScreenFiltersMenu_Set##name(void)\
 void ScreenFiltersMenu_RestoreCct(void)
 {
     // Not initialized/default: return
-    if (screenFiltersCurrentTemperature == 6500)
+    if (ScreenFiltersMenu_IsDefaultSettings())
         return;
 
     // Wait for GSP to restore the CCT table
-    while (GPU_FB_TOP_COL_LUT_ELEM != g_px[0].raw)
-        svcSleepThread(10 * 1000 * 1000LL);
-
-    svcSleepThread(10 * 1000 * 1000LL);
-    ScreenFiltersMenu_WriteLut(g_px);
+    svcSleepThread(20 * 1000 * 1000LL);
+    ScreenFiltersMenu_ApplyColorSettings();
 }
 
 DEF_CCT_SETTER(6500, Default)

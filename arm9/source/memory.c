@@ -54,3 +54,27 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 
     return NULL;
 }
+
+void *copyFromLegacyModeFcram(void *dst, const void *src, size_t size)
+{
+    // Copy 2 bytes with a stride of 8
+    const u16 *src16 = (const u16 *)src;
+    u16 *dst16 = (u16 *)dst;
+
+    for (size_t i = 0; i < size / 2; i++)
+        dst16[i] = src16[4 * i];
+
+    return dst;
+}
+
+void *copyToLegacyModeFcram(void *dst, const void *src, size_t size)
+{
+    // Copy 2 bytes with a stride of 8
+    const u16 *src16 = (const u16 *)src;
+    u16 *dst16 = (u16 *)dst;
+
+    for (size_t i = 0; i < size / 2; i++)
+        dst16[4 * i] = src16[i];
+
+    return dst;
+}

@@ -30,7 +30,6 @@
 #include "ntp.h"
 #include "memory.h"
 #include "draw.h"
-#include "hbloader.h"
 #include "fmt.h"
 #include "utils.h" // for makeArmBranch
 #include "minisoc.h"
@@ -63,7 +62,8 @@ enum multiOptions
     BRIGHTNESS,
     SPLASH,
     PIN,
-    NEWCPU
+    NEWCPU,
+    AUTOBOOTMODE,
 };
 typedef struct DspFirmSegmentHeader {
     u32 offset;
@@ -100,6 +100,9 @@ typedef struct CfgData {
     u32 rosalinaMenuCombo;
     u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+
+    u64 autobootTwlTitleId;
+    u8 autobootCtrAppmemtype;
 } CfgData;
 
 Menu miscellaneousMenu = {
@@ -117,12 +120,20 @@ Menu miscellaneousMenu = {
 };
 int lastNtpTzOffset = 0;
 
+static inline bool compareTids(u64 tidA, u64 tidB)
+{
+    // Just like p9 clears them, ignore platform/N3DS bits
+    return ((tidA ^ tidB) & ~0xF0000000ull) == 0;
+}
+
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
     Result res;
     char failureReason[64];
+    u64 currentTid = Luma_SharedConfig->hbldr_3dsx_tid;
+    u64 newTid = currentTid;
 
-    if(Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID)
+    if(compareTids(currentTid, HBLDR_DEFAULT_3DSX_TID))
     {
         FS_ProgramInfo progInfo;
         u32 pid;
@@ -130,8 +141,8 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
         if(R_SUCCEEDED(res))
         {
+            newTid = progInfo.programId;
             Luma_SharedConfig->hbldr_3dsx_tid = progInfo.programId;
-            miscellaneousMenu.items[0].title = "Switch the hb. title to hblauncher_loader";
         }
         else
         {
@@ -142,9 +153,14 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     else
     {
         res = 0;
-        Luma_SharedConfig->hbldr_3dsx_tid = HBLDR_DEFAULT_3DSX_TID;
-        miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
+        newTid = HBLDR_DEFAULT_3DSX_TID;
     }
+
+    Luma_SharedConfig->hbldr_3dsx_tid = newTid;
+    if (compareTids(newTid, HBLDR_DEFAULT_3DSX_TID))
+        miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
+    else
+        miscellaneousMenu.items[0].title = "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -292,10 +308,12 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
-        pinNumDigits, n3dsCpuStr,
+        pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
         (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+
+        cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
         (int)CONFIG(ENABLESAFEFIRMROSALINA)
@@ -319,8 +337,12 @@ void MiscellaneousMenu_SaveSettings(void)
     u32 config, multiConfig, bootConfig;
     u32 splashDurationMsec;
 
+    u8 autobootCtrAppmemtype;
+    u64 autobootTwlTitleId;
+
     s64 out;
     bool isSdMode;
+
     svcGetSystemInfo(&out, 0x10000, 2);
     formatVersion = (u32)out;
     svcGetSystemInfo(&out, 0x10000, 3);
@@ -331,6 +353,12 @@ void MiscellaneousMenu_SaveSettings(void)
     bootConfig = (u32)out;
     svcGetSystemInfo(&out, 0x10000, 6);
     splashDurationMsec = (u32)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x10);
+    autobootTwlTitleId = (u64)out;
+    svcGetSystemInfo(&out, 0x10000, 0x11);
+    autobootCtrAppmemtype = (u8)out;
+
     svcGetSystemInfo(&out, 0x10000, 0x203);
     isSdMode = (bool)out;
 
@@ -344,6 +372,8 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.rosalinaMenuCombo = menuCombo;
     configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
+    configData.autobootTwlTitleId = autobootTwlTitleId;
+    configData.autobootCtrAppmemtype = autobootCtrAppmemtype;
 
     size_t n = saveLumaIniConfigToStr(inibuf, &configData);
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;

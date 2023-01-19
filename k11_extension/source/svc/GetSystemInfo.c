@@ -61,6 +61,13 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     *out = cfwInfo.splashDurationMsec;
                     break;
 
+                case 0x10:
+                    *out = (s64)cfwInfo.autobootTwlTitleId;
+                    break;
+                case 0x11:
+                    *out = cfwInfo.autobootCtrAppmemtype;
+                    break;
+
                 case 0x100:
                     *out = (s64)cfwInfo.hbldr3dsxTitleId;
                     break;

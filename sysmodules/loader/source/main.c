@@ -1,10 +1,13 @@
 #include <3ds.h>
+#include <assert.h>
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
 #include "util.h"
 #include "loader.h"
 #include "service_manager.h"
+#include "3dsx.h"
+#include "hbldr.h"
 
 u32 config, multiConfig, bootConfig;
 bool isN3DS, isSdMode;
@@ -28,20 +31,43 @@ static Result fsldrPatchPermissions(void)
 static inline void loadCFWInfo(void)
 {
     s64 out;
+    u64 hbldrTid = 0;
 
-    if(svcGetSystemInfo(&out, 0x20000, 0) != 1) panic(0xDEADCAFE);
+    bool isLumaWithKext = svcGetSystemInfo(&out, 0x20000, 0) == 1;
+    if (isLumaWithKext)
+    {
+        svcGetSystemInfo(&out, 0x10000, 3);
+        config = (u32)out;
+        svcGetSystemInfo(&out, 0x10000, 4);
+        multiConfig = (u32)out;
+        svcGetSystemInfo(&out, 0x10000, 5);
+        bootConfig = (u32)out;
 
-    svcGetSystemInfo(&out, 0x10000, 3);
-    config = (u32)out;
-    svcGetSystemInfo(&out, 0x10000, 4);
-    multiConfig = (u32)out;
-    svcGetSystemInfo(&out, 0x10000, 5);
-    bootConfig = (u32)out;
+        svcGetSystemInfo(&out, 0x10000, 0x100);
+        hbldrTid = (u64)out;
+        svcGetSystemInfo(&out, 0x10000, 0x201);
+        isN3DS = (bool)out;
+        svcGetSystemInfo(&out, 0x10000, 0x203);
+        isSdMode = (bool)out;
+    }
+    else
+    {
+        // Try to support non-Luma or builds where kext is disabled
+        s64 numKips = 0;
+        svcGetSystemInfo(&numKips, 26, 0);
 
-    svcGetSystemInfo(&out, 0x10000, 0x201);
-    isN3DS = (bool)out;
-    svcGetSystemInfo(&out, 0x10000, 0x203);
-    isSdMode = (bool)out;
+        if (numKips >= 6)
+            panic(0xDEADCAFE);
+
+        config = 0; // all options 0
+        multiConfig = 0;
+        bootConfig = 0;
+        isN3DS = OS_KernelConfig->app_memtype >= 6;
+        isSdMode = true;
+    }
+
+    Luma_SharedConfig->hbldr_3dsx_tid = hbldrTid == 0 ? HBLDR_DEFAULT_3DSX_TID : hbldrTid;
+    Luma_SharedConfig->use_hbldr = true;
 }
 
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
@@ -88,6 +114,7 @@ void initSystem(void)
 
 static const ServiceManagerServiceEntry services[] = {
     { "Loader", 1, loaderHandleCommands, false },
+    { "hb:ldr", 2, hbldrHandleCommands,  true  },
     { NULL },
 };
 
@@ -95,9 +122,18 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { 0x000, NULL },
 };
 
+static u8 ALIGN(4) staticBufferForHbldr[0x400];
+static_assert(ARGVBUF_SIZE > 2 * PATH_MAX, "Wrong 3DSX argv buffer size");
+
 int main(void)
 {
-    loadCFWInfo();
+    // Loader doesn't use any input static buffer, so we should be fine
+    u32 *sbuf = getThreadStaticBuffers();
+    sbuf[0] = IPC_Desc_StaticBuffer(sizeof(staticBufferForHbldr), 0);
+    sbuf[1] = (u32)staticBufferForHbldr;
+    sbuf[2] = IPC_Desc_StaticBuffer(sizeof(staticBufferForHbldr), 1);
+    sbuf[3] = (u32)staticBufferForHbldr;
+
     assertSuccess(ServiceManager_Run(services, notifications, NULL));
     return 0;
 }

@@ -31,6 +31,9 @@
 extern Menu screenFiltersMenu;
 
 extern int screenFiltersCurrentTemperature;
+extern float screenFiltersCurrentGamma;
+extern float screenFiltersCurrentContrast;
+extern float screenFiltersCurrentBrightness;
 
 void ScreenFiltersMenu_SetCct(int cct);
 void ScreenFiltersMenu_RestoreCct(void);

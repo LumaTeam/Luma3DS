@@ -9,7 +9,7 @@ enum {
     PMLAUNCHFLAGEXT_FAKE_DEPENDENCY_LOADING = BIT(24),
 };
 
-Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFlags);
+Result LaunchTitle(u32 *outPid, const FS_ProgramInfo *programInfo, u32 launchFlags, bool allowAsync);
 Result LaunchTitleUpdate(const FS_ProgramInfo *programInfo, const FS_ProgramInfo *programInfoUpdate, u32 launchFlags);
 Result LaunchApp(const FS_ProgramInfo *programInfo, u32 launchFlags);
 Result RunQueuedProcess(Handle *outDebug);

@@ -35,6 +35,9 @@ ifeq ($(strip $(shell git describe --tags --match v[0-9]* | grep -)),)
 	export IS_RELEASE		:=	1
 endif
 
+# Default 3DSX TitleID for hb:ldr (note: also defined in top-level Makefile)
+export HBLDR_DEFAULT_3DSX_TID ?= 000400000D921E00
+
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
@@ -53,7 +56,12 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH	:=	-marm -march=armv5te -mtune=arm946e-s
-DEFINES :=	-DARM9 -D_3DS
+
+ifeq ($(BUILD_FOR_EXPLOIT_DEV),1)
+	DEFINES :=	-DARM9 -D__3DS__ -DHBLDR_DEFAULT_3DSX_TID="0x$(HBLDR_DEFAULT_3DSX_TID)ULL" -DBUILD_FOR_EXPLOIT_DEV=1
+else
+	DEFINES :=	-DARM9 -D__3DS__ -DHBLDR_DEFAULT_3DSX_TID="0x$(HBLDR_DEFAULT_3DSX_TID)ULL"
+endif
 
 FALSEPOSITIVES := -Wno-array-bounds -Wno-stringop-overflow -Wno-stringop-overread
 CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Werror -O2 -mword-relocations \

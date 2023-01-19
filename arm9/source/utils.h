@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -46,3 +46,6 @@ u32 waitInput(bool isMenu);
 void mcuPowerOff(void);
 void wait(u64 amount);
 void error(const char *fmt, ...);
+
+u16 crc16(const void *data, size_t size, u16 initialValue);
+u32 crc32(const void *data, size_t size, u32 initialValue);

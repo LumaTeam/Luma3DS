@@ -48,16 +48,3 @@ Result PMDBG_LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInf
     *outDebug = cmdbuf[3];
     return (Result)cmdbuf[1];
 }
-
-Result PMDBG_PrepareToChainloadHomebrew(u64 titleId)
-{
-    Result ret = 0;
-    u32 *cmdbuf = getThreadCommandBuffer();
-
-    cmdbuf[0] = IPC_MakeHeader(0x103, 2, 0);
-    memcpy(&cmdbuf[1], &titleId, 8);
-
-    if(R_FAILED(ret = svcSendSyncRequest(*pmDbgGetSessionHandle()))) return ret;
-
-    return (Result)cmdbuf[1];
-}

@@ -26,7 +26,7 @@ void pmAppHandleCommands(void *ctx)
     switch (cmdhdr >> 16) {
         case 1:
             memcpy(&programInfo, cmdbuf + 1, sizeof(FS_ProgramInfo));
-            cmdbuf[1] = LaunchTitle(&pid, &programInfo, cmdbuf[5]);
+            cmdbuf[1] = LaunchTitle(&pid, &programInfo, cmdbuf[5], true);
             cmdbuf[2] = pid;
             cmdbuf[0] = IPC_MakeHeader(1, 2, 0);
             break;
