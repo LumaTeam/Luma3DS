@@ -284,7 +284,7 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
     u64 titleId = exhi->aci.local_caps.title_id;
     if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &mapped)))
     {
-        u32     *code = (u32 *)sharedAddr.text_addr;
+        u32     *code = (u32 *)mapped.text_addr;
         bool    isHomebrew = code[0] == 0xEA000006 && code[8] == 0xE1A0400E;
 
         memcpy(&codesetinfo.name, csi->name, 8);
@@ -310,7 +310,7 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
             if (!res && !isHomebrew && ((u32)((titleId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000))
             {
                 assertSuccess(plgldrInit());
-                assertSuccess(PLGLDR_LoadPlugin(process));
+                assertSuccess(PLGLDR_LoadPlugin(outProcessHandle));
                 plgldrExit();
             }
         }
