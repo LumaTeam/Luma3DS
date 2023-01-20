@@ -75,6 +75,7 @@ extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
 
 u32 waitInputWithTimeout(s32 msec);
+u32 waitInputWithTimeoutEx(u32 *outHeldKeys, s32 msec);
 u32 waitInput(void);
 
 u32 waitComboWithTimeout(s32 msec);

@@ -49,3 +49,5 @@ void ScreenFiltersMenu_SetIncandescent(void);       // 2700K
 void ScreenFiltersMenu_SetWarmIncandescent(void);   // 2300K
 void ScreenFiltersMenu_SetCandle(void);             // 1900K
 void ScreenFiltersMenu_SetEmber(void);              // 1200K
+
+void ScreenFiltersMenu_AdvancedConfiguration(void);

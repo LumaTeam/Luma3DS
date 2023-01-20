@@ -81,6 +81,33 @@ u32 waitInputWithTimeout(s32 msec)
     return keys;
 }
 
+u32 waitInputWithTimeoutEx(u32 *outHeldKeys, s32 msec)
+{
+    s32 n = 0;
+    u32 keys;
+
+    do
+    {
+        svcSleepThread(1 * 1000 * 1000LL);
+        Draw_Lock();
+        if (!isHidInitialized || menuShouldExit)
+        {
+            keys = 0;
+            Draw_Unlock();
+            break;
+        }
+        n++;
+
+        hidScanInput();
+        keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
+        *outHeldKeys = convertHidKeys(hidKeysHeld());
+        Draw_Unlock();
+    } while (keys == 0 && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec));
+
+
+    return keys;
+}
+
 u32 waitInput(void)
 {
     return waitInputWithTimeout(-1);
