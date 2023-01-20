@@ -46,6 +46,7 @@ int screenFiltersCurrentTemperature = 6500;
 float screenFiltersCurrentGamma = 1.0f;
 float screenFiltersCurrentContrast = 1.0f;
 float screenFiltersCurrentBrightness = 0.0f;
+bool screenFiltersCurrentInvert = false;
 
 static inline bool ScreenFiltersMenu_IsDefaultSettings(void)
 {
@@ -65,6 +66,41 @@ static inline u8 ScreenFiltersMenu_GetColorLevel(int inLevel, float wp, float a,
     return levelInt <= 0 ? 0 : levelInt >= 255 ? 255 : (u8)levelInt; // clamp
 }
 
+static u8 ScreenFilterMenu_CalculatePolynomialColorLutComponent(const float coeffs[][3], u32 component, float gamma, u32 dim, int inLevel)
+{
+    float x = inLevel / 255.0f;
+    float level = 0.0f;
+    float xN = 1.0f;
+
+    // Compute a_n * x^n + ... a_0, then clamp, then exponentiate by "gamma" and clamp again
+    for (u32 i = 0; i < dim + 1; i++)
+    {
+        level += coeffs[i][component] * xN;
+        xN *= x;
+    }
+
+    level = powf(CLAMP(level, 0.0f, 1.0f), gamma);
+    s32 levelInt = (s32)(255.0f * level + 0.5f); // round up
+    return (u8)CLAMP(levelInt, 0, 255);
+}
+
+static void ScreenFilterMenu_WritePolynomialColorLut(const float coeffs[][3], bool invert, float gamma, u32 dim)
+{
+    GPU_FB_TOP_COL_LUT_INDEX = 0;
+    GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
+
+    for (int i = 0; i <= 255; i++) {
+        Pixel px;
+        int inLevel = invert ? 255 - i : i;
+        px.r = ScreenFilterMenu_CalculatePolynomialColorLutComponent(coeffs, 0, gamma, dim, inLevel);
+        px.g = ScreenFilterMenu_CalculatePolynomialColorLutComponent(coeffs, 1, gamma, dim, inLevel);
+        px.b = ScreenFilterMenu_CalculatePolynomialColorLutComponent(coeffs, 2, gamma, dim, inLevel);
+        px.z = 0;
+        GPU_FB_TOP_COL_LUT_ELEM = px.raw;
+        GPU_FB_BOTTOM_COL_LUT_ELEM = px.raw;
+    }
+}
+
 static void ScreenFiltersMenu_ApplyColorSettings(void)
 {
     GPU_FB_TOP_COL_LUT_INDEX = 0;
@@ -75,16 +111,14 @@ static void ScreenFiltersMenu_ApplyColorSettings(void)
     float a = screenFiltersCurrentContrast;
     float g = screenFiltersCurrentGamma;
     float b = screenFiltersCurrentBrightness;
+    bool inv = screenFiltersCurrentInvert;
 
-    for (int i = 0; i <= 255; i++) {
-        Pixel px;
-        px.r = ScreenFiltersMenu_GetColorLevel(i, wp[0], a, b, g);
-        px.g = ScreenFiltersMenu_GetColorLevel(i, wp[1], a, b, g);
-        px.b = ScreenFiltersMenu_GetColorLevel(i, wp[2], a, b, g);
-        px.z = 0;
-        GPU_FB_TOP_COL_LUT_ELEM = px.raw;
-        GPU_FB_BOTTOM_COL_LUT_ELEM = px.raw;
-    }
+    float poly[][3] = {
+        { b, b, b },                            // x^0
+        { a * wp[0], a * wp[1], a * wp[2] },    // x^1
+    };
+
+    ScreenFilterMenu_WritePolynomialColorLut(poly, inv, g, 1);
 }
 
 void ScreenFiltersMenu_SetCct(int cct)
@@ -156,6 +190,9 @@ static void ScreenFiltersMenu_AdvancedConfigurationChangeValue(int pos, int mult
         case 3:
             screenFiltersCurrentBrightness += 0.01f * mult;
             break;
+        case 4:
+            screenFiltersCurrentInvert = !screenFiltersCurrentInvert;
+            break;
     }
 
     // Clamp
@@ -202,6 +239,9 @@ void ScreenFiltersMenu_AdvancedConfiguration(void)
         Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 3 ? '>' : ' ');
         posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Brightness:  %13s    \n", buf);
 
+        Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 4 ? '>' : ' ');
+        posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Invert:      %13s    \n", screenFiltersCurrentInvert ? "true" : "false");
+
         input = waitInputWithTimeoutEx(&held, -1);
         mult = (held & KEY_R) ? 10 : 1;
 
@@ -210,9 +250,9 @@ void ScreenFiltersMenu_AdvancedConfiguration(void)
         if (input & KEY_RIGHT)
             ScreenFiltersMenu_AdvancedConfigurationChangeValue(pos, mult);
         if (input & KEY_UP)
-            pos = (4 + pos - 1) % 4;
+            pos = (5 + pos - 1) % 5;
         if (input & KEY_DOWN)
-            pos = (pos + 1) % 4;
+            pos = (pos + 1) % 5;
 
         Draw_FlushFramebuffer();
         Draw_Unlock();
