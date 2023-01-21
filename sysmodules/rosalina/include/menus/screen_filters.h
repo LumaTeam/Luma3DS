@@ -34,9 +34,9 @@ extern int screenFiltersCurrentTemperature;
 extern float screenFiltersCurrentGamma;
 extern float screenFiltersCurrentContrast;
 extern float screenFiltersCurrentBrightness;
+extern bool screenFiltersCurrentInvert;
 
-void ScreenFiltersMenu_SetCct(int cct);
-void ScreenFiltersMenu_RestoreCct(void);
+void ScreenFiltersMenu_RestoreSettings(void);
 
 void ScreenFiltersMenu_SetDefault(void);            // 6500K (default)
 

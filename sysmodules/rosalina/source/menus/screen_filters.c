@@ -81,7 +81,7 @@ static u8 ScreenFilterMenu_CalculatePolynomialColorLutComponent(const float coef
 
     level = powf(CLAMP(level, 0.0f, 1.0f), gamma);
     s32 levelInt = (s32)(255.0f * level + 0.5f); // round up
-    return (u8)CLAMP(levelInt, 0, 255);
+    return (u8)CLAMP(levelInt, 0, 255); // clamp again just to be sure
 }
 
 static void ScreenFilterMenu_WritePolynomialColorLut(const float coeffs[][3], bool invert, float gamma, u32 dim)
@@ -121,7 +121,7 @@ static void ScreenFiltersMenu_ApplyColorSettings(void)
     ScreenFilterMenu_WritePolynomialColorLut(poly, inv, g, 1);
 }
 
-void ScreenFiltersMenu_SetCct(int cct)
+static void ScreenFiltersMenu_SetCct(int cct)
 {
     screenFiltersCurrentTemperature = cct;
     ScreenFiltersMenu_ApplyColorSettings();
@@ -151,7 +151,7 @@ void ScreenFiltersMenu_Set##name(void)\
     ScreenFiltersMenu_SetCct(temp);\
 }
 
-void ScreenFiltersMenu_RestoreCct(void)
+void ScreenFiltersMenu_RestoreSettings(void)
 {
     // Not initialized/default: return
     if (ScreenFiltersMenu_IsDefaultSettings())

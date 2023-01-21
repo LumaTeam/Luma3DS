@@ -69,8 +69,12 @@ typedef struct {
 
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
-    u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+    u16 screenFiltersCct;
+    s64 screenFiltersGammaEnc;
+    s64 screenFiltersContrastEnc;
+    s64 screenFiltersBrightnessEnc;
+    bool screenFiltersInvert;
 
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;

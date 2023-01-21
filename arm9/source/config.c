@@ -24,6 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
+#define _GNU_SOURCE // for strchrnul
+
 #include <assert.h>
 #include <strings.h>
 #include "config.h"
@@ -41,6 +43,9 @@
 #include "config_template_ini.h" // note that it has an extra NUL byte inserted
 
 #define MAKE_LUMA_VERSION_MCU(major, minor, build) (u16)(((major) & 0xFF) << 8 | ((minor) & 0x1F) << 5 | ((build) & 7))
+
+#define FLOAT_CONV_MULT 100000000ll
+#define FLOAT_CONV_PRECISION 8u
 
 CfgData configData;
 ConfigurationStatus needConfig;
@@ -95,10 +100,9 @@ static int parseBoolOption(bool *out, const char *val)
     }
 }
 
-static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
+static int parseDecIntOptionImpl(s64 *out, const char *val, size_t numDigits, s64 minval, s64 maxval)
 {
     *out = 0;
-    size_t numDigits = strlen(val);
     s64 res = 0;
     size_t i = 0;
 
@@ -123,6 +127,61 @@ static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
 
     res *= sign;
     if (res <= maxval && res >= minval) {
+        *out = res;
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
+static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
+{
+    return parseDecIntOptionImpl(out, val, strlen(val), minval, maxval);
+}
+
+static int parseDecFloatOption(s64 *out, const char *val, s64 minval, s64 maxval)
+{
+    char *point = strchrnul(val, '.');
+    if (point == val) {
+        return -1;
+    }
+
+    // Parse integer part, then fractional part
+    s64 intPart = 0;
+    s64 fracPart = 0;
+    int rc = parseDecIntOptionImpl(&intPart, val, point - val, INT64_MIN, INT64_MAX);
+
+    if (rc != 0) {
+        return -1;
+    }
+
+    s64 sign = intPart < 0 ? -1 : 1;
+    s64 intPartAbs = sign == -1 ? -intPart : intPart;
+    s64 res = 0;
+    bool of = __builtin_mul_overflow(intPartAbs, FLOAT_CONV_MULT, &res);
+    
+    if (of) {
+        return -1;
+    }
+    
+    s64 mul = FLOAT_CONV_MULT / 10;
+
+    // Check if there's a fractional part
+    if (point[0] != '\0' && point[1] != '\0') {
+        for (char *pos = point + 1; *pos != '\0' && mul > 0; pos++) {
+            if (*pos < '0' || *pos > '9') {
+                return -1;
+            }
+            
+            res += (*pos - '0') * mul;
+            mul /= 10;
+        }
+    }
+
+
+    res = sign * (res + fracPart);
+
+    if (res <= maxval && res >= minval && !of) {
         *out = res;
         return 0;
     } else {
@@ -220,6 +279,34 @@ static void menuComboToString(char *out, u32 combo)
 
     if (out != outOrig)
         out[-1] = 0;
+}
+
+static int encodedFloatToString(char *out, s64 val)
+{
+    s64 sign = val >= 0 ? 1 : -1;
+
+    s64 intPart = (sign * val) / FLOAT_CONV_MULT;
+    s64 fracPart = (sign * val) % FLOAT_CONV_MULT;
+
+    while (fracPart % 10 != 0) {
+        // Remove trailing zeroes
+        fracPart /= 10;
+    }
+
+    int n = sprintf(out, "%lld", sign * intPart);
+    if (fracPart != 0) {
+        n += sprintf(out + n, ".%0*lld", (int)FLOAT_CONV_PRECISION, fracPart);
+
+        // Remove trailing zeroes
+        int n2 = n - 1;
+        while (out[n2] == '0') {
+            out[n2--] = '\0';
+        }
+
+        n = n2;
+    }
+
+    return n;
 }
 
 static bool hasIniParseError = false;
@@ -339,15 +426,35 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseKeyComboOption(&opt, value));
             cfg->rosalinaMenuCombo = opt;
             return 1;
+        } else if (strcmp(name, "ntp_tz_offset_min") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -779, 899));
+            cfg->ntpTzOffetMinutes = (s16)opt;
+            return 1;
         } else if (strcmp(name, "screen_filters_cct") == 0) {
             s64 opt;
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 1000, 25100));
             cfg->screenFiltersCct = (u32)opt;
             return 1;
-        } else if (strcmp(name, "ntp_tz_offset_min") == 0) {
+        } else if (strcmp(name, "screen_filters_gamma") == 0) {
             s64 opt;
-            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -779, 899));
-            cfg->ntpTzOffetMinutes = (s16)opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 1411 * FLOAT_CONV_MULT));
+            cfg->screenFiltersGammaEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_contrast") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 255 * FLOAT_CONV_MULT));
+            cfg->screenFiltersContrastEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_brightness") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, -1 * FLOAT_CONV_MULT, 1 * FLOAT_CONV_MULT));
+            cfg->screenFiltersBrightnessEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_invert") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->screenFiltersInvert = opt;
             return 1;
         }
         else {
@@ -423,6 +530,13 @@ static size_t saveLumaIniConfigToStr(char *out)
     static const int pinOptionToDigits[] = { 0, 4, 6, 8 };
     int pinNumDigits = pinOptionToDigits[MULTICONFIG(PIN)];
 
+    char screenFiltersGammaStr[32];
+    char screenFiltersContrastStr[32];
+    char screenFiltersBrightnessStr[32];
+    encodedFloatToString(screenFiltersGammaStr, cfg->screenFiltersGammaEnc);
+    encodedFloatToString(screenFiltersContrastStr, cfg->screenFiltersContrastEnc);
+    encodedFloatToString(screenFiltersBrightnessStr, cfg->screenFiltersBrightnessEnc);
+
     int n = sprintf(
         out, (const char *)config_template_ini,
         lumaVerStr, lumaRevSuffixStr,
@@ -437,7 +551,11 @@ static size_t saveLumaIniConfigToStr(char *out)
         pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
-        (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+        (int)cfg->ntpTzOffetMinutes,
+
+        (int)cfg->screenFiltersCct, screenFiltersGammaStr,
+        screenFiltersContrastStr, screenFiltersBrightnessStr,
+        (int)cfg->screenFiltersInvert,
 
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
@@ -547,6 +665,8 @@ bool readConfig(void)
         configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
         configData.screenFiltersCct = 6500; // default temp, no-op
+        configData.screenFiltersGammaEnc = 1 * FLOAT_CONV_MULT; // 1.0f
+        configData.screenFiltersContrastEnc = 1 * FLOAT_CONV_MULT; // 1.0f
         configData.autobootTwlTitleId = AUTOBOOT_DEFAULT_TWL_TID;
         ret = false;
     }

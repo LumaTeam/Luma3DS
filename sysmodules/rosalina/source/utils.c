@@ -175,7 +175,7 @@ int floatToString(char *out, float f, u32 precision, bool pad)
         return sprintf(out, "-inf");
 
     static const u64 pow10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
-    precision = precision >= 10 ? 10 : precision;
+    precision = precision >= 6 ? 6 : precision; // result inaccurate after 1e-6
 
     u64 mult = pow10[precision];
     double f2 = fabs((double)f) * mult + 0.5;
@@ -188,5 +188,16 @@ int floatToString(char *out, float f, u32 precision, bool pad)
     if (pad)
         return sprintf(out, "%s%llu.%0*llu", sign, intPart, (int)precision, fracPart);
     else
-        return sprintf(out, "%s%llu.%llu", sign, intPart, fracPart);
+    {
+        int n = sprintf(out, "%s%llu", sign, intPart);
+        if (fracPart == 0)
+            return n;
+
+        n += sprintf(out + n, ".%0*llu", (int)precision, fracPart);
+        
+        int n2 = n - 1;
+        while (out[n2] == '0')
+            out[n2--] = '\0';
+        return n2;
+    }
 }

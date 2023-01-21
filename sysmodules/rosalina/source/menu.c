@@ -258,15 +258,32 @@ void menuThreadMain(void)
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
         svcSleepThread(500 * 1000 * 1000LL);
 
-    s64 out;
+    s64 out = 0;
+
     svcGetSystemInfo(&out, 0x10000, 0x102);
     screenFiltersCurrentTemperature = (int)(u32)out;
     if (screenFiltersCurrentTemperature < 1000 || screenFiltersCurrentTemperature > 25100)
         screenFiltersCurrentTemperature = 6500;
 
-    // Careful about race conditions here
-    if (screenFiltersCurrentTemperature != 6500)
-        ScreenFiltersMenu_SetCct(screenFiltersCurrentTemperature);
+    svcGetSystemInfo(&out, 0x10000, 0x104);
+    screenFiltersCurrentGamma = (float)(out / FLOAT_CONV_MULT);
+    if (screenFiltersCurrentGamma < 0.0f || screenFiltersCurrentGamma > 1411.0f)
+        screenFiltersCurrentGamma = 1.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x105);
+    screenFiltersCurrentContrast = (float)(out / FLOAT_CONV_MULT);
+    if (screenFiltersCurrentContrast < 0.0f || screenFiltersCurrentContrast > 255.0f)
+        screenFiltersCurrentContrast = 1.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x106);
+    screenFiltersCurrentBrightness = (float)(out / FLOAT_CONV_MULT);
+    if (screenFiltersCurrentBrightness < -1.0f || screenFiltersCurrentBrightness > 1.0f)
+        screenFiltersCurrentBrightness = 0.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x107);
+    screenFiltersCurrentInvert = (bool)out;
+
+    ScreenFiltersMenu_RestoreSettings();
 
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;

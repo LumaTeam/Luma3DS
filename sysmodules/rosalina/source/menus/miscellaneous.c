@@ -98,8 +98,12 @@ typedef struct CfgData {
 
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
-    u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+    u16 screenFiltersCct;
+    float screenFiltersGamma;
+    float screenFiltersContrast;
+    float screenFiltersBrightness;
+    bool screenFiltersInvert;
 
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;
@@ -297,6 +301,13 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
     static const int pinOptionToDigits[] = { 0, 4, 6, 8 };
     int pinNumDigits = pinOptionToDigits[MULTICONFIG(PIN)];
 
+    char screenFiltersGammaStr[32];
+    char screenFiltersContrastStr[32];
+    char screenFiltersBrightnessStr[32];
+    floatToString(screenFiltersGammaStr, cfg->screenFiltersGamma, 6, false);
+    floatToString(screenFiltersContrastStr, cfg->screenFiltersContrast, 6, false);
+    floatToString(screenFiltersBrightnessStr, cfg->screenFiltersBrightness, 6, false);
+
     int n = sprintf(
         out, (const char *)config_template_ini,
         lumaVerStr, lumaRevSuffixStr,
@@ -311,7 +322,11 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
         pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
-        (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+        (int)cfg->ntpTzOffetMinutes,
+
+        (int)cfg->screenFiltersCct, screenFiltersGammaStr,
+        screenFiltersContrastStr, screenFiltersBrightnessStr,
+        (int)cfg->screenFiltersInvert,
 
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
@@ -370,8 +385,12 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.splashDurationMsec = splashDurationMsec;
     configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
-    configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
+    configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
+    configData.screenFiltersGamma = screenFiltersCurrentGamma;
+    configData.screenFiltersContrast = screenFiltersCurrentContrast;
+    configData.screenFiltersBrightness = screenFiltersCurrentBrightness;
+    configData.screenFiltersInvert = screenFiltersCurrentInvert;
     configData.autobootTwlTitleId = autobootTwlTitleId;
     configData.autobootCtrAppmemtype = autobootCtrAppmemtype;
 

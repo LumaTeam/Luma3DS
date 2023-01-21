@@ -80,6 +80,18 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 0x103:
                     *out = (s64)cfwInfo.ntpTzOffetMinutes;
                     break;
+                case 0x104:
+                    *out = cfwInfo.screenFiltersGammaEnc;
+                    break;
+                case 0x105:
+                    *out = cfwInfo.screenFiltersContrastEnc;
+                    break;
+                case 0x106:
+                    *out = cfwInfo.screenFiltersBrightnessEnc;
+                    break;
+                case 0x107:
+                    *out = (s64)cfwInfo.screenFiltersInvert;
+                    break;
 
                 case 0x200: // isRelease
                     *out = cfwInfo.flags & 1;

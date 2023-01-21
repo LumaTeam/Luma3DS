@@ -163,7 +163,7 @@ static void handleShellNotification(u32 notificationId)
     if (notificationId == 0x213) {
         // Shell opened
         // Note that this notification is fired on system init
-        ScreenFiltersMenu_RestoreCct();
+        ScreenFiltersMenu_RestoreSettings();
         menuShouldExit = false;
     } else {
         // Shell closed
