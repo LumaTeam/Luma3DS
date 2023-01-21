@@ -153,13 +153,26 @@ void ScreenFiltersMenu_Set##name(void)\
 
 void ScreenFiltersMenu_RestoreSettings(void)
 {
+    // Precondition: menu has not been entered
+
     // Not initialized/default: return
     if (ScreenFiltersMenu_IsDefaultSettings())
         return;
 
     // Wait for GSP to restore the CCT table
     svcSleepThread(20 * 1000 * 1000LL);
+
+    // Pause GSP, then wait a bit to ensure GPU commands complete
+    // We need to ensure no GPU stuff is running when changing
+    // the gamma table (otherwise colors become and stay glitched).
+    svcKernelSetState(0x10000, 2);
+    svcSleepThread(5 * 1000 * 100LL);
+
     ScreenFiltersMenu_ApplyColorSettings();
+
+    // Unpause GSP
+    svcKernelSetState(0x10000, 2);
+    svcSleepThread(5 * 1000 * 100LL);
 }
 
 DEF_CCT_SETTER(6500, Default)

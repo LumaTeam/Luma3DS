@@ -255,8 +255,8 @@ void menuThreadMain(void)
     if(isN3DS)
         N3DSMenu_UpdateStatus();
 
-    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
-        svcSleepThread(500 * 1000 * 1000LL);
+    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu"))
+        svcSleepThread(250 * 1000 * 1000LL);
 
     s64 out = 0;
 
