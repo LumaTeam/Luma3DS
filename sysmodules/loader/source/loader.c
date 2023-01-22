@@ -108,6 +108,11 @@ static Result allocateProgramMemoryWrapper(prog_addrs_t *mapped, const ExHeader_
     return allocateProgramMemory(exhi, mapped->text_addr, mapped->total_size << 12);
 }
 
+static inline bool IsSysmoduleId(u64 tid)
+{
+    return (tid >> 32) == 0x00040130;
+}
+
 static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_addrs_t *mapped)
 {
     IFile file;
@@ -120,7 +125,20 @@ static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_
     const ExHeader_CodeSetInfo *csi = &exhi->sci.codeset_info;
     bool isCompressed = csi->flags.compress_exefs_code;
 
-    if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12))
+    bool codeLoadedExternally = false;
+    if (CONFIG(PATCHGAMES))
+    {
+        // Require both "load external FIRM & modules" and "patch games" for sysmodules
+        if (IsSysmoduleId(titleId))
+            codeLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
+        else
+            codeLoadedExternally = true;
+    }
+
+    if (codeLoadedExternally)
+        codeLoadedExternally = loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12);
+
+    if(!codeLoadedExternally)
     {
         archivePath.type = PATH_BINARY;
         archivePath.data = &programHandle;
@@ -178,7 +196,20 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
     else
     {
         u64 originalTitleId = exheaderInfo->aci.local_caps.title_id;
-        if(CONFIG(PATCHGAMES) && loadTitleExheaderInfo(exheaderInfo->aci.local_caps.title_id, exheaderInfo))
+        bool exhLoadedExternally = false;
+        if (CONFIG(PATCHGAMES))
+        {
+            // Require both "load external FIRM & modules" and "patch games" for sysmodules
+            if (IsSysmoduleId(originalTitleId))
+                exhLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
+            else
+                exhLoadedExternally = true;
+        }
+
+        if (exhLoadedExternally)
+            exhLoadedExternally = loadTitleExheaderInfo(originalTitleId, exheaderInfo);
+
+        if(exhLoadedExternally)
             exheaderInfo->aci.local_caps.title_id = originalTitleId;
     }
 

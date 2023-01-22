@@ -746,7 +746,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x26
         };
 
-        //Disable SecureInfo signature check
+        //Disable SecureInfo signature check (redundant)
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
@@ -784,7 +784,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 //mov r0, #0; bx lr
         };
 
-        //Disable CRR0 signature (RSA2048 with SHA256) check and CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
+        //Disable CRR0 signature (RSA2048 with SHA256) check (redundant) and CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -9,
@@ -845,6 +845,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     else if((progId & ~0xF0000001ULL) == 0x0004013000001A02LL) //DSP, SAFE_FIRM DSP
     {
+        // This patch is redundant
         static const u8 pattern[] = {
             0xE3, 0x10, 0x10, 0x80, 0xE2
         },
@@ -863,10 +864,18 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     if(CONFIG(PATCHGAMES))
     {
-        if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
-        if(!applyCodeIpsPatch(progId, code, size)) goto error;
+        bool isApp = ((progId >> 32) & ~0x12) == 0x00040000;
+        bool isApplet = (progId >> 32) == 0x00040030;
+        bool isSysmodule = (progId >> 32) == 0x00040130;
 
-        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000 || isHomeMenu)
+        bool shouldPatchIps = !isSysmodule || (isSysmodule && CONFIG(LOADEXTFIRMSANDMODULES));
+        if (shouldPatchIps)
+        {
+            if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
+            if(!applyCodeIpsPatch(progId, code, size)) goto error;
+        }
+
+        if(isApp || isApplet)
         {
             u8 mask,
                regionId,
