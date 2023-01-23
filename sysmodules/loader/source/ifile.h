@@ -18,3 +18,6 @@ Result IFile_GetSize(IFile *file, u64 *size);
 Result IFile_SetSize(IFile *file, u64 size);
 Result IFile_Read(IFile *file, u64 *total, void *buffer, u32 len);
 Result IFile_Write(IFile *file, u64 *total, const void *buffer, u32 len, u32 flags);
+
+Result IFile_ReadAt(IFile *file, u64 *total, void *buffer, u32 offset, u32 len);
+u32 IFile_Read2(IFile *file, void *buffer, u32 size, u32 offset);

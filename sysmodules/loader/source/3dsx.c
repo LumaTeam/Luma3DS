@@ -54,15 +54,6 @@ static inline u32 TranslateAddr(u32 off, _3DSX_LoadInfo* d, u32* offsets)
     return d->segAddrs[2] + off - offsets[1];
 }
 
-u32 IFile_Read2(IFile *file, void* buffer, u32 size, u32 offset)
-{
-    Result res;
-    u64 total = 0;
-    file->pos = offset;
-    res = IFile_Read(file, &total, buffer, size);
-    return R_SUCCEEDED(res) ? total : 0;
-}
-
 bool Ldr_Get3dsxSize(u32* pSize, IFile *file)
 {
     _3DSX_Header hdr;
