@@ -62,6 +62,7 @@ static const char *singleOptionIniNamesBoot[] = {
     "use_emunand_firm_if_r_pressed",
     "enable_external_firm_and_modules",
     "enable_game_patching",
+    "app_syscore_threads_on_core_2",
     "show_system_settings_string",
     "show_gba_boot_screen",
 };
@@ -544,7 +545,8 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG_VERSIONMAJOR, (int)CONFIG_VERSIONMINOR,
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
         (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
-        (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
+        (int)CONFIG(REDIRECTAPPTHREADS), (int)CONFIG(PATCHVERSTRING),
+        (int)CONFIG(SHOWGBABOOT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -716,6 +718,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Use EmuNAND FIRM if booting with R",
                                                "( ) Enable loading external FIRMs and modules",
                                                "( ) Enable game patching",
+                                               "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
                                              };
@@ -793,6 +796,15 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "for out-of-region games work.\n\n"
                                                  "Refer to the wiki for instructions.",
 
+                                                 "Redirect app. threads that would spawn\n"
+                                                 "on core1, to core2 (which is an extra\n"
+                                                 "CPU core for applications that usually\n"
+                                                 "remains unused).\n\n"
+                                                 "This improves the performance of very\n"
+                                                 "demanding games (like Pok\x82mon US/UM)\n" // CP437
+                                                 "by about 10%. Can break some games\n"
+                                                 "and other applications.\n",
+
                                                  "Enable showing the current NAND/FIRM:\n\n"
                                                  "\t* Sys  = SysNAND\n"
                                                  "\t* Emu  = EmuNAND 1\n"
@@ -839,6 +851,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = true },
         { .visible = true },
+        { .visible = ISN3DS },
         { .visible = true },
         { .visible = true },
     };

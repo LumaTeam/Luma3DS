@@ -49,6 +49,7 @@ enum singleOptions
     USEEMUFIRM,
     LOADEXTFIRMSANDMODULES,
     PATCHGAMES,
+    REDIRECTAPPTHREADS,
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHUNITINFO,
@@ -315,7 +316,8 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
         (int)cfg->formatVersionMajor, (int)cfg->formatVersionMinor,
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
         (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
-        (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
+        (int)CONFIG(REDIRECTAPPTHREADS), (int)CONFIG(PATCHVERSTRING),
+        (int)CONFIG(SHOWGBABOOT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
