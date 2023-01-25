@@ -72,63 +72,75 @@ static const char serviceList[32][8] =
 
 static const u64 dependencyListNativeFirm[] =
 {
-    0x0004013000002402LL, //ac
-    0x0004013000001502LL, //am
-    0x0004013000001702LL, //cfg
-    0x0004013000001802LL, //codec
-    0x0004013000002702LL, //csnd
-    0x0004013000001A02LL, //dsp
-    0x0004013000001B02LL, //gpio
-    0x0004013000001C02LL, //gsp
-    0x0004013000001D02LL, //hid
-    0x0004013000002902LL, //http
-    0x0004013000001E02LL, //i2c
-    0x0004013000003302LL, //ir
-    0x0004013000001F02LL, //mcu
-    0x0004013000002C02LL, //nim
-    0x0004013000002D02LL, //nwm
-    0x0004013000002102LL, //pdn
-    0x0004013000003102LL, //ps
-    0x0004013000002202LL, //ptm
-    0x0004013000002E02LL, //socket
-    0x0004013000002302LL, //spi
-    0x0004013000002F02LL, //ssl
+    // Initialize essential device drivers + infra stuff that weren't
+    // previously started first and foremost.
+    0x0004013000002D02LL, // nwm
+    0x0004013000002402LL, // ac
+    0x0004013000002E02LL, // socket
+    0x0004013000002B02LL, // ndm
+    0x0004013000001C02LL, // gsp
+    0x0004013000001802LL, // codec
+    0x0004013000002702LL, // csnd
+    0x0004013000001A02LL, // dsp
+
+    0x0004013000001502LL, // am
+    0x0004013000001702LL, // cfg
+    0x0004013000003202LL, // friends
+    0x0004013000001B02LL, // gpio
+    0x0004013000001D02LL, // hid
+    0x0004013000002902LL, // http
+    0x0004013000001E02LL, // i2c
+    0x0004013000003302LL, // ir
+    0x0004013000001F02LL, // mcu
+    0x0004013000002C02LL, // nim
+    0x0004013000002102LL, // pdn
+    0x0004013000003102LL, // ps
+    0x0004013000002202LL, // ptm
+    0x0004013000002302LL, // spi
+    0x0004013000002F02LL, // ssl
 
     // Not present on SAFE_FIRM:
-    0x0004013000003402LL, //boss
-    0x0004013000001602LL, //camera
-    0x0004013000002802LL, //dlp
-    0x0004013000002002LL, //mic
-    0x0004013000002B02LL, //ndm
-    0x0004013000003502LL, //news
-    0x0004013000003702LL, //ro
+    0x0004013000003802LL, // act
+    0x0004013000003402LL, // boss
+    0x0004013000001602LL, // camera
+    0x0004013000002602LL, // cecd
+    0x0004013000002802LL, // dlp
+    0x0004013000002002LL, // mic
+    0x0004013000003502LL, // news
+    0x0004013000003702LL, // ro
+
+    // We won't be launching MP at it messes
+    // with NWM exclusive mode
 };
 
 static const u64 dependencyListSafeFirm[] =
 {
-    0x0004013000002403LL, //ac
-    0x0004013000001503LL, //am
-    0x0004013000001703LL, //cfg
-    0x0004013000001803LL, //codec
-    0x0004013000002703LL, //csnd
-    0x0004013000001A03LL, //dsp
-    0x0004013000001B03LL, //gpio
-    0x0004013000001C03LL, //gsp
-    0x0004013000001D03LL, //hid
-    0x0004013000002903LL, //http
-    0x0004013000001E03LL, //i2c
-    0x0004013000003303LL, //ir
-    0x0004013000001F03LL, //mcu
-    0x0004013000002C03LL, //nim
-    0x0004013000002D03LL, //nwm
-    0x0004013000002103LL, //pdn
-    0x0004013000003103LL, //ps
-    0x0004013000002203LL, //ptm
-    0x0004013000002E03LL, //socket
-    0x0004013000002303LL, //spi
-    0x0004013000002F03LL, //ssl
+    // Initialize essential device drivers + infra stuff that weren't
+    // previously started first and foremost.
+    0x0004013000002D03LL, // nwm
+    0x0004013000002403LL, // ac
+    0x0004013000002E03LL, // socket
+    0x0004013000001C03LL, // gsp
+    0x0004013000001803LL, // codec
+    0x0004013000002703LL, // csnd
+    0x0004013000001A03LL, // dsp
 
-    0x0004013000003203LL, //friends (wouldn't be launched otherwise)
+    0x0004013000001503LL, // am
+    0x0004013000001703LL, // cfg
+    0x0004013000003203LL, // friends
+
+    0x0004013000001B03LL, // gpio
+    0x0004013000001D03LL, // hid
+    0x0004013000002903LL, // http
+    0x0004013000001E03LL, // i2c
+    0x0004013000003303LL, // ir
+    0x0004013000001F03LL, // mcu
+    0x0004013000002C03LL, // nim
+    0x0004013000002103LL, // pdn
+    0x0004013000003103LL, // ps
+    0x0004013000002203LL, // ptm
+    0x0004013000002303LL, // spi
+    0x0004013000002F03LL, // ssl
 };
 
 static const u32 kernelCaps[] =
