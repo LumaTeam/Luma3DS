@@ -34,7 +34,7 @@
 
 extern bool isN3DS;
 
-static const char serviceList[32][8] =
+static const char serviceList[34][8] =
 {
     "APT:U",
     "ac:u",
@@ -68,79 +68,104 @@ static const char serviceList[32][8] =
     "soc:U",
     "ssl:C",
     "y2r:u",
+
+    // Discarded below 9.6:
+    "nfc:u",
+    "mvd:STD",
 };
 
-static const u64 dependencyListNativeFirm[] =
+// N3DS-only titles are denoted as -x
+// PM (official and reimpl) doesn't actually support recursive dependency
+// loading, and some sysmodules don't even list all their dependencies, so
+// we're flattening the dependency map here and listing all the sysmodules in
+// an optimal boot order.
+static const s16 dependencyListNativeFirmUids[] =
 {
-    // Initialize essential device drivers + infra stuff that weren't
-    // previously started first and foremost.
-    0x0004013000002D02LL, // nwm
-    0x0004013000002402LL, // ac
-    0x0004013000002E02LL, // socket
-    0x0004013000002B02LL, // ndm
-    0x0004013000001C02LL, // gsp
-    0x0004013000001802LL, // codec
-    0x0004013000002702LL, // csnd
-    0x0004013000001A02LL, // dsp
+    0x1B,   // gpio
+    0x1E,   // i2c
+    0x21,   // pdn
+    0x23,   // spi
 
-    0x0004013000001502LL, // am
-    0x0004013000001702LL, // cfg
-    0x0004013000003202LL, // friends
-    0x0004013000001B02LL, // gpio
-    0x0004013000001D02LL, // hid
-    0x0004013000002902LL, // http
-    0x0004013000001E02LL, // i2c
-    0x0004013000003302LL, // ir
-    0x0004013000001F02LL, // mcu
-    0x0004013000002C02LL, // nim
-    0x0004013000002102LL, // pdn
-    0x0004013000003102LL, // ps
-    0x0004013000002202LL, // ptm
-    0x0004013000002302LL, // spi
-    0x0004013000002F02LL, // ssl
+    0x1F,   // mcu
+    0x31,   // ps
+    0x17,   // cfg
 
-    // Not present on SAFE_FIRM:
-    0x0004013000003802LL, // act
-    0x0004013000003402LL, // boss
-    0x0004013000001602LL, // camera
-    0x0004013000002602LL, // cecd
-    0x0004013000002802LL, // dlp
-    0x0004013000002002LL, // mic
-    0x0004013000003502LL, // news
-    0x0004013000003702LL, // ro
+    0x22,   // ptm
+    0x80,   // ns
 
-    // We won't be launching MP at it messes
-    // with NWM exclusive mode
+    // The modules above were all previously launched
+    // when launching NS.
+
+    0x18,   // codec (implicit dep for hid)
+    0x1D,   // hid
+    0x27,   // csnd (for camera)
+    0x16,   // camera
+    -0x42,  // qtm
+    0x1C,   // gsp
+
+    0x1A,   // dsp
+    0x20,   // mic
+    0x33,   // ir
+
+    0x2D,   // nwm
+    0x2E,   // socket
+    0x2F,   // ssl
+    0x29,   // http
+    0x24,   // ac
+
+    0x32,   // friends
+
+    0x15,   // am
+
+    0x26,   // cecd
+    0x34,   // boss
+    0x2C,   // nim
+    0x2B,   // ndm
+    0x35,   // news
+
+    -0x41,  // mvd
+    -0x40,  // nfc
+
+    0x38,   // act
+    0x37,   // ro
+    0x28,   // dlp
+    0x2A,   // mp
 };
 
-static const u64 dependencyListSafeFirm[] =
+static const s16 dependencyListSafeFirmUids[] =
 {
-    // Initialize essential device drivers + infra stuff that weren't
-    // previously started first and foremost.
-    0x0004013000002D03LL, // nwm
-    0x0004013000002403LL, // ac
-    0x0004013000002E03LL, // socket
-    0x0004013000001C03LL, // gsp
-    0x0004013000001803LL, // codec
-    0x0004013000002703LL, // csnd
-    0x0004013000001A03LL, // dsp
+    0x1B,   // gpio
+    0x1E,   // i2c
+    0x21,   // pdn
+    0x23,   // spi
 
-    0x0004013000001503LL, // am
-    0x0004013000001703LL, // cfg
-    0x0004013000003203LL, // friends
+    0x1F,   // mcu
+    0x31,   // ps
+    0x17,   // cfg
 
-    0x0004013000001B03LL, // gpio
-    0x0004013000001D03LL, // hid
-    0x0004013000002903LL, // http
-    0x0004013000001E03LL, // i2c
-    0x0004013000003303LL, // ir
-    0x0004013000001F03LL, // mcu
-    0x0004013000002C03LL, // nim
-    0x0004013000002103LL, // pdn
-    0x0004013000003103LL, // ps
-    0x0004013000002203LL, // ptm
-    0x0004013000002303LL, // spi
-    0x0004013000002F03LL, // ssl
+    0x22,   // ptm
+    0x80,   // ns
+
+    // The modules above were all previously launched
+    // when launching NS.
+
+    0x18,   // codec (implicit dep for hid)
+    0x1D,   // hid
+    0x27,   // csnd
+    0x1C,   // gsp
+
+    0x1A,   // dsp
+    0x33,   // ir
+
+    0x2D,   // nwm
+    0x2E,   // socket
+    0x2F,   // ssl
+    0x29,   // http
+    0x24,   // ac
+
+    0x32,   // friends
+
+    0x15,   // am
 };
 
 static const u32 kernelCaps[] =
@@ -197,10 +222,35 @@ void hbldrPatchExHeaderInfo(ExHeader_Info *exhi)
     memset(&exhi->sci.dependencies, 0, sizeof(exhi->sci.dependencies));
 
     u32 coreVer = OS_KernelConfig->kernel_syscore_ver;
-    if (coreVer == 2)
-        memcpy(exhi->sci.dependencies, dependencyListNativeFirm, sizeof(dependencyListNativeFirm));
-    else if (coreVer == 3)
-        memcpy(exhi->sci.dependencies, dependencyListSafeFirm, sizeof(dependencyListSafeFirm));
+    u32 deplistSize;
+    const s16 *deplist;
+    switch (coreVer) {
+        case 2:
+            deplist = dependencyListNativeFirmUids;
+            deplistSize = sizeof(dependencyListNativeFirmUids)/sizeof(dependencyListNativeFirmUids[0]);
+            break;
+        case 3:
+            deplist = dependencyListSafeFirmUids;
+            deplistSize = sizeof(dependencyListSafeFirmUids)/sizeof(dependencyListSafeFirmUids[0]);
+            break;
+        default:
+            panic(0);
+            break;
+    }
+
+    for (u32 i = 0; i < deplistSize; i++)
+    {
+        static const u64 mask = 0x0004013000000000ull;
+        bool n3dsOnly = deplist[i] < 0;
+        u32 n3dsMask = n3dsOnly ? 0x20000000 : 0;
+        u32 uid = n3dsOnly ? -deplist[i] : deplist[i];
+
+        // Enable O3DS NFC on 9.3 and above
+        if (uid == 0x40 && GET_VERSION_MINOR(osGetKernelVersion()) >= 48)
+            n3dsMask = 0;
+
+        exhi->sci.dependencies[i] = mask | n3dsMask | (uid << 8) | coreVer;
+    }
 
     ExHeader_Arm11SystemLocalCapabilities* localcaps0 = &exhi->aci.local_caps;
 
@@ -226,8 +276,10 @@ void hbldrPatchExHeaderInfo(ExHeader_Info *exhi)
     localcaps0->storage_info.use_extended_savedata_access = true; // Whatever
 
     // We have a patched SM, so whatever...
+    // Only 32 services if not on 9.6+ NFIRM
+    u32 numServices = GET_VERSION_MINOR(osGetKernelVersion()) < 50 || coreVer != 2 ? 32 : 34;
     memset(localcaps0->service_access, 0, sizeof(localcaps0->service_access));
-    memcpy(localcaps0->service_access, serviceList, sizeof(serviceList));
+    memcpy(localcaps0->service_access, serviceList, 8 * numServices);
 
     localcaps0->reslimit_category = RESLIMIT_CATEGORY_APPLICATION;
 
@@ -237,18 +289,6 @@ void hbldrPatchExHeaderInfo(ExHeader_Info *exhi)
 
     // Set kernel release version to the current kernel version
     kcaps0->descriptors[0] = 0xFC000000 | (osGetKernelVersion() >> 16);
-
-    if (GET_VERSION_MINOR(osGetKernelVersion()) >= 50 && coreVer == 2) // 9.6+ NFIRM
-    {
-        u64 lastdep = sizeof(dependencyListNativeFirm)/8;
-        exhi->sci.dependencies[lastdep++] = 0x0004013000004002ULL; // nfc
-        strncpy((char*)&localcaps0->service_access[0x20], "nfc:u", 8);
-        if (isN3DS)
-        {
-            exhi->sci.dependencies[lastdep++] = 0x0004013020004102ULL; // mvd
-            strncpy((char*)&localcaps0->service_access[0x21], "mvd:STD", 8);
-        }
-    }
 }
 
 Result hbldrLoadProcess(Handle *outProcessHandle, const ExHeader_Info *exhi)

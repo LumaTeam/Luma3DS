@@ -88,7 +88,7 @@ void initSystem(void)
 
     miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
         "Switch the hb. title to the current app." :
-        "Switch the hb. title to hblauncher_loader";
+        "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
 
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
