@@ -185,8 +185,14 @@ static Result menuUpdateMcuInfo(void)
     if (!isServiceUsable("mcu::HWC"))
         return -1;
 
-    res = mcuHwcInit();
+    Handle *mcuHwcHandlePtr = mcuHwcGetSessionHandle();
+    *mcuHwcHandlePtr = 0;
+
+    res = srvGetServiceHandle(mcuHwcHandlePtr, "mcu::HWC");
+    // Try to steal the handle if some other process is using the service (custom SVC)
     if (R_FAILED(res))
+        res = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, mcuHwcHandlePtr, "mcu::HWC");
+    if (res != 0)
         return res;
 
     // Read single-byte mcu regs 0x0A to 0x0D directly
@@ -217,7 +223,7 @@ static Result menuUpdateMcuInfo(void)
         mcuFwVersion = SYSTEM_VERSION(major - 0x10, minor, 0);
     }
 
-    mcuHwcExit();
+    svcCloseHandle(*mcuHwcHandlePtr);
     return res;
 }
 
@@ -365,7 +371,7 @@ static void menuDraw(Menu *menu, u32 selected)
     else
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
 
-    if(R_SUCCEEDED(mcuInfoRes))
+    if(mcuInfoRes == 0)
     {
         u32 voltageInt = (u32)batteryVoltage;
         u32 voltageFrac = (u32)(batteryVoltage * 100.0f) % 100u;
