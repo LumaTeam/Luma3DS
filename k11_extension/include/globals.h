@@ -115,6 +115,14 @@ extern void (*initFPU)(void);
 extern void (*mcuReboot)(void);
 extern void (*coreBarrier)(void);
 
+typedef struct ScreenFiltersCfgData {
+    u16 cct;
+    bool invert;
+    s64 gammaEnc;
+    s64 contrastEnc;
+    s64 brightnessEnc;
+} ScreenFiltersCfgData;
+
 typedef struct CfwInfo
 {
     char magic[4];
@@ -132,11 +140,10 @@ typedef struct CfwInfo
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
     s16 ntpTzOffetMinutes;
-    u16 screenFiltersCct;
-    s64 screenFiltersGammaEnc;
-    s64 screenFiltersContrastEnc;
-    s64 screenFiltersBrightnessEnc;
-    bool screenFiltersInvert;
+
+    ScreenFiltersCfgData topScreenFilter;
+    ScreenFiltersCfgData bottomScreenFilter;
+
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;
 } CfwInfo;

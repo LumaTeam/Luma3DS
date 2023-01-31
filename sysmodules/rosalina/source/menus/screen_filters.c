@@ -42,19 +42,15 @@ typedef union {
     u32 raw;
 } Pixel;
 
-int screenFiltersCurrentTemperature = 6500;
-float screenFiltersCurrentGamma = 1.0f;
-float screenFiltersCurrentContrast = 1.0f;
-float screenFiltersCurrentBrightness = 0.0f;
-bool screenFiltersCurrentInvert = false;
+ScreenFilter topScreenFilter;
+ScreenFilter bottomScreenFilter;
 
 static inline bool ScreenFiltersMenu_IsDefaultSettings(void)
 {
-    bool ret = screenFiltersCurrentTemperature == 6500;
-    ret = ret && screenFiltersCurrentGamma == 1.0f;
-    ret = ret && screenFiltersCurrentContrast == 1.0f;
-    ret = ret && screenFiltersCurrentBrightness == 0.0f;
-    return ret;
+    static const ScreenFilter defaultFilter = { 6500, false, 1.0f, 1.0f, 0.0f };
+    bool ok1 = memcmp(&topScreenFilter, &defaultFilter, sizeof(defaultFilter)) == 0;
+    bool ok2 = memcmp(&bottomScreenFilter, &defaultFilter, sizeof(defaultFilter)) == 0;
+    return ok1 && ok2;
 }
 
 static inline u8 ScreenFiltersMenu_GetColorLevel(int inLevel, float wp, float a, float b, float g)
@@ -84,10 +80,12 @@ static u8 ScreenFilterMenu_CalculatePolynomialColorLutComponent(const float coef
     return (u8)CLAMP(levelInt, 0, 255); // clamp again just to be sure
 }
 
-static void ScreenFilterMenu_WritePolynomialColorLut(const float coeffs[][3], bool invert, float gamma, u32 dim)
+static void ScreenFilterMenu_WritePolynomialColorLut(bool top, const float coeffs[][3], bool invert, float gamma, u32 dim)
 {
-    GPU_FB_TOP_COL_LUT_INDEX = 0;
-    GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
+    if (top)
+        GPU_FB_TOP_COL_LUT_INDEX = 0;
+    else
+        GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
 
     for (int i = 0; i <= 255; i++) {
         Pixel px;
@@ -96,35 +94,39 @@ static void ScreenFilterMenu_WritePolynomialColorLut(const float coeffs[][3], bo
         px.g = ScreenFilterMenu_CalculatePolynomialColorLutComponent(coeffs, 1, gamma, dim, inLevel);
         px.b = ScreenFilterMenu_CalculatePolynomialColorLutComponent(coeffs, 2, gamma, dim, inLevel);
         px.z = 0;
-        GPU_FB_TOP_COL_LUT_ELEM = px.raw;
-        GPU_FB_BOTTOM_COL_LUT_ELEM = px.raw;
+
+        if (top)
+            GPU_FB_TOP_COL_LUT_ELEM = px.raw;
+        else
+            GPU_FB_BOTTOM_COL_LUT_ELEM = px.raw;
     }
 }
 
-static void ScreenFiltersMenu_ApplyColorSettings(void)
+static void ScreenFiltersMenu_ApplyColorSettings(bool top)
 {
-    GPU_FB_TOP_COL_LUT_INDEX = 0;
-    GPU_FB_BOTTOM_COL_LUT_INDEX = 0;
+    const ScreenFilter *filter = top ? &topScreenFilter : &bottomScreenFilter;
 
     float wp[3];
-    colorramp_get_white_point(wp, screenFiltersCurrentTemperature);
-    float a = screenFiltersCurrentContrast;
-    float g = screenFiltersCurrentGamma;
-    float b = screenFiltersCurrentBrightness;
-    bool inv = screenFiltersCurrentInvert;
+    colorramp_get_white_point(wp, filter->cct);
+    float a = filter->contrast;
+    float b = filter->brightness;
+    float g = filter->gamma;
+    bool inv = filter->invert;
 
     float poly[][3] = {
         { b, b, b },                            // x^0
         { a * wp[0], a * wp[1], a * wp[2] },    // x^1
     };
 
-    ScreenFilterMenu_WritePolynomialColorLut(poly, inv, g, 1);
+    ScreenFilterMenu_WritePolynomialColorLut(top, poly, inv, g, 1);
 }
 
-static void ScreenFiltersMenu_SetCct(int cct)
+static void ScreenFiltersMenu_SetCct(u16 cct)
 {
-    screenFiltersCurrentTemperature = cct;
-    ScreenFiltersMenu_ApplyColorSettings();
+    topScreenFilter.cct = cct;
+    bottomScreenFilter.cct = cct;
+    ScreenFiltersMenu_ApplyColorSettings(true);
+    ScreenFiltersMenu_ApplyColorSettings(false);
 }
 
 Menu screenFiltersMenu = {
@@ -168,11 +170,65 @@ void ScreenFiltersMenu_RestoreSettings(void)
     svcKernelSetState(0x10000, 2);
     svcSleepThread(5 * 1000 * 100LL);
 
-    ScreenFiltersMenu_ApplyColorSettings();
+    ScreenFiltersMenu_ApplyColorSettings(true);
+    ScreenFiltersMenu_ApplyColorSettings(false);
 
     // Unpause GSP
     svcKernelSetState(0x10000, 2);
     svcSleepThread(5 * 1000 * 100LL);
+}
+
+void ScreenFiltersMenu_LoadConfig(void)
+{
+    s64 out = 0;
+
+    svcGetSystemInfo(&out, 0x10000, 0x102);
+    topScreenFilter.cct = (u16)out;
+    if (topScreenFilter.cct < 1000 || topScreenFilter.cct > 25100)
+        topScreenFilter.cct = 6500;
+
+    svcGetSystemInfo(&out, 0x10000, 0x104);
+    topScreenFilter.gamma = (float)(out / FLOAT_CONV_MULT);
+    if (topScreenFilter.gamma < 0.0f || topScreenFilter.gamma > 1411.0f)
+        topScreenFilter.gamma = 1.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x105);
+    topScreenFilter.contrast = (float)(out / FLOAT_CONV_MULT);
+    if (topScreenFilter.contrast < 0.0f || topScreenFilter.contrast > 255.0f)
+        topScreenFilter.contrast = 1.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x106);
+    topScreenFilter.brightness = (float)(out / FLOAT_CONV_MULT);
+    if (topScreenFilter.brightness < -1.0f || topScreenFilter.brightness > 1.0f)
+        topScreenFilter.brightness = 0.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x107);
+    topScreenFilter.invert = (bool)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x108);
+    bottomScreenFilter.cct = (u16)out;
+    if (bottomScreenFilter.cct < 1000 || bottomScreenFilter.cct > 25100)
+        bottomScreenFilter.cct = 6500;
+
+    svcGetSystemInfo(&out, 0x10000, 0x109);
+    bottomScreenFilter.gamma = (float)(out / FLOAT_CONV_MULT);
+    if (bottomScreenFilter.gamma < 0.0f || bottomScreenFilter.gamma > 1411.0f)
+        bottomScreenFilter.gamma = 1.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x10A);
+    bottomScreenFilter.contrast = (float)(out / FLOAT_CONV_MULT);
+    if (bottomScreenFilter.contrast < 0.0f || bottomScreenFilter.contrast > 255.0f)
+        bottomScreenFilter.contrast = 1.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x10B);
+    bottomScreenFilter.brightness = (float)(out / FLOAT_CONV_MULT);
+    if (bottomScreenFilter.brightness < -1.0f || bottomScreenFilter.brightness > 1.0f)
+        bottomScreenFilter.brightness = 0.0f;
+
+    svcGetSystemInfo(&out, 0x10000, 0x10C);
+    bottomScreenFilter.invert = (bool)out;
+
+    ScreenFiltersMenu_RestoreSettings();
 }
 
 DEF_CCT_SETTER(6500, Default)
@@ -187,35 +243,77 @@ DEF_CCT_SETTER(2300, WarmIncandescent)
 DEF_CCT_SETTER(1900, Candle)
 DEF_CCT_SETTER(1200, Ember)
 
-static void ScreenFiltersMenu_AdvancedConfigurationChangeValue(int pos, int mult)
+static void ScreenFiltersMenu_ClampFilter(ScreenFilter *filter)
 {
-    switch (pos)
+    filter->cct = CLAMP(filter->cct, 1000, 25100);
+    filter->gamma = CLAMP(filter->gamma, 0.0f, 1411.0f); // ln(255) / ln(254/255): (254/255)^1411 <= 1/255
+    filter->contrast = CLAMP(filter->contrast, 0.0f, 255.0f);
+    filter->brightness = CLAMP(filter->brightness, -1.0f, 1.0f);
+}
+
+static void ScreenFiltersMenu_AdvancedConfigurationChangeValue(int pos, int mult, bool sync)
+{
+    ScreenFilter *filter = pos >= 5 ? &bottomScreenFilter : &topScreenFilter;
+    ScreenFilter *otherFilter = pos >= 5 ? &topScreenFilter : &bottomScreenFilter;
+
+    int otherMult = sync ? mult : 0;
+
+    switch (pos % 5)
     {
         case 0:
-            screenFiltersCurrentTemperature += 100 * mult;
+            filter->cct += 100 * mult;
+            otherFilter->cct += 100 * otherMult;
             break;
         case 1:
-            screenFiltersCurrentGamma += 0.01f * mult;
+            filter->gamma += 0.01f * mult;
+            otherFilter->gamma += 0.01f * otherMult;
             break;
         case 2:
-            screenFiltersCurrentContrast += 0.01f * mult;
+            filter->contrast += 0.01f * mult;
+            otherFilter->contrast += 0.01f * otherMult;
             break;
         case 3:
-            screenFiltersCurrentBrightness += 0.01f * mult;
+            filter->brightness += 0.01f * mult;
+            otherFilter->brightness += 0.01f * otherMult;
             break;
         case 4:
-            screenFiltersCurrentInvert = !screenFiltersCurrentInvert;
+            filter->invert = !filter->invert;
+            otherFilter->invert = sync ? !otherFilter->invert : otherFilter->invert;
             break;
     }
 
     // Clamp
-    screenFiltersCurrentTemperature = CLAMP(screenFiltersCurrentTemperature, 1000, 25100);
-    screenFiltersCurrentGamma = CLAMP(screenFiltersCurrentGamma, 0.0f, 1411.0f); // ln(255) / ln(254/255): (254/255)^1411 <= 1/255
-    screenFiltersCurrentContrast = CLAMP(screenFiltersCurrentContrast, 0.0f, 255.0f);
-    screenFiltersCurrentBrightness = CLAMP(screenFiltersCurrentBrightness, -1.0f, 1.0f);
+    ScreenFiltersMenu_ClampFilter(&topScreenFilter);
+    ScreenFiltersMenu_ClampFilter(&bottomScreenFilter);
 
     // Update the LUT
-    ScreenFiltersMenu_ApplyColorSettings();
+    ScreenFiltersMenu_ApplyColorSettings(true);
+    ScreenFiltersMenu_ApplyColorSettings(false);
+}
+
+static u32 ScreenFiltersMenu_AdvancedConfigurationHelper(const ScreenFilter *filter, int offset, int pos, u32 posY)
+{
+    char buf[64];
+
+    Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == offset++ ? '>' : ' ');
+    posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Temperature: %12dK    \n", filter->cct);
+
+    floatToString(buf, filter->gamma, 2, true);
+    Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == offset++ ? '>' : ' ');
+    posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Gamma:       %13s    \n", buf);
+
+    floatToString(buf, filter->contrast, 2, true);
+    Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == offset++ ? '>' : ' ');
+    posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Contrast:    %13s    \n", buf);
+
+    floatToString(buf, filter->brightness, 2, true);
+    Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == offset++ ? '>' : ' ');
+    posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Brightness:  %13s    \n", buf);
+
+    Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == offset++ ? '>' : ' ');
+    posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Invert:      %13s    \n", filter->invert ? "true" : "false");
+
+    return posY;
 }
 
 void ScreenFiltersMenu_AdvancedConfiguration(void)
@@ -224,9 +322,10 @@ void ScreenFiltersMenu_AdvancedConfiguration(void)
     u32 input = 0;
     u32 held = 0;
 
-    char buf[64];
     int pos = 0;
     int mult = 1;
+
+    bool sync = true;
 
     do
     {
@@ -234,38 +333,29 @@ void ScreenFiltersMenu_AdvancedConfiguration(void)
         Draw_DrawString(10, 10, COLOR_TITLE, "Screen filters menu");
 
         posY = 30;
-        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Use left/right to increase/decrease the sel. value.\n");
-        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Hold R to change the value faster.\n") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Use left/right to increase/decrease the sel. value.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold R to change the value faster.\n");
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Update both screens: %s (L to toggle)   \n", sync ? "yes" : "no") + SPACING_Y;
 
-        Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 0 ? '>' : ' ');
-        posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Temperature: %12dK    \n", screenFiltersCurrentTemperature);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Top screen:\n");
+        posY = ScreenFiltersMenu_AdvancedConfigurationHelper(&topScreenFilter, 0, pos, posY) + SPACING_Y;
 
-        floatToString(buf, screenFiltersCurrentGamma, 2, true);
-        Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 1 ? '>' : ' ');
-        posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Gamma:       %13s    \n", buf);
-
-        floatToString(buf, screenFiltersCurrentContrast, 2, true);
-        Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 2 ? '>' : ' ');
-        posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Contrast:    %13s    \n", buf);
-
-        floatToString(buf, screenFiltersCurrentBrightness, 2, true);
-        Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 3 ? '>' : ' ');
-        posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Brightness:  %13s    \n", buf);
-
-        Draw_DrawCharacter(10, posY, COLOR_TITLE, pos == 4 ? '>' : ' ');
-        posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "Invert:      %13s    \n", screenFiltersCurrentInvert ? "true" : "false");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Bottom screen:\n");
+        posY = ScreenFiltersMenu_AdvancedConfigurationHelper(&bottomScreenFilter, 5, pos, posY) + SPACING_Y;
 
         input = waitInputWithTimeoutEx(&held, -1);
         mult = (held & KEY_R) ? 10 : 1;
 
+        if (input & KEY_L)
+            sync = !sync;
         if (input & KEY_LEFT)
-            ScreenFiltersMenu_AdvancedConfigurationChangeValue(pos, -mult);
+            ScreenFiltersMenu_AdvancedConfigurationChangeValue(pos, -mult, sync);
         if (input & KEY_RIGHT)
-            ScreenFiltersMenu_AdvancedConfigurationChangeValue(pos, mult);
+            ScreenFiltersMenu_AdvancedConfigurationChangeValue(pos, mult, sync);
         if (input & KEY_UP)
-            pos = (5 + pos - 1) % 5;
+            pos = (10 + pos - 1) % 10;
         if (input & KEY_DOWN)
-            pos = (pos + 1) % 5;
+            pos = (pos + 1) % 10;
 
         Draw_FlushFramebuffer();
         Draw_Unlock();

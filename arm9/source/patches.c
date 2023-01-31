@@ -133,11 +133,10 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
             s16 ntpTzOffetMinutes;
-            u16 screenFiltersCct;
-            s64 screenFiltersGammaEnc;
-            s64 screenFiltersContrastEnc;
-            s64 screenFiltersBrightnessEnc;
-            bool screenFiltersInvert;
+
+            ScreenFiltersCfgData topScreenFilter;
+            ScreenFiltersCfgData bottomScreenFilter;
+
             u64 autobootTwlTitleId;
             u8 autobootCtrAppmemtype;
         } info;
@@ -214,11 +213,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->ntpTzOffetMinutes = configData.ntpTzOffetMinutes;
-    info->screenFiltersCct = configData.screenFiltersCct;
-    info->screenFiltersGammaEnc = configData.screenFiltersGammaEnc;
-    info->screenFiltersContrastEnc = configData.screenFiltersContrastEnc;
-    info->screenFiltersBrightnessEnc = configData.screenFiltersBrightnessEnc;
-    info->screenFiltersInvert = configData.screenFiltersInvert;
+    info->topScreenFilter = configData.topScreenFilter;
+    info->bottomScreenFilter = configData.bottomScreenFilter;
     info->autobootTwlTitleId = configData.autobootTwlTitleId;
     info->autobootCtrAppmemtype = configData.autobootCtrAppmemtype;
     info->versionMajor = VERSION_MAJOR;

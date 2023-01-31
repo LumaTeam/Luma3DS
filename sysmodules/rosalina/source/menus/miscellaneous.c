@@ -100,11 +100,9 @@ typedef struct CfgData {
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
     s16 ntpTzOffetMinutes;
-    u16 screenFiltersCct;
-    float screenFiltersGamma;
-    float screenFiltersContrast;
-    float screenFiltersBrightness;
-    bool screenFiltersInvert;
+
+    ScreenFilter topScreenFilter;
+    ScreenFilter bottomScreenFilter;
 
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;
@@ -302,12 +300,19 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
     static const int pinOptionToDigits[] = { 0, 4, 6, 8 };
     int pinNumDigits = pinOptionToDigits[MULTICONFIG(PIN)];
 
-    char screenFiltersGammaStr[32];
-    char screenFiltersContrastStr[32];
-    char screenFiltersBrightnessStr[32];
-    floatToString(screenFiltersGammaStr, cfg->screenFiltersGamma, 6, false);
-    floatToString(screenFiltersContrastStr, cfg->screenFiltersContrast, 6, false);
-    floatToString(screenFiltersBrightnessStr, cfg->screenFiltersBrightness, 6, false);
+    char topScreenFilterGammaStr[32];
+    char topScreenFilterContrastStr[32];
+    char topScreenFilterBrightnessStr[32];
+    floatToString(topScreenFilterGammaStr, cfg->topScreenFilter.gamma, 6, false);
+    floatToString(topScreenFilterContrastStr, cfg->topScreenFilter.contrast, 6, false);
+    floatToString(topScreenFilterBrightnessStr, cfg->topScreenFilter.brightness, 6, false);
+
+    char bottomScreenFilterGammaStr[32];
+    char bottomScreenFilterContrastStr[32];
+    char bottomScreenFilterBrightnessStr[32];
+    floatToString(bottomScreenFilterGammaStr, cfg->bottomScreenFilter.gamma, 6, false);
+    floatToString(bottomScreenFilterContrastStr, cfg->bottomScreenFilter.contrast, 6, false);
+    floatToString(bottomScreenFilterBrightnessStr, cfg->bottomScreenFilter.brightness, 6, false);
 
     int n = sprintf(
         out, (const char *)config_template_ini,
@@ -326,9 +331,11 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
         (int)cfg->ntpTzOffetMinutes,
 
-        (int)cfg->screenFiltersCct, screenFiltersGammaStr,
-        screenFiltersContrastStr, screenFiltersBrightnessStr,
-        (int)cfg->screenFiltersInvert,
+        (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
+        topScreenFilterGammaStr, bottomScreenFilterGammaStr,
+        topScreenFilterContrastStr, bottomScreenFilterContrastStr,
+        topScreenFilterBrightnessStr, bottomScreenFilterBrightnessStr,
+        (int)cfg->topScreenFilter.invert, (int)cfg->bottomScreenFilter.invert,
 
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
@@ -388,11 +395,8 @@ void MiscellaneousMenu_SaveSettings(void)
     configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
-    configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
-    configData.screenFiltersGamma = screenFiltersCurrentGamma;
-    configData.screenFiltersContrast = screenFiltersCurrentContrast;
-    configData.screenFiltersBrightness = screenFiltersCurrentBrightness;
-    configData.screenFiltersInvert = screenFiltersCurrentInvert;
+    configData.topScreenFilter = topScreenFilter;
+    configData.bottomScreenFilter = bottomScreenFilter;
     configData.autobootTwlTitleId = autobootTwlTitleId;
     configData.autobootCtrAppmemtype = autobootCtrAppmemtype;
 

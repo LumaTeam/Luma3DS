@@ -30,13 +30,19 @@
 
 extern Menu screenFiltersMenu;
 
-extern int screenFiltersCurrentTemperature;
-extern float screenFiltersCurrentGamma;
-extern float screenFiltersCurrentContrast;
-extern float screenFiltersCurrentBrightness;
-extern bool screenFiltersCurrentInvert;
+typedef struct ScreenFilter {
+    u16 cct;
+    bool invert;
+    float gamma;
+    float contrast;
+    float brightness;
+} ScreenFilter;
+
+extern ScreenFilter topScreenFilter;
+extern ScreenFilter bottomScreenFilter;
 
 void ScreenFiltersMenu_RestoreSettings(void);
+void ScreenFiltersMenu_LoadConfig(void);
 
 void ScreenFiltersMenu_SetDefault(void);            // 6500K (default)
 
