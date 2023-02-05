@@ -162,8 +162,16 @@ static void handleShellNotification(u32 notificationId)
 {
     if (notificationId == 0x213) {
         // Shell opened
-        // Note that this notification is fired on system init
-        ScreenFiltersMenu_RestoreSettings();
+        // Note that this notification is also fired on system init.
+        // Sequence goes like this: MCU fires notif. 0x200 on shell open
+        // and shell close, then NS demuxes it and fires 0x213 and 0x214.
+
+        // We need to check here if GSP has done its init stuff, in particular
+        // clock and reset, otherwise we'll cause core1 to be in a waitstate
+        // forever (if we access a GPU reg while the GPU block's clock is off).
+        // (GSP does its init before registering its services)
+        if (isServiceUsable("gsp::Gpu"))
+            ScreenFiltersMenu_RestoreSettings();
         menuShouldExit = false;
     } else {
         // Shell closed
