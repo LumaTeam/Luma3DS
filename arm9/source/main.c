@@ -229,11 +229,18 @@ void main(int argc, char **argv, u32 magicWord)
             nandType = FIRMWARE_SYSNAND;
             firmSource = (BOOTCFG_NAND != 0) == (BOOTCFG_FIRM != 0) ? FIRMWARE_SYSNAND : (FirmwareSource)BOOTCFG_FIRM;
 
-            //Prevent multiple boot options-forcing
+            // Prevent multiple boot options-forcing
+            // This bit is a bit weird. Basically, as you return to Home Menu by pressing either
+            // the HOME or POWER button, nandType will be overridden to "SysNAND" (needed). But,
+            // if you reboot again (e.g. via Rosalina menu), it'll use your default settings.
             if(nandType != BOOTCFG_NAND || firmSource != BOOTCFG_FIRM) isNoForceFlagSet = true;
 
             goto boot;
         }
+
+        // Configure homebrew autoboot (if deliver arg ends up not containing anything)
+        if (bootenv == 1 && MULTICONFIG(AUTOBOOTMODE) != 0)
+            configureHomebrewAutoboot();
 
         /* Force the last used boot options if doing autolaunch from TWL, or unless a button is pressed
            or the no-forcing flag is set */
