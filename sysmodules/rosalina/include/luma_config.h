@@ -1,7 +1,6 @@
-
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2023 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -25,21 +24,35 @@
 *         reasonable ways as different from the original version.
 */
 
-#pragma once
-
 #include <3ds/types.h>
-#include "menu.h"
 
-extern Menu rosalinaMenu;
+#define CONFIG(a)        (((cfg->config >> (a)) & 1) != 0)
+#define MULTICONFIG(a)   ((cfg->multiConfig >> (2 * (a))) & 3)
+#define BOOTCONFIG(a, b) ((cfg->bootConfig >> (a)) & (b))
 
-void RosalinaMenu_TakeScreenshot(void);
-void RosalinaMenu_ChangeScreenBrightness(void);
-void RosalinaMenu_ShowCredits(void);
-void RosalinaMenu_ProcessList(void);
-void RosalinaMenu_SaveSettings(void);
-void RosalinaMenu_PowerOff(void);
-void RosalinaMenu_Reboot(void);
-void RosalinaMenu_Cheats(void);
+enum singleOptions
+{
+    AUTOBOOTEMU = 0,
+    USEEMUFIRM,
+    LOADEXTFIRMSANDMODULES,
+    PATCHGAMES,
+    REDIRECTAPPTHREADS,
+    PATCHVERSTRING,
+    SHOWGBABOOT,
+    PATCHUNITINFO,
+    DISABLEARM11EXCHANDLERS,
+    ENABLESAFEFIRMROSALINA,
+};
 
-bool rosalinaMenuShouldShowDebugInfo(void);
-void RosalinaMenu_ShowDebugInfo(void);
+enum multiOptions
+{
+    DEFAULTEMU = 0,
+    BRIGHTNESS,
+    SPLASH,
+    PIN,
+    NEWCPU,
+    AUTOBOOTMODE,
+};
+
+void LumaConfig_ConvertComboToString(char *out, u32 combo);
+Result LumaConfig_SaveSettings(void);
