@@ -425,10 +425,23 @@ static Result MiscellaneousMenu_DumpDspFirmCallback(Handle procHandle, u32 textS
 
     // Dump to SD card (no point in dumping to CTRNAND as 3dsx stuff doesn't work there)
     IFile file;
-    res = IFile_Open(
-        &file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/dspfirm.cdc"), FS_OPEN_CREATE | FS_OPEN_WRITE
-    );
+    FS_Archive archive;
+
+    // Create sdmc:/3ds directory if it doesn't exist yet
+    res = FSUSER_OpenArchive(&archive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
+    if(R_SUCCEEDED(res))
+    {
+        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/3ds"), 0);
+        if((u32)res == 0xC82044BE) // directory already exists
+            res = 0;
+        FSUSER_CloseArchive(archive);
+    }
+
+    if (R_SUCCEEDED(res))
+        res = IFile_Open(
+            &file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
+            fsMakePath(PATH_ASCII, "/3ds/dspfirm.cdc"), FS_OPEN_CREATE | FS_OPEN_WRITE
+        );
 
     u64 total;
     if(R_SUCCEEDED(res))
