@@ -1,30 +1,31 @@
 /*
-*   This file is part of Luma3DS
-*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
-*
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
-*/
+ *   This file is part of Luma3DS
+ *   Copyright (C) 2016-2021 Aurora Wright, TuxSH
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
 
 #include <3ds.h>
+#include <3ds/services/hid.h>
 #include "memory.h"
 #include "menu.h"
 #include "service_manager.h"
@@ -32,7 +33,7 @@
 #include "utils.h"
 #include "MyThread.h"
 #include "menus/miscellaneous.h"
-#include "menus/debugger.h"
+#include "menus/debugger_menu.h"
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
@@ -40,6 +41,7 @@
 #include "minisoc.h"
 #include "draw.h"
 #include "bootdiag.h"
+#include "debugger.h"
 
 #include "task_runner.h"
 
@@ -86,14 +88,12 @@ void initSystem(void)
     svcGetSystemInfo(&out, 0x10000, 0x103);
     lastNtpTzOffset = (s16)out;
 
-    miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
-        "Switch the hb. title to the current app." :
-        "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
+    miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ? "Switch the hb. title to the current app." : "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
 
-    for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
+    for (res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
         res = srvInit();
-        if(R_FAILED(res) && res != (Result)0xD88007FA)
+        if (R_FAILED(res) && res != (Result)0xD88007FA)
             svcBreak(USERBREAK_PANIC);
     }
 
@@ -138,29 +138,30 @@ static void handleSleepNotification(u32 notificationId)
     s32 ackValue = ptmSysmGetNotificationAckValue(notificationId);
     switch (notificationId)
     {
-        case PTMNOTIFID_SLEEP_REQUESTED:
-            menuShouldExit = true;
-            PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
-            break;
-        case PTMNOTIFID_GOING_TO_SLEEP:
-        case PTMNOTIFID_SLEEP_ALLOWED:
-        case PTMNOTIFID_FULLY_WAKING_UP:
-        case PTMNOTIFID_HALF_AWAKE:
-            PTMSYSM_NotifySleepPreparationComplete(ackValue);
-            break;
-        case PTMNOTIFID_SLEEP_DENIED:
-        case PTMNOTIFID_FULLY_AWAKE:
-            menuShouldExit = false;
-            break;
-        default:
-            break;
+    case PTMNOTIFID_SLEEP_REQUESTED:
+        menuShouldExit = true;
+        PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
+        break;
+    case PTMNOTIFID_GOING_TO_SLEEP:
+    case PTMNOTIFID_SLEEP_ALLOWED:
+    case PTMNOTIFID_FULLY_WAKING_UP:
+    case PTMNOTIFID_HALF_AWAKE:
+        PTMSYSM_NotifySleepPreparationComplete(ackValue);
+        break;
+    case PTMNOTIFID_SLEEP_DENIED:
+    case PTMNOTIFID_FULLY_AWAKE:
+        menuShouldExit = false;
+        break;
+    default:
+        break;
     }
     ptmSysmExit();
 }
 
 static void handleShellNotification(u32 notificationId)
 {
-    if (notificationId == 0x213) {
+    if (notificationId == 0x213)
+    {
         // Shell opened
         // Note that this notification is also fired on system init.
         // Sequence goes like this: MCU fires notif. 0x200 on shell open
@@ -173,11 +174,12 @@ static void handleShellNotification(u32 notificationId)
         if (isServiceUsable("gsp::Gpu"))
             ScreenFiltersMenu_RestoreSettings();
         menuShouldExit = false;
-    } else {
+    }
+    else
+    {
         // Shell closed
         menuShouldExit = true;
     }
-
 }
 
 static void handlePreTermNotification(u32 notificationId)
@@ -194,7 +196,7 @@ static void handlePreTermNotification(u32 notificationId)
     debuggerDisable(100 * 1000 * 1000LL);
 
     // Kill the ac session if needed
-    if(isConnectionForced)
+    if (isConnectionForced)
     {
         acExit();
         isConnectionForced = false;
@@ -212,13 +214,6 @@ static void handlePreTermNotification(u32 notificationId)
     Draw_Unlock();
 }
 
-static void handleNextApplicationDebuggedByForce(u32 notificationId)
-{
-    (void)notificationId;
-    // Following call needs to be async because pm -> Loader depends on rosalina hb:ldr, handled in this very thread.
-    TaskRunner_RunTask(debuggerFetchAndSetNextApplicationDebugHandleTask, NULL, 0);
-}
-
 #if 0
 static void handleRestartHbAppNotification(u32 notificationId)
 {
@@ -228,28 +223,26 @@ static void handleRestartHbAppNotification(u32 notificationId)
 #endif
 
 static const ServiceManagerServiceEntry services[] = {
-    { NULL },
-};
+    {"rosalina:dbg", 2, handleRosalinaDebugger, false}, {NULL}};
 
 static const ServiceManagerNotificationEntry notifications[] = {
-    { 0x100 ,                       handleTermNotification                  },
-    { PTMNOTIFID_SLEEP_REQUESTED,   handleSleepNotification                 },
-    { PTMNOTIFID_SLEEP_DENIED,      handleSleepNotification                 },
-    { PTMNOTIFID_SLEEP_ALLOWED,     handleSleepNotification                 },
-    { PTMNOTIFID_GOING_TO_SLEEP,    handleSleepNotification                 },
-    { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
-    { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
-    { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
-    { 0x213,                        handleShellNotification                 },
-    { 0x214,                        handleShellNotification                 },
-    { 0x1000,                       handleNextApplicationDebuggedByForce    },
-    { 0x2000,                       handlePreTermNotification               },
-    { 0x000, NULL },
-};
+    {0x100, handleTermNotification},
+    {PTMNOTIFID_SLEEP_REQUESTED, handleSleepNotification},
+    {PTMNOTIFID_SLEEP_DENIED, handleSleepNotification},
+    {PTMNOTIFID_SLEEP_ALLOWED, handleSleepNotification},
+    {PTMNOTIFID_GOING_TO_SLEEP, handleSleepNotification},
+    {PTMNOTIFID_FULLY_WAKING_UP, handleSleepNotification},
+    {PTMNOTIFID_FULLY_AWAKE, handleSleepNotification},
+    {PTMNOTIFID_HALF_AWAKE, handleSleepNotification},
+    {0x213, handleShellNotification},
+    {0x214, handleShellNotification},
+    {0x1000, handleNextApplicationDebuggedByForce},
+    {0x2000, handlePreTermNotification},
+    {0x000, NULL}};
 
 int main(void)
 {
-    if(R_FAILED(svcCreateEvent(&preTerminationEvent, RESET_STICKY)))
+    if (R_FAILED(svcCreateEvent(&preTerminationEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);
 
     Draw_Init();
