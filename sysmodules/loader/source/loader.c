@@ -301,11 +301,11 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
     prog_addrs_t mapped;
     prog_addrs_t vaddr;
     Handle codeset;
-    CodeSetInfo codesetinfo;
+    CodeSetHeader csh;
     u32 dataMemSize;
 
     u32 region = 0;
-    u32 count;
+    s32 count;
     for (count = 0; count < 28; count++)
     {
         u32 desc = exhi->aci.kernel_caps.descriptors[count];
@@ -330,18 +330,18 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
     u64 titleId = exhi->aci.local_caps.title_id;
     if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &mapped)))
     {
-        memcpy(&codesetinfo.name, csi->name, 8);
-        codesetinfo.program_id = titleId;
-        codesetinfo.text_addr = vaddr.text_addr;
-        codesetinfo.text_size = vaddr.text_size;
-        codesetinfo.text_size_total = vaddr.text_size;
-        codesetinfo.ro_addr = vaddr.ro_addr;
-        codesetinfo.ro_size = vaddr.ro_size;
-        codesetinfo.ro_size_total = vaddr.ro_size;
-        codesetinfo.rw_addr = vaddr.data_addr;
-        codesetinfo.rw_size = vaddr.data_size;
-        codesetinfo.rw_size_total = dataMemSize;
-        res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)mapped.text_addr, (void *)mapped.ro_addr, (void *)mapped.data_addr);
+        memcpy(&csh.name, csi->name, 8);
+        csh.program_id = titleId;
+        csh.text_addr = vaddr.text_addr;
+        csh.text_size = vaddr.text_size;
+        csh.text_size_total = vaddr.text_size;
+        csh.ro_addr = vaddr.ro_addr;
+        csh.ro_size = vaddr.ro_size;
+        csh.ro_size_total = vaddr.ro_size;
+        csh.rw_addr = vaddr.data_addr;
+        csh.rw_size = vaddr.data_size;
+        csh.rw_size_total = dataMemSize;
+        res = svcCreateCodeSet(&codeset, &csh, mapped.text_addr, mapped.ro_addr, mapped.data_addr);
         if (R_SUCCEEDED(res))
         {
             // There are always 28 descriptors
