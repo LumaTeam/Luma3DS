@@ -66,7 +66,9 @@ static inline void loadCFWInfo(void)
         isSdMode = true;
     }
 
-    Luma_SharedConfig->hbldr_3dsx_tid = hbldrTid == 0 ? HBLDR_DEFAULT_3DSX_TID : hbldrTid;
+    hbldrTid = hbldrTid == 0 ? HBLDR_DEFAULT_3DSX_TID : hbldrTid;
+    Luma_SharedConfig->hbldr_3dsx_tid = hbldrTid;
+    Luma_SharedConfig->selected_hbldr_3dsx_tid = hbldrTid;
     Luma_SharedConfig->use_hbldr = true;
 }
 

@@ -220,7 +220,7 @@ Result LumaConfig_SaveSettings(void)
     configData.multiConfig = multiConfig;
     configData.bootConfig = bootConfig;
     configData.splashDurationMsec = splashDurationMsec;
-    configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
+    configData.hbldr3dsxTitleId = Luma_SharedConfig->selected_hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
     configData.topScreenFilter = topScreenFilter;

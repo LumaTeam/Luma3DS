@@ -87,10 +87,6 @@ void initSystem(void)
     svcGetSystemInfo(&out, 0x10000, 0x103);
     lastNtpTzOffset = (s16)out;
 
-    miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
-        "Switch the hb. title to the current app." :
-        "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
-
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
         res = srvInit();
@@ -106,6 +102,10 @@ void initSystem(void)
 
     if (R_FAILED(FSUSER_SetPriority(-16)))
         svcBreak(USERBREAK_PANIC);
+
+    miscellaneousMenu.items[0].title = Luma_SharedConfig->selected_hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
+        "Switch the hb. title to the current app." :
+        "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
 
     // **** DO NOT init services that don't come from KIPs here ****
     // Instead, init the service only where it's actually init (then deinit it).
