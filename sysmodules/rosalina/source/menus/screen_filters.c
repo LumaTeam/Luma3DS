@@ -227,8 +227,6 @@ void ScreenFiltersMenu_LoadConfig(void)
 
     svcGetSystemInfo(&out, 0x10000, 0x10C);
     bottomScreenFilter.invert = (bool)out;
-
-    ScreenFiltersMenu_RestoreSettings();
 }
 
 DEF_CCT_SETTER(6500, Default)

@@ -26,34 +26,4 @@
 
 #include <3ds/types.h>
 
-#define CONFIG(a)        (((cfg->config >> (a)) & 1) != 0)
-#define MULTICONFIG(a)   ((cfg->multiConfig >> (2 * (a))) & 3)
-#define BOOTCONFIG(a, b) ((cfg->bootConfig >> (a)) & (b))
-
-enum singleOptions
-{
-    AUTOBOOTEMU = 0,
-    USEEMUFIRM,
-    LOADEXTFIRMSANDMODULES,
-    PATCHGAMES,
-    REDIRECTAPPTHREADS,
-    PATCHVERSTRING,
-    SHOWGBABOOT,
-    FORCEHEADPHONEOUTPUT,
-    PATCHUNITINFO,
-    DISABLEARM11EXCHANDLERS,
-    ENABLESAFEFIRMROSALINA,
-};
-
-enum multiOptions
-{
-    DEFAULTEMU = 0,
-    BRIGHTNESS,
-    SPLASH,
-    PIN,
-    NEWCPU,
-    AUTOBOOTMODE,
-};
-
-void LumaConfig_ConvertComboToString(char *out, u32 combo);
-Result LumaConfig_SaveSettings(void);
+void handleShellOpened(void);

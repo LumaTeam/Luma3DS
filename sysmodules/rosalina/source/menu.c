@@ -36,6 +36,7 @@
 #include "menus/cheats.h"
 #include "minisoc.h"
 #include "menus/screen_filters.h"
+#include "shell.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
@@ -261,10 +262,11 @@ void menuThreadMain(void)
     if(isN3DS)
         N3DSMenu_UpdateStatus();
 
-    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu"))
+    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu") || !isServiceUsable("cdc:CHK"))
         svcSleepThread(250 * 1000 * 1000LL);
 
     ScreenFiltersMenu_LoadConfig();
+    handleShellOpened();
 
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;

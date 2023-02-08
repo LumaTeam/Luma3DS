@@ -40,6 +40,7 @@
 #include "minisoc.h"
 #include "draw.h"
 #include "bootdiag.h"
+#include "shell.h"
 
 #include "task_runner.h"
 
@@ -165,13 +166,7 @@ static void handleShellNotification(u32 notificationId)
         // Note that this notification is also fired on system init.
         // Sequence goes like this: MCU fires notif. 0x200 on shell open
         // and shell close, then NS demuxes it and fires 0x213 and 0x214.
-
-        // We need to check here if GSP has done its init stuff, in particular
-        // clock and reset, otherwise we'll cause core1 to be in a waitstate
-        // forever (if we access a GPU reg while the GPU block's clock is off).
-        // (GSP does its init before registering its services)
-        if (isServiceUsable("gsp::Gpu"))
-            ScreenFiltersMenu_RestoreSettings();
+        handleShellOpened();
         menuShouldExit = false;
     } else {
         // Shell closed

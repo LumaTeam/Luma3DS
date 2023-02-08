@@ -65,6 +65,7 @@ static const char *singleOptionIniNamesBoot[] = {
     "app_syscore_threads_on_core_2",
     "show_system_settings_string",
     "show_gba_boot_screen",
+    "force_headphone_output",
 };
 
 static const char *singleOptionIniNamesMisc[] = {
@@ -581,7 +582,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
         (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
         (int)CONFIG(REDIRECTAPPTHREADS), (int)CONFIG(PATCHVERSTRING),
-        (int)CONFIG(SHOWGBABOOT),
+        (int)CONFIG(SHOWGBABOOT), (int)CONFIG(FORCEHEADPHONEOUTPUT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -759,6 +760,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
+                                               "( ) Force routing audio output to headphones"
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -830,8 +832,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "of patched code binaries, exHeaders,\n"
                                                  "IPS code patches and LayeredFS\n"
                                                  "for specific games.\n\n"
-                                                 "Also makes certain DLCs\n"
-                                                 "for out-of-region games work.\n\n"
+                                                 "Also makes certain DLCs for out-of-\n"
+                                                 "region games work.\n\n"
                                                  "Refer to the wiki for instructions.",
 
                                                  "Redirect app. threads that would spawn\n"
@@ -857,6 +859,15 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                                  "Enable showing the GBA boot screen\n"
                                                  "when booting GBA games.",
+
+                                                 "Force audio output to headphones.\n\n"
+                                                 "Currently only for NATIVE_FIRM.\n\n"
+                                                 "Due to software limitations, this gets\n"
+                                                 "undone if you actually insert then\n"
+                                                 "remove HPs (just enter then exit sleep\n"
+                                                 "mode if this happens).\n\n"
+                                                 "Also gets bypassed for camera shutter\n"
+                                                 "sound.",
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -890,6 +901,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = ISN3DS },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
     };
