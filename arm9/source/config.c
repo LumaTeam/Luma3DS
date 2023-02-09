@@ -24,6 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
+#define _GNU_SOURCE // for strchrnul
+
 #include <assert.h>
 #include <strings.h>
 #include "config.h"
@@ -42,6 +44,9 @@
 
 #define MAKE_LUMA_VERSION_MCU(major, minor, build) (u16)(((major) & 0xFF) << 8 | ((minor) & 0x1F) << 5 | ((build) & 7))
 
+#define FLOAT_CONV_MULT 100000000ll
+#define FLOAT_CONV_PRECISION 8u
+
 CfgData configData;
 ConfigurationStatus needConfig;
 static CfgData oldConfig;
@@ -57,8 +62,10 @@ static const char *singleOptionIniNamesBoot[] = {
     "use_emunand_firm_if_r_pressed",
     "enable_external_firm_and_modules",
     "enable_game_patching",
+    "app_syscore_threads_on_core_2",
     "show_system_settings_string",
     "show_gba_boot_screen",
+    "force_headphone_output",
 };
 
 static const char *singleOptionIniNamesMisc[] = {
@@ -95,10 +102,9 @@ static int parseBoolOption(bool *out, const char *val)
     }
 }
 
-static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
+static int parseDecIntOptionImpl(s64 *out, const char *val, size_t numDigits, s64 minval, s64 maxval)
 {
     *out = 0;
-    size_t numDigits = strlen(val);
     s64 res = 0;
     size_t i = 0;
 
@@ -123,6 +129,61 @@ static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
 
     res *= sign;
     if (res <= maxval && res >= minval) {
+        *out = res;
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
+static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
+{
+    return parseDecIntOptionImpl(out, val, strlen(val), minval, maxval);
+}
+
+static int parseDecFloatOption(s64 *out, const char *val, s64 minval, s64 maxval)
+{
+    char *point = strchrnul(val, '.');
+    if (point == val) {
+        return -1;
+    }
+
+    // Parse integer part, then fractional part
+    s64 intPart = 0;
+    s64 fracPart = 0;
+    int rc = parseDecIntOptionImpl(&intPart, val, point - val, INT64_MIN, INT64_MAX);
+
+    if (rc != 0) {
+        return -1;
+    }
+
+    s64 sign = intPart < 0 ? -1 : 1;
+    s64 intPartAbs = sign == -1 ? -intPart : intPart;
+    s64 res = 0;
+    bool of = __builtin_mul_overflow(intPartAbs, FLOAT_CONV_MULT, &res);
+    
+    if (of) {
+        return -1;
+    }
+    
+    s64 mul = FLOAT_CONV_MULT / 10;
+
+    // Check if there's a fractional part
+    if (point[0] != '\0' && point[1] != '\0') {
+        for (char *pos = point + 1; *pos != '\0' && mul > 0; pos++) {
+            if (*pos < '0' || *pos > '9') {
+                return -1;
+            }
+            
+            res += (*pos - '0') * mul;
+            mul /= 10;
+        }
+    }
+
+
+    res = sign * (res + fracPart);
+
+    if (res <= maxval && res >= minval && !of) {
         *out = res;
         return 0;
     } else {
@@ -220,6 +281,34 @@ static void menuComboToString(char *out, u32 combo)
 
     if (out != outOrig)
         out[-1] = 0;
+}
+
+static int encodedFloatToString(char *out, s64 val)
+{
+    s64 sign = val >= 0 ? 1 : -1;
+
+    s64 intPart = (sign * val) / FLOAT_CONV_MULT;
+    s64 fracPart = (sign * val) % FLOAT_CONV_MULT;
+
+    while (fracPart % 10 != 0) {
+        // Remove trailing zeroes
+        fracPart /= 10;
+    }
+
+    int n = sprintf(out, "%lld", sign * intPart);
+    if (fracPart != 0) {
+        n += sprintf(out + n, ".%0*lld", (int)FLOAT_CONV_PRECISION, fracPart);
+
+        // Remove trailing zeroes
+        int n2 = n - 1;
+        while (out[n2] == '0') {
+            out[n2--] = '\0';
+        }
+
+        n = n2;
+    }
+
+    return n;
 }
 
 static bool hasIniParseError = false;
@@ -344,18 +433,66 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
             cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | 1 : cfg->pluginLoaderFlags & ~1;
             return 1;
-        } else if (strcmp(name, "screen_filters_cct") == 0) {
-            s64 opt;
-            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 1000, 25100));
-            cfg->screenFiltersCct = (u32)opt;
-            return 1;
         } else if (strcmp(name, "ntp_tz_offset_min") == 0) {
             s64 opt;
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -779, 899));
             cfg->ntpTzOffetMinutes = (s16)opt;
             return 1;
+        } else {
+            CHECK_PARSE_OPTION(-1);
         }
-        else {
+    } else if (strcmp(section, "screen_filters") == 0) {
+        if (strcmp(name, "screen_filters_top_cct") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 1000, 25100));
+            cfg->topScreenFilter.cct = (u32)opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_top_gamma") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 1411 * FLOAT_CONV_MULT));
+            cfg->topScreenFilter.gammaEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_top_contrast") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 255 * FLOAT_CONV_MULT));
+            cfg->topScreenFilter.contrastEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_top_brightness") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, -1 * FLOAT_CONV_MULT, 1 * FLOAT_CONV_MULT));
+            cfg->topScreenFilter.brightnessEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_top_invert") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->topScreenFilter.invert = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_bot_cct") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 1000, 25100));
+            cfg->bottomScreenFilter.cct = (u32)opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_bot_gamma") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 1411 * FLOAT_CONV_MULT));
+            cfg->bottomScreenFilter.gammaEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_bot_contrast") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 255 * FLOAT_CONV_MULT));
+            cfg->bottomScreenFilter.contrastEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_bot_brightness") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, -1 * FLOAT_CONV_MULT, 1 * FLOAT_CONV_MULT));
+            cfg->bottomScreenFilter.brightnessEnc = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_bot_invert") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->bottomScreenFilter.invert = opt;
+            return 1;
+        } else {
             CHECK_PARSE_OPTION(-1);
         }
     } else if (strcmp(section, "autoboot") == 0) {
@@ -428,6 +565,20 @@ static size_t saveLumaIniConfigToStr(char *out)
     static const int pinOptionToDigits[] = { 0, 4, 6, 8 };
     int pinNumDigits = pinOptionToDigits[MULTICONFIG(PIN)];
 
+    char topScreenFilterGammaStr[32];
+    char topScreenFilterContrastStr[32];
+    char topScreenFilterBrightnessStr[32];
+    encodedFloatToString(topScreenFilterGammaStr, cfg->topScreenFilter.gammaEnc);
+    encodedFloatToString(topScreenFilterContrastStr, cfg->topScreenFilter.contrastEnc);
+    encodedFloatToString(topScreenFilterBrightnessStr, cfg->topScreenFilter.brightnessEnc);
+
+    char bottomScreenFilterGammaStr[32];
+    char bottomScreenFilterContrastStr[32];
+    char bottomScreenFilterBrightnessStr[32];
+    encodedFloatToString(bottomScreenFilterGammaStr, cfg->bottomScreenFilter.gammaEnc);
+    encodedFloatToString(bottomScreenFilterContrastStr, cfg->bottomScreenFilter.contrastEnc);
+    encodedFloatToString(bottomScreenFilterBrightnessStr, cfg->bottomScreenFilter.brightnessEnc);
+
     int n = sprintf(
         out, (const char *)config_template_ini,
         lumaVerStr, lumaRevSuffixStr,
@@ -435,14 +586,21 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG_VERSIONMAJOR, (int)CONFIG_VERSIONMINOR,
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
         (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
-        (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
+        (int)CONFIG(REDIRECTAPPTHREADS), (int)CONFIG(PATCHVERSTRING),
+        (int)CONFIG(SHOWGBABOOT), (int)CONFIG(FORCEHEADPHONEOUTPUT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
         pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
-        (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
+        (int)cfg->ntpTzOffetMinutes,
+
+        (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
+        topScreenFilterGammaStr, bottomScreenFilterGammaStr,
+        topScreenFilterContrastStr, bottomScreenFilterContrastStr,
+        topScreenFilterBrightnessStr, bottomScreenFilterBrightnessStr,
+        (int)cfg->topScreenFilter.invert, (int)cfg->bottomScreenFilter.invert,
 
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
@@ -551,7 +709,10 @@ bool readConfig(void)
         configData.splashDurationMsec = 3000;
         configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
-        configData.screenFiltersCct = 6500; // default temp, no-op
+        configData.topScreenFilter.cct = 6500; // default temp, no-op
+        configData.topScreenFilter.gammaEnc = 1 * FLOAT_CONV_MULT; // 1.0f
+        configData.topScreenFilter.contrastEnc = 1 * FLOAT_CONV_MULT; // 1.0f
+        configData.bottomScreenFilter = configData.topScreenFilter;
         configData.autobootTwlTitleId = AUTOBOOT_DEFAULT_TWL_TID;
         ret = false;
     }
@@ -601,8 +762,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Use EmuNAND FIRM if booting with R",
                                                "( ) Enable loading external FIRMs and modules",
                                                "( ) Enable game patching",
+                                               "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
+                                               "( ) Force routing audio output to headphones"
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -674,9 +837,18 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "of patched code binaries, exHeaders,\n"
                                                  "IPS code patches and LayeredFS\n"
                                                  "for specific games.\n\n"
-                                                 "Also makes certain DLCs\n"
-                                                 "for out-of-region games work.\n\n"
+                                                 "Also makes certain DLCs for out-of-\n"
+                                                 "region games work.\n\n"
                                                  "Refer to the wiki for instructions.",
+
+                                                 "Redirect app. threads that would spawn\n"
+                                                 "on core1, to core2 (which is an extra\n"
+                                                 "CPU core for applications that usually\n"
+                                                 "remains unused).\n\n"
+                                                 "This improves the performance of very\n"
+                                                 "demanding games (like Pok\x82mon US/UM)\n" // CP437
+                                                 "by about 10%. Can break some games\n"
+                                                 "and other applications.\n",
 
                                                  "Enable showing the current NAND/FIRM:\n\n"
                                                  "\t* Sys  = SysNAND\n"
@@ -692,6 +864,15 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                                  "Enable showing the GBA boot screen\n"
                                                  "when booting GBA games.",
+
+                                                 "Force audio output to headphones.\n\n"
+                                                 "Currently only for NATIVE_FIRM.\n\n"
+                                                 "Due to software limitations, this gets\n"
+                                                 "undone if you actually insert then\n"
+                                                 "remove HPs (just enter then exit sleep\n"
+                                                 "mode if this happens).\n\n"
+                                                 "Also gets bypassed for camera shutter\n"
+                                                 "sound.",
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -723,6 +904,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = true },
+        { .visible = true },
+        { .visible = ISN3DS },
         { .visible = true },
         { .visible = true },
         { .visible = true },

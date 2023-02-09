@@ -127,6 +127,7 @@ void configHook(vu8 *cfgPage)
     codeSetOffsetKProcess = KPROCESS_OFFSETOF(codeSet);
     handleTableOffsetKProcess = KPROCESS_OFFSETOF(handleTable);
     debugOffsetKProcess = KPROCESS_OFFSETOF(debug);
+    flagsKProcess = KPROCESS_OFFSETOF(kernelFlags);
 }
 
 void KProcessHwInfo__MapL1Section_Hook(void);
@@ -327,6 +328,7 @@ static void findUsefulSymbols(void)
     // The official prototype of ControlMemory doesn't have that extra param'
     ControlMemory = (Result (*)(u32 *, u32, u32, u32, MemOp, MemPerm, bool))
                     decodeArmBranch((u32 *)officialSVCs[0x01] + 5);
+    CreateThread = (Result (*)(Handle *, u32, u32, u32, s32, s32))decodeArmBranch((u32 *)officialSVCs[0x08] + 5);
     SleepThread = (void (*)(s64))officialSVCs[0x0A];
     CreateEvent = (Result (*)(Handle *, ResetType))decodeArmBranch((u32 *)officialSVCs[0x17] + 3);
     CloseHandle = (Result (*)(Handle))officialSVCs[0x23];

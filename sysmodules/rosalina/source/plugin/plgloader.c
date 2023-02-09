@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include "ifile.h"
 #include "utils.h" // for makeARMBranch
+#include "luma_config.h"
 #include "plugin.h"
 #include "fmt.h"
 #include "menu.h"
@@ -55,7 +56,7 @@ bool        PluginLoader__IsEnabled(void)
 void        PluginLoader__MenuCallback(void)
 {
     PluginLoaderCtx.isEnabled = !PluginLoaderCtx.isEnabled;
-    RequestSaveSettings();
+    LumaConfig_RequestSaveSettings();
     PluginLoader__UpdateMenu();
 }
 
@@ -163,7 +164,7 @@ void     PluginLoader__HandleCommands(void *_ctx)
             if (cmdbuf[1] != ctx->isEnabled)
             {
                 ctx->isEnabled = cmdbuf[1];
-                RequestSaveSettings();
+                LumaConfig_RequestSaveSettings();
                 PluginLoader__UpdateMenu();
             }
 

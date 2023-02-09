@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "romfsredir.h"
+#include "util.h"
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
 {
@@ -316,6 +317,69 @@ exit:
     IFile_Close(&file);
 
     return ret;
+}
+
+Result openSysmoduleCxi(IFile *outFile, u64 progId)
+{
+    char path[] = "/luma/sysmodules/0000000000000000.cxi";
+    progIdToStr(path + sizeof("/luma/sysmodules/0000000000000000") - 2, progId);
+
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    return fileOpen(outFile, archiveId, path, FS_OPEN_READ);
+}
+
+bool readSysmoduleCxiNcchHeader(Ncch *outNcchHeader, IFile *file)
+{
+    u64 total = 0;
+    return R_SUCCEEDED(IFile_ReadAt(file, &total, outNcchHeader, 0, sizeof(Ncch))) && total == sizeof(Ncch);
+}
+
+bool readSysmoduleCxiExHeaderInfo(ExHeader_Info *outExhi, const Ncch *ncchHeader, IFile *file)
+{
+    u64 total = 0;
+    u32 size = ncchHeader->exHeaderSize;
+    if (size < sizeof(ExHeader_Info))
+        return false;
+    return R_SUCCEEDED(IFile_ReadAt(file, &total, outExhi, sizeof(Ncch), size)) && total == size;
+}
+
+bool readSysmoduleCxiCode(u8 *outCode, u32 *outSize, u32 maxSize, IFile *file, const Ncch *ncchHeader)
+{
+    u32 contentUnitShift = 9 + ncchHeader->flags[6];
+    u32 exeFsOffset = ncchHeader->exeFsOffset << contentUnitShift;
+    u32 exeFsSize = ncchHeader->exeFsSize << contentUnitShift;
+
+    if (exeFsSize < sizeof(ExeFsHeader) || exeFsOffset < 0x200 + ncchHeader->exHeaderSize)
+        return false;
+
+    // Read ExeFs header
+    ExeFsHeader hdr;
+    u64 total = 0;
+    u32 size = sizeof(ExeFsHeader);
+    Result res = IFile_ReadAt(file, &total, &hdr, exeFsOffset, size);
+
+    if (R_FAILED(res) || total != size)
+        return false;
+
+    // Get .code section info
+    ExeFsFileHeader *codeHdr = NULL;
+    for (u32 i = 0; i < 8; i++)
+    {
+        ExeFsFileHeader *fileHdr = &hdr.fileHeaders[i];
+        if (strncmp(fileHdr->name, ".code", 8) == 0)
+            codeHdr = fileHdr;
+    }
+
+    if (codeHdr == NULL)
+        return false;
+
+    size = codeHdr->size;
+    *outSize = size;
+    if (size > maxSize)
+        return false;
+
+    res = IFile_ReadAt(file, &total, outCode, exeFsOffset + sizeof(ExeFsHeader) + codeHdr->offset, size);
+    return R_SUCCEEDED(res) && total == size;
 }
 
 bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
@@ -746,7 +810,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x26
         };
 
-        //Disable SecureInfo signature check
+        //Disable SecureInfo signature check (redundant)
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), 0,
@@ -784,7 +848,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 //mov r0, #0; bx lr
         };
 
-        //Disable CRR0 signature (RSA2048 with SHA256) check and CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
+        //Disable CRR0 signature (RSA2048 with SHA256) check (redundant) and CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
         if(!patchMemory(code, textSize,
                 pattern,
                 sizeof(pattern), -9,
@@ -845,6 +909,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     else if((progId & ~0xF0000001ULL) == 0x0004013000001A02LL) //DSP, SAFE_FIRM DSP
     {
+        // This patch is redundant
         static const u8 pattern[] = {
             0xE3, 0x10, 0x10, 0x80, 0xE2
         },
@@ -863,10 +928,18 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     if(CONFIG(PATCHGAMES) && !nextGamePatchDisabled)
     {
-        if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
-        if(!applyCodeIpsPatch(progId, code, size)) goto error;
+        bool isApp = ((progId >> 32) & ~0x12) == 0x00040000;
+        bool isApplet = (progId >> 32) == 0x00040030;
+        bool isSysmodule = (progId >> 32) == 0x00040130;
 
-        if((u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000 || isHomeMenu)
+        bool shouldPatchIps = !isSysmodule || (isSysmodule && CONFIG(LOADEXTFIRMSANDMODULES));
+        if (shouldPatchIps)
+        {
+            if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
+            if(!applyCodeIpsPatch(progId, code, size)) goto error;
+        }
+
+        if(isApp || isApplet)
         {
             u8 mask,
                regionId,

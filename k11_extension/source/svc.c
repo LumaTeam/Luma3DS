@@ -28,6 +28,7 @@
 #include "synchronization.h"
 #include "svc.h"
 #include "svc/ControlMemory.h"
+#include "svc/CreateThread.h"
 #include "svc/GetHandleInfo.h"
 #include "svc/GetSystemInfo.h"
 #include "svc/GetProcessInfo.h"
@@ -67,6 +68,8 @@ void buildAlteredSvcTable(void)
     alteredSvcTable[0x01] = ControlMemoryHookWrapper;
     alteredSvcTable[0x03] = ExitProcessHookWrapper;
 
+    if (isN3DS)
+        alteredSvcTable[0x08] = CreateThreadHookWrapper;
     alteredSvcTable[0x29] = GetHandleInfoHookWrapper;
     alteredSvcTable[0x2A] = GetSystemInfoHookWrapper;
     alteredSvcTable[0x2B] = GetProcessInfoHookWrapper;

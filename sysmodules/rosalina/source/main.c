@@ -41,6 +41,7 @@
 #include "minisoc.h"
 #include "draw.h"
 #include "bootdiag.h"
+#include "shell.h"
 
 #include "task_runner.h"
 #include "plugin.h"
@@ -89,10 +90,6 @@ void initSystem(void)
     svcGetSystemInfo(&out, 0x10000, 0x103);
     lastNtpTzOffset = (s16)out;
 
-    miscellaneousMenu.items[0].title = Luma_SharedConfig->hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
-        "Switch the hb. title to the current app." :
-        "Switch the hb. title to hblauncher_loader";
-
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
         res = srvInit();
@@ -108,6 +105,10 @@ void initSystem(void)
 
     if (R_FAILED(FSUSER_SetPriority(-16)))
         svcBreak(USERBREAK_PANIC);
+
+    miscellaneousMenu.items[0].title = Luma_SharedConfig->selected_hbldr_3dsx_tid == HBLDR_DEFAULT_3DSX_TID ?
+        "Switch the hb. title to the current app." :
+        "Switch the hb. title to " HBLDR_DEFAULT_3DSX_TITLE_NAME;
 
     // **** DO NOT init services that don't come from KIPs here ****
     // Instead, init the service only where it's actually init (then deinit it).
@@ -168,8 +169,10 @@ static void handleShellNotification(u32 notificationId)
     
     if (notificationId == 0x213) {
         // Shell opened
-        // Note that this notification is fired on system init
-        ScreenFiltersMenu_RestoreCct();
+        // Note that this notification is also fired on system init.
+        // Sequence goes like this: MCU fires notif. 0x200 on shell open
+        // and shell close, then NS demuxes it and fires 0x213 and 0x214.
+        handleShellOpened();
         menuShouldExit = false;
     } else {
         // Shell closed

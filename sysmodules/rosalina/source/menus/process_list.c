@@ -58,6 +58,10 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
     const char *checkbox;
     GDBContext *ctx = NULL;
 
+    s64 tmp;
+    svcGetSystemInfo(&tmp, 0x10000, 0x200);
+    bool isRelease = tmp != 0;
+
     if(gdbServer.super.running)
     {
         GDB_LockAllContexts(&gdbServer);
@@ -84,15 +88,13 @@ static inline int ProcessListMenu_FormatInfoLine(char *out, const ProcessInfo *i
         else if ((ctx->flags & GDB_FLAG_SELECTED) && (ctx->localPort >= GDB_PORT_BASE && ctx->localPort < GDB_PORT_BASE + MAX_DEBUG))
         {
             checkbox = "(W) ";
-            sprintf(commentBuf, "Port: %hu", ctx->localPort);
+            sprintf(commentBuf, "Port: %hu             ", ctx->localPort);
         }
     }
 
-    else
+    else if (!isRelease)
     {
-#ifdef ROSALINA_PRINT_PROCESS_CREATION_TIME
-        sprintf(commentBuf, "%lums\n", info->creationTimeMs);
-#endif
+        sprintf(commentBuf, "%lums               \n", info->creationTimeMs);
     }
 
     if (gdbServer.super.running)

@@ -93,6 +93,19 @@ ControlMemoryEx:
     add sp, #20
     pop {pc}
 
+.global CreateThreadHookWrapper
+.type   CreateThreadHookWrapper, %function
+CreateThreadHookWrapper:
+    push {lr}
+    sub sp, #12
+    str r4, [sp, #4]
+    str r0, [sp]
+    add r0, sp, #8
+    bl CreateThreadHook
+    ldr r1, [sp, #8]
+    add sp, sp, #12
+    pop {pc}
+
 .global ControlMemoryUnsafeWrapper
 .type   ControlMemoryUnsafeWrapper, %function
 ControlMemoryUnsafeWrapper:

@@ -32,11 +32,13 @@
 #include "ifile.h"
 #include "menus.h"
 #include "utils.h"
+#include "luma_config.h"
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "minisoc.h"
 #include "plugin.h"
 #include "menus/screen_filters.h"
+#include "shell.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
@@ -75,6 +77,33 @@ u32 waitInputWithTimeout(s32 msec)
 
         hidScanInput();
         keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
+        Draw_Unlock();
+    } while (keys == 0 && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec));
+
+
+    return keys;
+}
+
+u32 waitInputWithTimeoutEx(u32 *outHeldKeys, s32 msec)
+{
+    s32 n = 0;
+    u32 keys;
+
+    do
+    {
+        svcSleepThread(1 * 1000 * 1000LL);
+        Draw_Lock();
+        if (!isHidInitialized || menuShouldExit)
+        {
+            keys = 0;
+            Draw_Unlock();
+            break;
+        }
+        n++;
+
+        hidScanInput();
+        keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
+        *outHeldKeys = convertHidKeys(hidKeysHeld());
         Draw_Unlock();
     } while (keys == 0 && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec));
 
@@ -159,8 +188,14 @@ static Result menuUpdateMcuInfo(void)
     if (!isServiceUsable("mcu::HWC"))
         return -1;
 
-    res = mcuHwcInit();
+    Handle *mcuHwcHandlePtr = mcuHwcGetSessionHandle();
+    *mcuHwcHandlePtr = 0;
+
+    res = srvGetServiceHandle(mcuHwcHandlePtr, "mcu::HWC");
+    // Try to steal the handle if some other process is using the service (custom SVC)
     if (R_FAILED(res))
+        res = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, mcuHwcHandlePtr, "mcu::HWC");
+    if (res != 0)
         return res;
 
     // Read single-byte mcu regs 0x0A to 0x0D directly
@@ -191,7 +226,7 @@ static Result menuUpdateMcuInfo(void)
         mcuFwVersion = SYSTEM_VERSION(major - 0x10, minor, 0);
     }
 
-    mcuHwcExit();
+    svcCloseHandle(*mcuHwcHandlePtr);
     return res;
 }
 
@@ -232,18 +267,11 @@ void menuThreadMain(void)
     if(isN3DS)
         N3DSMenu_UpdateStatus();
 
-    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER"))
-        svcSleepThread(500 * 1000 * 1000LL);
+    while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu") || !isServiceUsable("cdc:CHK"))
+        svcSleepThread(250 * 1000 * 1000LL);
 
-    s64 out;
-    svcGetSystemInfo(&out, 0x10000, 0x102);
-    screenFiltersCurrentTemperature = (int)(u32)out;
-    if (screenFiltersCurrentTemperature < 1000 || screenFiltersCurrentTemperature > 25100)
-        screenFiltersCurrentTemperature = 6500;
-
-    // Careful about race conditions here
-    if (screenFiltersCurrentTemperature != 6500)
-        ScreenFiltersMenu_SetCct(screenFiltersCurrentTemperature);
+    ScreenFiltersMenu_LoadConfig();
+    handleShellOpened();
 
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;
@@ -266,7 +294,7 @@ void menuThreadMain(void)
         }
 
         if (saveSettingsRequest) {
-            SaveSettings();
+            LumaConfig_SaveSettings();
             saveSettingsRequest = false;
         }
     }
@@ -356,7 +384,7 @@ static void menuDraw(Menu *menu, u32 selected)
     else
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
 
-    if(R_SUCCEEDED(mcuInfoRes))
+    if(mcuInfoRes == 0)
     {
         u32 voltageInt = (u32)batteryVoltage;
         u32 voltageFrac = (u32)(batteryVoltage * 100.0f) % 100u;

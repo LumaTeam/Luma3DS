@@ -1247,7 +1247,7 @@ offsetof(classname##O3DSPre8x, field)))
 #define KPROCESSHWINFO_GET_RVALUE(obj, field)             *(KPROCESSHWINFO_GET_PTR(obj, field))
 #define KPROCESSHWINFO_GET_RVALUE_TYPE(type, obj, field)  *(KPROCESSHWINFO_GET_PTR_TYPE(type, obj, field))
 
-extern u32 pidOffsetKProcess, hwInfoOffsetKProcess, codeSetOffsetKProcess, handleTableOffsetKProcess, debugOffsetKProcess;
+extern u32 pidOffsetKProcess, hwInfoOffsetKProcess, codeSetOffsetKProcess, handleTableOffsetKProcess, debugOffsetKProcess, flagsKProcess;
 
 static inline u32 idOfProcess(KProcess *process)
 {
@@ -1278,6 +1278,13 @@ static inline KDebug *debugOfProcess(KProcess *process)
     KDebug *debug;
     memcpy(&debug, (const u8 *)process + debugOffsetKProcess, 4);
     return debug;
+}
+
+static inline u32 flagsOfProcess(KProcess *process)
+{
+    u32 flags;
+    memcpy(&flags, (const u8 *)process + flagsKProcess, 4);
+    return flags;
 }
 
 static inline const char *classNameOfAutoObject(KAutoObject *object)
