@@ -132,8 +132,11 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u32 splashDurationMsec;
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
-            u16 screenFiltersCct;
             s16 ntpTzOffetMinutes;
+
+            ScreenFiltersCfgData topScreenFilter;
+            ScreenFiltersCfgData bottomScreenFilter;
+
             u64 autobootTwlTitleId;
             u8 autobootCtrAppmemtype;
         } info;
@@ -209,8 +212,9 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->splashDurationMsec = configData.splashDurationMsec;
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
-    info->screenFiltersCct = configData.screenFiltersCct;
     info->ntpTzOffetMinutes = configData.ntpTzOffetMinutes;
+    info->topScreenFilter = configData.topScreenFilter;
+    info->bottomScreenFilter = configData.bottomScreenFilter;
     info->autobootTwlTitleId = configData.autobootTwlTitleId;
     info->autobootCtrAppmemtype = configData.autobootCtrAppmemtype;
     info->versionMajor = VERSION_MAJOR;

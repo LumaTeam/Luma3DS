@@ -121,3 +121,17 @@ Result IFile_Write(IFile *file, u64 *total, const void *buffer, u32 len, u32 fla
   *total = cur;
   return res;
 }
+
+Result IFile_ReadAt(IFile *file, u64 *total, void *buffer, u32 offset, u32 len)
+{
+    *total = 0;
+    file->pos = offset;
+    return IFile_Read(file, total, buffer, len);
+}
+
+u32 IFile_Read2(IFile *file, void *buffer, u32 size, u32 offset)
+{
+    u64 total = 0;
+    Result res = IFile_ReadAt(file, &total, buffer, offset, size);
+    return R_SUCCEEDED(res) ? (u32)total : 0;
+}

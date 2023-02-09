@@ -28,10 +28,11 @@
 #include "utils.h"
 #include "memory.h"
 #include "config.h"
+#include "fs.h"
 
 u8 *loadDeliverArg(void)
 {
-    static u8 deliverArg[0x1000] = {0};
+    static __attribute__((aligned(8))) u8 deliverArg[0x1000] = {0};
     static bool deliverArgLoaded = false;
 
     if (!deliverArgLoaded)
@@ -50,8 +51,11 @@ u8 *loadDeliverArg(void)
 
                 // Validate deliver arg
                 u32 testPattern = *(u32 *)(deliverArg + 0x438);
-                u32 crc = *(u32 *)(deliverArg + 0x43C);
+                u32 *crcPtr = (u32 *)(deliverArg + 0x43C);
+                u32 crc = *crcPtr;
+                *crcPtr = 0; // clear crc field before calculation
                 u32 expectedCrc = crc32(deliverArg + 0x400, 0x140, 0xFFFFFFFF);
+                *crcPtr = crc;
                 if (testPattern != 0xFFFF || crc != expectedCrc)
                     memset(deliverArg, 0, 0x1000);
             }
@@ -93,6 +97,7 @@ void commitDeliverArg(void)
     if (mode == 0) // CTR mode
     {
         *(u32 *)(deliverArg + 0x438) = 0xFFFF;
+        *(u32 *)(deliverArg + 0x43C) = 0; // clear CRC field before calculating it
         *(u32 *)(deliverArg + 0x43C) = crc32(deliverArg + 0x400, 0x140, 0xFFFFFFFF);
         memcpy((void *)0x20000000, deliverArg, 0x1000);
     }
@@ -185,9 +190,27 @@ bool configureHomebrewAutoboot(void)
     u32 bootenv = CFG_BOOTENV;
     u32 mode = bootenv >> 1;
 
-    u32 testPattern = *(u32 *)(deliverArg + 0x438);
-    if (mode != 0 || testPattern == 0xFFFF)
-        return false; // bail out if this isn't a coldboot/plain reboot
+    // NS always writes a valid deliver arg on reboot, no matter what.
+    // Check if it is empty, and, of course, bail out if we aren't rebooting from
+    // NATIVE_FIRM.
+    // Checking if it is empty is necessary to let us reboot from autobooted hbmenu
+    // to hbmenu.
+
+    if (mode != 0)
+        return false;
+    else if (bootenv == 1)
+    {
+        for (u32 i = 0; i < 0x410; i++)
+        {
+            if (deliverArg[i] != 0)
+                return false;
+        }
+        for (u32 i = 0x440; i < 0x1000; i++)
+        {
+            if (deliverArg[i] != 0)
+                return false;
+        }
+    }
 
     switch (MULTICONFIG(AUTOBOOTMODE))
     {

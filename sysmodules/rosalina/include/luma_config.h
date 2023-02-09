@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2023 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -24,34 +24,11 @@
 *         reasonable ways as different from the original version.
 */
 
-#pragma once
+#include <3ds/types.h>
 
-#include "types.h"
-
-#define AUTOBOOT_DEFAULT_TWL_TID    0x0003000448424C41ull
-
-#define CONFIG(a)        (((configData.config >> (a)) & 1) != 0)
-#define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
-#define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
-
-#define CONFIG_FILE         "config.bin"
-#define CONFIG_VERSIONMAJOR 3
-#define CONFIG_VERSIONMINOR 5
-
-#define BOOTCFG_NAND         BOOTCONFIG(0, 7)
-#define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
-#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(6, 1)
-#define BOOTCFG_NTRCARDBOOT  BOOTCONFIG(7, 1)
-
-enum multiOptions
-{
-    DEFAULTEMU = 0,
-    BRIGHTNESS,
-    SPLASH,
-    PIN,
-    NEWCPU,
-    AUTOBOOTMODE,
-};
+#define CONFIG(a)        (((cfg->config >> (a)) & 1) != 0)
+#define MULTICONFIG(a)   ((cfg->multiConfig >> (2 * (a))) & 3)
+#define BOOTCONFIG(a, b) ((cfg->bootConfig >> (a)) & (b))
 
 enum singleOptions
 {
@@ -66,19 +43,17 @@ enum singleOptions
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
-
-    NUMCONFIGURABLE = PATCHUNITINFO,
 };
 
-typedef enum ConfigurationStatus
+enum multiOptions
 {
-    DONT_CONFIGURE = 0,
-    MODIFY_CONFIGURATION,
-    CREATE_CONFIGURATION
-} ConfigurationStatus;
+    DEFAULTEMU = 0,
+    BRIGHTNESS,
+    SPLASH,
+    PIN,
+    NEWCPU,
+    AUTOBOOTMODE,
+};
 
-extern CfgData configData;
-
-bool readConfig(void);
-void writeConfig(bool isConfigOptions);
-void configMenu(bool oldPinStatus, u32 oldPinMode);
+void LumaConfig_ConvertComboToString(char *out, u32 combo);
+Result LumaConfig_SaveSettings(void);

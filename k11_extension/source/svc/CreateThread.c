@@ -1,7 +1,6 @@
-
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2023 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -25,21 +24,14 @@
 *         reasonable ways as different from the original version.
 */
 
-#pragma once
+#include "svc/CreateThread.h"
 
-#include <3ds/types.h>
-#include "menu.h"
+Result CreateThreadHook(Handle *outThreadHandle, u32 ep, u32 arg, u32 stackTop, s32 priority, s32 processorId)
+{
+    u32 flags = flagsOfProcess(currentCoreContext->objectContext.currentProcess);
+    if (isN3DS && CONFIG(REDIRECTAPPTHREADS) && processorId == 1 && (flags & 0xF00) == 0x100)
+        processorId = 2;
 
-extern Menu rosalinaMenu;
+    return CreateThread(outThreadHandle, ep, arg, stackTop, priority, processorId);
+}
 
-void RosalinaMenu_TakeScreenshot(void);
-void RosalinaMenu_ChangeScreenBrightness(void);
-void RosalinaMenu_ShowCredits(void);
-void RosalinaMenu_ProcessList(void);
-void RosalinaMenu_SaveSettings(void);
-void RosalinaMenu_PowerOff(void);
-void RosalinaMenu_Reboot(void);
-void RosalinaMenu_Cheats(void);
-
-bool rosalinaMenuShouldShowDebugInfo(void);
-void RosalinaMenu_ShowDebugInfo(void);

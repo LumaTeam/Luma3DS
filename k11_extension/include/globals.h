@@ -54,6 +54,7 @@ extern void (*KScheduler__AdjustThread)(KScheduler *this, KThread *thread, u32 o
 extern void (*KScheduler__AttemptSwitchingThreadContext)(KScheduler *this);
 
 extern Result (*ControlMemory)(u32 *addrOut, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
+extern Result (*CreateThread)(Handle *outThreadHandle, u32 ep, u32 arg, u32 stackTop, s32 priority, s32 processorId);
 extern void (*SleepThread)(s64 ns);
 extern Result (*CloseHandle)(Handle handle);
 extern Result (*GetHandleInfo)(s64 *out, Handle handle, u32 type);
@@ -114,6 +115,14 @@ extern void (*initFPU)(void);
 extern void (*mcuReboot)(void);
 extern void (*coreBarrier)(void);
 
+typedef struct ScreenFiltersCfgData {
+    u16 cct;
+    bool invert;
+    s64 gammaEnc;
+    s64 contrastEnc;
+    s64 brightnessEnc;
+} ScreenFiltersCfgData;
+
 typedef struct CfwInfo
 {
     char magic[4];
@@ -130,8 +139,11 @@ typedef struct CfwInfo
     u32 splashDurationMsec;
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
-    u16 screenFiltersCct;
     s16 ntpTzOffetMinutes;
+
+    ScreenFiltersCfgData topScreenFilter;
+    ScreenFiltersCfgData bottomScreenFilter;
+
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;
 } CfwInfo;

@@ -28,6 +28,8 @@
 #include "csvc.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
+#include <3ds.h>
 
 void formatMemoryPermission(char *outbuf, MemPerm perm)
 {
@@ -160,4 +162,42 @@ int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat)
         return sprintf(out, "%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu", year, month, days, hours, minutes, seconds, milliseconds);
     else
         return sprintf(out, "%04lu-%02lu-%02lu %02lu:%02lu:%02lu", year, month, days, hours, minutes, seconds);
+}
+
+int floatToString(char *out, float f, u32 precision, bool pad)
+{
+    // Floating point stuff is cringe
+    if (isnanf(f))
+        return sprintf(out, "NaN");
+    else if (isinff(f) && f >= -0.0f)
+        return sprintf(out, "inf");
+    else if (isinff(f))
+        return sprintf(out, "-inf");
+
+    static const u64 pow10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
+    precision = precision >= 6 ? 6 : precision; // result inaccurate after 1e-6
+
+    u64 mult = pow10[precision];
+    double f2 = fabs((double)f) * mult + 0.5;
+    const char *sign = f2 >= 0.0f ? "" : "-";
+    u64 f3 = (u64)f2;
+
+    u64 intPart = f3 / mult;
+    u64 fracPart = f3 % mult;
+
+    if (pad)
+        return sprintf(out, "%s%llu.%0*llu", sign, intPart, (int)precision, fracPart);
+    else
+    {
+        int n = sprintf(out, "%s%llu", sign, intPart);
+        if (fracPart == 0)
+            return n;
+
+        n += sprintf(out + n, ".%0*llu", (int)precision, fracPart);
+        
+        int n2 = n - 1;
+        while (out[n2] == '0')
+            out[n2--] = '\0';
+        return n2;
+    }
 }

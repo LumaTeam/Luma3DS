@@ -34,7 +34,6 @@ extern int lastNtpTzOffset;
 
 void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void);
 void MiscellaneousMenu_ChangeMenuCombo(void);
-void MiscellaneousMenu_SaveSettings(void);
 void MiscellaneousMenu_InputRedirection(void);
 void MiscellaneousMenu_UpdateTimeDateNtp(void);
 void MiscellaneousMenu_NullifyUserTimeOffset(void);

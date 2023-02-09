@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include "menus/miscellaneous.h"
+#include "luma_config.h"
 #include "input_redirection.h"
 #include "ntp.h"
 #include "memory.h"
@@ -36,35 +37,7 @@
 #include "ifile.h"
 #include "pmdbgext.h"
 #include "process_patches.h"
-#include "screen_filters.h"
-#include "config_template_ini.h"
 
-#define CONFIG(a)        (((cfg->config >> (a)) & 1) != 0)
-#define MULTICONFIG(a)   ((cfg->multiConfig >> (2 * (a))) & 3)
-#define BOOTCONFIG(a, b) ((cfg->bootConfig >> (a)) & (b))
-
-enum singleOptions
-{
-    AUTOBOOTEMU = 0,
-    USEEMUFIRM,
-    LOADEXTFIRMSANDMODULES,
-    PATCHGAMES,
-    PATCHVERSTRING,
-    SHOWGBABOOT,
-    PATCHUNITINFO,
-    DISABLEARM11EXCHANDLERS,
-    ENABLESAFEFIRMROSALINA,
-};
-
-enum multiOptions
-{
-    DEFAULTEMU = 0,
-    BRIGHTNESS,
-    SPLASH,
-    PIN,
-    NEWCPU,
-    AUTOBOOTMODE,
-};
 typedef struct DspFirmSegmentHeader {
     u32 offset;
     u32 loadAddrHalfwords;
@@ -90,21 +63,6 @@ typedef struct DspFirm {
     u8 data[];
 } DspFirm;
 
-typedef struct CfgData {
-    u16 formatVersionMajor, formatVersionMinor;
-
-    u32 config, multiConfig, bootConfig;
-    u32 splashDurationMsec;
-
-    u64 hbldr3dsxTitleId;
-    u32 rosalinaMenuCombo;
-    u16 screenFiltersCct;
-    s16 ntpTzOffetMinutes;
-
-    u64 autobootTwlTitleId;
-    u8 autobootCtrAppmemtype;
-} CfgData;
-
 Menu miscellaneousMenu = {
     "Miscellaneous options menu",
     {
@@ -114,10 +72,10 @@ Menu miscellaneousMenu = {
         { "Update time and date via NTP", METHOD, .method = &MiscellaneousMenu_UpdateTimeDateNtp },
         { "Nullify user time offset", METHOD, .method = &MiscellaneousMenu_NullifyUserTimeOffset },
         { "Dump DSP firmware", METHOD, .method = &MiscellaneousMenu_DumpDspFirm },
-        { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         {},
     }
 };
+
 int lastNtpTzOffset = 0;
 
 static inline bool compareTids(u64 tidA, u64 tidB)
@@ -130,20 +88,19 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
 {
     Result res;
     char failureReason[64];
-    u64 currentTid = Luma_SharedConfig->hbldr_3dsx_tid;
+    u64 currentTid = Luma_SharedConfig->selected_hbldr_3dsx_tid;
     u64 newTid = currentTid;
+
+    FS_ProgramInfo progInfo;
+    u32 pid;
+    u32 launchFlags;
+    res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
+    bool appRunning = R_SUCCEEDED(res);
 
     if(compareTids(currentTid, HBLDR_DEFAULT_3DSX_TID))
     {
-        FS_ProgramInfo progInfo;
-        u32 pid;
-        u32 launchFlags;
-        res = PMDBG_GetCurrentAppInfo(&progInfo, &pid, &launchFlags);
-        if(R_SUCCEEDED(res))
-        {
+        if(appRunning)
             newTid = progInfo.programId;
-            Luma_SharedConfig->hbldr_3dsx_tid = progInfo.programId;
-        }
         else
         {
             res = -1;
@@ -156,7 +113,18 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
         newTid = HBLDR_DEFAULT_3DSX_TID;
     }
 
-    Luma_SharedConfig->hbldr_3dsx_tid = newTid;
+    Luma_SharedConfig->selected_hbldr_3dsx_tid = newTid;
+
+    // Move "selected" field to "current" if no app is currently running.
+    // Otherwise, PM will do it on app exit.
+    // There's a small possibility of race condition but it shouldn't matter
+    // here.
+    // We need to do that to ensure that the ExHeader at init matches the ExHeader
+    // at termination at all times, otherwise the process refcounts of sysmodules
+    // get all messed up.
+    if (!appRunning)
+        Luma_SharedConfig->hbldr_3dsx_tid = newTid;
+
     if (compareTids(newTid, HBLDR_DEFAULT_3DSX_TID))
         miscellaneousMenu.items[0].title = "Switch the hb. title to the current app.";
     else
@@ -182,35 +150,6 @@ void MiscellaneousMenu_SwitchBoot3dsxTargetTitle(void)
     while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
-static void MiscellaneousMenu_ConvertComboToString(char *out, u32 combo)
-{
-    static const char *keys[] = {
-        "A", "B", "Select", "Start", "Right", "Left", "Up", "Down", "R", "L", "X", "Y",
-        "?", "?",
-        "ZL", "ZR",
-        "?", "?", "?", "?",
-        "Touch",
-        "?", "?", "?",
-        "CStick Right", "CStick Left", "CStick Up", "CStick Down",
-        "CPad Right", "CPad Left", "CPad Up", "CPad Down",
-    };
-
-    char *outOrig = out;
-    out[0] = 0;
-    for(s32 i = 31; i >= 0; i--)
-    {
-        if(combo & (1 << i))
-        {
-            strcpy(out, keys[i]);
-            out += strlen(keys[i]);
-            *out++ = '+';
-        }
-    }
-
-    if (out != outOrig)
-        out[-1] = 0;
-}
-
 void MiscellaneousMenu_ChangeMenuCombo(void)
 {
     char comboStrOrig[128], comboStr[128];
@@ -221,7 +160,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    MiscellaneousMenu_ConvertComboToString(comboStrOrig, menuCombo);
+    LumaConfig_ConvertComboToString(comboStrOrig, menuCombo);
 
     Draw_Lock();
     Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
@@ -230,7 +169,7 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
     posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Please enter the new combo:");
 
     menuCombo = waitCombo();
-    MiscellaneousMenu_ConvertComboToString(comboStr, menuCombo);
+    LumaConfig_ConvertComboToString(comboStr, menuCombo);
 
     do
     {
@@ -242,165 +181,6 @@ void MiscellaneousMenu_ChangeMenuCombo(void)
 
         posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Successfully changed the menu combo.");
 
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
-    }
-    while(!(waitInput() & KEY_B) && !menuShouldExit);
-}
-
-static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
-{
-    char lumaVerStr[64];
-    char lumaRevSuffixStr[16];
-    char rosalinaMenuComboStr[128];
-
-    const char *splashPosStr;
-    const char *n3dsCpuStr;
-
-    s64 outInfo;
-    svcGetSystemInfo(&outInfo, 0x10000, 0);
-    u32 version = (u32)outInfo;
-
-    svcGetSystemInfo(&outInfo, 0x10000, 1);
-    u32 commitHash = (u32)outInfo;
-
-    svcGetSystemInfo(&outInfo, 0x10000, 0x200);
-    bool isRelease = (bool)outInfo;
-
-    switch (MULTICONFIG(SPLASH)) {
-        default: case 0: splashPosStr = "off"; break;
-        case 1: splashPosStr = "before payloads"; break;
-        case 2: splashPosStr = "after payloads"; break;
-    }
-
-    switch (MULTICONFIG(NEWCPU)) {
-        default: case 0: n3dsCpuStr = "off"; break;
-        case 1: n3dsCpuStr = "clock"; break;
-        case 2: n3dsCpuStr = "l2"; break;
-        case 3: n3dsCpuStr = "clock+l2"; break;
-    }
-
-    if (GET_VERSION_REVISION(version) != 0) {
-        sprintf(lumaVerStr, "Luma3DS v%d.%d.%d", (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version), (int)GET_VERSION_REVISION(version));
-    } else {
-        sprintf(lumaVerStr, "Luma3DS v%d.%d",  (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version));
-    }
-
-    if (isRelease) {
-        strcpy(lumaRevSuffixStr, "");
-    } else {
-        sprintf(lumaRevSuffixStr, "-%08lx", (u32)commitHash);
-    }
-
-    MiscellaneousMenu_ConvertComboToString(rosalinaMenuComboStr, cfg->rosalinaMenuCombo);
-
-    static const int pinOptionToDigits[] = { 0, 4, 6, 8 };
-    int pinNumDigits = pinOptionToDigits[MULTICONFIG(PIN)];
-
-    int n = sprintf(
-        out, (const char *)config_template_ini,
-        lumaVerStr, lumaRevSuffixStr,
-
-        (int)cfg->formatVersionMajor, (int)cfg->formatVersionMinor,
-        (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
-        (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
-        (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
-
-        1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
-        splashPosStr, (unsigned int)cfg->splashDurationMsec,
-        pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
-
-        cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
-        (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
-
-        cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
-
-        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
-        (int)CONFIG(ENABLESAFEFIRMROSALINA)
-    );
-
-    return n < 0 ? 0 : (size_t)n;
-}
-
-void MiscellaneousMenu_SaveSettings(void)
-{
-    char inibuf[0x2000];
-
-    Result res;
-
-    IFile file;
-    u64 total;
-
-    CfgData configData;
-
-    u32 formatVersion;
-    u32 config, multiConfig, bootConfig;
-    u32 splashDurationMsec;
-
-    u8 autobootCtrAppmemtype;
-    u64 autobootTwlTitleId;
-
-    s64 out;
-    bool isSdMode;
-
-    svcGetSystemInfo(&out, 0x10000, 2);
-    formatVersion = (u32)out;
-    svcGetSystemInfo(&out, 0x10000, 3);
-    config = (u32)out;
-    svcGetSystemInfo(&out, 0x10000, 4);
-    multiConfig = (u32)out;
-    svcGetSystemInfo(&out, 0x10000, 5);
-    bootConfig = (u32)out;
-    svcGetSystemInfo(&out, 0x10000, 6);
-    splashDurationMsec = (u32)out;
-
-    svcGetSystemInfo(&out, 0x10000, 0x10);
-    autobootTwlTitleId = (u64)out;
-    svcGetSystemInfo(&out, 0x10000, 0x11);
-    autobootCtrAppmemtype = (u8)out;
-
-    svcGetSystemInfo(&out, 0x10000, 0x203);
-    isSdMode = (bool)out;
-
-    configData.formatVersionMajor = (u16)(formatVersion >> 16);
-    configData.formatVersionMinor = (u16)formatVersion;
-    configData.config = config;
-    configData.multiConfig = multiConfig;
-    configData.bootConfig = bootConfig;
-    configData.splashDurationMsec = splashDurationMsec;
-    configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
-    configData.rosalinaMenuCombo = menuCombo;
-    configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
-    configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
-    configData.autobootTwlTitleId = autobootTwlTitleId;
-    configData.autobootCtrAppmemtype = autobootCtrAppmemtype;
-
-    size_t n = saveLumaIniConfigToStr(inibuf, &configData);
-    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
-    if (n > 0)
-        res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/config.ini"), FS_OPEN_CREATE | FS_OPEN_WRITE);
-    else
-        res = -1;
-
-    if(R_SUCCEEDED(res))
-        res = IFile_SetSize(&file, n);
-    if(R_SUCCEEDED(res))
-        res = IFile_Write(&file, &total, inibuf, n, 0);
-    IFile_Close(&file);
-
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
-    do
-    {
-        Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
-        if(R_SUCCEEDED(res))
-            Draw_DrawString(10, 30, COLOR_WHITE, "Operation succeeded.");
-        else
-            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Operation failed (0x%08lx).", res);
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
@@ -655,10 +435,23 @@ static Result MiscellaneousMenu_DumpDspFirmCallback(Handle procHandle, u32 textS
 
     // Dump to SD card (no point in dumping to CTRNAND as 3dsx stuff doesn't work there)
     IFile file;
-    res = IFile_Open(
-        &file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/dspfirm.cdc"), FS_OPEN_CREATE | FS_OPEN_WRITE
-    );
+    FS_Archive archive;
+
+    // Create sdmc:/3ds directory if it doesn't exist yet
+    res = FSUSER_OpenArchive(&archive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
+    if(R_SUCCEEDED(res))
+    {
+        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/3ds"), 0);
+        if((u32)res == 0xC82044BE) // directory already exists
+            res = 0;
+        FSUSER_CloseArchive(archive);
+    }
+
+    if (R_SUCCEEDED(res))
+        res = IFile_Open(
+            &file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
+            fsMakePath(PATH_ASCII, "/3ds/dspfirm.cdc"), FS_OPEN_CREATE | FS_OPEN_WRITE
+        );
 
     u64 total;
     if(R_SUCCEEDED(res))

@@ -6,11 +6,17 @@
 #include "util.h"
 #include "hbldr.h"
 
+#define SYSMODULE_CXI_COOKIE_MASK 0xEEEE000000000000ull
+
 extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode;
 
-static u64 g_cached_programHandle;
+static u64 g_cached_programHandle; // for exheader info only
 static ExHeader_Info g_exheaderInfo;
+
+static IFile g_cached_sysmoduleCxiFile;
+static u64 g_cached_sysmoduleCxiCookie;
+static Ncch g_cached_sysmoduleCxiNcch;
 
 typedef struct ContentPath {
     u32 contentType;
@@ -99,6 +105,25 @@ static int lzss_decompress(u8 *end)
     return ret;
 }
 
+static inline bool IsSysmoduleId(u64 tid)
+{
+    return (tid >> 32) == 0x00040130;
+}
+
+static inline bool IsSysmoduleCxiCookie(u64 programHandle)
+{
+    return (programHandle >> 32) == (SYSMODULE_CXI_COOKIE_MASK >> 32);
+}
+
+static void InvalidateCachedCxiFile(void)
+{
+    if (g_cached_sysmoduleCxiFile.handle != 0)
+        IFile_Close(&g_cached_sysmoduleCxiFile);
+    memset(&g_cached_sysmoduleCxiFile, 0, sizeof(IFile));
+
+    g_cached_sysmoduleCxiCookie = 0;
+}
+
 static Result allocateProgramMemoryWrapper(prog_addrs_t *mapped, const ExHeader_Info *exhi, const prog_addrs_t *vaddr)
 {
     memcpy(mapped, vaddr, sizeof(prog_addrs_t));
@@ -120,7 +145,39 @@ static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_
     const ExHeader_CodeSetInfo *csi = &exhi->sci.codeset_info;
     bool isCompressed = csi->flags.compress_exefs_code;
 
-    if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12))
+    // Load from CXI, and skip patches, if we were opened from it
+    if (IsSysmoduleCxiCookie(programHandle))
+    {
+        u32 sz_ = 0;
+        bool ok = readSysmoduleCxiCode((u8 *)mapped->text_addr, &sz_, (u64)mapped->total_size << 12, &g_cached_sysmoduleCxiFile, &g_cached_sysmoduleCxiNcch);
+        size = sz_;
+
+        if (!ok)
+            return (Result)-2;
+
+        // Decompress
+        if (isCompressed)
+            lzss_decompress((u8 *)mapped->text_addr + size);
+
+        // No need to keep the file open at this point
+        InvalidateCachedCxiFile();
+        return 0;
+    }
+
+    bool codeLoadedExternally = false;
+    if (CONFIG(PATCHGAMES))
+    {
+        // Require both "load external FIRM & modules" and "patch games" for sysmodules
+        if (IsSysmoduleId(titleId))
+            codeLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
+        else
+            codeLoadedExternally = true;
+    }
+
+    if (codeLoadedExternally)
+        codeLoadedExternally = loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12);
+
+    if(!codeLoadedExternally)
     {
         archivePath.type = PATH_BINARY;
         archivePath.data = &programHandle;
@@ -168,6 +225,29 @@ static inline bool IsHioId(u64 id)
 static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
 {
     Result res;
+
+    // Load from CXI, and skip patches, if we were opened from it
+    if (IsSysmoduleCxiCookie(programHandle))
+    {
+        u64 titleId = 0x0004013000000000ull | (u32)programHandle;
+        if (g_cached_sysmoduleCxiCookie != programHandle)
+        {
+            InvalidateCachedCxiFile();
+            res = openSysmoduleCxi(&g_cached_sysmoduleCxiFile, titleId);
+            if (R_FAILED(res))
+                return res;
+            g_cached_sysmoduleCxiCookie = programHandle;
+        }
+
+        bool ok = readSysmoduleCxiNcchHeader(&g_cached_sysmoduleCxiNcch, &g_cached_sysmoduleCxiFile);
+        if (!ok)
+            return (Result)-2;
+        ok = readSysmoduleCxiExHeaderInfo(exheaderInfo, &g_cached_sysmoduleCxiNcch, &g_cached_sysmoduleCxiFile);
+        if (!ok)
+            return (Result)-2;
+        return 0;
+    }
+
     TRY(IsHioId(programHandle) ? FSREG_GetProgramInfo(exheaderInfo, 1, programHandle) : PXIPM_GetProgramInfo(exheaderInfo, programHandle));
 
     // Tweak 3dsx placeholder title exheaderInfo
@@ -178,7 +258,20 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
     else
     {
         u64 originalTitleId = exheaderInfo->aci.local_caps.title_id;
-        if(CONFIG(PATCHGAMES) && loadTitleExheaderInfo(exheaderInfo->aci.local_caps.title_id, exheaderInfo))
+        bool exhLoadedExternally = false;
+        if (CONFIG(PATCHGAMES))
+        {
+            // Require both "load external FIRM & modules" and "patch games" for sysmodules
+            if (IsSysmoduleId(originalTitleId))
+                exhLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
+            else
+                exhLoadedExternally = true;
+        }
+
+        if (exhLoadedExternally)
+            exhLoadedExternally = loadTitleExheaderInfo(originalTitleId, exheaderInfo);
+
+        if(exhLoadedExternally)
             exheaderInfo->aci.local_caps.title_id = originalTitleId;
     }
 
@@ -208,11 +301,11 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
     prog_addrs_t mapped;
     prog_addrs_t vaddr;
     Handle codeset;
-    CodeSetInfo codesetinfo;
+    CodeSetHeader csh;
     u32 dataMemSize;
 
     u32 region = 0;
-    u32 count;
+    s32 count;
     for (count = 0; count < 28; count++)
     {
         u32 desc = exhi->aci.kernel_caps.descriptors[count];
@@ -220,7 +313,7 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
             region = desc & 0xF00;
     }
     if (region == 0)
-            return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, 1, 2);
+            return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_KERNEL, 2);
 
     // allocate process memory
     vaddr.text_addr = csi->text.address;
@@ -237,18 +330,18 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
     u64 titleId = exhi->aci.local_caps.title_id;
     if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &mapped)))
     {
-        memcpy(&codesetinfo.name, csi->name, 8);
-        codesetinfo.program_id = titleId;
-        codesetinfo.text_addr = vaddr.text_addr;
-        codesetinfo.text_size = vaddr.text_size;
-        codesetinfo.text_size_total = vaddr.text_size;
-        codesetinfo.ro_addr = vaddr.ro_addr;
-        codesetinfo.ro_size = vaddr.ro_size;
-        codesetinfo.ro_size_total = vaddr.ro_size;
-        codesetinfo.rw_addr = vaddr.data_addr;
-        codesetinfo.rw_size = vaddr.data_size;
-        codesetinfo.rw_size_total = dataMemSize;
-        res = svcCreateCodeSet(&codeset, &codesetinfo, (void *)mapped.text_addr, (void *)mapped.ro_addr, (void *)mapped.data_addr);
+        memcpy(&csh.name, csi->name, 8);
+        csh.program_id = titleId;
+        csh.text_addr = vaddr.text_addr;
+        csh.text_size = vaddr.text_size;
+        csh.text_size_total = vaddr.text_size;
+        csh.ro_addr = vaddr.ro_addr;
+        csh.ro_size = vaddr.ro_size;
+        csh.ro_size_total = vaddr.ro_size;
+        csh.rw_addr = vaddr.data_addr;
+        csh.rw_size = vaddr.data_size;
+        csh.rw_size_total = dataMemSize;
+        res = svcCreateCodeSet(&codeset, &csh, mapped.text_addr, mapped.ro_addr, mapped.data_addr);
         if (R_SUCCEEDED(res))
         {
             // There are always 28 descriptors
@@ -291,9 +384,30 @@ static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_Prog
     }
     else
     {
-        TRY(PXIPM_RegisterProgram(programHandle, title, update));
-        if (IsHioId(*programHandle)) // double check this is indeed *not* HIO
-            panic(0);
+        bool loadedCxiFromStorage = false;
+        if (IsSysmoduleId(titleId) && CONFIG(LOADEXTFIRMSANDMODULES))
+        {
+            // Forbid having two such file handles being open at the same time
+            // Also reload the file even if already cached.
+            InvalidateCachedCxiFile();
+
+            res = openSysmoduleCxi(&g_cached_sysmoduleCxiFile, titleId);
+            if (R_SUCCEEDED(res))
+            {
+                // A .cxi with the correct name in /luma/sysmodule exists, proceed
+                *programHandle = SYSMODULE_CXI_COOKIE_MASK | (u32)titleId;
+                g_cached_sysmoduleCxiCookie = *programHandle;
+                loadedCxiFromStorage = true;
+            }
+        }
+
+        if (!loadedCxiFromStorage)
+        {
+            // Otherwise, just load as normal
+            TRY(PXIPM_RegisterProgram(programHandle, title, update));
+            if (IsHioId(*programHandle)) // double check this is indeed *not* HIO
+                panic(0);
+        }
     }
 
     return res;
@@ -301,7 +415,17 @@ static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_Prog
 
 static Result UnregisterProgram(u64 programHandle)
 {
-    return IsHioId(programHandle) ? FSREG_UnloadProgram(programHandle) : PXIPM_UnregisterProgram(programHandle);
+    if (g_cached_programHandle == programHandle)
+        g_cached_programHandle = 0;
+
+    if (IsSysmoduleCxiCookie(programHandle))
+    {
+        if (programHandle == g_cached_sysmoduleCxiCookie)
+            InvalidateCachedCxiFile();
+        return 0;
+    }
+    else
+        return IsHioId(programHandle) ? FSREG_UnloadProgram(programHandle) : PXIPM_UnregisterProgram(programHandle);
 }
 
 void loaderHandleCommands(void *ctx)
@@ -337,9 +461,6 @@ void loaderHandleCommands(void *ctx)
             break;
         case 3: // UnregisterProgram
             memcpy(&programHandle, &cmdbuf[1], 8);
-
-            if (g_cached_programHandle == programHandle)
-                g_cached_programHandle = 0;
             cmdbuf[1] = UnregisterProgram(programHandle);
             cmdbuf[0] = IPC_MakeHeader(3, 1, 0);
             break;
