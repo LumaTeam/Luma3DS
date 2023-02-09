@@ -132,7 +132,7 @@ static void ScreenFiltersMenu_SetCct(u16 cct)
 Menu screenFiltersMenu = {
     "Screen filters menu",
     {
-        { "[6500K] Default", METHOD, .method = &ScreenFiltersMenu_SetDefault },
+        { "[6500K] Default temperature", METHOD, .method = &ScreenFiltersMenu_SetDefault },
         { "[10000K] Aquarium", METHOD, .method = &ScreenFiltersMenu_SetAquarium },
         { "[7500K] Overcast Sky", METHOD, .method = &ScreenFiltersMenu_SetOvercastSky },
         { "[5500K] Daylight", METHOD, .method = &ScreenFiltersMenu_SetDaylight },
