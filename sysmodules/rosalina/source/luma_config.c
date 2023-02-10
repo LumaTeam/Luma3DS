@@ -87,6 +87,8 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
 
     const char *splashPosStr;
     const char *n3dsCpuStr;
+    const char *autobootModeStr;
+    const char *forceAudioOutputStr;
 
     s64 outInfo;
     svcGetSystemInfo(&outInfo, 0x10000, 0);
@@ -109,6 +111,18 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         case 1: n3dsCpuStr = "clock"; break;
         case 2: n3dsCpuStr = "l2"; break;
         case 3: n3dsCpuStr = "clock+l2"; break;
+    }
+
+    switch (MULTICONFIG(AUTOBOOTMODE)) {
+        default: case 0: autobootModeStr = "off"; break;
+        case 1: autobootModeStr = "3ds"; break;
+        case 2: autobootModeStr = "dsi"; break;
+    }
+
+    switch (MULTICONFIG(FORCEAUDIOOUTPUT)) {
+        default: case 0: forceAudioOutputStr = "off"; break;
+        case 1: forceAudioOutputStr = "headphones"; break;
+        case 2: forceAudioOutputStr = "speakers"; break;
     }
 
     if (GET_VERSION_REVISION(version) != 0) {
@@ -150,11 +164,12 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
         (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
         (int)CONFIG(REDIRECTAPPTHREADS), (int)CONFIG(PATCHVERSTRING),
-        (int)CONFIG(SHOWGBABOOT), (int)CONFIG(FORCEHEADPHONEOUTPUT),
+        (int)CONFIG(SHOWGBABOOT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
-        pinNumDigits, n3dsCpuStr, (int)MULTICONFIG(AUTOBOOTMODE),
+        pinNumDigits, n3dsCpuStr,
+        autobootModeStr, forceAudioOutputStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
         (int)cfg->ntpTzOffetMinutes,
