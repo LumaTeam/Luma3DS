@@ -142,29 +142,55 @@ static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
 
 static int parseDecFloatOption(s64 *out, const char *val, s64 minval, s64 maxval)
 {
-    char *point = strchrnul(val, '.');
-    if (point == val) {
+    s64 sign = 1;// intPart < 0 ? -1 : 1;
+
+    switch (val[0]) {
+        case '\0':
+            return -1;
+        case '+':
+            ++val;
+            break;
+        case '-':
+            sign = -1;
+            ++val;
+            break;
+        default:
+            break;
+    }
+
+    // Reject "-" and "+"
+    if (val[0] == '\0') {
         return -1;
     }
+
+    char *point = strchrnul(val, '.');
 
     // Parse integer part, then fractional part
     s64 intPart = 0;
     s64 fracPart = 0;
-    int rc = parseDecIntOptionImpl(&intPart, val, point - val, INT64_MIN, INT64_MAX);
+    int rc = 0;
+
+    if (point == val) {
+        // e.g. -.5
+        if (val[1] == '\0')
+            return -1;
+    }
+    else {
+        rc = parseDecIntOptionImpl(&intPart, val, point - val, INT64_MIN, INT64_MAX);
+    }
 
     if (rc != 0) {
         return -1;
     }
 
-    s64 sign = intPart < 0 ? -1 : 1;
     s64 intPartAbs = sign == -1 ? -intPart : intPart;
     s64 res = 0;
     bool of = __builtin_mul_overflow(intPartAbs, FLOAT_CONV_MULT, &res);
-    
+
     if (of) {
         return -1;
     }
-    
+
     s64 mul = FLOAT_CONV_MULT / 10;
 
     // Check if there's a fractional part
@@ -173,7 +199,7 @@ static int parseDecFloatOption(s64 *out, const char *val, s64 minval, s64 maxval
             if (*pos < '0' || *pos > '9') {
                 return -1;
             }
-            
+
             res += (*pos - '0') * mul;
             mul /= 10;
         }

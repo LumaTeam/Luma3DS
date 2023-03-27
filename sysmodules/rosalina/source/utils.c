@@ -179,8 +179,8 @@ int floatToString(char *out, float f, u32 precision, bool pad)
 
     u64 mult = pow10[precision];
     double f2 = fabs((double)f) * mult + 0.5;
-    const char *sign = f2 >= 0.0f ? "" : "-";
     u64 f3 = (u64)f2;
+    const char *sign = (f >= 0.0f || f3 == 0) ? "" : "-";
 
     u64 intPart = f3 / mult;
     u64 fracPart = f3 % mult;
@@ -194,7 +194,7 @@ int floatToString(char *out, float f, u32 precision, bool pad)
             return n;
 
         n += sprintf(out + n, ".%0*llu", (int)precision, fracPart);
-        
+
         int n2 = n - 1;
         while (out[n2] == '0')
             out[n2--] = '\0';
