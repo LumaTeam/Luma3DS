@@ -811,7 +811,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "Splash: Off( ) Before( ) After( ) payloads",
                                                "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                                "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
-                                               "Homebrew autoboot: Off( ) 3DS( ) DSi( )",
+                                               "Hbmenu autoboot: Off( ) 3DS( ) DSi( )",
                                                "Force audio: Off( ) Headphones( ) Speakers( )"
                                              };
 
@@ -856,8 +856,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "'Clock+L2' can cause issues with some\n"
                                                  "games.",
 
-                                                 "Enable autobooting into homebrew,\n"
-                                                 "either into 3DS or DSi mode.\n\n"
+                                                 "Enable autobooting into homebrew\n"
+                                                 "menu, either into 3DS or DSi mode.\n\n"
                                                  "Autobooting into a gamecard title is\n"
                                                  "not supported.\n\n"
                                                  "Refer to the \"autoboot\" section in the\n"
