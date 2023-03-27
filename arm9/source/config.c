@@ -446,19 +446,6 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             } else {
                 CHECK_PARSE_OPTION(-1);
             }
-        } else if (strcmp(name, "force_audio_output") == 0) {
-            if (strcasecmp(value, "off") == 0) {
-                cfg->multiConfig |= 0 << (2 * (u32)FORCEAUDIOOUTPUT);
-                return 1;
-            } else if (strcasecmp(value, "headphones") == 0) {
-                cfg->multiConfig |= 1 << (2 * (u32)FORCEAUDIOOUTPUT);
-                return 1;
-            } else if (strcasecmp(value, "speakers") == 0) {
-                cfg->multiConfig |= 2 << (2 * (u32)FORCEAUDIOOUTPUT);
-                return 1;
-            } else {
-                CHECK_PARSE_OPTION(-1);
-            }
         } else {
             CHECK_PARSE_OPTION(-1);
         }
@@ -559,7 +546,23 @@ static int configIniHandler(void* user, const char* section, const char* name, c
                 return 1;
             }
         }
-        CHECK_PARSE_OPTION(-1);
+
+        if (strcmp(name, "force_audio_output") == 0) {
+            if (strcasecmp(value, "off") == 0) {
+                cfg->multiConfig |= 0 << (2 * (u32)FORCEAUDIOOUTPUT);
+                return 1;
+            } else if (strcasecmp(value, "headphones") == 0) {
+                cfg->multiConfig |= 1 << (2 * (u32)FORCEAUDIOOUTPUT);
+                return 1;
+            } else if (strcasecmp(value, "speakers") == 0) {
+                cfg->multiConfig |= 2 << (2 * (u32)FORCEAUDIOOUTPUT);
+                return 1;
+            } else {
+                CHECK_PARSE_OPTION(-1);
+            }
+        } else {
+            CHECK_PARSE_OPTION(-1);
+        }
     } else {
         CHECK_PARSE_OPTION(-1);
     }
@@ -647,7 +650,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
         pinNumDigits, n3dsCpuStr,
-        autobootModeStr, forceAudioOutputStr,
+        autobootModeStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
         (int)cfg->ntpTzOffetMinutes,
@@ -659,6 +662,8 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)cfg->topScreenFilter.invert, (int)cfg->bottomScreenFilter.invert,
 
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
+
+        forceAudioOutputStr,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
         (int)CONFIG(ENABLESAFEFIRMROSALINA)
@@ -812,7 +817,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                                "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
                                                "Hbmenu autoboot: Off( ) 3DS( ) DSi( )",
-                                               "Force audio: Off( ) Headphones( ) Speakers( )"
                                              };
 
     static const char *singleOptionsText[] = { "( ) Autoboot EmuNAND",
@@ -863,15 +867,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Refer to the \"autoboot\" section in the\n"
                                                  "configuration file to configure\n"
                                                  "this feature.",
-
-                                                 "Force audio output to HPs or speakers.\n\n"
-                                                 "Currently only for NATIVE_FIRM.\n\n"
-                                                 "Due to software limitations, this gets\n"
-                                                 "undone if you actually insert then\n"
-                                                 "remove HPs (just enter then exit sleep\n"
-                                                 "mode if this happens).\n\n"
-                                                 "Also gets bypassed for camera shutter\n"
-                                                 "sound.",
 
                                                  "If enabled, an EmuNAND\n"
                                                  "will be launched on boot.\n\n"
@@ -951,7 +946,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = ISN3DS },
         { .visible = true },
-        { .visible = true },
+        // { .visible = true }, audio rerouting, hidden
     };
 
     struct singleOption {
