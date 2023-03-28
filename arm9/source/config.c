@@ -826,7 +826,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
-                                               "( ) Force routing audio output to headphones"
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
