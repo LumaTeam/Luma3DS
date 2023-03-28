@@ -859,8 +859,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "'Clock+L2' can cause issues with some\n"
                                                  "games.",
 
-                                                 "Enable autobooting into homebrew\n"
-                                                 "menu, either into 3DS or DSi mode.\n\n"
+                                                 "Enable autobooting into homebrew menu,\n"
+                                                 "either into 3DS or DSi mode.\n\n"
                                                  "Autobooting into a gamecard title is\n"
                                                  "not supported.\n\n"
                                                  "Refer to the \"autoboot\" section in the\n"
