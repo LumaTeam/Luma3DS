@@ -55,6 +55,7 @@ Menu rosalinaMenu = {
         { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Save settings", METHOD, .method = &RosalinaMenu_SaveSettings },
+        { "Go to Home", METHOD, .method = &RosalinaMenu_HomeMenu},
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
@@ -342,6 +343,36 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
             menuLeave();
             srvPublishToSubscriber(0x203, 0);
             return;
+        }
+        else if(pressed & KEY_B)
+            return;
+    }
+    while(!menuShouldExit);
+}
+
+void RosalinaMenu_HomeMenu(void) // Trigger Home Button press
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        srvPublishToSubscriber(0x204, 0);
+
+        Draw_Lock();
+        Draw_ClearFramebuffer();
+        Draw_DrawString(10, 30, COLOR_WHITE, "Exit Rosalina to get back to the Home Menu.");
+        Draw_DrawString(10, 40, COLOR_WHITE, "Press A to confirm");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & KEY_A)
+        {
+          return;
         }
         else if(pressed & KEY_B)
             return;
