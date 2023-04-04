@@ -248,7 +248,13 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
         return 0;
     }
 
-    TRY(IsHioId(programHandle) ? FSREG_GetProgramInfo(exheaderInfo, 1, programHandle) : PXIPM_GetProgramInfo(exheaderInfo, programHandle));
+    if (IsHioId(programHandle))
+        res = FSREG_GetProgramInfo(exheaderInfo, 1, programHandle);
+    else
+        res = PXIPM_GetProgramInfo(exheaderInfo, programHandle);
+
+    if (R_FAILED(res))
+        return res;
 
     // Tweak 3dsx placeholder title exheaderInfo
     if (hbldrIs3dsxTitle(exheaderInfo->aci.local_caps.title_id))
@@ -361,9 +367,10 @@ static Result LoadProcess(Handle *process, u64 programHandle)
     TRY(GetProgramInfo(programHandle));
 
     if (hbldrIs3dsxTitle(g_exheaderInfo.aci.local_caps.title_id))
-        return hbldrLoadProcess(process, &g_exheaderInfo);
+        return assertSuccess(hbldrLoadProcess(process, &g_exheaderInfo));
     else
-        return LoadProcessImpl(process, &g_exheaderInfo, programHandle);
+        // Break on failure, even here (if GetProgramInfo succeeds we shouldn't be here anyway)
+        return assertSuccess(LoadProcessImpl(process, &g_exheaderInfo, programHandle));
 }
 
 static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_ProgramInfo *update)

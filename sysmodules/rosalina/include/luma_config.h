@@ -39,7 +39,6 @@ enum singleOptions
     REDIRECTAPPTHREADS,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    FORCEHEADPHONEOUTPUT,
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
@@ -53,6 +52,7 @@ enum multiOptions
     PIN,
     NEWCPU,
     AUTOBOOTMODE,
+    FORCEAUDIOOUTPUT,
 };
 
 void LumaConfig_ConvertComboToString(char *out, u32 combo);

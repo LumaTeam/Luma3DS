@@ -30,7 +30,7 @@
 #include "screen_filters.h"
 #include "luma_config.h"
 
-static void forceHeadphoneOutput(void)
+static void forceAudioOutput(u32 forceOp)
 {
     // DSP/Codec sysmodule already have a way to force headphone output,
     // but it's only for when the shell is closed (applied on shell close,
@@ -58,7 +58,19 @@ static void forceHeadphoneOutput(void)
     if (R_FAILED(res))
         return;
 
-    u8 reg = 0x30; // Enable override selection (always set), then select HP.
+    u8 reg;
+    switch (forceOp) {
+        case 0:
+        default:
+            __builtin_trap();
+            break;
+        case 1:
+            reg = 0x30;
+            break;
+        case 2:
+            reg = 0x20;
+            break;
+    }
     res = CDCCHK_WriteRegisters2(100, 69, &reg, 1);
 
     svcCloseHandle(*cdcChkHandlePtr);
@@ -67,8 +79,9 @@ static void forceHeadphoneOutput(void)
 void handleShellOpened(void)
 {
     s64 out = 0;
-    svcGetSystemInfo(&out, 0x10000, 3);
-    u32 config = (u32)out;
+    svcGetSystemInfo(&out, 0x10000, 4);
+    u32 multiConfig = (u32)out;
+    u32 forceOp = (multiConfig >> (2 * (u32)FORCEAUDIOOUTPUT)) & 3;
 
     // We need to check here if GSP has done its init stuff, in particular
     // clock and reset, otherwise we'll cause core1 to be in a waitstate
@@ -77,6 +90,6 @@ void handleShellOpened(void)
     if (isServiceUsable("gsp::Gpu"))
         ScreenFiltersMenu_RestoreSettings();
 
-    if ((config & BIT(FORCEHEADPHONEOUTPUT)) != 0 && isServiceUsable("cdc:CHK"))
-        forceHeadphoneOutput();
+    if (forceOp != 0 && isServiceUsable("cdc:CHK"))
+        forceAudioOutput(forceOp);
 }
