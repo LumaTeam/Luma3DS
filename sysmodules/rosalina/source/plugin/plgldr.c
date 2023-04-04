@@ -100,7 +100,7 @@ Result  PLGLDR__SetPluginLoadParameters(PluginLoadParameters *parameters)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(4, 2, 4);
-    cmdbuf[1] = (u32)parameters->noFlash;
+    cmdbuf[1] = (u32)parameters->noFlash | (((u32)parameters->pluginMemoryStrategy) << 8);
     cmdbuf[2] = parameters->lowTitleId;
     cmdbuf[3] = IPC_Desc_Buffer(256, IPC_BUFFER_R);
     cmdbuf[4] = (u32)parameters->path;

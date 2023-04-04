@@ -179,9 +179,6 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x00D0080: // APT:ReceiveParameter
             {
-                if (isN3DS) ///< N3DS do not need the swap system
-                    break;
-
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
 
                 if (info != NULL && strncmp(info->name, "APT:", 4) == 0 && cmdbuf[1] == 0x300)
@@ -195,8 +192,8 @@ Result SendSyncRequestHook(Handle handle)
                         u32 command = cmdbuf[3];
 
                         if ((plgStatus == PLG_CFG_RUNNING && command == 3) // COMMAND_RESPONSE
-                        || (plgStatus == PLG_CFG_SWAPPED && (command >= 10 || command <= 12)))  // COMMAND_WAKEUP_BY_EXIT || COMMAND_WAKEUP_BY_PAUSE
-                            PLG_SignalEvent(PLG_CFG_SWAP_EVENT);
+                        || (plgStatus == PLG_CFG_INHOME && (command >= 10 || command <= 12)))  // COMMAND_WAKEUP_BY_EXIT || COMMAND_WAKEUP_BY_PAUSE
+                            PLG_SignalEvent(PLG_CFG_HOME_EVENT);
                     }
                 }
                 break;

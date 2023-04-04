@@ -18,6 +18,10 @@
 
 #include <3ds/types.h>
 
+/// Allows or disables thread redirection patches for the new thread if specified in the affinity field in svcCreateThread
+#define AFFINITY_DISABLE_THREAD_REDIRECTION(x) ((x >= 0) ? (x | 0x40) : x)
+#define AFFINITY_ALLOW_THREAD_REDIRECTION(x) ((x >= 0) ? (x & ~0x40) : x)
+
 /// Operations for svcControlService
 typedef enum ServiceOp
 {

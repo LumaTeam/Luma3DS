@@ -39,15 +39,16 @@ typedef enum
 {
     PLG_CFG_NONE = 0,
     PLG_CFG_RUNNING = 1,
-    PLG_CFG_SWAPPED = 2,
+    PLG_CFG_INHOME = 2,
 
-    PLG_CFG_SWAP_EVENT = 1 << 16,
+    PLG_CFG_HOME_EVENT = 1 << 16,
     PLG_CFG_EXIT_EVENT = 2 << 16
 }   PLG_CFG_STATUS;
 
 typedef struct
 {
     bool    isReady;
+    bool    isAppRegion;
     u8 *    memblock;
 }   MemoryBlock;
 
@@ -61,6 +62,7 @@ typedef struct
 {
     bool            isEnabled;
     bool            pluginIsSwapped;
+    bool            pluginIsHome;
     const char *    pluginPath;
     MemoryBlock     memblock;
     Error           error;
@@ -79,8 +81,18 @@ typedef struct
     
     bool            isExeLoadFunctionset;
     bool            isSwapFunctionset;
+    u8              pluginMemoryStrategy;
     u32             exeLoadChecksum;
     u32             swapLoadChecksum;    
 }   PluginLoaderContext;
 
 extern PluginLoaderContext PluginLoaderCtx;
+
+// Used by the custom loader command 0x101 (ControlApplicationMemoryModeOverride)
+typedef struct ControlApplicationMemoryModeOverrideConfig {
+    u32 query : 1; //< Only query the current configuration, do not update it.
+    u32 enable_o3ds : 1; //< Enable o3ds memory mode override
+    u32 enable_n3ds : 1; //< Enable n3ds memory mode override
+    u32 o3ds_mode : 3; //< O3ds memory mode
+    u32 n3ds_mode : 3; //< N3ds memory mode
+} ControlApplicationMemoryModeOverrideConfig;

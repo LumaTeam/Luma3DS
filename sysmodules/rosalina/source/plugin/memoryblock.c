@@ -32,7 +32,7 @@ Result      MemoryBlock__IsReady(void)
 
     Result  res;
 
-    if (isN3DS)
+    if (isN3DS || (ctx->pluginMemoryStrategy == PLG_STRATEGY_MODE3))
     {
         s64     appRegionSize = 0;
         s64     appRegionUsed = 0;
@@ -41,6 +41,8 @@ Result      MemoryBlock__IsReady(void)
         vu32*   appMemAllocPtr = (vu32 *)PA_FROM_VA_PTR(0x1FF80040);
         u32     appMemAlloc = *appMemAllocPtr;
         u32     temp;
+
+        memblock->isAppRegion = true;
 
         svcGetSystemInfo(&appRegionSize, 0x10000, 0x80);
         svcGetSystemInfo(&appRegionUsed, 0, 1);
@@ -68,12 +70,13 @@ Result      MemoryBlock__IsReady(void)
     }
     else
     {
+        memblock->isAppRegion = false;
         res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
                                     g_memBlockSize, MEMOP_REGION_SYSTEM | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
     }
 
     if (R_FAILED(res)) {
-        if (isN3DS)
+        if (isN3DS || (ctx->pluginMemoryStrategy == PLG_STRATEGY_MODE3))
             PluginLoader__Error("Cannot map plugin memory.", res);
         else
             PluginLoader__Error("A console reboot is needed to\nclose extended memory games.\n\nPress [B] to reboot.", res);
@@ -107,7 +110,7 @@ Result      MemoryBlock__Free(void)
     if (!memblock->isReady)
         return 0;
 
-    MemOp   memRegion = isN3DS ? MEMOP_REGION_APP : MEMOP_REGION_SYSTEM;
+    MemOp   memRegion = memblock->isAppRegion ? MEMOP_REGION_APP : MEMOP_REGION_SYSTEM;
     Result  res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, (u32)memblock->memblock,
                                     g_memBlockSize, memRegion | MEMOP_FREE, 0);
 

@@ -10,7 +10,7 @@
 typedef struct
 {
     bool    noFlash;
-    bool    noIRPatch;
+    u8      pluginMemoryStrategy;
     u32     lowTitleId;
     char    path[256];
     u32     config[32];
@@ -33,7 +33,16 @@ typedef enum
     PLG_SLEEP_EXIT = 2,
     PLG_ABOUT_TO_SWAP = 3,
     PLG_ABOUT_TO_EXIT = 4,
+    PLG_HOME_ENTER = 5,
+    PLG_HOME_EXIT = 6,
 }   PLG_Event;
+
+typedef enum
+{
+    PLG_STRATEGY_NONE = 2,
+    PLG_STRATEGY_SWAP = 0,
+    PLG_STRATEGY_MODE3 = 1
+} PluginMemoryStrategy;
 
 typedef struct
 {

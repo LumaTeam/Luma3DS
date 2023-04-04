@@ -157,8 +157,8 @@ bool     TryToLoadPlugin(Handle process)
     {
         5 * 1024 * 1024, // 5 MiB
         2 * 1024 * 1024, // 2 MiB
-        3 * 1024 * 1024, // 3 MiB
-        4 * 1024 * 1024  // 4 MiB
+        10 * 1024 * 1024,  // 10 MiB
+        5 * 1024 * 1024, // 5 MiB (Reserved)
     };
 
     // Get title id
@@ -171,6 +171,7 @@ bool     TryToLoadPlugin(Handle process)
     if (ctx->useUserLoadParameters && (u32)tid == ctx->userLoadParameters.lowTitleId)
     {
         ctx->useUserLoadParameters = false;
+        ctx->pluginMemoryStrategy = ctx->userLoadParameters.pluginMemoryStrategy;
         if (OpenFile(&plugin, ctx->userLoadParameters.path))
             return false;
 

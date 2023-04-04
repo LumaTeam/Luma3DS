@@ -8,6 +8,17 @@
 
 #define SYSMODULE_CXI_COOKIE_MASK 0xEEEE000000000000ull
 
+// Used by the custom loader command 0x101 (ControlApplicationMemoryModeOverride)
+typedef struct ControlApplicationMemoryModeOverrideConfig {
+    u32 query : 1; //< Only query the current configuration, do not update it.
+    u32 enable_o3ds : 1; //< Enable o3ds memory mode override
+    u32 enable_n3ds : 1; //< Enable n3ds memory mode override
+    u32 o3ds_mode : 3; //< O3ds memory mode
+    u32 n3ds_mode : 3; //< N3ds memory mode
+} ControlApplicationMemoryModeOverrideConfig;
+
+static ControlApplicationMemoryModeOverrideConfig g_memoryOverrideConfig = { 0 };
+
 extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode, nextGamePatchDisabled;
 
@@ -108,6 +119,11 @@ static int lzss_decompress(u8 *end)
 static inline bool IsSysmoduleId(u64 tid)
 {
     return (tid >> 32) == 0x00040130;
+}
+
+static inline bool IsApplicationId(u64 tid)
+{
+    return (tid >> 32) == 0x00040000;
 }
 
 static inline bool IsSysmoduleCxiCookie(u64 programHandle)
@@ -237,7 +253,7 @@ void plgldrExit(void)
 }
 
 // Try to load a plugin for the game
-static Result PLGLDR_LoadPlugin(Handle *process)
+static Result PLGLDR_LoadPlugin(u32 processID)
 {
     // Special case handling: games rebooting the 3DS on old models
     if (!isN3DS && g_exheaderInfo.aci.local_caps.core_info.o3ds_system_mode > 0)
@@ -246,15 +262,15 @@ static Result PLGLDR_LoadPlugin(Handle *process)
         s64 out;
 
         svcGetSystemInfo(&out, 0x10000, 0x180);
-        if ((out & 1) == 0)
+        if ((out & 1) == 0) {
             return 0;
+        }
     }
 
     u32* cmdbuf = getThreadCommandBuffer();
 
-    cmdbuf[0] = IPC_MakeHeader(1, 0, 2);
-    cmdbuf[1] = IPC_Desc_SharedHandles(1);
-    cmdbuf[2] = *process;
+    cmdbuf[0] = IPC_MakeHeader(1, 1, 0);
+    cmdbuf[1] = processID;
     return svcSendSyncRequest(plgldrHandle);
 }
 
@@ -297,6 +313,8 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
 
     TRY(IsHioId(programHandle) ? FSREG_GetProgramInfo(exheaderInfo, 1, programHandle) : PXIPM_GetProgramInfo(exheaderInfo, programHandle));
 
+    u64 originalTitleId = exheaderInfo->aci.local_caps.title_id;
+
     // Tweak 3dsx placeholder title exheaderInfo
     if (hbldrIs3dsxTitle(exheaderInfo->aci.local_caps.title_id))
     {
@@ -304,7 +322,6 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
     }
     else
     {
-        u64 originalTitleId = exheaderInfo->aci.local_caps.title_id;
         bool exhLoadedExternally = false;
         if (CONFIG(PATCHGAMES))
         {
@@ -320,6 +337,13 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
 
         if(exhLoadedExternally)
             exheaderInfo->aci.local_caps.title_id = originalTitleId;
+    }
+    
+    if (IsApplicationId(originalTitleId)) {
+        if (g_memoryOverrideConfig.enable_o3ds)
+            exheaderInfo->aci.local_caps.core_info.o3ds_system_mode = g_memoryOverrideConfig.o3ds_mode;
+        if (g_memoryOverrideConfig.enable_n3ds)
+            exheaderInfo->aci.local_caps.core_info.n3ds_system_mode = g_memoryOverrideConfig.n3ds_mode;
     }
 
     return res;
@@ -402,8 +426,10 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exh
             // check for plugin
             if (!res && !isHomebrew && ((u32)((titleId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000))
             {
+                u32 processID;
+                assertSuccess(svcGetProcessId(&processID, *outProcessHandle));
                 assertSuccess(plgldrInit());
-                assertSuccess(PLGLDR_LoadPlugin(outProcessHandle));
+                assertSuccess(PLGLDR_LoadPlugin(processID));
                 plgldrExit();
             }
         }
@@ -491,6 +517,7 @@ void loaderHandleCommands(void *ctx)
     (void)ctx;
     FS_ProgramInfo title;
     FS_ProgramInfo update;
+    ControlApplicationMemoryModeOverrideConfig memModeOverride;
     u32* cmdbuf;
     u16 cmdid;
     int res;
@@ -534,8 +561,16 @@ void loaderHandleCommands(void *ctx)
         case 0x100: // DisableNextGamePatch
             nextGamePatchDisabled = true;
             cmdbuf[0] = IPC_MakeHeader(0x100, 1, 0);
-            cmdbuf[1] = MAKERESULT(RL_SUCCESS, RS_SUCCESS, RM_COMMON, RD_SUCCESS);
+            cmdbuf[1] = (Result)0;
             break;
+        case 0x101: // ControlApplicationMemoryModeOverride
+            memcpy(&memModeOverride, &cmdbuf[1], sizeof(ControlApplicationMemoryModeOverrideConfig));
+            if (!memModeOverride.query)
+                g_memoryOverrideConfig = memModeOverride;
+            cmdbuf[0] = IPC_MakeHeader(0x101, 2, 0);
+            cmdbuf[1] = (Result)0;
+            memcpy(&cmdbuf[2], &g_memoryOverrideConfig, sizeof(ControlApplicationMemoryModeOverrideConfig));
+            break; 
         default: // error
             cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
             cmdbuf[1] = 0xD900182F;

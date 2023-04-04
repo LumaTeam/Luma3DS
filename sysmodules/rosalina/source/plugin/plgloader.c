@@ -10,7 +10,7 @@
 #include "sleep.h"
 #include "task_runner.h"
 
-#define PLGLDR_VERSION (SYSTEM_VERSION(1, 0, 0))
+#define PLGLDR_VERSION (SYSTEM_VERSION(1, 0, 1))
 
 #define THREADVARS_MAGIC  0x21545624 // !TV$
 
@@ -34,6 +34,8 @@ void        PluginLoader__Init(void)
 
     ctx->plgEventPA = (s32 *)PA_FROM_VA_PTR(&ctx->plgEvent);
     ctx->plgReplyPA = (s32 *)PA_FROM_VA_PTR(&ctx->plgReply);
+
+    ctx->pluginMemoryStrategy = PLG_STRATEGY_SWAP;
 
     MemoryBlock__ResetSwapSettings();
 
@@ -71,8 +73,48 @@ void        PluginLoader__UpdateMenu(void)
     rosalinaMenu.items[3].title = status[PluginLoaderCtx.isEnabled];
 }
 
+static ControlApplicationMemoryModeOverrideConfig g_memorymodeoverridebackup = { 0 };
+Result  PluginLoader__SetMode3AppMode(bool enable)
+{
+	Handle loaderHandle;
+    Result res = srvGetServiceHandle(&loaderHandle, "Loader");
 
+    if (R_FAILED(res)) return res;
 
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    if (enable) {
+        ControlApplicationMemoryModeOverrideConfig* mode = (ControlApplicationMemoryModeOverrideConfig*)&cmdbuf[1];
+        
+        memset(mode, 0, sizeof(ControlApplicationMemoryModeOverrideConfig));
+        mode->query = true;
+        cmdbuf[0] = IPC_MakeHeader(0x101, 1, 0); // ControlApplicationMemoryModeOverride
+
+        if (R_SUCCEEDED((res = svcSendSyncRequest(loaderHandle))) && R_SUCCEEDED(res = cmdbuf[1]))
+        {
+            memcpy(&g_memorymodeoverridebackup, &cmdbuf[2], sizeof(ControlApplicationMemoryModeOverrideConfig));
+
+            memset(mode, 0, sizeof(ControlApplicationMemoryModeOverrideConfig));
+            mode->enable_o3ds = true;
+            mode->o3ds_mode = SYSMODE_DEV2;
+            cmdbuf[0] = IPC_MakeHeader(0x101, 1, 0); // ControlApplicationMemoryModeOverride
+            if (R_SUCCEEDED((res = svcSendSyncRequest(loaderHandle)))) {
+                res = cmdbuf[1];
+            }
+        }
+    } else {
+        ControlApplicationMemoryModeOverrideConfig* mode = (ControlApplicationMemoryModeOverrideConfig*)&cmdbuf[1];
+        *mode = g_memorymodeoverridebackup;
+        cmdbuf[0] = IPC_MakeHeader(0x101, 1, 0); // ControlApplicationMemoryModeOverride
+        if (R_SUCCEEDED((res = svcSendSyncRequest(loaderHandle)))) {
+            res = cmdbuf[1];
+        }
+    }
+    
+	svcCloseHandle(loaderHandle);
+    return res;
+}
+static void j_PluginLoader__SetMode3AppMode(void* arg) {(void)arg; PluginLoader__SetMode3AppMode(false);}
 
 void CheckMemory(void);
 
@@ -101,20 +143,22 @@ void     PluginLoader__HandleCommands(void *_ctx)
     {
         case 1: // Load plugin
         {
-            if (cmdbuf[0] != IPC_MakeHeader(1, 0, 2))
+            if (cmdbuf[0] != IPC_MakeHeader(1, 1, 0))
             {
                 error(cmdbuf, 0xD9001830);
                 break;
             }
 
             ctx->plgEvent = PLG_OK;
-            ctx->target = cmdbuf[2];
+            svcOpenProcess(&ctx->target, cmdbuf[1]);
 
+            if (ctx->useUserLoadParameters && ctx->userLoadParameters.pluginMemoryStrategy == PLG_STRATEGY_MODE3)
+                TaskRunner_RunTask(j_PluginLoader__SetMode3AppMode, NULL, 0);
+
+            bool flash = !(ctx->useUserLoadParameters && ctx->userLoadParameters.noFlash);
             if (ctx->isEnabled && TryToLoadPlugin(ctx->target))
             {
-                if (!ctx->useUserLoadParameters && ctx->userLoadParameters.noFlash)
-                    ctx->userLoadParameters.noFlash = false;
-                else
+                if (flash)
                 {
                     // A little flash to notify the user that the plugin is loaded
                     for (u32 i = 0; i < 64; i++)
@@ -184,13 +228,19 @@ void     PluginLoader__HandleCommands(void *_ctx)
             PluginLoadParameters *params = &ctx->userLoadParameters;
 
             ctx->useUserLoadParameters = true;
-            params->noFlash = cmdbuf[1];
+            params->noFlash = cmdbuf[1] & 0xFF;
+            params->pluginMemoryStrategy = (cmdbuf[1] >> 8) & 0xFF;
             params->lowTitleId = cmdbuf[2];
+            
             strncpy(params->path, (const char *)cmdbuf[4], 255);
             memcpy(params->config, (void *)cmdbuf[6], 32 * sizeof(u32));
 
+            if (params->pluginMemoryStrategy == PLG_STRATEGY_MODE3)
+                cmdbuf[1] = PluginLoader__SetMode3AppMode(true);
+            else
+                cmdbuf[1] = 0;
+
             cmdbuf[0] = IPC_MakeHeader(4, 1, 0);
-            cmdbuf[1] = 0;
             break;
         }
 
@@ -429,6 +479,8 @@ static void WaitForProcessTerminated(void *arg)
     (void)arg;
     PluginLoaderContext *ctx = &PluginLoaderCtx;
 
+    // Wait a bit so all process threads can exit
+    svcSleepThread(100000000);
     // Unmap plugin's memory before closing the process
     if (!ctx->pluginIsSwapped) {
         MemoryBlock__UnmountFromProcess();
@@ -439,9 +491,11 @@ static void WaitForProcessTerminated(void *arg)
     // Reset plugin loader state
     SetConfigMemoryStatus(PLG_CFG_NONE);
     ctx->pluginIsSwapped = false;
+    ctx->pluginIsHome = false;
     ctx->target = 0;
     ctx->isExeLoadFunctionset = false;
     ctx->isSwapFunctionset = false;
+    ctx->pluginMemoryStrategy = PLG_STRATEGY_SWAP;
     g_blockMenuOpen = 0;
     MemoryBlock__ResetSwapSettings();
     //if (!ctx->userLoadParameters.noIRPatch)
@@ -466,35 +520,56 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
         // Start a task to wait for process to be terminated
         TaskRunner_RunTask(WaitForProcessTerminated, NULL, 0);
     }
-    else if (event == PLG_CFG_SWAP_EVENT)
+    else if (event == PLG_CFG_HOME_EVENT)
     {
-        if (ctx->pluginIsSwapped)
-        {
-            // Reload data from swap file
-            MemoryBlock__IsReady();
-            MemoryBlock__FromSwapFile();
-            MemoryBlock__MountInProcess();
-            // Unlock plugin threads
-            svcControlProcess(ctx->target, PROCESSOP_SCHEDULE_THREADS, 0, (u32)ThreadPredicate);
-            // Resume plugin execution
-            PLG__NotifyEvent(PLG_OK, true);
-            SetConfigMemoryStatus(PLG_CFG_RUNNING);
+        if ((ctx->pluginMemoryStrategy == PLG_STRATEGY_SWAP) && !isN3DS) {
+            if (ctx->pluginIsSwapped)
+            {
+                // Reload data from swap file
+                MemoryBlock__IsReady();
+                MemoryBlock__FromSwapFile();
+                MemoryBlock__MountInProcess();
+                // Unlock plugin threads
+                svcControlProcess(ctx->target, PROCESSOP_SCHEDULE_THREADS, 0, (u32)ThreadPredicate);
+                // Resume plugin execution
+                PLG__NotifyEvent(PLG_OK, true);
+                SetConfigMemoryStatus(PLG_CFG_RUNNING);
+            }
+            else
+            {
+                // Signal plugin that it's about to be swapped
+                PLG__NotifyEvent(PLG_ABOUT_TO_SWAP, false);
+                // Wait for plugin reply
+                PLG__WaitForReply();
+                // Lock plugin threads
+                svcControlProcess(ctx->target, PROCESSOP_SCHEDULE_THREADS, 1, (u32)ThreadPredicate);
+                // Put data into file and release memory
+                MemoryBlock__UnmountFromProcess();
+                MemoryBlock__ToSwapFile();
+                MemoryBlock__Free();
+                SetConfigMemoryStatus(PLG_CFG_INHOME);
+            }
+            ctx->pluginIsSwapped = !ctx->pluginIsSwapped;
+        } else {
+            if (ctx->pluginIsHome)
+            {
+                // Signal plugin that it's about to exit home menu
+                PLG__NotifyEvent(PLG_HOME_EXIT, false);
+                // Wait for plugin reply
+                PLG__WaitForReply();
+                SetConfigMemoryStatus(PLG_CFG_RUNNING);
+            }
+            else
+            {
+                // Signal plugin that it's about to enter home menu
+                PLG__NotifyEvent(PLG_HOME_ENTER, false);
+                // Wait for plugin reply
+                PLG__WaitForReply();
+                SetConfigMemoryStatus(PLG_CFG_INHOME);
+            }
+            ctx->pluginIsHome = !ctx->pluginIsHome;
         }
-        else
-        {
-            // Signal plugin that it's about to be swapped
-            PLG__NotifyEvent(PLG_ABOUT_TO_SWAP, false);
-            // Wait for plugin reply
-            PLG__WaitForReply();
-            // Lock plugin threads
-            svcControlProcess(ctx->target, PROCESSOP_SCHEDULE_THREADS, 1, (u32)ThreadPredicate);
-            // Put data into file and release memory
-            MemoryBlock__UnmountFromProcess();
-            MemoryBlock__ToSwapFile();
-            MemoryBlock__Free();
-            SetConfigMemoryStatus(PLG_CFG_SWAPPED);
-        }
-        ctx->pluginIsSwapped = !ctx->pluginIsSwapped;
+        
     }
     srvPublishToSubscriber(0x1002, 0);
 }
