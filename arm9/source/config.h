@@ -34,9 +34,9 @@
 #define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
 #define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
-#define CONFIG_FILE         "config.bin"
+#define CONFIG_FILE         "config.ini"
 #define CONFIG_VERSIONMAJOR 3
-#define CONFIG_VERSIONMINOR 5
+#define CONFIG_VERSIONMINOR 7
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -51,6 +51,7 @@ enum multiOptions
     PIN,
     NEWCPU,
     AUTOBOOTMODE,
+    FORCEAUDIOOUTPUT,
 };
 
 enum singleOptions
@@ -62,7 +63,6 @@ enum singleOptions
     REDIRECTAPPTHREADS,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    FORCEHEADPHONEOUTPUT,
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
