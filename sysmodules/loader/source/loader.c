@@ -252,6 +252,22 @@ void plgldrExit(void)
         svcCloseHandle(plgldrHandle);
 }
 
+// Get plugin loader state
+Result  PLGLDR__IsPluginLoaderEnabled(bool *isEnabled)
+{
+    Result res = 0;
+
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = IPC_MakeHeader(2, 0, 0);
+    if (R_SUCCEEDED((res = svcSendSyncRequest(plgldrHandle))))
+    {
+        res = cmdbuf[1];
+        *isEnabled = cmdbuf[2];
+    }
+    return res;
+}
+
 // Try to load a plugin for the game
 static Result PLGLDR_LoadPlugin(u32 processID)
 {
@@ -259,10 +275,10 @@ static Result PLGLDR_LoadPlugin(u32 processID)
     if (!isN3DS && g_exheaderInfo.aci.local_caps.core_info.o3ds_system_mode > 0)
     {
         // Check if the plugin loader is enabled, otherwise skip the loading part
-        s64 out;
+        bool enabled = false;
 
-        svcGetSystemInfo(&out, 0x10000, 0x180);
-        if ((out & 1) == 0) {
+        PLGLDR__IsPluginLoaderEnabled(&enabled);
+        if (!enabled) {
             return 0;
         }
     }
