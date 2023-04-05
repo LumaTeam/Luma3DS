@@ -113,6 +113,9 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 0x180:
                     *out = cfwInfo.pluginLoaderFlags;
                     break;
+                case 0x181:
+                    *out = disableThreadRedirection;
+                    break;
                 case 0x200: // isRelease
                     *out = cfwInfo.flags & 1;
                     break;

@@ -127,6 +127,7 @@ void* (*kAlloc)(FcramDescriptor *fcramDesc, u32 nbPages, u32 alignment, u32 regi
 CfwInfo cfwInfo;
 u32 kextBasePa;
 u32 stolenSystemMemRegionSize;
+bool disableThreadRedirection = false;
 
 vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;

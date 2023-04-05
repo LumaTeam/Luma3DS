@@ -210,6 +210,11 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             }
             break;
         }
+        case 0x10080:
+        {
+            disableThreadRedirection = varg1 != 0;
+            break;
+        }
         default:
         {
             res = KernelSetState(type, varg1, varg2, varg3);

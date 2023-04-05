@@ -165,6 +165,7 @@ typedef struct CfwInfo
 extern CfwInfo cfwInfo;
 extern u32 kextBasePa;
 extern u32 stolenSystemMemRegionSize;
+extern bool disableThreadRedirection;
 
 extern vu32 rosalinaState;
 extern bool hasStartedRosalinaNetworkFuncsOnce;
