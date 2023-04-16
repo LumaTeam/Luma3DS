@@ -20,7 +20,9 @@ Since v8.0, Luma3DS has its own in-game menu, triggerable by <kbd>L+Down+Select<
 2. Run `make`.
 
     The produced `boot.firm` is meant to be copied to the root of your SD card for usage with Boot9Strap.
-
+#
+#### Docker Image
+There is also a Docker image for compilation. Make sure you have Docker installed, and then run ``docker run -it pablomk7/luma3dsbuildtools`` in your terminal to get into a Docker container containing all the tools needed.
 #
 ### Setup / Usage / Features
 See https://github.com/LumaTeam/Luma3DS/wiki
