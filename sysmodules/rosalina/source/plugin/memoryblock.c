@@ -274,3 +274,8 @@ void       MemoryBlock__ResetSwapSettings(void)
 
 	svcInvalidateEntireInstructionCache();
 }
+
+PluginHeader* MemoryBlock__GetMappedPluginHeader() {
+    MemoryBlock     *memblock = &PluginLoaderCtx.memblock;
+    return memblock->isReady ? NULL : (PluginHeader*)memblock->memblock;
+}

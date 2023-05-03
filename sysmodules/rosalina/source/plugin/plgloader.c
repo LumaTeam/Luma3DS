@@ -118,18 +118,6 @@ static void j_PluginLoader__SetMode3AppMode(void* arg) {(void)arg; PluginLoader_
 
 void CheckMemory(void);
 
-
-// Update config memory field(used by k11 extension)
-static void     SetConfigMemoryStatus(u32 status)
-{
-    *(vu32 *)PA_FROM_VA_PTR(0x1FF800F0) = status;
-}
-
-static u32      GetConfigMemoryEvent(void)
-{
-    return (*(vu32 *)PA_FROM_VA_PTR(0x1FF800F0)) & ~0xFFFF;
-}
-
 void    PLG__NotifyEvent(PLG_Event event, bool signal);
 
 void     PluginLoader__HandleCommands(void *_ctx)
@@ -170,7 +158,7 @@ void     PluginLoader__HandleCommands(void *_ctx)
                 }
                 //if (!ctx->userLoadParameters.noIRPatch)
                 //    IR__Patch();
-                SetConfigMemoryStatus(PLG_CFG_RUNNING);
+                PLG__SetConfigMemoryStatus(PLG_CFG_RUNNING);
             }
             else
             {
@@ -474,13 +462,29 @@ void    PLG__WaitForReply(void)
     svcArbitrateAddress(PluginLoaderCtx.arbiter, (u32)PluginLoaderCtx.plgReplyPA, ARBITRATION_WAIT_IF_LESS_THAN_TIMEOUT, PLG_OK, 10000000000ULL);
 }
 
+void     PLG__SetConfigMemoryStatus(u32 status)
+{
+    *(vu32 *)PA_FROM_VA_PTR(0x1FF800F0) = status;
+}
+
+u32      PLG__GetConfigMemoryStatus(void)
+{
+    return (*(vu32 *)PA_FROM_VA_PTR((u32 *)0x1FF800F0)) & 0xFFFF;
+}
+
+u32      PLG__GetConfigMemoryEvent(void)
+{
+    return (*(vu32 *)PA_FROM_VA_PTR(0x1FF800F0)) & ~0xFFFF;
+}
+
 static void WaitForProcessTerminated(void *arg)
 {
     (void)arg;
     PluginLoaderContext *ctx = &PluginLoaderCtx;
 
-    // Wait a bit so all process threads can exit
-    svcSleepThread(100000000);
+    // Wait until all threads of the process have finished (svcWaitSynchronization == 0) or 5 seconds have passed.
+    for (u32 i = 0; svcWaitSynchronization(ctx->target, 0) != 0 && i < 100; i++) svcSleepThread(50000000); // 50ms
+    
     // Unmap plugin's memory before closing the process
     if (!ctx->pluginIsSwapped) {
         MemoryBlock__UnmountFromProcess();
@@ -489,7 +493,7 @@ static void WaitForProcessTerminated(void *arg)
     // Terminate process
     svcCloseHandle(ctx->target);
     // Reset plugin loader state
-    SetConfigMemoryStatus(PLG_CFG_NONE);
+    PLG__SetConfigMemoryStatus(PLG_CFG_NONE);
     ctx->pluginIsSwapped = false;
     ctx->pluginIsHome = false;
     ctx->target = 0;
@@ -505,11 +509,18 @@ static void WaitForProcessTerminated(void *arg)
 void    PluginLoader__HandleKernelEvent(u32 notifId)
 {
     (void)notifId;
+    if (PLG__GetConfigMemoryStatus() == PLG_CFG_EXITING)
+    {
+        srvPublishToSubscriber(0x1002, 0);
+        return;
+    }
+
     PluginLoaderContext *ctx = &PluginLoaderCtx;
-    u32 event = GetConfigMemoryEvent();
+    u32 event = PLG__GetConfigMemoryEvent();
 
     if (event == PLG_CFG_EXIT_EVENT)
     {
+        PLG__SetConfigMemoryStatus(PLG_CFG_EXITING);
         if (!ctx->pluginIsSwapped)
         {
             // Signal the plugin that the game is exiting
@@ -533,7 +544,7 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
                 svcControlProcess(ctx->target, PROCESSOP_SCHEDULE_THREADS, 0, (u32)ThreadPredicate);
                 // Resume plugin execution
                 PLG__NotifyEvent(PLG_OK, true);
-                SetConfigMemoryStatus(PLG_CFG_RUNNING);
+                PLG__SetConfigMemoryStatus(PLG_CFG_RUNNING);
             }
             else
             {
@@ -547,25 +558,32 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
                 MemoryBlock__UnmountFromProcess();
                 MemoryBlock__ToSwapFile();
                 MemoryBlock__Free();
-                SetConfigMemoryStatus(PLG_CFG_INHOME);
+                PLG__SetConfigMemoryStatus(PLG_CFG_INHOME);
             }
             ctx->pluginIsSwapped = !ctx->pluginIsSwapped;
         } else {
+            // Needed for compatibility with old plugins that don't expect the PLG_HOME events.
+            volatile PluginHeader* mappedHeader = PA_FROM_VA_PTR(MemoryBlock__GetMappedPluginHeader());
+            bool doNotification = mappedHeader ? mappedHeader->notifyHomeEvent : false;
             if (ctx->pluginIsHome)
             {
-                // Signal plugin that it's about to exit home menu
-                PLG__NotifyEvent(PLG_HOME_EXIT, false);
-                // Wait for plugin reply
-                PLG__WaitForReply();
-                SetConfigMemoryStatus(PLG_CFG_RUNNING);
+                if (doNotification) {
+                    // Signal plugin that it's about to exit home menu
+                    PLG__NotifyEvent(PLG_HOME_EXIT, false);
+                    // Wait for plugin reply
+                    PLG__WaitForReply();
+                }
+                PLG__SetConfigMemoryStatus(PLG_CFG_RUNNING);
             }
             else
             {
-                // Signal plugin that it's about to enter home menu
-                PLG__NotifyEvent(PLG_HOME_ENTER, false);
-                // Wait for plugin reply
-                PLG__WaitForReply();
-                SetConfigMemoryStatus(PLG_CFG_INHOME);
+                if (doNotification) {
+                    // Signal plugin that it's about to enter home menu
+                    PLG__NotifyEvent(PLG_HOME_ENTER, false);
+                    // Wait for plugin reply
+                    PLG__WaitForReply();
+                }                
+                PLG__SetConfigMemoryStatus(PLG_CFG_INHOME);
             }
             ctx->pluginIsHome = !ctx->pluginIsHome;
         }

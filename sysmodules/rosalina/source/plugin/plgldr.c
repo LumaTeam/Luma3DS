@@ -8,7 +8,7 @@ static Handle   plgLdrArbiter;
 static s32*     plgEvent;
 static s32*     plgReply;
 static int      plgLdrRefCount;
-static bool     isN3DS;
+static bool     plgIsN3DS;
 static OnPlgLdrEventCb_t    onPlgLdrEventCb = NULL;
 
 static Result   PLGLDR__GetArbiter(void)
@@ -32,7 +32,7 @@ Result  plgLdrInit(void)
     Result res = 0;
 
     svcGetSystemInfo(&out, 0x10000, 0x201);
-    isN3DS = out != 0;
+    plgIsN3DS = out != 0;
     if (AtomicPostIncrement(&plgLdrRefCount) == 0)
         res = svcConnectToPort(&plgLdrHandle, "plg:ldr");
 

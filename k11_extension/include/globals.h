@@ -176,6 +176,7 @@ typedef enum
     PLG_CFG_NONE = 0,
     PLG_CFG_RUNNING = 1,
     PLG_CFG_INHOME = 2,
+    PLG_CFG_EXITING = 3,
 
     PLG_CFG_HOME_EVENT = 1 << 16,
     PLG_CFG_EXIT_EVENT = 2 << 16

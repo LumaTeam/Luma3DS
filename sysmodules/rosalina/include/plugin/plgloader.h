@@ -3,6 +3,7 @@
 #include <3ds/types.h>
 #include "MyThread.h"
 #include "plgldr.h"
+#include "utils.h"
 
 void        PluginLoader__Init(void);
 bool        PluginLoader__IsEnabled(void);
@@ -22,6 +23,7 @@ Result     MemoryBlock__MountInProcess(void);
 Result     MemoryBlock__UnmountFromProcess(void);
 Result     MemoryBlock__SetSwapSettings(u32* func, bool isDec, u32* params);
 void       MemoryBlock__ResetSwapSettings(void);
+PluginHeader* MemoryBlock__GetMappedPluginHeader();
 
 extern u32  g_loadSaveSwapArgs[0x4];
 extern u32  g_loadExeArgs[0x4];
@@ -34,12 +36,17 @@ u32		    loadExeFunc(void* startAddr, void* endAddr, void* args);
 
 bool     TryToLoadPlugin(Handle process);
 void    PLG__NotifyEvent(PLG_Event event, bool signal);
+void     PLG__SetConfigMemoryStatus(u32 status);
+u32      PLG__GetConfigMemoryStatus(void);
+u32      PLG__GetConfigMemoryEvent(void);
+
 
 typedef enum
 {
     PLG_CFG_NONE = 0,
     PLG_CFG_RUNNING = 1,
     PLG_CFG_INHOME = 2,
+    PLG_CFG_EXITING = 3,
 
     PLG_CFG_HOME_EVENT = 1 << 16,
     PLG_CFG_EXIT_EVENT = 2 << 16
