@@ -151,7 +151,7 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
 
 u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
-    u32 firmVersion,
+    u32 firmVersion = 0,
         firmSize;
 
     bool ctrNandError = isSdMode && !mountFs(false, false);

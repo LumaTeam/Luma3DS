@@ -699,7 +699,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         u32 patchSize = 0,
         currentNand = BOOTCFG_NAND;
 
-        u16 customVerString[19];
+        static u16 customVerString[19];
         loadCustomVerString(customVerString, &patchSize, currentNand);
 
         if(patchSize != 0) patch = customVerString;
