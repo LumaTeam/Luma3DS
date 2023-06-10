@@ -54,15 +54,6 @@ static inline u32 TranslateAddr(u32 off, _3DSX_LoadInfo* d, u32* offsets)
     return d->segAddrs[2] + off - offsets[1];
 }
 
-u32 IFile_Read2(IFile *file, void* buffer, u32 size, u32 offset)
-{
-    Result res;
-    u64 total = 0;
-    file->pos = offset;
-    res = IFile_Read(file, &total, buffer, size);
-    return R_SUCCEEDED(res) ? total : 0;
-}
-
 bool Ldr_Get3dsxSize(u32* pSize, IFile *file)
 {
     _3DSX_Header hdr;
@@ -259,21 +250,21 @@ Handle Ldr_CodesetFrom3dsx(const char* name, u32* codePages, u32 baseAddr, IFile
     }
 
     // Create the codeset
-    CodeSetInfo csinfo;
-    memset(&csinfo, 0, sizeof(csinfo));
-    memcpy(csinfo.name, name, 8);
-    csinfo.program_id      = tid;
-    csinfo.text_addr       = d.segAddrs[0];
-    csinfo.text_size       = d.segSizes[0] >> 12;
-    csinfo.ro_addr         = d.segAddrs[1];
-    csinfo.ro_size         = d.segSizes[1] >> 12;
-    csinfo.rw_addr         = d.segAddrs[2];
-    csinfo.rw_size         = (d.segSizes[2] >> 12) + 1; // One extra page reserved for settings/etc
-    csinfo.text_size_total = csinfo.text_size;
-    csinfo.ro_size_total   = csinfo.ro_size;
-    csinfo.rw_size_total   = csinfo.rw_size;
+    CodeSetHeader csh;
+    memset(&csh, 0, sizeof(csh));
+    memcpy(csh.name, name, 8);
+    csh.program_id      = tid;
+    csh.text_addr       = d.segAddrs[0];
+    csh.text_size       = d.segSizes[0] >> 12;
+    csh.ro_addr         = d.segAddrs[1];
+    csh.ro_size         = d.segSizes[1] >> 12;
+    csh.rw_addr         = d.segAddrs[2];
+    csh.rw_size         = (d.segSizes[2] >> 12) + 1; // One extra page reserved for settings/etc
+    csh.text_size_total = csh.text_size;
+    csh.ro_size_total   = csh.ro_size;
+    csh.rw_size_total   = csh.rw_size;
     Handle hCodeset = 0;
-    res = svcCreateCodeSet(&hCodeset, &csinfo, d.segPtrs[0], d.segPtrs[1], d.segPtrs[2]);
+    res = svcCreateCodeSet(&hCodeset, &csh, (u32)d.segPtrs[0], (u32)d.segPtrs[1], (u32)d.segPtrs[2]);
     if (res)
     {
         Log_PrintP("svcCreateCodeSet: %08lX", res);

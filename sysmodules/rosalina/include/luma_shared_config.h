@@ -18,12 +18,11 @@
 
 #include <3ds/types.h>
 
-#include <3ds/types.h>
-
-/// Luma shared config type.
+/// Luma shared config type (private!).
 typedef struct LumaSharedConfig {
-    u64 hbldr_3dsx_tid;         ///< Title ID to use for 3DSX loading.
-    bool use_hbldr;             ///< Whether or not Loader should use hb:ldr (Rosalina writes 1).
+    u64 hbldr_3dsx_tid;             ///< Title ID to use for 3DSX loading (current).
+    u64 selected_hbldr_3dsx_tid;    ///< Title ID to use for 3DSX loading (to be moved to "current" when the current app closes).
+    bool use_hbldr;                 ///< Whether or not Loader should use hb:ldr (reset to true).
 } LumaSharedConfig;
 
 /// Luma shared config.

@@ -25,7 +25,7 @@ AccessControlInfo:
 
   DisableDebug                  : true
   EnableForceDebug              : false
-  CanWriteSharedPage            : false
+  CanWriteSharedPage            : true
   CanUsePrivilegedPriority      : false
   CanUseNonAlphabetAndNumber    : false
   PermitMainFunctionArgument    : false

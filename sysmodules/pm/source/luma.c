@@ -3,6 +3,23 @@
 #include "luma.h"
 #include "util.h"
 
+u32 config, multiConfig, bootConfig;
+
+void readLumaConfig(void)
+{
+    s64 out = 0;
+    bool isLumaWithKext = svcGetSystemInfo(&out, 0x20000, 0) == 1;
+    if (isLumaWithKext)
+    {
+        svcGetSystemInfo(&out, 0x10000, 3);
+        config = (u32)out;
+        svcGetSystemInfo(&out, 0x10000, 4);
+        multiConfig = (u32)out;
+        svcGetSystemInfo(&out, 0x10000, 5);
+        bootConfig = (u32)out;
+    }
+}
+
 bool hasKExt(void)
 {
     s64 val;

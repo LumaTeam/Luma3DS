@@ -19,9 +19,10 @@ enum multiOptions
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
-    SPLASH_DURATION,
     PIN,
-    NEWCPU
+    NEWCPU,
+    AUTOBOOTMODE,
+    FORCEAUDIOOUTPUT,
 };
 
 enum singleOptions
@@ -30,6 +31,7 @@ enum singleOptions
     USEEMUFIRM,
     LOADEXTFIRMSANDMODULES,
     PATCHGAMES,
+    REDIRECTAPPTHREADS,
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHUNITINFO,

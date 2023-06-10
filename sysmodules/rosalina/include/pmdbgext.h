@@ -14,4 +14,3 @@ enum {
 Result PMDBG_GetCurrentAppInfo(FS_ProgramInfo *outProgramInfo, u32 *outPid, u32 *outLaunchFlags);
 Result PMDBG_DebugNextApplicationByForce(bool debug);
 Result PMDBG_LaunchTitleDebug(Handle *outDebug, const FS_ProgramInfo *programInfo, u32 launchFlags);
-Result PMDBG_PrepareToChainloadHomebrew(u64 titleId);

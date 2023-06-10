@@ -4,6 +4,7 @@
 #include "reslimit.h"
 #include "launch.h"
 #include "firmlaunch.h"
+#include "termination.h"
 #include "exheader_info_heap.h"
 #include "task_runner.h"
 #include "process_monitor.h"
@@ -12,6 +13,7 @@
 #include "util.h"
 #include "my_thread.h"
 #include "service_manager.h"
+#include "luma.h"
 
 static MyThread processMonitorThread, taskRunnerThread;
 static u8 ALIGN(8) processDataBuffer[0x40 * sizeof(ProcessData)] = {0};
@@ -33,6 +35,7 @@ Result __sync_init(void);
 void initSystem()
 {
     __sync_init();
+    readLumaConfig();
     //__libc_init_array();
 
     // Wait for sm
@@ -57,8 +60,19 @@ static const ServiceManagerServiceEntry services[] = {
     { NULL },
 };
 
+static void handleRestartHbAppNotification(u32 notificationId)
+{
+    // Dirty workaround to support hbmenu on SAFE_FIRM
+    // Cleaning up dependencies would mean terminating most sysmodules,
+    // and letting app term. notif. go through would cause NS to svcBreak,
+    // this is not what we want.
+    (void)notificationId;
+    ChainloadHomebrewDirty();
+}
+
 static const ServiceManagerNotificationEntry notifications[] = {
-    { 0x000, NULL },
+    { 0x3000, handleRestartHbAppNotification },
+    { 0x0000, NULL },
 };
 
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error

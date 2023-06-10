@@ -28,13 +28,15 @@
 
 #include "types.h"
 
+#define AUTOBOOT_DEFAULT_TWL_TID    0x0003000448424C41ull
+
 #define CONFIG(a)        (((configData.config >> (a)) & 1) != 0)
 #define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
 #define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
-#define CONFIG_FILE         "config.bin"
-#define CONFIG_VERSIONMAJOR 2
-#define CONFIG_VERSIONMINOR 4
+#define CONFIG_FILE         "config.ini"
+#define CONFIG_VERSIONMAJOR 3
+#define CONFIG_VERSIONMINOR 7
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -46,9 +48,10 @@ enum multiOptions
     DEFAULTEMU = 0,
     BRIGHTNESS,
     SPLASH,
-    SPLASH_DURATION,
     PIN,
-    NEWCPU
+    NEWCPU,
+    AUTOBOOTMODE,
+    FORCEAUDIOOUTPUT,
 };
 
 enum singleOptions
@@ -57,11 +60,14 @@ enum singleOptions
     USEEMUFIRM,
     LOADEXTFIRMSANDMODULES,
     PATCHGAMES,
+    REDIRECTAPPTHREADS,
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
+
+    NUMCONFIGURABLE = PATCHUNITINFO,
 };
 
 typedef enum ConfigurationStatus

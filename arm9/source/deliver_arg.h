@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -24,13 +24,14 @@
 *         reasonable ways as different from the original version.
 */
 
-/* File mainly written by fincs */
 #pragma once
 
-#include <3ds/types.h>
-#include "MyThread.h"
+#include "types.h"
 
-#define HBLDR_DEFAULT_3DSX_TID  0x000400000D921E00ULL
+u8 *loadDeliverArg(void);
+void commitDeliverArg(void);
 
-void HBLDR_RestartHbApplication(void *p);
-void HBLDR_HandleCommands(void *ctx);
+bool hasValidTlncAutobootParams(void);
+bool isTwlToCtrLaunch(void); // assumes TLNC block is valid
+
+bool configureHomebrewAutoboot(void);
