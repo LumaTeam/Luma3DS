@@ -22,6 +22,7 @@ static const struct
     { "File", GDB_VERBOSE_HANDLER(File) },
     { "MustReplyEmpty", GDB_HANDLER(Unsupported) },
     { "Run", GDB_VERBOSE_HANDLER(Run) },
+    { "Kill", GDB_VERBOSE_HANDLER(Kill) },
 };
 
 GDB_DECLARE_HANDLER(VerboseCommand)

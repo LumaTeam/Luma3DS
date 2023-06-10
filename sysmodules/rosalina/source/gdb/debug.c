@@ -138,7 +138,7 @@ GDB_DECLARE_VERBOSE_HANDLER(Attach)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
     RecursiveLock_Lock(&ctx->lock);
-    ctx->pid = pid;
+    ctx->pid = GDB_ConvertToRealPid(pid);
     Result r = GDB_AttachToProcess(ctx);
     if(R_FAILED(r))
         GDB_DetachImmediatelyExtended(ctx);
@@ -154,6 +154,16 @@ GDB_DECLARE_VERBOSE_HANDLER(Attach)
 
 GDB_DECLARE_HANDLER(Detach)
 {
+    if (ctx->multiprocessExtEnabled)
+    {
+        //;pid
+        u32 pid;
+        if(ctx->commandData[0] != ';' || GDB_ParseHexIntegerList(&pid, ctx->commandData + 1, 1, 0) == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+        pid = GDB_ConvertToRealPid(pid);
+        if (pid != ctx->pid)
+            return GDB_ReplyErrno(ctx, EPERM);
+    }
     ctx->state = GDB_STATE_DETACHING;
     if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
         GDB_DetachImmediatelyExtended(ctx);
@@ -168,6 +178,29 @@ GDB_DECLARE_HANDLER(Kill)
         GDB_DetachImmediatelyExtended(ctx);
 
     return 0;
+}
+
+GDB_DECLARE_VERBOSE_HANDLER(Kill)
+{
+    if (ctx->multiprocessExtEnabled)
+    {
+        //;pid . ';' is already consumed by our caller
+        u32 pid;
+        if(GDB_ParseHexIntegerList(&pid, ctx->commandData, 1, 0) == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+        pid = GDB_ConvertToRealPid(pid);
+        if (pid != ctx->pid)
+            return GDB_ReplyErrno(ctx, EPERM);
+    }
+
+    int ret = GDB_ReplyOk(ctx);
+
+    ctx->state = GDB_STATE_DETACHING;
+    ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
+    if (ctx->flags & GDB_FLAG_EXTENDED_REMOTE)
+        GDB_DetachImmediatelyExtended(ctx);
+
+    return ret;
 }
 
 GDB_DECLARE_HANDLER(Break)
@@ -232,7 +265,7 @@ GDB_DECLARE_HANDLER(Continue)
 
 GDB_DECLARE_VERBOSE_HANDLER(Continue)
 {
-    char *pos = ctx->commandData;
+    const char *pos = ctx->commandData;
     bool currentThreadFound = false;
     while(pos != NULL && *pos != 0 && !currentThreadFound)
     {
@@ -247,18 +280,21 @@ GDB_DECLARE_VERBOSE_HANDLER(Continue)
             break;
         }
 
-        char *nextpos = (char *)strchr(pos, ';');
-        if(strncmp(pos, "-1", 2) == 0)
-            currentThreadFound = true;
-        else
-        {
-            u32 threadId;
-            if(GDB_ParseHexIntegerList(&threadId, pos, 1, ';') == NULL)
-                return GDB_ReplyErrno(ctx, EILSEQ);
-            currentThreadFound = currentThreadFound || threadId == ctx->currentThreadId;
-        }
+        u32 pid, tid;
 
-        pos = nextpos;
+        const char *nextpos = GDB_ParseThreadId(ctx, &pid, &tid, pos, ';');
+        if (nextpos == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        if (tid == 0)
+            currentThreadFound = true;
+        if (pid != (u32)-1 && pid != ctx->pid)
+            return GDB_ReplyErrno(ctx, EPERM);
+        else
+            currentThreadFound = currentThreadFound || tid == ctx->currentThreadId;
+
+        if (nextpos != NULL && *nextpos != '\0')
+            pos = nextpos + 1;
     }
 
     if(ctx->currentThreadId == 0 || currentThreadFound)
@@ -269,12 +305,18 @@ GDB_DECLARE_VERBOSE_HANDLER(Continue)
 
 GDB_DECLARE_HANDLER(GetStopReason)
 {
+    char pidbuf[32];
+    if (ctx->multiprocessExtEnabled && ctx->state == GDB_STATE_ATTACHED)
+        sprintf(pidbuf, ";process:%lx", GDB_ConvertFromRealPid(ctx->pid));
+    else
+        pidbuf[0] = '\0';
+
     if (ctx->processEnded && ctx->processExited) {
-        return GDB_SendPacket(ctx, "W00", 3);
+        return GDB_SendFormattedPacket(ctx, "W00%s", pidbuf);
     } else if (ctx->processEnded && !ctx->processExited) {
-        return GDB_SendPacket(ctx, "X0f", 3);
+        return GDB_SendFormattedPacket(ctx, "X0f%s", pidbuf);
     } else if (ctx->debug == 0) {
-        return GDB_SendPacket(ctx, "W00", 3);
+        return GDB_SendFormattedPacket(ctx, "W00%s", pidbuf);
     } else {
         return GDB_SendStopReply(ctx, &ctx->latestDebugEvent);
     }
@@ -287,7 +329,10 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     s64 dummy;
     u32 core;
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, threadId, THREADCONTEXT_CONTROL_ALL);
-    int n = sprintf(out, "T%02xthread:%lx;", sig, threadId);
+
+    char tidbuf[32];
+    GDB_EncodeThreadId(ctx, tidbuf, ctx->currentThreadId);
+    int n = sprintf(out, "T%02xthread:%s;", sig, tidbuf);
 
     if(R_FAILED(r))
         return n;
@@ -450,7 +495,12 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
         {
             // exited (no error / unhandled exception), SIGTERM (process terminated) * 2
             static const char *processExitReplies[] = { "W00", "X0f", "X0f" };
-            return GDB_SendPacket(ctx, processExitReplies[(u32)info->exit_process.reason], 3);
+            char pidbuf[32];
+            if (ctx->multiprocessExtEnabled && ctx->state == GDB_STATE_ATTACHED)
+                sprintf(pidbuf, ";process:%lx", GDB_ConvertFromRealPid(ctx->pid));
+            else
+                pidbuf[0] = '\0';
+            return GDB_SendFormattedPacket(ctx, "%s%s", processExitReplies[(u32)info->exit_process.reason], pidbuf);
         }
 
         case DBGEVENT_EXCEPTION:
@@ -474,7 +524,20 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                 }
 
                 case EXCEVENT_ATTACH_BREAK:
-                    return GDB_SendPacket(ctx, "S00", 3);
+                {
+                    // Try to deduce which thread we can consider "current"
+                    ctx->currentThreadId = ctx->currentThreadId == 0 ? GDB_GetCurrentThread(ctx) : ctx->currentThreadId;
+                    if (ctx->currentThreadId != 0)
+                    {
+                        GDB_ParseCommonThreadInfo(buffer, ctx, 0);
+                        return GDB_SendFormattedPacket(ctx, "%s", buffer);
+                    }
+                    else
+                    {
+                        // Should not happen
+                        return GDB_SendPacket(ctx, "S00", 3);
+                    }
+                }
 
                 case EXCEVENT_STOP_POINT:
                 {
@@ -483,20 +546,13 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                     switch(exc.stop_point.type)
                     {
                         case STOPPOINT_SVC_FF:
-                        {
-                            GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%sswbreak:;", buffer);
-                            break;
-                        }
-
                         case STOPPOINT_BREAKPOINT:
                         {
-                            // Note: this includes both "bkpt" and hw breakpoints, but we never use the latter...
-                            // However, since our GDB executable only knows about svc 0xFF as sw breakpoint for the 3DS ABI,
-                            // we can use swbreak as reason (it'll dismiss the bkpt instruction and try to auto-step over it).
+                            // Note: STOPPOINT_BREAKPOINT includes both "bkpt" and hw breakpoints, but we never use the latter...
+                            // Use swbreak as a reason for both 'svc 0xFF' and 'bkpt' too (GDB doc mention we should use 'swbreak'
+                            // even if the breakpoint was already present/hardcoded).
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
-                            return GDB_SendFormattedPacket(ctx, "%s", buffer);
-                            break;
+                            return GDB_SendFormattedPacket(ctx, "%sswbreak:;", buffer);
                         }
 
                         case STOPPOINT_WATCHPOINT:
@@ -508,7 +564,6 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
                             GDB_ParseCommonThreadInfo(buffer, ctx, SIGTRAP);
                             return GDB_SendFormattedPacket(ctx, "%s%swatch:%08lx;", buffer, kinds[(u32)kind], exc.stop_point.fault_information);
-                            break;
                         }
 
                         default:
@@ -543,13 +598,26 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                     svcGetDebugThreadParam(&dummy, &mask, ctx->debug, currentThreadId, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
 
                     if(mask == 1)
-                    {
                         ctx->currentThreadId = currentThreadId;
+                    else
+                    {
+                        // All threads are in sleeping/wait state, in which case we should try not to
+                        // change the current thread as GDB sees it.
+                        if (ctx->currentThreadId == 0)
+                            ctx->currentThreadId = currentThreadId;
+                    }
+
+                    if (ctx->currentThreadId == 0)
+                    {
+                        // No thread.
+                        // This should not be happening.
+                        return GDB_SendPacket(ctx, "S02", 3);
+                    }
+                    else
+                    {
                         GDB_ParseCommonThreadInfo(buffer, ctx, SIGINT);
                         return GDB_SendFormattedPacket(ctx, "%s", buffer);
                     }
-                    else
-                        return GDB_SendPacket(ctx, "S02", 3);
                 }
 
                 default:

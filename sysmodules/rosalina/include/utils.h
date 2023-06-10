@@ -41,6 +41,8 @@
 
 #define REG32(addr)             (*(vu32 *)(PA_PTR(addr)))
 
+#define CLAMP(v, m, M)          ((v) <= (m) ? (m) : (v) >= (M) ? (M) : (v))
+
 static inline u32 makeArmBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
 {
     u32 instrBase = link ? 0xEB000000 : 0xEA000000;
@@ -67,3 +69,5 @@ static inline bool isServiceUsable(const char *name)
 void formatMemoryPermission(char *outbuf, MemPerm perm);
 void formatUserMemoryState(char *outbuf, MemState state);
 u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);
+int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat);
+int floatToString(char *out, float f, u32 precision, bool pad);

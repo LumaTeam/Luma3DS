@@ -24,7 +24,7 @@
 
 .text
 .arm
-.balign 4
+.align 5
 
 .global svcHandler
 .type   svcHandler, %function
@@ -43,22 +43,16 @@ svcHandler:
     strb r9, [sp, #0x58+3]  @ page end - 0xb8 + 3: svc being handled
     strb r10, [sp, #0x58+1] @ page end - 0xb8 + 1: "allow debug" flag
 
-    @ sp = page end - 0x110
-    add r0, sp, #0x110       @ page end
-    bl svcHook
-    cpsid i
-    mov r8, r0
-    ldmfd sp, {r0-r7, r12, lr}
+    ldr r8, =alteredSvcTable
+    ldr r8, [r8, r9,lsl#2]
     cmp r8, #0
     beq _fallback            @ invalid svc, or svc 0xff (stop point)
 
     _handled_svc:            @ unused label, just here for formatting
-        push {r0-r12, lr}
-        add r0, sp, #0x148
-        cpsie i
-        bl signalSvcEntry
-        cpsid i
-        pop {r0-r12, lr}
+        ldr r10, =svcSignalingEnabled @ should work, I guess
+        ldrb r10, [r10]
+        cmp r10, #0
+        bne _call_svc_debugged @ returns to _fallback_end*/
 
         cpsie i
         blx r8
@@ -82,16 +76,10 @@ svcHandler:
     popne {r0-r7, r12}
     add sp, #4
 
-    cmp r9, #0xff
-    beq _no_signal_return
-
-    push {r0-r7, r12, lr}
-    add r0, sp, #0x110      @ page end
-    cpsie i
-    bl signalSvcReturn
-    cpsid i
-    pop {r0-r7, r12}
-    add sp, #4
+    ldr r10, =svcSignalingEnabled @ should work, I guess
+    ldrb r10, [r10]
+    cmp r10, #0
+    bne _signal_svc_end @ returns to _no_signal_return
 
     _no_signal_return:
 
@@ -123,3 +111,24 @@ svcHandler:
         popne {r0-r7, r12}
         add sp, #4
         b _svc_finished
+
+_call_svc_debugged:
+    push {r0-r3, r12, lr}
+    mov r0, r9
+    cpsie i
+    bl signalSvcEntry
+    pop {r0-r3, r12, lr}
+    blx r8
+
+    cpsid i
+    ldrb lr, [sp, #0x58+0] @ page end - 0xb8 + 0: scheduling flags
+    b _fallback_end
+
+_signal_svc_end:
+    push {r0-r3, r12, lr}
+    mov r0, r9
+    cpsie i
+    bl signalSvcReturn
+    cpsid i
+    pop {r0-r3, r12, lr}
+    b _no_signal_return

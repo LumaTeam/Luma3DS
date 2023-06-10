@@ -10,3 +10,5 @@ Result TerminateApplication(s64 timeout);
 Result TerminateTitle(u64 titleId, s64 timeout);
 Result TerminateProcess(u32 pid, s64 timeout);
 Result PrepareForReboot(u32 pid, s64 timeout);
+
+Result ChainloadHomebrewDirty(void);

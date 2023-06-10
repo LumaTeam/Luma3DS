@@ -1,13 +1,13 @@
 /*------------------------------------------------------------------------*/
-/* Unicode handling functions for FatFs R0.13c                            */
+/* Unicode Handling Functions for FatFs R0.13 and Later                   */
 /*------------------------------------------------------------------------*/
-/* This module will occupy a huge memory in the .const section when the    /
-/  FatFs is configured for LFN with DBCS. If the system has any Unicode    /
-/  utilitiy for the code conversion, this module should be modified to use /
-/  that function to avoid silly memory consumption.                        /
-/-------------------------------------------------------------------------*/
+/* This module will occupy a huge memory in the .rodata section when the  */
+/* FatFs is configured for LFN with DBCS. If the system has a Unicode     */
+/* library for the code conversion, this module should be modified to use */
+/* it to avoid silly memory consumption.                                  */
+/*------------------------------------------------------------------------*/
 /*
-/ Copyright (C) 2018, ChaN, all right reserved.
+/ Copyright (C) 2022, ChaN, all right reserved.
 /
 / FatFs module is an open source software. Redistribution and use of FatFs in
 / source and binary forms, with or without modification, are permitted provided
@@ -25,11 +25,7 @@
 
 #include "ff.h"
 
-#if FF_USE_LFN	/* This module will be blanked at non-LFN configuration */
-
-#if FF_DEFINED != 86604	/* Revision ID */
-#error Wrong include file (ff.h).
-#endif
+#if FF_USE_LFN != 0	/* This module will be blanked if in non-LFN configuration */
 
 #define MERGE2(a, b) a ## b
 #define CVTBL(tbl, cp) MERGE2(tbl, cp)
@@ -15218,8 +15214,8 @@ static const WCHAR uc869[] = {	/*  CP869(Greek 2) to Unicode conversion table */
 
 
 /*------------------------------------------------------------------------*/
-/* OEM <==> Unicode conversions for static code page configuration        */
-/* SBCS fixed code page                                                   */
+/* OEM <==> Unicode Conversions for Static Code Page Configuration with   */
+/* SBCS Fixed Code Page                                                   */
 /*------------------------------------------------------------------------*/
 
 #if FF_CODE_PAGE != 0 && FF_CODE_PAGE < 900
@@ -15229,7 +15225,7 @@ WCHAR ff_uni2oem (	/* Returns OEM code character, zero on error */
 )
 {
 	WCHAR c = 0;
-	const WCHAR *p = CVTBL(uc, FF_CODE_PAGE);
+	const WCHAR* p = CVTBL(uc, FF_CODE_PAGE);
 
 
 	if (uni < 0x80) {	/* ASCII? */
@@ -15245,13 +15241,13 @@ WCHAR ff_uni2oem (	/* Returns OEM code character, zero on error */
 	return c;
 }
 
-WCHAR ff_oem2uni (	/* Returns Unicode character, zero on error */
+WCHAR ff_oem2uni (	/* Returns Unicode character in UTF-16, zero on error */
 	WCHAR	oem,	/* OEM code to be converted */
 	WORD	cp		/* Code page for the conversion */
 )
 {
 	WCHAR c = 0;
-	const WCHAR *p = CVTBL(uc, FF_CODE_PAGE);
+	const WCHAR* p = CVTBL(uc, FF_CODE_PAGE);
 
 
 	if (oem < 0x80) {	/* ASCII? */
@@ -15271,8 +15267,8 @@ WCHAR ff_oem2uni (	/* Returns Unicode character, zero on error */
 
 
 /*------------------------------------------------------------------------*/
-/* OEM <==> Unicode conversions for static code page configuration        */
-/* DBCS fixed code page                                                   */
+/* OEM <==> Unicode Conversions for Static Code Page Configuration with   */
+/* DBCS Fixed Code Page                                                   */
 /*------------------------------------------------------------------------*/
 
 #if FF_CODE_PAGE >= 900
@@ -15281,7 +15277,7 @@ WCHAR ff_uni2oem (	/* Returns OEM code character, zero on error */
 	WORD	cp		/* Code page for the conversion */
 )
 {
-	const WCHAR *p;
+	const WCHAR* p;
 	WCHAR c = 0, uc;
 	UINT i = 0, n, li, hi;
 
@@ -15312,12 +15308,12 @@ WCHAR ff_uni2oem (	/* Returns OEM code character, zero on error */
 }
 
 
-WCHAR ff_oem2uni (	/* Returns Unicode character, zero on error */
+WCHAR ff_oem2uni (	/* Returns Unicode character in UTF-16, zero on error */
 	WCHAR	oem,	/* OEM code to be converted */
 	WORD	cp		/* Code page for the conversion */
 )
 {
-	const WCHAR *p;
+	const WCHAR* p;
 	WCHAR c = 0;
 	UINT i = 0, n, li, hi;
 
@@ -15350,7 +15346,7 @@ WCHAR ff_oem2uni (	/* Returns Unicode character, zero on error */
 
 
 /*------------------------------------------------------------------------*/
-/* OEM <==> Unicode conversions for dynamic code page configuration       */
+/* OEM <==> Unicode Conversions for Dynamic Code Page Configuration       */
 /*------------------------------------------------------------------------*/
 
 #if FF_CODE_PAGE == 0
@@ -15364,7 +15360,7 @@ WCHAR ff_uni2oem (	/* Returns OEM code character, zero on error */
 	WORD	cp		/* Code page for the conversion */
 )
 {
-	const WCHAR *p;
+	const WCHAR* p;
 	WCHAR c = 0, uc;
 	UINT i, n, li, hi;
 
@@ -15411,12 +15407,12 @@ WCHAR ff_uni2oem (	/* Returns OEM code character, zero on error */
 }
 
 
-WCHAR ff_oem2uni (	/* Returns Unicode character, zero on error */
+WCHAR ff_oem2uni (	/* Returns Unicode character in UTF-16, zero on error */
 	WCHAR	oem,	/* OEM code to be converted (DBC if >=0x100) */
 	WORD	cp		/* Code page for the conversion */
 )
 {
-	const WCHAR *p;
+	const WCHAR* p;
 	WCHAR c = 0;
 	UINT i, n, li, hi;
 
@@ -15462,14 +15458,14 @@ WCHAR ff_oem2uni (	/* Returns Unicode character, zero on error */
 
 
 /*------------------------------------------------------------------------*/
-/* Unicode up-case conversion                                             */
+/* Unicode Up-case Conversion                                             */
 /*------------------------------------------------------------------------*/
 
 DWORD ff_wtoupper (	/* Returns up-converted code point */
 	DWORD uni		/* Unicode code point to be up-converted */
 )
 {
-	const WORD *p;
+	const WORD* p;
 	WORD uc, bc, nc, cmd;
 	static const WORD cvt1[] = {	/* Compressed up conversion table for U+0000 - U+0FFF */
 		/* Basic Latin */
@@ -15594,4 +15590,4 @@ DWORD ff_wtoupper (	/* Returns up-converted code point */
 }
 
 
-#endif /* #if FF_USE_LFN */
+#endif /* #if FF_USE_LFN != 0 */

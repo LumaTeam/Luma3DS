@@ -33,12 +33,13 @@
 
 #define HID_PAD           (REG32(0x10146000) ^ 0xFFF)
 
-
 #define DEFAULT_MENU_COMBO      (KEY_L | KEY_DDOWN | KEY_SELECT)
 #define DIRECTIONAL_KEYS        (KEY_DOWN | KEY_UP | KEY_LEFT | KEY_RIGHT)
 
 #define CORE_APPLICATION  0
 #define CORE_SYSTEM       1
+
+#define FLOAT_CONV_MULT 1e8 // for screen filters
 
 typedef enum MenuItemAction {
     MENU_END = 0,
@@ -75,6 +76,7 @@ extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
 
 u32 waitInputWithTimeout(s32 msec);
+u32 waitInputWithTimeoutEx(u32 *outHeldKeys, s32 msec);
 u32 waitInput(void);
 
 u32 waitComboWithTimeout(s32 msec);

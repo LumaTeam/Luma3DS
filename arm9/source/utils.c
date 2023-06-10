@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2022 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 #include "memory.h"
 #include "fs.h"
 
-static void startChrono(void)
+void startChrono(void)
 {
     static bool isChronoStarted = false;
 
@@ -55,7 +55,7 @@ static void startChrono(void)
     isChronoStarted = true;
 }
 
-static u64 chrono(void)
+u64 chrono(void)
 {
     u64 res = 0;
     for(u32 i = 0; i < 4; i++) res |= REG_TIMER_VAL(i) << (16 * i);
@@ -153,4 +153,56 @@ void error(const char *fmt, ...)
     waitInput(false);
 
     mcuPowerOff();
+}
+
+u16 crc16(const void *data, size_t size, u16 initialValue)
+{
+    static u16 lut[256] = {0};
+    static bool lutInitialized = false;
+
+    if (!lutInitialized)
+    {
+        static const u16 poly = 0xA001;
+        for (u32 i = 0; i < 256; i++)
+        {
+            u16 r = i;
+            for (u32 j = 0; j < 8; j++)
+                r = (r >> 1) ^ ((r & 1) != 0 ? poly : 0);
+            lut[i] = r;
+        }
+        lutInitialized = true;
+    }
+
+    u16 r = initialValue;
+    const u8 *data8 = (const u8 *)data;
+    for (size_t i = 0; i < size; i++)
+        r = (r >> 8) ^ lut[(r ^ data8[i]) & 0xFF];
+
+    return r;
+}
+
+u32 crc32(const void *data, size_t size, u32 initialValue)
+{
+    static u32 lut[256] = {0};
+    static bool lutInitialized = false;
+
+    if (!lutInitialized)
+    {
+        static const u32 poly = 0xEDB88320;
+        for (u32 i = 0; i < 256; i++)
+        {
+            u32 r = i;
+            for (u32 j = 0; j < 8; j++)
+                r = (r >> 1) ^ ((r & 1) != 0 ? poly : 0);
+            lut[i] = r;
+        }
+        lutInitialized = true;
+    }
+
+    u32 r = initialValue;
+    const u8 *data8 = (const u8 *)data;
+    for (size_t i = 0; i < size; i++)
+        r = (r >> 8) ^ lut[(r ^ data8[i]) & 0xFF];
+
+    return ~r;
 }

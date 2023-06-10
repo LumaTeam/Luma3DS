@@ -121,6 +121,13 @@ void configHook(vu8 *cfgPage)
     *(vu32 *)(configPage + 0x44) = fcramLayout.systemSize;
     *(vu32 *)(configPage + 0x48) = fcramLayout.baseSize;
     *isDevUnit = true; // enable debug features
+
+    pidOffsetKProcess = KPROCESS_OFFSETOF(processId);
+    hwInfoOffsetKProcess = KPROCESS_OFFSETOF(hwInfo);
+    codeSetOffsetKProcess = KPROCESS_OFFSETOF(codeSet);
+    handleTableOffsetKProcess = KPROCESS_OFFSETOF(handleTable);
+    debugOffsetKProcess = KPROCESS_OFFSETOF(debug);
+    flagsKProcess = KPROCESS_OFFSETOF(kernelFlags);
 }
 
 static void findUsefulSymbols(void)
@@ -234,6 +241,7 @@ static void findUsefulSymbols(void)
     // The official prototype of ControlMemory doesn't have that extra param'
     ControlMemory = (Result (*)(u32 *, u32, u32, u32, MemOp, MemPerm, bool))
                     decodeArmBranch((u32 *)officialSVCs[0x01] + 5);
+    CreateThread = (Result (*)(Handle *, u32, u32, u32, s32, s32))decodeArmBranch((u32 *)officialSVCs[0x08] + 5);
     SleepThread = (void (*)(s64))officialSVCs[0x0A];
     CloseHandle = (Result (*)(Handle))officialSVCs[0x23];
     GetHandleInfo = (Result (*)(s64 *, Handle, u32))decodeArmBranch((u32 *)officialSVCs[0x29] + 3);
@@ -304,6 +312,7 @@ void main(FcramLayout *layout, KCoreContext *ctxs)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
 
     findUsefulSymbols();
+    buildAlteredSvcTable();
 
     GetSystemInfo(&nb, 26, 0);
     nbSection0Modules = (u32)nb;

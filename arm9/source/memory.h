@@ -34,3 +34,5 @@
 #include "types.h"
 
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
+void *copyFromLegacyModeFcram(void *dst, const void *src, size_t size);
+void *copyToLegacyModeFcram(void *dst, const void *src, size_t size);

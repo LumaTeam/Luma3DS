@@ -50,6 +50,7 @@ void (*KScheduler__AdjustThread)(KScheduler *this, KThread *thread, u32 oldSched
 void (*KScheduler__AttemptSwitchingThreadContext)(KScheduler *this);
 
 Result (*ControlMemory)(u32 *addrOut, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
+Result (*CreateThread)(Handle *outThreadHandle, u32 ep, u32 arg, u32 stackTop, s32 priority, s32 processorId);
 void (*SleepThread)(s64 ns);
 Result (*CloseHandle)(Handle handle);
 Result (*GetHandleInfo)(s64 *out, Handle handle, u32 type);
@@ -113,3 +114,5 @@ u32 stolenSystemMemRegionSize;
 
 vu32 rosalinaState;
 bool hasStartedRosalinaNetworkFuncsOnce;
+
+u32 pidOffsetKProcess, hwInfoOffsetKProcess, codeSetOffsetKProcess, handleTableOffsetKProcess, debugOffsetKProcess, flagsKProcess;

@@ -30,9 +30,19 @@
 
 extern Menu screenFiltersMenu;
 
-extern int screenFiltersCurrentTemperature;
+typedef struct ScreenFilter {
+    u16 cct;
+    bool invert;
+    float gamma;
+    float contrast;
+    float brightness;
+} ScreenFilter;
 
-void ScreenFiltersMenu_RestoreCct(void);
+extern ScreenFilter topScreenFilter;
+extern ScreenFilter bottomScreenFilter;
+
+void ScreenFiltersMenu_RestoreSettings(void);
+void ScreenFiltersMenu_LoadConfig(void);
 
 void ScreenFiltersMenu_SetDefault(void);            // 6500K (default)
 
@@ -45,3 +55,5 @@ void ScreenFiltersMenu_SetIncandescent(void);       // 2700K
 void ScreenFiltersMenu_SetWarmIncandescent(void);   // 2300K
 void ScreenFiltersMenu_SetCandle(void);             // 1900K
 void ScreenFiltersMenu_SetEmber(void);              // 1200K
+
+void ScreenFiltersMenu_AdvancedConfiguration(void);

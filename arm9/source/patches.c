@@ -129,8 +129,16 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
             u16 configFormatVersionMajor, configFormatVersionMinor;
             u32 config, multiConfig, bootConfig;
+            u32 splashDurationMsec;
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
+            s16 ntpTzOffetMinutes;
+
+            ScreenFiltersCfgData topScreenFilter;
+            ScreenFiltersCfgData bottomScreenFilter;
+
+            u64 autobootTwlTitleId;
+            u8 autobootCtrAppmemtype;
         } info;
     };
 
@@ -201,8 +209,14 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->config = configData.config;
     info->multiConfig = configData.multiConfig;
     info->bootConfig = configData.bootConfig;
+    info->splashDurationMsec = configData.splashDurationMsec;
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
+    info->ntpTzOffetMinutes = configData.ntpTzOffetMinutes;
+    info->topScreenFilter = configData.topScreenFilter;
+    info->bottomScreenFilter = configData.bottomScreenFilter;
+    info->autobootTwlTitleId = configData.autobootTwlTitleId;
+    info->autobootCtrAppmemtype = configData.autobootCtrAppmemtype;
     info->versionMajor = VERSION_MAJOR;
     info->versionMinor = VERSION_MINOR;
     info->versionBuild = VERSION_BUILD;
@@ -264,6 +278,23 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
 
     off[-5] = 0xE51FF004;
     off[-4] = K11EXT_VA + 0x2C;
+
+    if (ISN3DS)
+    {
+        // Patch SvcSetProcessIdealProcessor and SvcCreate thread to always allow
+        // for core2 and core3 to be used. Normally, processes with the 0x2000 kernel flag
+        // have access to core2, and BASE processes have access to both core2 and core3.
+        // We're patching the if (memory region == BASE) check to be always true.
+        off = (u32 *)pos;
+        for (u32 i = 0; i < 2 && (u8 *)off < pos + size; i++)
+        {
+            // cmp r2, #0x300; beq...
+            for (; (off[0] != 0xE3520C03 || off[1] != 0x0A000003) && (u8 *)off < pos + size; off++);
+            if ((u8 *)off > pos + size)
+                return 1;
+            off[1] = 0xEA000003;
+        }
+    }
 
     return 0;
 }
@@ -575,7 +606,7 @@ u32 patchP9AMTicketWrapperZeroKeyIV(u8 *pos, u32 size, u32 firmVersion)
     //Beyond limit
     if(opjumpdistance < -0x1fffff || opjumpdistance > 0x1fffff) return 1;
 
-    //r0 and r1 for old call are already correct for this one 
+    //r0 and r1 for old call are already correct for this one
     //BLX __rt_memclr
     u32 op = (0xE800F000U | (((u32)opjumpdistance & 0x7FF) << 16) | (((u32)opjumpdistance >> 11) & 0x3FF) | (((u32)opjumpdistance >> 21) & 0x400)) & ~(1<<16);
 

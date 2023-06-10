@@ -28,6 +28,8 @@
 #include "csvc.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
+#include <3ds.h>
 
 void formatMemoryPermission(char *outbuf, MemPerm perm)
 {
@@ -107,4 +109,95 @@ u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle)
 
     svcCloseHandle(handle);
     return posInBuffer;
+}
+
+int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat)
+{
+    // Conversion code adapted from https://stackoverflow.com/questions/21593692/convert-unix-timestamp-to-date-without-system-libs
+    // (original author @gnif under CC-BY-SA 4.0)
+    u32 seconds, minutes, hours, days, year, month;
+    u64 milliseconds = msSince1900;
+    seconds = milliseconds/1000;
+    milliseconds %= 1000;
+    minutes = seconds / 60;
+    seconds %= 60;
+    hours = minutes / 60;
+    minutes %= 60;
+    days = hours / 24;
+    hours %= 24;
+
+    year = 1900; // osGetTime starts in 1900
+
+    while(true)
+    {
+        bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+        u16 daysInYear = leapYear ? 366 : 365;
+        if(days >= daysInYear)
+        {
+            days -= daysInYear;
+            ++year;
+        }
+        else
+        {
+            static const u8 daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            for(month = 0; month < 12; ++month)
+            {
+                u8 dim = daysInMonth[month];
+
+                if (month == 1 && leapYear)
+                    ++dim;
+
+                if (days >= dim)
+                    days -= dim;
+                else
+                    break;
+            }
+            break;
+        }
+    }
+    days++;
+    month++;
+
+    if (filenameFormat)
+        return sprintf(out, "%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu", year, month, days, hours, minutes, seconds, milliseconds);
+    else
+        return sprintf(out, "%04lu-%02lu-%02lu %02lu:%02lu:%02lu", year, month, days, hours, minutes, seconds);
+}
+
+int floatToString(char *out, float f, u32 precision, bool pad)
+{
+    // Floating point stuff is cringe
+    if (isnanf(f))
+        return sprintf(out, "NaN");
+    else if (isinff(f) && f >= -0.0f)
+        return sprintf(out, "inf");
+    else if (isinff(f))
+        return sprintf(out, "-inf");
+
+    static const u64 pow10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
+    precision = precision >= 6 ? 6 : precision; // result inaccurate after 1e-6
+
+    u64 mult = pow10[precision];
+    double f2 = fabs((double)f) * mult + 0.5;
+    u64 f3 = (u64)f2;
+    const char *sign = (f >= 0.0f || f3 == 0) ? "" : "-";
+
+    u64 intPart = f3 / mult;
+    u64 fracPart = f3 % mult;
+
+    if (pad)
+        return sprintf(out, "%s%llu.%0*llu", sign, intPart, (int)precision, fracPart);
+    else
+    {
+        int n = sprintf(out, "%s%llu", sign, intPart);
+        if (fracPart == 0)
+            return n;
+
+        n += sprintf(out + n, ".%0*llu", (int)precision, fracPart);
+
+        int n2 = n - 1;
+        while (out[n2] == '0')
+            out[n2--] = '\0';
+        return n2;
+    }
 }

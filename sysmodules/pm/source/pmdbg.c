@@ -12,7 +12,6 @@ void pmDbgHandleCommands(void *ctx)
     u32 cmdhdr = cmdbuf[0];
 
     FS_ProgramInfo programInfo;
-    u64 titleId;
     Handle debug;
     u32 pid;
     u32 launchFlags;
@@ -59,11 +58,7 @@ void pmDbgHandleCommands(void *ctx)
             cmdbuf[2] = IPC_Desc_MoveHandles(1);
             cmdbuf[3] = debug;
             break;
-        case 0x103:
-            memcpy(&titleId, cmdbuf + 1, 8);
-            cmdbuf[1] = PrepareToChainloadHomebrew(titleId);
-            cmdbuf[0] = IPC_MakeHeader(0x103, 1, 0);
-            break;
+        case 0x103: // PrepareToChainloadHomebrew (removed)
         default:
             cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
             cmdbuf[1] = 0xD900182F;

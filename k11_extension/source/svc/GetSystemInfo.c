@@ -39,6 +39,8 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
         {
             switch(param)
             {
+                // Please do not use these, except 0, 1, and 0x200
+                // Other types may get removed or reordered without notice
                 case 0:
                     *out = SYSTEM_VERSION(cfwInfo.versionMajor, cfwInfo.versionMinor, cfwInfo.versionBuild);
                     break;
@@ -57,12 +59,55 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 5:
                     *out = cfwInfo.bootConfig;
                     break;
+                case 6:
+                    *out = cfwInfo.splashDurationMsec;
+                    break;
+
+                case 0x10:
+                    *out = (s64)cfwInfo.autobootTwlTitleId;
+                    break;
+                case 0x11:
+                    *out = cfwInfo.autobootCtrAppmemtype;
+                    break;
 
                 case 0x100:
                     *out = (s64)cfwInfo.hbldr3dsxTitleId;
                     break;
                 case 0x101:
                     *out = cfwInfo.rosalinaMenuCombo;
+                    break;
+                case 0x102:
+                    *out = cfwInfo.topScreenFilter.cct;
+                    break;
+                case 0x103:
+                    *out = (s64)cfwInfo.ntpTzOffetMinutes;
+                    break;
+                case 0x104:
+                    *out = cfwInfo.topScreenFilter.gammaEnc;
+                    break;
+                case 0x105:
+                    *out = cfwInfo.topScreenFilter.contrastEnc;
+                    break;
+                case 0x106:
+                    *out = cfwInfo.topScreenFilter.brightnessEnc;
+                    break;
+                case 0x107:
+                    *out = (s64)cfwInfo.topScreenFilter.invert;
+                    break;
+                case 0x108:
+                    *out = cfwInfo.bottomScreenFilter.cct;
+                    break;
+                case 0x109:
+                    *out = cfwInfo.bottomScreenFilter.gammaEnc;
+                    break;
+                case 0x10A:
+                    *out = cfwInfo.bottomScreenFilter.contrastEnc;
+                    break;
+                case 0x10B:
+                    *out = cfwInfo.bottomScreenFilter.brightnessEnc;
+                    break;
+                case 0x10C:
+                    *out = (s64)cfwInfo.bottomScreenFilter.invert;
                     break;
 
                 case 0x200: // isRelease

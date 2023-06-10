@@ -37,6 +37,8 @@
 #include "firm.h"
 #include "crypto.h"
 #include "strings.h"
+#include "alignedseqmemcpy.h"
+#include "i2c.h"
 
 static FATFS sdFs,
              nandFs;
@@ -58,8 +60,19 @@ static bool switchToMainDir(bool isSd)
 
 bool mountFs(bool isSd, bool switchToCtrNand)
 {
-    return isSd ? f_mount(&sdFs, "0:", 1) == FR_OK && switchToMainDir(true) :
-                  f_mount(&nandFs, "1:", 1) == FR_OK && (!switchToCtrNand || (f_chdrive("1:") == FR_OK && switchToMainDir(false)));
+    static bool sdInitialized = false, nandInitialized = false;
+    if (isSd)
+    {
+        if (!sdInitialized)
+            sdInitialized = f_mount(&sdFs, "sdmc:", 1) == FR_OK;
+        return sdInitialized && switchToMainDir(true);
+    }
+    else
+    {
+        if (!nandInitialized)
+            nandInitialized = f_mount(&nandFs, "nand:", 1) == FR_OK;
+        return nandInitialized && (!switchToCtrNand || (f_chdrive("nand:") == FR_OK && switchToMainDir(false)));
+    }
 }
 
 u32 fileRead(void *dest, const char *path, u32 maxSize)
@@ -119,6 +132,79 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
 bool fileDelete(const char *path)
 {
     return f_unlink(path) == FR_OK;
+}
+
+bool fileCopy(const char *pathSrc, const char *pathDst, bool replace, void *tmpBuffer, size_t bufferSize)
+{
+    FIL fileSrc, fileDst;
+    FRESULT res;
+
+    res = f_open(&fileSrc, pathSrc, FA_READ);
+    if (res != FR_OK)
+        return true; // Succeed if the source file doesn't exist
+
+    size_t szSrc = f_size(&fileSrc), rem = szSrc;
+
+    res = f_open(&fileDst, pathDst, FA_WRITE | (replace ? FA_CREATE_ALWAYS : FA_CREATE_NEW));
+
+    if (res == FR_EXIST)
+    {
+        // We did not fail
+        f_close(&fileSrc);
+        return true;
+    }
+    else if (res == FR_NO_PATH)
+    {
+        const char *c;
+        for (c = pathDst + strlen(pathDst); *c != '/' && c >= pathDst; --c);
+        if (c >= pathDst && c - pathDst <= FF_MAX_LFN && *c != '\0')
+        {
+            char path[FF_MAX_LFN + 1];
+            strncpy(path, pathDst, c - pathDst);
+            path[c - pathDst] = '\0';
+            res = f_mkdir(path);
+        }
+
+        if (res == FR_OK)
+            res = f_open(&fileDst, pathDst, FA_WRITE | (replace ? FA_CREATE_ALWAYS : FA_CREATE_NEW));
+    }
+
+    if (res != FR_OK)
+    {
+        f_close(&fileSrc);
+        return false;
+    }
+
+    while (rem > 0)
+    {
+        size_t sz = rem >= bufferSize ? bufferSize : rem;
+        UINT n = 0;
+
+        res = f_read(&fileSrc, tmpBuffer, sz, &n);
+        if (n != sz)
+            res = FR_INT_ERR; // should not happen
+
+        if (res == FR_OK)
+        {
+            res = f_write(&fileDst, tmpBuffer, sz, &n);
+            if (n != sz)
+                res = FR_DENIED; // disk full
+        }
+
+        if (res != FR_OK)
+        {
+            f_close(&fileSrc);
+            f_close(&fileDst);
+            f_unlink(pathDst); // oops, failed
+            return false;
+        }
+        rem -= sz;
+    }
+
+    f_close(&fileSrc);
+    f_close(&fileDst);
+
+    return true;
 }
 
 bool findPayload(char *path, u32 pressed)
@@ -257,10 +343,10 @@ u32 firmRead(void *dest, u32 firmType)
                                            {"00000003", "20000003"},
                                            {"00000001", "20000001"}};
 
-    char folderPath[35],
-         path[48];
+    char folderPath[64],
+         path[128];
 
-    sprintf(folderPath, "1:/title/00040138/%s/content", firmFolders[firmType][ISN3DS ? 1 : 0]);
+    sprintf(folderPath, "nand:/title/00040138/%s/content", firmFolders[firmType][ISN3DS ? 1 : 0]);
 
     DIR dir;
     u32 firmVersion = 0xFFFFFFFF;
@@ -308,4 +394,81 @@ void findDumpFile(const char *folderPath, char *fileName)
     }
 
     if(result == FR_OK) f_closedir(&dir);
+}
+
+static u8 fileCopyBuffer[0x10000];
+
+static const u8 boot9Sha256[32] = {
+    0x2F, 0x88, 0x74, 0x4F, 0xEE, 0xD7, 0x17, 0x85, 0x63, 0x86, 0x40, 0x0A, 0x44, 0xBB, 0xA4, 0xB9,
+    0xCA, 0x62, 0xE7, 0x6A, 0x32, 0xC7, 0x15, 0xD4, 0xF3, 0x09, 0xC3, 0x99, 0xBF, 0x28, 0x16, 0x6F
+};
+
+static const u8 boot11Sha256[32] = {
+    0x74, 0xDA, 0xAC, 0xE1, 0xF8, 0x06, 0x7B, 0x66, 0xCC, 0x81, 0xFC, 0x30, 0x7A, 0x3F, 0xDB, 0x50,
+    0x9C, 0xBE, 0xDC, 0x32, 0xF9, 0x03, 0xAE, 0xBE, 0x90, 0x61, 0x44, 0xDE, 0xA7, 0xA0, 0x75, 0x12
+};
+
+static bool backupEssentialFiles(void)
+{
+    size_t sz = sizeof(fileCopyBuffer);
+
+    bool ok = !(isSdMode && !mountFs(false, false));
+
+    ok = ok && fileCopy("nand:/ro/sys/HWCAL0.dat", "backups/HWCAL0.dat", false, fileCopyBuffer, sz);
+    ok = ok && fileCopy("nand:/ro/sys/HWCAL1.dat", "backups/HWCAL1.dat", false, fileCopyBuffer, sz);
+
+    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_A", "backups/LocalFriendCodeSeed_A", false, fileCopyBuffer, sz); // often doesn't exist
+    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_B", "backups/LocalFriendCodeSeed_B", false, fileCopyBuffer, sz);
+
+    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_A", "backups/SecureInfo_A", false, fileCopyBuffer, sz);
+    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_B", "backups/SecureInfo_B", false, fileCopyBuffer, sz); // often doesn't exist
+
+    if (!ok) return false;
+
+    alignedseqmemcpy(fileCopyBuffer, (const void *)0x10012000, 0x100);
+    if (getFileSize("backups/otp.bin") != 0x100)
+        ok = ok && fileWrite(fileCopyBuffer, "backups/otp.bin", 0x100);
+
+    if (!ok) return false;
+
+    // On dev boards, but not O3DS IS_DEBUGGER, hwcal is on an EEPROM chip accessed via I2C
+    u8 c = mcuConsoleInfo[0];
+    if (c == 2 || c == 4 || (ISN3DS && c == 5) || c == 6)
+    {
+        I2C_readRegBuf(I2C_DEV_EEPROM, 0, fileCopyBuffer, 0x1000); // Up to two instances of hwcal, with the second one @0x800
+        if (getFileSize("backups/HWCAL_01_EEPROM.dat") != 0x1000)
+            ok = ok && fileWrite(fileCopyBuffer, "backups/HWCAL_01_EEPROM.dat", 0x1000);
+    }
+
+    // B9S bootrom backups
+    u32 hash[32/4];
+    sha(hash, (const void *)0x08080000, 0x10000, SHA_256_MODE);
+    if (memcmp(hash, boot9Sha256, 32) == 0 && getFileSize("backups/boot9.bin") != 0x10000)
+        ok = ok && fileWrite((const void *)0x08080000, "backups/boot9.bin", 0x10000);
+    sha(hash, (const void *)0x08090000, 0x10000, SHA_256_MODE);
+    if (memcmp(hash, boot11Sha256, 32) == 0 && getFileSize("backups/boot11.bin") != 0x10000)
+        ok = ok && fileWrite((const void *)0x08090000, "backups/boot11.bin", 0x10000);
+
+    return ok;
+}
+
+bool doLumaUpgradeProcess(void)
+{
+    // Ensure CTRNAND is mounted
+    bool ok = mountFs(false, false), ok2 = true;
+    if (!ok)
+        return false;
+
+    // Try to boot.firm to CTRNAND, when applicable
+    if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
+        ok = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
+
+    // Try to backup essential files
+    ok2 = backupEssentialFiles();
+
+    // Clean up some of the old files
+    fileDelete("sdmc:/luma/config.bin");
+    fileDelete("nand:/rw/luma/config.bin");
+
+    return ok && ok2;
 }

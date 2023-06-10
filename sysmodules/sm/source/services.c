@@ -62,7 +62,10 @@ static Result doRegisterServiceOrPort(u32 pid, Handle *serverPort, Handle client
     {
         res = svcCreatePort(&portServer, &portClient, NULL, maxSessions);
         if(R_FAILED(res))
+        {
+            *serverPort = 0;
             return 0xD9001BFC;
+        }
     }
     else
         portClient = clientPort;
@@ -165,6 +168,7 @@ Result GetServiceHandle(SessionData *sessionData, Handle *session, const char *n
 {
     Result res = checkServiceName(name, nameSize);
     s32 serviceId;
+    *session = 0;
 
     if(R_FAILED(res))
         return res;
@@ -178,6 +182,8 @@ Result GetServiceHandle(SessionData *sessionData, Handle *session, const char *n
     {
         Handle port = servicesInfo[serviceId].clientPort;
         res = svcCreateSessionToPort(session, port);
+        if(R_FAILED(res))
+            *session = 0;
         if(res == (Result)0xD0401834 && !(flags & 1))
         {
             sessionData->busyClientPortHandle = port;
@@ -192,6 +198,7 @@ Result GetPort(SessionData *sessionData, Handle *port, const char *name, s32 nam
 {
     Result res = checkServiceName(name, nameSize);
     s32 serviceId;
+    *port = 0;
 
     if(R_FAILED(res))
         return res;

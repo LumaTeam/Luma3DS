@@ -28,9 +28,27 @@ INCLUDES	:=	include
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 DEFINES :=	-D__3DS__
 
-CFLAGS	:=	-g -std=gnu11 -Wall -Wextra -Werror -Os -mword-relocations \
-			-fomit-frame-pointer -ffunction-sections -fdata-sections \
-			$(ARCH) $(DEFINES)
+ifeq ($(BUILD_FOR_GDB),1)
+	OPTFLAGS := -O0
+	LIBS := -lctrud
+else
+	OPTFLAGS := -O2 -fomit-frame-pointer
+	LIBS := -lctru
+endif
+
+CFLAGS	:=\
+		-g \
+		-std=gnu11 \
+		-Wall \
+		-Wextra \
+		-Werror \
+		-mword-relocations \
+		-ffunction-sections \
+		-fdata-sections \
+		$(OPTFLAGS) \
+		$(ARCH) \
+		$(DEFINES) \
+		$(INCLUDE)
 
 CFLAGS	+=	$(INCLUDE)
 
@@ -38,8 +56,6 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map),-wrap,exit
-
-LIBS	:=	-lctru
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
