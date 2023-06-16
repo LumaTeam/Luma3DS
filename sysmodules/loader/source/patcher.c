@@ -695,7 +695,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             && CONFIG(PATCHVERSTRING))
     {
         static const u16 pattern[] = u"Ve";
-        static u16 *patch;
+        u16 *patch;
         u32 patchSize = 0,
         currentNand = BOOTCFG_NAND;
 
