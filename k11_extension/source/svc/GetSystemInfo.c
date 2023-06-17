@@ -37,7 +37,14 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
     {
         case 0x10000:
         {
-            switch(param)
+            if (param >= 0x400 && param < 0x500) {
+                *out = 0;
+                s32 offset = param - 0x400;
+                s32 toCopy = (s32)sizeof(cfwInfo.launchedPath) - offset;
+                if (toCopy > 8) toCopy = 8;
+                memcpy(out, (u8*)cfwInfo.launchedPath + offset, (toCopy > 0) ? toCopy : 0);
+            } 
+            else switch(param)
             {
                 // Please do not use these, except 0, 1, and 0x200
                 // Other types may get removed or reordered without notice
