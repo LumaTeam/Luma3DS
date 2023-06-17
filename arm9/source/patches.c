@@ -44,6 +44,8 @@
 
 #define K11EXT_VA         0x70000000
 
+extern u16 launchedPath[];
+
 u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
     u8 *temp = memsearch(pos, "NCCH", size, 4);
@@ -139,6 +141,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
 
             u64 autobootTwlTitleId;
             u8 autobootCtrAppmemtype;
+
+            u16 launchedPath[80+1];
         } info;
     };
 
@@ -225,6 +229,8 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     if(ISN3DS) info->flags |= 1 << 4;
     if(needToInitSd) info->flags |= 1 << 5;
     if(isSdMode) info->flags |= 1 << 6;
+
+    memcpy(info->launchedPath, launchedPath, sizeof(info->launchedPath));
 
     return 0;
 }
