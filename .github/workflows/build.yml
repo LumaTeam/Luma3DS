@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     container: pablomk7/luma3dsbuildtools
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3.5.3
       with:
         fetch-depth: 0
     - name: safedir
@@ -29,7 +29,7 @@ jobs:
       run: git describe --tags
     - name: Build
       run: make -j$(nproc --all)
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v3.1.2
       with:
         name: Luma3DS
         path: boot.firm
