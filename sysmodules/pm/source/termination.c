@@ -145,7 +145,7 @@ static void TerminateProcessOrTitleAsync(void *argdata)
 
     ProcessData *process;
     bool notify = false;
-    u8 variation;
+    u8 variation = 0;
 
     if (args->timeout >= 0) {
         assertSuccess(svcClearEvent(g_manager.allNotifiedTerminationEvent));
