@@ -12,10 +12,10 @@
 #define MULTICONFIG(a)   ((multiConfig >> (2 * (a))) & 3)
 #define BOOTCONFIG(a, b) ((bootConfig >> (a)) & (b))
 
-#define BOOTCFG_NAND         BOOTCONFIG(0, 7)
-#define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
-#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(6, 1)
-#define BOOTCFG_NTRCARDBOOT  BOOTCONFIG(7, 1)
+#define BOOTCFG_NAND         BOOTCONFIG(0, 1)
+#define BOOTCFG_EMUINDEX     BOOTCONFIG(1, 3)
+#define BOOTCFG_NOFORCEFLAG  BOOTCONFIG(3, 1)
+#define BOOTCFG_NTRCARDBOOT  BOOTCONFIG(4, 1)
 
 enum multiOptions
 {
@@ -31,7 +31,6 @@ enum multiOptions
 enum singleOptions
 {
     AUTOBOOTEMU = 0,
-    USEEMUFIRM,
     LOADEXTFIRMSANDMODULES,
     PATCHGAMES,
     REDIRECTAPPTHREADS,

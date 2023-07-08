@@ -154,7 +154,7 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
     u32 firmVersion = 0xFFFFFFFF,
         firmSize;
 
-    bool ctrNandError = isSdMode && !mountFs(false, false);
+    bool ctrNandError = isSdMode && !remountCtrNandPartition(false);
 
     if(!ctrNandError)
     {

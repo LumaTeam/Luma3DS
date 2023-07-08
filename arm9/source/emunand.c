@@ -38,7 +38,7 @@
 u32 emuOffset,
     emuHeader;
 
-void locateEmuNand(FirmwareSource *nandType)
+void locateEmuNand(FirmwareSource *nandType, u32 *emunandIndex, bool configureCtrNandParams)
 {
     static u8 __attribute__((aligned(4))) temp[0x200];
     static u32 nandSize = 0,
@@ -51,7 +51,10 @@ void locateEmuNand(FirmwareSource *nandType)
         fatStart = *(u32 *)(temp + 0x1C6); //First sector of the FAT partition
     }
 
-    for(u32 i = 0; i < 3; i++)
+    /*if (*nandType == FIRMWARE_SYSNAND)
+        return;*/
+
+    for(u32 i = 0; i < 3; i++)  // Test the different kinds of multi-EmuNAND there are, unless we are looking for the first one
     {
         static const u32 roundedMinsizes[] = {0x1D8000, 0x26E000};
 
@@ -65,39 +68,45 @@ void locateEmuNand(FirmwareSource *nandType)
                 nandOffset = roundedMinsizes[ISN3DS ? 1 : 0]; //"Minsize" layout
                 break;
             case 0:
-                nandOffset = *nandType == FIRMWARE_EMUNAND ? 0 : (nandSize > 0x200000 ? 0x400000 : 0x200000); //"Legacy" layout
+                nandOffset = nandSize > 0x200000 ? 0x400000 : 0x200000; //"Legacy" layout
                 break;
         }
 
-        if(*nandType != FIRMWARE_EMUNAND) nandOffset *= ((u32)*nandType - 1);
+        nandOffset *= *emunandIndex; // always 0 for 1st EmuNAND
 
         if(fatStart >= nandOffset + roundedMinsizes[ISN3DS ? 1 : 0])
         {
             //Check for RedNAND
             if(!sdmmc_sdcard_readsectors(nandOffset + 1, 1, temp) && memcmp(temp + 0x100, "NCSD", 4) == 0)
             {
-                emuOffset = nandOffset + 1;
-                emuHeader = 0;
+                if (configureCtrNandParams)
+                {
+                    emuOffset = nandOffset + 1;
+                    emuHeader = 0;
+                }
                 return;
             }
 
             //Check for Gateway EmuNAND
             else if(i != 2 && !sdmmc_sdcard_readsectors(nandOffset + nandSize, 1, temp) && memcmp(temp + 0x100, "NCSD", 4) == 0)
             {
-                emuOffset = nandOffset;
-                emuHeader = nandSize;
+                if (configureCtrNandParams)
+                {
+                    emuOffset = nandOffset;
+                    emuHeader = nandSize;
+                }
                 return;
             }
         }
 
-        if(*nandType == FIRMWARE_EMUNAND) break;
+        if(*emunandIndex == 0) break; // See above comments
     }
 
     //Fallback to the first EmuNAND if there's no second/third/fourth one, or to SysNAND if there isn't any
-    if(*nandType != FIRMWARE_EMUNAND)
+    if(*emunandIndex != 0)
     {
-        *nandType = FIRMWARE_EMUNAND;
-        locateEmuNand(nandType);
+        *emunandIndex = 0;
+        locateEmuNand(nandType, emunandIndex, configureCtrNandParams);
     }
     else *nandType = FIRMWARE_SYSNAND;
 }

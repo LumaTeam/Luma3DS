@@ -695,7 +695,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             && CONFIG(PATCHVERSTRING))
     {
         static const u16 pattern[] = u"Ve";
-        u16 *patch;
+        const u16 *patch;
         u32 patchSize = 0,
         currentNand = BOOTCFG_NAND;
 
@@ -706,26 +706,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         else
         {
             patchSize = 8;
-            u32 currentFirm = BOOTCFG_FIRM;
 
-            static u16 *verStringsNands[] = { u" Sys",
-                                              u" Emu",
-                                              u"Emu2",
-                                              u"Emu3",
-                                              u"Emu4" },
-
-                       *verStringsEmuSys[] = { u"EmuS",
-                                               u"Em2S",
-                                               u"Em3S",
-                                               u"Em4S" },
-
-                       *verStringsSysEmu[] = { u"SysE",
-                                               u"SyE2",
-                                               u"SyE3",
-                                               u"SyE4" };
-
-            patch = (currentFirm != 0) == (currentNand != 0) ? verStringsNands[currentNand] :
-                                          (!currentNand ? verStringsSysEmu[currentFirm - 1] : verStringsEmuSys[currentNand - 1]);
+            static const u16 *const verStringNandEmu[] = { u" Emu", u"Emu2", u"Emu3", u"Emu4" };
+            patch = currentNand == 0 ? u" Sys" : verStringNandEmu[BOOTCFG_EMUINDEX];
         }
 
         //Patch Ver. string

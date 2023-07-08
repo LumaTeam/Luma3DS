@@ -110,7 +110,7 @@
 #define SHA_224_HASH_SIZE   (224 / 8)
 #define SHA_1_HASH_SIZE     (160 / 8)
 
-extern FirmwareSource firmSource;
+extern FirmwareSource ctrNandLocation;
 
 void sha(void *res, const void *src, u32 size, u32 mode);
 
