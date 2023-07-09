@@ -394,15 +394,16 @@ static Result RegisterProgram(u64 *programHandle, FS_ProgramInfo *title, FS_Prog
         bool loadedCxiFromStorage = false;
         if (IsSysmoduleId(titleId) && CONFIG(LOADEXTFIRMSANDMODULES))
         {
+            u64 tid2 = titleId & ~0xF0000000ull;
             // Forbid having two such file handles being open at the same time
             // Also reload the file even if already cached.
             InvalidateCachedCxiFile();
 
-            res = openSysmoduleCxi(&g_cached_sysmoduleCxiFile, titleId);
+            res = openSysmoduleCxi(&g_cached_sysmoduleCxiFile, tid2);
             if (R_SUCCEEDED(res))
             {
-                // A .cxi with the correct name in /luma/sysmodule exists, proceed
-                *programHandle = SYSMODULE_CXI_COOKIE_MASK | (u32)titleId;
+                // A .cxi with the correct name in /luma/sysmodule exists, proceed (ignoring N3DS TID bits)
+                *programHandle = SYSMODULE_CXI_COOKIE_MASK | (u32)tid2;
                 g_cached_sysmoduleCxiCookie = *programHandle;
                 loadedCxiFromStorage = true;
             }
