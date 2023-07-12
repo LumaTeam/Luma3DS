@@ -465,7 +465,7 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
+u32 patchK11ModuleLoading(u32 oldKipSectionSize, u32 newKipSectionSize, u32 numKips, u8 *pos, u32 size)
 {
     static const u8 moduleLoadingPattern[]  = {0xE2, 0x05, 0x00, 0x57},
                     modulePidPattern[] = {0x06, 0xA0, 0xE1, 0xF2}; //GetSystemInfo
@@ -474,20 +474,44 @@ u32 patchK11ModuleLoading(u32 section0size, u32 modulesSize, u8 *pos, u32 size)
 
     if(off == NULL) return 1;
 
-    off[1]++;
+    off[1] = (u8)numKips;
 
     u32 *off32;
     for(off32 = (u32 *)(off - 3); *off32 != 0xE59F0000; off32++);
     off32 += 2;
-    off32[1] = off32[0] + modulesSize;
-    for(; *off32 != section0size; off32++);
-    *off32 = ((modulesSize + 0x1FF) >> 9) << 9;
+    off32[1] = off32[0] + newKipSectionSize;
+    for(; *off32 != oldKipSectionSize; off32++);
+    *off32 = ((newKipSectionSize + 0x1FF) >> 9) << 9;
 
     off = memsearch(pos, modulePidPattern, size, 4);
 
     if(off == NULL) return 1;
 
-    off[0xB] = 6;
+    off[0xB] = (u8)numKips;
+
+    return 0;
+}
+
+u32 patchK11ModuleLoadingLgy(u32 newKipSectionSize, u8 *pos, u32 size)
+{
+    // Patch the function where TwlBg/AgbBg is copied from 18000000 (VRAM) to 21000000 (FCRAM).
+    // This is where we can also automatically obtain the section size
+
+    u16 *off = (u16 *)pos;
+    for (; (u8 *)off < pos + size && (off[0] != 0x06C9 || off[1] != 0x0600); off++);
+    if ((u8 *)off >= pos + size)
+        return 3;
+
+    off += 7;
+    u32 oldKipSectionSize = *(u32 *)off;
+    *(u32 *)off = newKipSectionSize;
+    off += 2;
+
+    u32 *off2 = (u32 *)off;
+    for (; (u8 *)off2 < pos + size && *off2 != oldKipSectionSize; off2++);
+    if ((u8 *)off2 >= pos + size)
+        return 4;
+    *off2 = newKipSectionSize;
 
     return 0;
 }

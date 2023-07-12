@@ -59,7 +59,6 @@ static_assert(sizeof(CfgDataMcu) > 0, "wrong data size");
 
 static const char *singleOptionIniNamesBoot[] = {
     "autoboot_emunand",
-    "use_emunand_firm_if_r_pressed",
     "enable_external_firm_and_modules",
     "enable_game_patching",
     "app_syscore_threads_on_core_2",
@@ -647,10 +646,9 @@ static size_t saveLumaIniConfigToStr(char *out)
         lumaVerStr, lumaRevSuffixStr,
 
         (int)CONFIG_VERSIONMAJOR, (int)CONFIG_VERSIONMINOR,
-        (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(USEEMUFIRM),
-        (int)CONFIG(LOADEXTFIRMSANDMODULES), (int)CONFIG(PATCHGAMES),
-        (int)CONFIG(REDIRECTAPPTHREADS), (int)CONFIG(PATCHVERSTRING),
-        (int)CONFIG(SHOWGBABOOT),
+        (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(LOADEXTFIRMSANDMODULES),
+        (int)CONFIG(PATCHGAMES), (int)CONFIG(REDIRECTAPPTHREADS),
+        (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -825,7 +823,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                              };
 
     static const char *singleOptionsText[] = { "( ) Autoboot EmuNAND",
-                                               "( ) Use EmuNAND FIRM if booting with R",
                                                "( ) Enable loading external FIRMs and modules",
                                                "( ) Enable game patching",
                                                "( ) Redirect app. syscore threads to core2",
@@ -834,8 +831,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
-                                                 "It will be booted when no\n"
-                                                 "directional pad buttons are pressed.",
+                                                 "It will be booted when no directional\n"
+                                                 "pad buttons are pressed (Up/Right/Down\n"
+                                                 "/Left equal EmuNANDs 1/2/3/4).",
 
                                                  "Select the screen brightness.",
 
@@ -881,17 +879,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "(Up/Right/Down/Left equal EmuNANDs\n"
                                                  "1/2/3/4).",
 
-                                                 "If enabled, when holding R on boot\n"
-                                                 "SysNAND will be booted with an\n"
-                                                 "EmuNAND FIRM.\n\n"
-                                                 "Otherwise, an EmuNAND will be booted\n"
-                                                 "with the SysNAND FIRM.\n\n"
-                                                 "To use a different EmuNAND from the\n"
-                                                 "default, hold a directional pad button\n"
-                                                 "(Up/Right/Down/Left equal EmuNANDs\n"
-                                                 "1/2/3/4), also add A if you have\n"
-                                                 "a matching payload.",
-
                                                  "Enable loading external FIRMs and\n"
                                                  "system modules.\n\n"
                                                  "This isn't needed in most cases.\n\n"
@@ -915,14 +902,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "by about 10%. Can break some games\n"
                                                  "and other applications.\n",
 
-                                                 "Enable showing the current NAND/FIRM:\n\n"
+                                                 "Enable showing the current NAND:\n\n"
                                                  "\t* Sys  = SysNAND\n"
                                                  "\t* Emu  = EmuNAND 1\n"
-                                                 "\t* EmuX = EmuNAND X\n"
-                                                 "\t* SysE = SysNAND with EmuNAND 1 FIRM\n"
-                                                 "\t* SyEX = SysNAND with EmuNAND X FIRM\n"
-                                                 "\t* EmuS = EmuNAND 1 with SysNAND FIRM\n"
-                                                 "\t* EmXS = EmuNAND X with SysNAND FIRM\n\n"
+                                                 "\t* EmuX = EmuNAND X\n\n"
                                                  "or a user-defined custom string in\n"
                                                  "System Settings.\n\n"
                                                  "Refer to the wiki for instructions.",
@@ -934,8 +917,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     FirmwareSource nandType = FIRMWARE_SYSNAND;
     if(isSdMode)
     {
+        // Check if there is at least one emuNAND
+        u32 emuIndex = 0;
         nandType = FIRMWARE_EMUNAND;
-        locateEmuNand(&nandType);
+        locateEmuNand(&nandType, &emuIndex, false);
     }
 
     struct multiOption {
@@ -958,7 +943,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         bool enabled;
         bool visible;
     } singleOptions[] = {
-        { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = nandType == FIRMWARE_EMUNAND },
         { .visible = true },
         { .visible = true },

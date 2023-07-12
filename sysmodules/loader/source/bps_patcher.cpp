@@ -247,11 +247,25 @@ private:
 
 static inline bool ApplyCodeBpsPatch(u64 prog_id, u8 *code, u32 size)
 {
-    char bps_path[] = "/luma/titles/0000000000000000/code.bps";
-    progIdToStr(bps_path + 28, prog_id);
+    bool isSysmodule = (prog_id >> 32) == 0x00040130;
     util::File patch_file;
-    if(!patch_file.Open(bps_path, FS_OPEN_READ))
-        return true;
+
+    if (isSysmodule)
+    {
+        char bps_path[] = "/luma/sysmodules/0000000000000000.bps";
+        prog_id &= ~0xF0000000ull; // clear N3DS bit
+        progIdToStr(bps_path + 32, prog_id);
+        if(!patch_file.Open(bps_path, FS_OPEN_READ))
+            return true;
+    }
+    else
+    {
+        char bps_path[] = "/luma/titles/0000000000000000/code.bps";
+        progIdToStr(bps_path + 28, prog_id);
+        if(!patch_file.Open(bps_path, FS_OPEN_READ))
+            return true;
+    }
+
     const u32 patch_size = u32(patch_file.GetSize().value_or(0));
 
     // Temporarily use APPLICATION memory to store the source and patch data.

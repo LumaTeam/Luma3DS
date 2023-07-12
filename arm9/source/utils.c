@@ -115,6 +115,9 @@ u32 waitInput(bool isMenu)
 
 void mcuPowerOff(void)
 {
+    // Unmount partitions
+    unmountPartitions();
+
     if(!needToSetupScreens) clearScreens(false);
 
     //Shutdown LCD
