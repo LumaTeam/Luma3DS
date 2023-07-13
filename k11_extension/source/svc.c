@@ -120,7 +120,7 @@ void signalSvcReturn(u32 svcId)
     u32      flags = KPROCESS_GET_RVALUE(currentProcess, customFlags);
 
     // Since DBGEVENT_SYSCALL_RETURN is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL (debug->svcId is fortunately an u16!)
-    if(debugOfProcess(currentProcess) != NULL && svcId != 0xFF && shouldSignalSyscallDebugEvent(currentProcess, svcId))
+    if((svcSignalingEnabled & 1) != 0 && (currentProcess) != NULL && svcId != 0xFF && shouldSignalSyscallDebugEvent(currentProcess, svcId))
         SignalDebugEvent(DBGEVENT_OUTPUT_STRING, 0xFFFFFFFF, svcId);
 
     if (flags & SignalOnMemLayoutChanges && flags & MemLayoutChanged)
