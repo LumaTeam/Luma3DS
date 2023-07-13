@@ -36,7 +36,7 @@
 
 #define CONFIG_FILE         "config.ini"
 #define CONFIG_VERSIONMAJOR 3
-#define CONFIG_VERSIONMINOR 8
+#define CONFIG_VERSIONMINOR 9
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 1)
 #define BOOTCFG_EMUINDEX     BOOTCONFIG(1, 3)
