@@ -26,9 +26,6 @@
 
 #include "svc/CreateThread.h"
 
-// Keep in sync with csvc.h
-#define OVERRIDE_THREAD_REDIRECTION_FLAG 0x40
-
 Result CreateThreadHook(Handle *outThreadHandle, u32 ep, u32 arg, u32 stackTop, s32 priority, s32 processorId)
 {
     u32 flags = flagsOfProcess(currentCoreContext->objectContext.currentProcess);
