@@ -58,21 +58,40 @@ static bool switchToMainDir(bool isSd)
     }
 }
 
-bool mountFs(bool isSd, bool switchToCtrNand)
+bool mountSdCardPartition(bool switchMainDir)
 {
-    static bool sdInitialized = false, nandInitialized = false;
-    if (isSd)
+    static bool sdInitialized = false;
+    if (!sdInitialized)
+        sdInitialized = f_mount(&sdFs, "sdmc:", 1) == FR_OK;
+
+    if (sdInitialized && switchMainDir)
+        return f_chdrive("sdmc:") == FR_OK && switchToMainDir(true);
+    return sdInitialized;
+}
+
+bool remountCtrNandPartition(bool switchMainDir)
+{
+    static bool nandInitialized = false;
+
+    if (nandInitialized)
     {
-        if (!sdInitialized)
-            sdInitialized = f_mount(&sdFs, "sdmc:", 1) == FR_OK;
-        return sdInitialized && switchToMainDir(true);
+        if (f_unmount("nand:") != FR_OK)
+            return false;
+        nandInitialized = false;
     }
-    else
-    {
-        if (!nandInitialized)
-            nandInitialized = f_mount(&nandFs, "nand:", 1) == FR_OK;
-        return nandInitialized && (!switchToCtrNand || (f_chdrive("nand:") == FR_OK && switchToMainDir(false)));
-    }
+
+    if (!nandInitialized)
+        nandInitialized = f_mount(&nandFs, "nand:", 1) == FR_OK;
+
+    if (nandInitialized && switchMainDir)
+        return f_chdrive("nand:") == FR_OK && switchToMainDir(false);
+    return nandInitialized;
+}
+
+void unmountPartitions(void)
+{
+    f_unmount("nand:");
+    f_unmount("sdmc:");
 }
 
 u32 fileRead(void *dest, const char *path, u32 maxSize)
@@ -412,8 +431,7 @@ static bool backupEssentialFiles(void)
 {
     size_t sz = sizeof(fileCopyBuffer);
 
-    bool ok = !(isSdMode && !mountFs(false, false));
-
+    bool ok = true;
     ok = ok && fileCopy("nand:/ro/sys/HWCAL0.dat", "backups/HWCAL0.dat", false, fileCopyBuffer, sz);
     ok = ok && fileCopy("nand:/ro/sys/HWCAL1.dat", "backups/HWCAL1.dat", false, fileCopyBuffer, sz);
 
@@ -454,10 +472,19 @@ static bool backupEssentialFiles(void)
 
 bool doLumaUpgradeProcess(void)
 {
-    // Ensure CTRNAND is mounted
-    bool ok = mountFs(false, false), ok2 = true;
-    if (!ok)
-        return false;
+    FirmwareSource oldCtrNandLocation = ctrNandLocation;
+    bool ok = true, ok2 = true, ok3 = true;
+
+    // Ensure SysNAND CTRNAND is mounted
+    if (isSdMode)
+    {
+        ctrNandLocation = FIRMWARE_SYSNAND;
+        if (!remountCtrNandPartition(false))
+        {
+            ctrNandLocation = oldCtrNandLocation;
+            return false;
+        }
+    }
 
     // Try to boot.firm to CTRNAND, when applicable
     if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
@@ -470,5 +497,10 @@ bool doLumaUpgradeProcess(void)
     fileDelete("sdmc:/luma/config.bin");
     fileDelete("nand:/rw/luma/config.bin");
 
-    return ok && ok2;
+    if (isSdMode)
+    {
+        ctrNandLocation = oldCtrNandLocation;
+        ok3 = remountCtrNandPartition(false);
+    }
+    return ok && ok2 && ok3;
 }

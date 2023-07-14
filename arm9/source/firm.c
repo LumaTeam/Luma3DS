@@ -151,10 +151,10 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
 
 u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
-    u32 firmVersion,
+    u32 firmVersion = 0xFFFFFFFF,
         firmSize;
 
-    bool ctrNandError = isSdMode && !mountFs(false, false);
+    bool ctrNandError = isSdMode && !remountCtrNandPartition(false);
 
     if(!ctrNandError)
     {
@@ -228,6 +228,8 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
                 case 2:
                     firmVersion = 0x1F;
                     break;
+                default:
+                    break;
             }
         }
     }
@@ -266,6 +268,8 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
 {
     u32 srcModuleSize,
         nbModules = 0;
+
+    bool isLgyFirm = firmType == TWL_FIRM || firmType == AGB_FIRM;
 
     struct
     {
@@ -309,7 +313,7 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
     u8 *dst = firm->section[0].address;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
     // SAFE_FIRM only for N3DS and only if ENABLESAFEFIRMROSALINA is on
-    u32 maxModuleSize = (firmType == NATIVE_FIRM || firmType == SAFE_FIRM) ? 0x80000 : 0x600000;
+    u32 maxModuleSize = !isLgyFirm ? 0x80000 : 0x600000;
     for(u32 i = 0, dstModuleSize; i < nbModules; i++, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
         if(loadFromStorage)
@@ -342,11 +346,20 @@ static inline void mergeSection0(FirmwareType firmType, u32 firmVersion, bool lo
         memcpy(dst, moduleList[i].src, dstModuleSize);
     }
 
-    //4) Patch NATIVE_FIRM/SAFE_FIRM (N3DS) if necessary
-    if(nbModules == 6)
+    //4) Patch kernel to take module size into account
+    u32 newKipSectionSize = dst - firm->section[0].address;
+    u32 oldKipSectionSize = firm->section[0].size;
+    u8 *kernel11Addr = (u8 *)firm + firm->section[1].offset;
+    u32 kernel11Size = firm->section[1].size;
+    if (isLgyFirm)
     {
-        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, (u8 *)firm + firm->section[1].offset, firm->section[1].size) != 0)
-            error("Failed to inject custom sysmodule");
+        if (patchK11ModuleLoadingLgy(newKipSectionSize, kernel11Addr, kernel11Size) != 0)
+            error("Failed to load sysmodules");
+    }
+    else
+    {
+        if (patchK11ModuleLoading(oldKipSectionSize, newKipSectionSize, nbModules, kernel11Addr, kernel11Size) != 0)
+            error("Failed to load sysmodules");
     }
 }
 

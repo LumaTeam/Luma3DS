@@ -265,12 +265,22 @@ static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.ips"
        If it exists it should be an IPS format patch */
 
-    char path[] = "/luma/titles/0000000000000000/code.ips";
-    progIdToStr(path + 28, progId);
-
+    bool isSysmodule = (progId >> 32) == 0x00040130;
     IFile file;
 
-    if(!openLumaFile(&file, path)) return true;
+    if (isSysmodule)
+    {
+        char path[] = "/luma/sysmodules/0000000000000000.ips";
+        progId &= ~0xF0000000ull; // clear N3DS bit
+        progIdToStr(path + 32, progId);
+        if(!openLumaFile(&file, path)) return true;
+    }
+    else
+    {
+        char path[] = "/luma/titles/0000000000000000/code.ips";
+        progIdToStr(path + 28, progId);
+        if(!openLumaFile(&file, path)) return true;
+    }
 
     bool ret = false;
     u8 buffer[5];
@@ -321,6 +331,7 @@ exit:
 
 Result openSysmoduleCxi(IFile *outFile, u64 progId)
 {
+    progId &= ~0xF0000000ull; // clear N3DS bit
     char path[] = "/luma/sysmodules/0000000000000000.cxi";
     progIdToStr(path + sizeof("/luma/sysmodules/0000000000000000") - 2, progId);
 
@@ -619,6 +630,10 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                       progId == 0x000400300000A102LL || //CHN Home Menu
                       progId == 0x000400300000B102LL;   //TWN Home Menu
 
+    bool isApp = ((progId >> 32) & ~0x12) == 0x00040000;
+    bool isApplet = (progId >> 32) == 0x00040030;
+    bool isSysmodule = (progId >> 32) == 0x00040130;
+
     if(isHomeMenu)
     {
         bool applyRegionFreePatch = true;
@@ -695,7 +710,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             && CONFIG(PATCHVERSTRING))
     {
         static const u16 pattern[] = u"Ve";
-        static u16 *patch;
+        const u16 *patch;
         u32 patchSize = 0,
         currentNand = BOOTCFG_NAND;
 
@@ -706,26 +721,9 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         else
         {
             patchSize = 8;
-            u32 currentFirm = BOOTCFG_FIRM;
 
-            static u16 *verStringsNands[] = { u" Sys",
-                                              u" Emu",
-                                              u"Emu2",
-                                              u"Emu3",
-                                              u"Emu4" },
-
-                       *verStringsEmuSys[] = { u"EmuS",
-                                               u"Em2S",
-                                               u"Em3S",
-                                               u"Em4S" },
-
-                       *verStringsSysEmu[] = { u"SysE",
-                                               u"SyE2",
-                                               u"SyE3",
-                                               u"SyE4" };
-
-            patch = (currentFirm != 0) == (currentNand != 0) ? verStringsNands[currentNand] :
-                                          (!currentNand ? verStringsSysEmu[currentFirm - 1] : verStringsEmuSys[currentNand - 1]);
+            static const u16 *const verStringNandEmu[] = { u" Emu", u"Emu2", u"Emu3", u"Emu4" };
+            patch = currentNand == 0 ? u" Sys" : verStringNandEmu[BOOTCFG_EMUINDEX];
         }
 
         //Patch Ver. string
@@ -926,14 +924,15 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             )) goto error;
     }
 
+    if (isSysmodule && CONFIG(LOADEXTFIRMSANDMODULES))
+    {
+        if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
+        if(!applyCodeIpsPatch(progId, code, size)) goto error;
+    }
+
     if(CONFIG(PATCHGAMES))
     {
-        bool isApp = ((progId >> 32) & ~0x12) == 0x00040000;
-        bool isApplet = (progId >> 32) == 0x00040030;
-        bool isSysmodule = (progId >> 32) == 0x00040130;
-
-        bool shouldPatchIps = !isSysmodule || (isSysmodule && CONFIG(LOADEXTFIRMSANDMODULES));
-        if (shouldPatchIps)
+        if (!isSysmodule)
         {
             if(!patcherApplyCodeBpsPatch(progId, code, size)) goto error;
             if(!applyCodeIpsPatch(progId, code, size)) goto error;
