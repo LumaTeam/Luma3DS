@@ -72,16 +72,34 @@ bool mountSdCardPartition(bool switchMainDir)
 bool remountCtrNandPartition(bool switchMainDir)
 {
     static bool nandInitialized = false;
+    int res = FR_OK;
+
+#if 0
+    Unfortunately the sdmmc driver is really flaky and returns TMIO_STAT_CMD_RESPEND as error.
+    (after timing out)
+    TODO: fix all this tech debt... one day, maybe?
 
     if (nandInitialized)
     {
-        if (f_unmount("nand:") != FR_OK)
+        res = f_unmount("nand:");
+        if (res != FR_OK)
+        {
+            error("f_unmount returned %d", res);
             return false;
+        }
         nandInitialized = false;
     }
+#endif
 
     if (!nandInitialized)
-        nandInitialized = f_mount(&nandFs, "nand:", 1) == FR_OK;
+    {
+        res = f_mount(&nandFs, "nand:", 1);
+        nandInitialized = res == FR_OK;
+        if (res != FR_OK)
+        {
+            error("f_mount returned %d", res);
+        }
+    }
 
     if (nandInitialized && switchMainDir)
         return f_chdrive("nand:") == FR_OK && switchToMainDir(false);
@@ -475,16 +493,27 @@ bool doLumaUpgradeProcess(void)
     FirmwareSource oldCtrNandLocation = ctrNandLocation;
     bool ok = true, ok2 = true, ok3 = true;
 
+#if 0
+    Unfortunately the sdmmc driver is really flaky and returns TMIO_STAT_CMD_RESPEND as error.
+    (after timing out)
+    TODO: fix all this tech debt... one day, maybe?
+
     // Ensure SysNAND CTRNAND is mounted
     if (isSdMode)
     {
         ctrNandLocation = FIRMWARE_SYSNAND;
         if (!remountCtrNandPartition(false))
         {
+            error("failed to mount");
             ctrNandLocation = oldCtrNandLocation;
             return false;
         }
     }
+#else
+    (void)oldCtrNandLocation;
+    // Ensure CTRNAND is mounted
+    remountCtrNandPartition(false);
+#endif
 
     // Try to boot.firm to CTRNAND, when applicable
     if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
@@ -497,10 +526,17 @@ bool doLumaUpgradeProcess(void)
     fileDelete("sdmc:/luma/config.bin");
     fileDelete("nand:/rw/luma/config.bin");
 
+#if 0
     if (isSdMode)
     {
         ctrNandLocation = oldCtrNandLocation;
         ok3 = remountCtrNandPartition(false);
+        if (!ok3)
+            error("failed to unmount");
     }
+#else
+    (void)ok3;
+#endif
+
     return ok && ok2 && ok3;
 }
