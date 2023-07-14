@@ -27,67 +27,30 @@
 #pragma once
 
 #include <3ds/types.h>
-#include <3ds/services/hid.h>
 #include "MyThread.h"
-#include "utils.h"
+#include "timelock_shared_config.h"
 
-#define HID_PAD           (REG32(0x10146000) ^ 0xFFF)
 
-#define DEFAULT_MENU_COMBO      (KEY_L | KEY_DDOWN | KEY_SELECT)
-#define DIRECTIONAL_KEYS        (KEY_DOWN | KEY_UP | KEY_LEFT | KEY_RIGHT)
+#define MINUTES_TO_CHECK  1
 
 #define CORE_APPLICATION  0
 #define CORE_SYSTEM       1
 
-#define FLOAT_CONV_MULT 1e8 // for screen filters
-
-typedef enum MenuItemAction {
-    MENU_END = 0,
-    METHOD = 1,
-    MENU = 2,
-} MenuItemAction;
-
-typedef struct MenuItem {
-    const char *title;
-
-    MenuItemAction action_type;
-    union {
-        struct Menu *menu;
-        void (*method)(void);
-    };
-
-    bool (*visibility)(void);
-} MenuItem;
-
-typedef struct Menu {
-    const char *title;
-
-    MenuItem items[16];
-} Menu;
-
-extern u32 menuCombo;
-extern bool isHidInitialized;
-extern u32 mcuFwVersion;
 
 // From main.c
-extern bool isN3DS;
 extern bool menuShouldExit;
 extern bool preTerminationRequested;
 extern Handle preTerminationEvent;
 
-u32 waitInputWithTimeout(s32 msec);
-u32 waitInputWithTimeoutEx(u32 *outHeldKeys, s32 msec);
-u32 waitInput(void);
 
-u32 waitComboWithTimeout(s32 msec);
-u32 waitCombo(void);
+MyThread *timelockCreateThread(void);
+void timelockThreadMain(void);
+void timelockLoadData(void);
+void timelockEnter(void);
+void timelockLeave(void);
+void timelockShow(void);
+void saveElapsedTime(void);
 
-bool menuCheckN3ds(void);
-u32 menuCountItems(const Menu *menu);
-
-MyThread *menuCreateThread(void);
-void menuEnter(void);
-void menuLeave(void);
-void menuThreadMain(void);
-void menuShow(Menu *root);
-void menuResetSelectedItem(void);
+bool checkPIN(void);
+void resetEnteredPIN(void);
+void timelockInput(void);

@@ -27,6 +27,7 @@
 #include <3ds.h>
 #include "memory.h"
 #include "menu.h"
+#include "timelock.h"
 #include "service_manager.h"
 #include "errdisp.h"
 #include "utils.h"
@@ -36,6 +37,7 @@
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
+#include "menus/timelock_config.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -249,10 +251,12 @@ int main(void)
 
     Draw_Init();
     Cheat_SeedRng(svcGetSystemTick());
+    TimelockMenu_LoadData();
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
+    MyThread *timelockThread = timelockCreateThread();
     bootdiagCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
@@ -264,6 +268,7 @@ int main(void)
 
     MyThread_Join(taskRunnerThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
+    MyThread_Join(timelockThread, -1LL);
 
     return 0;
 }
