@@ -28,10 +28,43 @@
 #include "fatalExceptionHandlers.h"
 #include "utils.h"
 #include "kernel.h"
+#include "memory.h"
+#include "mmu.h"
 #include "globals.h"
 
 #define REG_DUMP_SIZE   4 * 23
-#define CODE_DUMP_SIZE  48
+#define CODE_DUMP_SIZE  96
+
+// Return true if parameters are invalid
+static bool checkExceptionHandlerValidity(KProcess *process, vu32 *threadLocalStorage)
+{
+    if (process == NULL)
+        return true;
+
+    u32             stackBottom = threadLocalStorage[0x11];
+    u32             exceptionBuf = threadLocalStorage[0x12];
+    MemoryInfo      memInfo;
+    PageInfo        pageInfo;
+    KProcessHwInfo *hwInfo = hwInfoOfProcess(process);
+
+    u32 perm = KProcessHwInfo__GetAddressUserPerm(hwInfo, threadLocalStorage[0x10]);
+
+    if (stackBottom != 1)
+    {
+        if (KProcessHwInfo__QueryMemory(hwInfo, &memInfo, &pageInfo, (void *)stackBottom)
+            || (memInfo.permissions & MEMPERM_RW) != MEMPERM_RW)
+            return true;
+    }
+
+    if (exceptionBuf > 1)
+    {
+        if (KProcessHwInfo__QueryMemory(hwInfo, &memInfo, &pageInfo, (void *)exceptionBuf)
+            || (memInfo.permissions & MEMPERM_RW) != MEMPERM_RW)
+            return true;
+    }
+
+    return (perm & MEMPERM_RX) != MEMPERM_RX;
+}
 
 bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 {
@@ -43,7 +76,7 @@ bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
     if(thread != NULL && thread->threadLocalStorage != NULL && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
-       return false;
+       return checkExceptionHandlerValidity(currentProcess, (vu32 *)thread->threadLocalStorage);
 
     if(currentProcess != NULL)
     {
@@ -52,7 +85,7 @@ bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
 
         thread = KPROCESS_GET_RVALUE(currentProcess, mainThread);
         if(thread != NULL && thread->threadLocalStorage != NULL && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
-           return false;
+           return checkExceptionHandlerValidity(currentProcess, thread->threadLocalStorage);
 
         if(index == 3 && strcmp(codeSetOfProcess(currentProcess)->processName, "menu") == 0 && // workaround a Home Menu bug leading to a dabort
            regs[0] == 0x3FFF && regs[2] == 0 && regs[5] == 2 && regs[7] == 1)
@@ -70,6 +103,7 @@ bool isDataAbortExceptionRangeControlled(u32 spsr, u32 addr)
                 ((u32)safecpy <= addr && addr < (u32)safecpy + safecpy_sz)
             );
 }
+
 void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
 {
     ExceptionDumpHeader dumpHeader;
@@ -96,7 +130,7 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     registerDump[15] = pc;
 
     //Dump code
-    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
+    u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - (dumpHeader.codeDumpSize >> 1) ; //wouldn't work well on 32-bit Thumb instructions, but it isn't much of a problem
     dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 1 : 3)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
 
     //Copy register dump and code dump

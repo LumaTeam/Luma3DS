@@ -32,6 +32,7 @@
 #include "config_template_ini.h"
 #include "ifile.h"
 #include "menus/miscellaneous.h"
+#include "plugin/plgloader.h"
 
 typedef struct CfgData {
     u16 formatVersionMajor, formatVersionMinor;
@@ -41,6 +42,7 @@ typedef struct CfgData {
 
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
+    u32 pluginLoaderFlags;
     s16 ntpTzOffetMinutes;
 
     ScreenFilter topScreenFilter;
@@ -49,6 +51,8 @@ typedef struct CfgData {
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;
 } CfgData;
+
+bool saveSettingsRequest = false;
 
 void LumaConfig_ConvertComboToString(char *out, u32 combo)
 {
@@ -170,7 +174,7 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         pinNumDigits, n3dsCpuStr,
         autobootModeStr,
 
-        cfg->hbldr3dsxTitleId, rosalinaMenuComboStr,
+        cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
         (int)cfg->ntpTzOffetMinutes,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
@@ -188,6 +192,10 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
     );
 
     return n < 0 ? 0 : (size_t)n;
+}
+
+void LumaConfig_RequestSaveSettings(void) {
+    saveSettingsRequest = true;
 }
 
 Result LumaConfig_SaveSettings(void)
@@ -238,6 +246,7 @@ Result LumaConfig_SaveSettings(void)
     configData.splashDurationMsec = splashDurationMsec;
     configData.hbldr3dsxTitleId = Luma_SharedConfig->selected_hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
+    configData.pluginLoaderFlags = PluginLoader__IsEnabled();
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
     configData.topScreenFilter = topScreenFilter;
     configData.bottomScreenFilter = bottomScreenFilter;

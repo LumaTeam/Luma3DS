@@ -311,7 +311,11 @@ Result setAppCpuTimeLimit(s64 limit)
     // Prevent apps from enabling preemption on core1 (and kernel will
     // redirect apps threads from core 1 to 2).
     if (IS_N3DS && CONFIG(REDIRECTAPPTHREADS))
-        return 0;
+    {
+        s64 disableThreadRedir = 0;
+        if (R_SUCCEEDED(svcGetSystemInfo(&disableThreadRedir, 0x10000, 0x181)) && !disableThreadRedir)
+            return 0;
+    }
 
     ResourceLimitType category = RESLIMIT_CPUTIME;
     return svcSetResourceLimitValues(g_manager.reslimits[0], &category, &limit, 1);

@@ -29,12 +29,30 @@
 
 Result UnmapProcessMemoryEx(Handle processHandle, void *dst, u32 size)
 {
+    Result          res = 0;
+    KProcess        *process;
+    KProcessHwInfo  *hwInfo;
+    KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
+    
     if(GET_VERSION_MINOR(kernelVersion) < 37) // < 6.x
         return UnmapProcessMemory(processHandle, dst, size); // equivalent when size <= 64MB
 
-    KProcessHwInfo *currentHwInfo = hwInfoOfProcess(currentCoreContext->objectContext.currentProcess);
+    if (processHandle == CUR_PROCESS_HANDLE)
+    {
+        process = currentCoreContext->objectContext.currentProcess;
+        KAutoObject__AddReference((KAutoObject *)process);
+    }
+    else
+        process = KProcessHandleTable__ToKProcess(handleTable, processHandle);
 
-    Result res = KProcessHwInfo__UnmapProcessMemory(currentHwInfo, dst, size >> 12);
+    if (process == NULL)
+        return 0xD8E007F7;
+
+    hwInfo = hwInfoOfProcess(process);
+
+    res = KProcessHwInfo__UnmapProcessMemory(hwInfo, dst, size >> 12);
+
+    ((KAutoObject *)process)->vtable->DecrementReferenceCount((KAutoObject *)process);
 
     invalidateEntireInstructionCache();
     flushEntireDataCache();

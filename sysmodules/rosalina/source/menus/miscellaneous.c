@@ -36,6 +36,7 @@
 #include "minisoc.h"
 #include "ifile.h"
 #include "pmdbgext.h"
+#include "plugin.h"
 #include "process_patches.h"
 
 typedef struct DspFirmSegmentHeader {

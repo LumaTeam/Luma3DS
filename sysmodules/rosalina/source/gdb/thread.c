@@ -107,7 +107,7 @@ int GDB_EncodeThreadId(GDBContext *ctx, char *outbuf, u32 tid)
         return sprintf(outbuf, "%lx", tid);
 }
 
-static s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
+s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
 {
     Handle process, thread;
     Result r;

@@ -56,3 +56,4 @@ enum multiOptions
 
 void LumaConfig_ConvertComboToString(char *out, u32 combo);
 Result LumaConfig_SaveSettings(void);
+void LumaConfig_RequestSaveSettings(void);

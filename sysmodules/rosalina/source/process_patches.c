@@ -77,7 +77,7 @@ Result OperateOnProcessByName(const char *name, OperateOnProcessCb func)
 
     // NOTE: we suppose .text, .rodata, .data+.bss are contiguous & in that order
     u32 totalSize = (u32)(textSize + roSize + rwSize);
-    if (R_FAILED(res = svcMapProcessMemoryEx(processHandle, 0x00100000, (u32) startAddress, totalSize)))
+    if (R_FAILED(res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize)))
     {
         svcCloseHandle(processHandle);
         return res;
@@ -85,6 +85,6 @@ Result OperateOnProcessByName(const char *name, OperateOnProcessCb func)
 
     res = func(processHandle, (u32)textSize, (u32)roSize, (u32)rwSize);
 
-    svcUnmapProcessMemoryEx(processHandle, 0x00100000, totalSize);
+    svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
     return res;
 }

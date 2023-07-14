@@ -162,6 +162,43 @@ Result SendSyncRequestHook(Handle handle)
                 break;
             }
 
+            case 0x00C0080: // srv: publishToSubscriber
+            {
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
+
+                if (info != NULL && strcmp(info->name, "srv:") == 0 && cmdbuf[1] == 0x1002)
+                {
+                    // Wake up application thread
+                    PLG__WakeAppThread();
+                    cmdbuf[0] = 0xC0040;
+                    cmdbuf[1] = 0;
+                    skip = true;
+                }
+                break;
+            }
+
+            case 0x00D0080: // APT:ReceiveParameter
+            {
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
+
+                if (info != NULL && strncmp(info->name, "APT:", 4) == 0 && cmdbuf[1] == 0x300)
+                {
+                    res = SendSyncRequest(handle);
+                    skip = true;
+
+                    if (res >= 0)
+                    {
+                        u32 plgStatus = PLG_GetStatus();
+                        u32 command = cmdbuf[3];
+
+                        if ((plgStatus == PLG_CFG_RUNNING && command == 3) // COMMAND_RESPONSE
+                        || (plgStatus == PLG_CFG_INHOME && (command >= 10 || command <= 12)))  // COMMAND_WAKEUP_BY_EXIT || COMMAND_WAKEUP_BY_PAUSE
+                            PLG_SignalEvent(PLG_CFG_HOME_EVENT);
+                    }
+                }
+                break;
+            }
+
             case 0x4010082:
             {
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
