@@ -39,12 +39,28 @@ DSTATUS disk_initialize (
     BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-        static u32 sdmmcInitResult = 4;
+    static u32 sdmmcInitResult = 4;
+    DSTATUS res = 0;
 
-        if(sdmmcInitResult == 4) sdmmcInitResult = sdmmc_sdcard_init();
+    if(sdmmcInitResult == 4)
+        sdmmcInitResult = sdmmc_sdcard_init();
 
-    return ((pdrv == SDCARD && !(sdmmcInitResult & 2)) ||
-            (pdrv == CTRNAND && !(sdmmcInitResult & 1) && !ctrNandInit())) ? 0 : STA_NOINIT;
+    // Check physical drive initialized status
+    switch (pdrv)
+    {
+        case SDCARD:
+            res = (sdmmcInitResult & 2) == 0 ? 0 : STA_NOINIT;
+            break;
+        case CTRNAND:
+            // Always update CTRNAND parameters when remounting
+            res = (sdmmcInitResult & 1) == 0 && ctrNandInit() == 0 ? 0 : STA_NOINIT;
+            break;
+        default:
+            res = STA_NODISK;
+            break;
+    }
+
+    return res;
 }
 
 
@@ -60,8 +76,22 @@ DRESULT disk_read (
     UINT count		/* Number of sectors to read */
 )
 {
-    return ((pdrv == SDCARD && !sdmmc_sdcard_readsectors(sector, count, buff)) ||
-            (pdrv == CTRNAND && !ctrNandRead(sector, count, buff))) ? RES_OK : RES_PARERR;
+    DRESULT res = RES_OK;
+
+    switch (pdrv)
+    {
+        case SDCARD:
+            res = sdmmc_sdcard_readsectors(sector, count, buff) == 0 ? RES_OK : RES_PARERR;
+            break;
+        case CTRNAND:
+            res = ctrNandRead(sector, count, buff) == 0 ? RES_OK : RES_PARERR;
+            break;
+        default:
+            res = RES_NOTRDY;
+            break;
+    }
+
+    return res;
 }
 
 
@@ -79,8 +109,27 @@ DRESULT disk_write (
     UINT count			/* Number of sectors to write */
 )
 {
-    return ((pdrv == SDCARD && (*(vu16 *)(SDMMC_BASE + REG_SDSTATUS0) & TMIO_STAT0_WRPROTECT) != 0 && !sdmmc_sdcard_writesectors(sector, count, buff)) ||
-            (pdrv == CTRNAND && !ctrNandWrite(sector, count, buff))) ? RES_OK : RES_PARERR;
+    DRESULT res = RES_OK;
+
+    switch (pdrv)
+    {
+        case SDCARD:
+        {
+            if ((*(vu16 *)(SDMMC_BASE + REG_SDSTATUS0) & TMIO_STAT0_WRPROTECT) == 0) // why == 0?
+                res = RES_WRPRT;
+            else
+                res = sdmmc_sdcard_writesectors(sector, count, buff) == 0 ? RES_OK : RES_PARERR;
+            break;
+        }
+        case CTRNAND:
+            res = ctrNandWrite(sector, count, buff) == 0 ? RES_OK : RES_PARERR;
+            break;
+        default:
+            res = RES_NOTRDY;
+            break;
+    }
+
+    return res;
 }
 #endif
 
