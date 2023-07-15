@@ -766,3 +766,10 @@ u32 patchAgbBootSplash(u8 *pos, u32 size)
 
     return 0;
 }
+
+u32 patchTwlBg(u8 *pos, u32 size)
+{
+    (void)pos;
+    (void)size;
+    return 0;
+}

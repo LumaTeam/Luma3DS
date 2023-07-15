@@ -102,6 +102,20 @@ typedef struct
     u8 romFsHash[0x20]; //RomFS superblock SHA-256 hash
 } Ncch;
 
+typedef struct ExeFsFileHeader
+{
+    char name[8];
+    u32 offset;
+    u32 size;
+} ExeFsFileHeader;
+
+typedef struct ExeFsHeader
+{
+    ExeFsFileHeader fileHeaders[10];
+    u8 _reserved_0xa0[0xC0 - 0xA0];
+    u8 fileHashes[10][32];
+} ExeFsHeader;
+
 typedef struct
 {
     Ncch ncch;
