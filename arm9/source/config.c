@@ -64,6 +64,8 @@ static const char *singleOptionIniNamesBoot[] = {
     "app_syscore_threads_on_core_2",
     "show_system_settings_string",
     "show_gba_boot_screen",
+    "enable_dsi_external_filter",
+    "allow_updown_leftright_dsi",
 };
 
 static const char *singleOptionIniNamesMisc[] = {
@@ -649,6 +651,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(LOADEXTFIRMSANDMODULES),
         (int)CONFIG(PATCHGAMES), (int)CONFIG(REDIRECTAPPTHREADS),
         (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
+        (int)CONFIG(ENABLEDSIEXTFILTER), (int)CONFIG(ALLOWUPDOWNLEFTRIGHTDSI),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -828,6 +831,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
+                                               "( ) Enable custom upscaling filters for DSi",
+                                               "( ) Allow Left+Right / Up+Down combos for DSi",
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -912,6 +917,18 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
                                                  "Enable showing the GBA boot screen\n"
                                                  "when booting GBA games.",
+
+                                                 "Enable replacing the default upscaling\n"
+                                                 "filter used for DS(i) software by the\n"
+                                                 "contents of:\n\n"
+                                                 "/luma/twl_upscaling_filter.bin\n\n"
+                                                 "Refer to the wiki for further details.",
+
+                                                 "Allow Left+Right and Up+Down button\n"
+                                                 "combos (using DPAD and CPAD\n"
+                                                 "simultaneously) in DS(i) software.\n\n"
+                                                 "Commercial software filter these\n"
+                                                 "combos on their own too, though.",
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -947,6 +964,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = ISN3DS },
+        { .visible = true },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
     };

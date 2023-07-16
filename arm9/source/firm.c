@@ -483,11 +483,7 @@ static void mergeSection0(FirmwareType firmType, u32 firmVersion, bool loadFromS
         CopyKipResult copyRes = copyKip(dst, moduleList[i].src, maxModuleSize, isStockTwlBg);
 
         if (isStockTwlBg)
-        {
-            u32 patchRes = patchTwlBg(copyRes.codeDstAddr, copyRes.codeSize);
-            if (patchRes > 0)
-                error("Failed to apply %d TwlBg patch(es)", patchRes);
-        }
+            patchTwlBg(copyRes.codeDstAddr, copyRes.codeSize);
 
         dst += copyRes.cxiSize;
         maxModuleSize -= copyRes.cxiSize;

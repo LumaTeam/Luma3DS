@@ -767,9 +767,45 @@ u32 patchAgbBootSplash(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchTwlBg(u8 *pos, u32 size)
+void patchTwlBg(u8 *pos, u32 size)
 {
-    (void)pos;
-    (void)size;
-    return 0;
+    // You can use the following Python code to convert something like below
+    // into twl_upscaling_filter.bin:
+    // import struct; open("twl_upscaling_filter.bin", "wb+").write(struct.pack("<30H", [array contents]))
+    static const u16 nintendoFilterTwl[] = {
+        0x0000, 0x004E, 0x011D, 0x01E3, 0x01C1,
+        0x0000, 0xFCA5, 0xF8D0, 0xF69D, 0xF873,
+        0x0000, 0x0D47, 0x1E35, 0x2F08, 0x3B6F,
+        0x4000, 0x3B6F, 0x2F08, 0x1E35, 0x0D47,
+        0x0000, 0xF873, 0xF69D, 0xF8D0, 0xFCA5,
+        0x0000, 0x01C1, 0x01E3, 0x011D, 0x004E,
+    };
+
+    // "error" func doesn't seem to work here
+    if (CONFIG(ENABLEDSIEXTFILTER))
+    {
+        u16 filter[5*6] = { 0 };
+        u32 rd = fileRead(filter, "twl_upscaling_filter.bin", sizeof(filter));
+        if (rd == sizeof(filter))
+        {
+            // else error("Failed to apply enable_dsi_external_filter:\n\ntwl_upscaling_filter.bin is missing or invalid.");
+            u8 *off = memsearch(pos, nintendoFilterTwl, size, sizeof(nintendoFilterTwl));
+            if (off != NULL)
+                memcpy(off, filter, sizeof(filter));
+            // else error("Failed to apply enable_dsi_external_filter.");
+        }
+    }
+
+    if (CONFIG(ALLOWUPDOWNLEFTRIGHTDSI))
+    {
+        u16 *off2;
+        for (off2 = (u16 *)pos; (u8 *)off2 < pos + size && (off2[0] != 0x2040 || off2[1] != 0x4020); off2++);
+
+        if ((u8 *)off2 < pos + size)
+        {
+            // else error("Failed to apply allow_updown_leftright_dsi.");
+            for (u32 i = 0; i < 8; i++)
+                off2[i] = 0x46C0;
+        }
+    }
 }
