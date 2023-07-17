@@ -833,6 +833,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
                                                "( ) Enable custom upscaling filters for DSi",
                                                "( ) Allow Left+Right / Up+Down combos for DSi",
+
+                                               // Should always be the last entry
+                                               "\nSave and exit"
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -929,6 +932,11 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "simultaneously) in DS(i) software.\n\n"
                                                  "Commercial software filter these\n"
                                                  "combos on their own too, though.",
+                                                
+                                                 // Should always be the last entry
+                                                 "Save the changes and exit. To discard\n"
+                                                 "any changes press the POWER button.\n"
+                                                 "Use START as a shortcut to this entry."
                                                };
 
     FirmwareSource nandType = FIRMWARE_SYSNAND;
@@ -968,6 +976,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
+        { .visible = true },
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one
@@ -1000,7 +1009,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                        "FIRM1" };
 
     drawString(true, 10, 10, COLOR_TITLE, CONFIG_TITLE);
-    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to save");
+    drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Use the DPAD and A to change settings");
     drawFormattedString(false, 10, SCREEN_HEIGHT - 2 * SPACING_Y, COLOR_YELLOW, "Booted from %s via %s", isSdMode ? "SD" : "CTRNAND", bootTypes[(u32)bootType]);
 
     //Character to display a selected option
@@ -1027,7 +1036,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
 
         singleOptions[i].posY = endPos + SPACING_Y;
         endPos = drawString(true, 10, singleOptions[i].posY, color, singleOptionsText[i]);
-        if(singleOptions[i].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[i].posY, color, selected);
+        if(singleOptions[i].enabled && singleOptionsText[i][0] == '(') drawCharacter(true, 10 + SPACING_X, singleOptions[i].posY, color, selected);
 
         if(color == COLOR_RED)
         {
@@ -1038,18 +1047,25 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     }
 
     drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
-
+    
+    bool startPressed = false;
     //Boring configuration menu
     while(true)
     {
-        u32 pressed;
+        u32 pressed = 0;
+        if (!startPressed) 
         do
         {
             pressed = waitInput(true) & MENU_BUTTONS;
         }
         while(!pressed);
 
-        if(pressed & BUTTON_START) break;
+        // Force the selection of "save and exit" and trigger it.
+        if(pressed & BUTTON_START) 
+        {
+            startPressed = true;
+            pressed |= (BUTTON_RIGHT);
+        }
 
         if(pressed & DPAD_BUTTONS)
         {
@@ -1096,7 +1112,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                 }
             }
 
-            if(selectedOption == oldSelectedOption) continue;
+            if(selectedOption == oldSelectedOption && !startPressed) continue;
 
             //The user moved to a different option, print the old option in white and the new one in red. Only print 'x's if necessary
             if(oldSelectedOption < multiOptionsAmount)
@@ -1117,7 +1133,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
             drawString(false, 10, 10, COLOR_BLACK, optionsDescription[oldSelectedOption]);
             drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
         }
-        else if (pressed & BUTTON_A)
+        else if (pressed & BUTTON_A || startPressed)
         {
             //The selected option's status changed, print the 'x's accordingly
             if(isMultiOption)
@@ -1130,15 +1146,25 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
             }
             else
             {
-                bool oldEnabled = singleOptions[singleSelected].enabled;
-                singleOptions[singleSelected].enabled = !oldEnabled;
-                if(oldEnabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK, selected);
+                // Save and exit was selected.
+                if (singleSelected == singleOptionsAmount - 1)
+                {
+                    drawString(true, 10, singleOptions[singleSelected].posY, COLOR_GREEN, singleOptionsText[singleSelected]);
+                    startPressed = false;
+                    break;
+                }
+                else
+                {
+                    bool oldEnabled = singleOptions[singleSelected].enabled;
+                    singleOptions[singleSelected].enabled = !oldEnabled;
+                    if(oldEnabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_BLACK, selected);
+                }
             }
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
         if(isMultiOption) drawCharacter(true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED, selected);
-        else if(singleOptions[singleSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
+        else if(singleOptions[singleSelected].enabled && singleOptionsText[singleSelected][0] == '(') drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
     }
 
     //Parse and write the new configuration
