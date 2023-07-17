@@ -261,6 +261,7 @@ int main(void)
 
     Draw_Init();
     Cheat_SeedRng(svcGetSystemTick());
+    ScreenFiltersMenu_LoadConfig();
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();

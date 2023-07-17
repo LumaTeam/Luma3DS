@@ -45,12 +45,21 @@ typedef union {
 ScreenFilter topScreenFilter;
 ScreenFilter bottomScreenFilter;
 
+static inline bool ScreenFiltersMenu_IsDefaultSettingsFilter(const ScreenFilter *filter)
+{
+    bool ok = true;
+    ok = ok && filter->cct == 6500;
+    ok = ok && !filter->invert;
+    ok = ok && filter->gamma == 1.0f;
+    ok = ok && filter->contrast == 1.0f;
+    ok = ok && filter->brightness == 0.0f;
+    return ok;
+}
+
+
 static inline bool ScreenFiltersMenu_IsDefaultSettings(void)
 {
-    static const ScreenFilter defaultFilter = { 6500, false, 1.0f, 1.0f, 0.0f };
-    bool ok1 = memcmp(&topScreenFilter, &defaultFilter, sizeof(defaultFilter)) == 0;
-    bool ok2 = memcmp(&bottomScreenFilter, &defaultFilter, sizeof(defaultFilter)) == 0;
-    return ok1 && ok2;
+    return ScreenFiltersMenu_IsDefaultSettingsFilter(&topScreenFilter) && ScreenFiltersMenu_IsDefaultSettingsFilter(&bottomScreenFilter);
 }
 
 static inline u8 ScreenFiltersMenu_GetColorLevel(int inLevel, float wp, float a, float b, float g)

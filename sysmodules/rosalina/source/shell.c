@@ -78,6 +78,9 @@ static void forceAudioOutput(u32 forceOp)
 
 void handleShellOpened(void)
 {
+    // Somtimes this is called before Rosalina thread main executes,
+    // sometimes not... how fun :))
+
     s64 out = 0;
     svcGetSystemInfo(&out, 0x10000, 4);
     u32 multiConfig = (u32)out;

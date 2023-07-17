@@ -270,7 +270,6 @@ void menuThreadMain(void)
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu") || !isServiceUsable("cdc:CHK"))
         svcSleepThread(250 * 1000 * 1000LL);
 
-    ScreenFiltersMenu_LoadConfig();
     handleShellOpened();
 
     hidInit(); // assume this doesn't fail
