@@ -52,7 +52,14 @@ static bool switchToMainDir(bool isSd)
         case FR_OK:
             return true;
         case FR_NO_PATH:
-            return f_mkdir(mainDir) == FR_OK && switchToMainDir(isSd);
+        {
+            if (f_mkdir(mainDir) != FR_OK)
+            {
+                error("Failed to create luma directory.");
+                return false;
+            }
+            return switchToMainDir(isSd);
+        }
         default:
             return false;
     }
