@@ -66,12 +66,13 @@ static const char *singleOptionIniNamesBoot[] = {
     "show_gba_boot_screen",
     "enable_dsi_external_filter",
     "allow_updown_leftright_dsi",
-};
-
-static const char *singleOptionIniNamesMisc[] = {
     "use_dev_unitinfo",
     "disable_arm11_exception_handlers",
     "enable_safe_firm_rosalina",
+};
+
+static const char *singleOptionIniNamesMisc[] = {
+    "show_advanced_settings",
 };
 
 static const char *keyNames[] = {
@@ -548,7 +549,7 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             if (strcmp(name, singleOptionIniNamesMisc[i]) == 0) {
                 bool opt;
                 CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
-                cfg->config |= (u32)opt << (i + (u32)PATCHUNITINFO);
+                cfg->config |= (u32)opt << (i + (u32)SHOWADVANCEDSETTINGS);
                 return 1;
             }
         }
@@ -652,6 +653,8 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG(PATCHGAMES), (int)CONFIG(REDIRECTAPPTHREADS),
         (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
         (int)CONFIG(ENABLEDSIEXTFILTER), (int)CONFIG(ALLOWUPDOWNLEFTRIGHTDSI),
+        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
+        (int)CONFIG(ENABLESAFEFIRMROSALINA),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -671,8 +674,7 @@ static size_t saveLumaIniConfigToStr(char *out)
 
         forceAudioOutputStr,
 
-        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
-        (int)CONFIG(ENABLESAFEFIRMROSALINA)
+        (int)CONFIG(SHOWADVANCEDSETTINGS)
     );
 
     return n < 0 ? 0 : (size_t)n;
@@ -833,6 +835,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
                                                "( ) Enable custom upscaling filters for DSi",
                                                "( ) Allow Left+Right / Up+Down combos for DSi",
+                                               "( ) Enable development UNITINFO",
+                                               "( ) Disable ARM11 Exception loaders",
+                                               "( ) Enable Rosalina on SAFE_FIRM",
+                                               "( ) Show Advanced Settings",
 
                                                // Should always be the last entry
                                                "\nSave and exit"
@@ -932,6 +938,35 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "simultaneously) in DS(i) software.\n\n"
                                                  "Commercial software filter these\n"
                                                  "combos on their own too, though.",
+
+                                                 "Make the console be always detected\n"
+                                                 "as a development unit, and conversely.\n"
+                                                 "(which breaks online features, amiibo\n"
+                                                 "and retail CIAs, but allows installing\n"
+                                                 "and booting some developer software).\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
+
+                                                 "Disables the fatal error exception\n"
+                                                 "handlers for the Arm11 CPU. Disabling\n"
+                                                 "this will disqualify you from\n"
+                                                 "submitting issues to the Luma3DS\n"
+                                                 "repository.\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
+
+                                                 "Enables Rosalina, the kernel ext.\n"
+                                                 "and sysmodule reimplementations on\n"
+                                                 "SAFE_FIRM (New 3DS only).\n\n"
+                                                 "Also suppresses QTM error 0xF96183FE,\n"
+                                                 "allowing to use 8.1-11.3 N3DS on\n"
+                                                 "New 2DS XL consoles.\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
+
+                                                 "Disabling this will hide extra\n"
+                                                 "settings from the luma configuration\n"
+                                                 "menu.\n",
                                                 
                                                  // Should always be the last entry
                                                  "Save the changes and exit. To discard\n"
@@ -976,6 +1011,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
+        { .visible = CONFIG(SHOWADVANCEDSETTINGS) },
+        { .visible = CONFIG(SHOWADVANCEDSETTINGS) },
+        { .visible = CONFIG(SHOWADVANCEDSETTINGS) },
+        { .visible = false },
         { .visible = true },
     };
 
@@ -1172,7 +1211,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     for(u32 i = 0; i < multiOptionsAmount; i++)
         configData.multiConfig |= multiOptions[i].enabled << (i * 2);
 
-    configData.config &= ~((1 << (u32)NUMCONFIGURABLE) - 1);
+    configData.config = 0;
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << i;
 
