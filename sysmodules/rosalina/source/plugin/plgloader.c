@@ -563,7 +563,9 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
             ctx->pluginIsSwapped = !ctx->pluginIsSwapped;
         } else {
             // Needed for compatibility with old plugins that don't expect the PLG_HOME events.
-            volatile PluginHeader* mappedHeader = PA_FROM_VA_PTR(MemoryBlock__GetMappedPluginHeader());
+            // Evades cache by using physical address.
+            volatile PluginHeader* mappedHeader = MemoryBlock__GetMappedPluginHeader();
+            mappedHeader = mappedHeader ? PA_FROM_VA_PTR(mappedHeader) : NULL;
             bool doNotification = mappedHeader ? mappedHeader->notifyHomeEvent : false;
             if (ctx->pluginIsHome)
             {
