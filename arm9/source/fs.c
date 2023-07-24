@@ -523,8 +523,10 @@ bool doLumaUpgradeProcess(void)
 #endif
 
     // Try to boot.firm to CTRNAND, when applicable
+#ifndef BUILD_FOR_EXPLOIT_DEV
     if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
         ok = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
+#endif
 
     // Try to backup essential files
     ok2 = backupEssentialFiles();
