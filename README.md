@@ -17,15 +17,17 @@ Note 2: some features are taken from [DullPointer's luma fork](https://github.co
 
 - Removed auto-copy to ctrnand and creating essential files backup
 - Restored UNITINFO and enable rosalina on safe_firm options on the luma config menu (TWL patch option is now with "enable external firms and modules")
+- Removed the need of having both "Game Patching" and "External Firms and Modules" enabled for patching sysmodules, just "External Firms and Modules" need to be enabled
 - Added shortcuts:
   - Press start + select to toggle bottom screen (nice when you watch videos) inspired by [This](https://github.com/DullPointer/Luma3DS/commit/9fea831656446cbaa2b5b4f6364407bb1b35dee7)
   - Press A + B + X + Y + Start to instantly reboot the console. Useful in case of freeze, but don't complain if your sdcard get corrupted because of this.
-  - Press Start on Rosalina menu to toggle wifi -> [From here](https://github.com/DullPointer/Luma3DS/commit/c1a20558bed3d792d54069719a898006af20ba85)
-  - Press Select on Rosalina menu to toggle LEDs -> [From this](https://github.com/DullPointer/Luma3DS/commit/fa70d374c00e39dee8b9ef54f60deb1da35a0c51) (and press Y to force blue led as a workaround when the battery is low)
-- Added n3ds clock + L2 status in rosalina menu -> [From here](https://github.com/DullPointer/Luma3DS/commit/2dbfa8b5c9b719b7f3056691f54332f42da6de8d)
-- Added Software Volume Control -> [From here](https://github.com/DullPointer/Luma3DS/commit/dc636d82492d1e87eb51785fa7f2a98617e7ece9)
-- Added extended brightness presets -> [From this](https://github.com/DullPointer/Luma3DS/commit/83e8d471a377bc6960fae00d6694f5fe86dcca42)
-- Added permanent brightness calibration by Nutez -> [From here](https://github.com/DullPointer/Luma3DS/commit/0e67a667077f601680f74ddc10ef88a799a5a7ad)
+  - Press Start on Rosalina menu to toggle wifi -> [Original](https://github.com/DullPointer/Luma3DS/commit/c1a20558bed3d792d54069719a898006af20ba85)
+  - Press Select on Rosalina menu to toggle LEDs -> [Original](https://github.com/DullPointer/Luma3DS/commit/fa70d374c00e39dee8b9ef54f60deb1da35a0c51) (and press Y to force blue led as a workaround when the battery is low)
+- Added n3ds clock + L2 status in rosalina menu -> [Original](https://github.com/DullPointer/Luma3DS/commit/2dbfa8b5c9b719b7f3056691f54332f42da6de8d)
+- Added Software Volume Control -> [Original](https://github.com/DullPointer/Luma3DS/commit/dc636d82492d1e87eb51785fa7f2a98617e7ece9)
+- Added extended brightness presets -> [Original](https://github.com/DullPointer/Luma3DS/commit/83e8d471a377bc6960fae00d6694f5fe86dcca42)
+- Added permanent brightness calibration by Nutez -> [Original](https://github.com/DullPointer/Luma3DS/commit/0e67a667077f601680f74ddc10ef88a799a5a7ad)
+- Added a option to cut wifi while in sleep mode allowing to save battery -> [Original](https://github.com/DullPointer/Luma3DS/commit/174ed486ab59bd249488c9035682fa7d058d1e80)
 - Changed colors on config menu because why not
 - Continue running after a errdisp error happens (you can press the instant reboot combo to reboot if nothing works)
 
