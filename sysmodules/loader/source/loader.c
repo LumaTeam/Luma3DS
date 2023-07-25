@@ -180,20 +180,7 @@ static Result loadCode(const ExHeader_Info *exhi, u64 programHandle, const prog_
         return 0;
     }
 
-    bool codeLoadedExternally = false;
-    if (CONFIG(PATCHGAMES))
-    {
-        // Require both "load external FIRM & modules" and "patch games" for sysmodules
-        if (IsSysmoduleId(titleId))
-            codeLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
-        else
-            codeLoadedExternally = true;
-    }
-
-    if (codeLoadedExternally)
-        codeLoadedExternally = loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12);
-
-    if(!codeLoadedExternally)
+    if(!CONFIG(PATCHGAMES) || !loadTitleCodeSection(titleId, (u8 *)mapped->text_addr, (u64)mapped->total_size << 12))
     {
         archivePath.type = PATH_BINARY;
         archivePath.data = &programHandle;
@@ -344,20 +331,8 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
     }
     else
     {
-        bool exhLoadedExternally = false;
-        if (CONFIG(PATCHGAMES))
-        {
-            // Require both "load external FIRM & modules" and "patch games" for sysmodules
-            if (IsSysmoduleId(originalTitleId))
-                exhLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
-            else
-                exhLoadedExternally = true;
-        }
-
-        if (exhLoadedExternally)
-            exhLoadedExternally = loadTitleExheaderInfo(originalTitleId, exheaderInfo);
-
-        if(exhLoadedExternally)
+        u64 originalTitleId = exheaderInfo->aci.local_caps.title_id;
+        if(CONFIG(PATCHGAMES) && loadTitleExheaderInfo(exheaderInfo->aci.local_caps.title_id, exheaderInfo))
             exheaderInfo->aci.local_caps.title_id = originalTitleId;
     }
     

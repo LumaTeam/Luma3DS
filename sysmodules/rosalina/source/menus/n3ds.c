@@ -29,8 +29,10 @@
 #include "menus/n3ds.h"
 #include "memory.h"
 #include "menu.h"
+#include "menus.h"
 
 static char clkRateBuf[128 + 1];
+static char new3dsMenuBuf[128 + 1];
 
 Menu N3DSMenu = {
     "New 3DS menu",
@@ -51,6 +53,10 @@ void N3DSMenu_UpdateStatus(void)
 
     N3DSMenu.items[0].title = L2CacheEnabled ? "Disable L2 cache" : "Enable L2 cache";
     sprintf(clkRateBuf, "Set clock rate to %luMHz", clkRate != 268 ? 268 : (u32)higherClkRate);
+
+    sprintf(new3dsMenuBuf, "New 3DS settings: [%luMHz%s", clkRate == 268 ? 268 : (u32)higherClkRate, L2CacheEnabled ? " & L2]" : "]");
+
+    rosalinaMenu.items[8].title = new3dsMenuBuf;
 }
 
 void N3DSMenu_ChangeClockRate(void)

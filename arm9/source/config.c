@@ -64,11 +64,8 @@ static const char *singleOptionIniNamesBoot[] = {
     "app_syscore_threads_on_core_2",
     "show_system_settings_string",
     "show_gba_boot_screen",
-    "enable_dsi_external_filter",
     "allow_updown_leftright_dsi",
-};
-
-static const char *singleOptionIniNamesMisc[] = {
+    "cut_wifi_sleep_mode",
     "use_dev_unitinfo",
     "disable_arm11_exception_handlers",
     "enable_safe_firm_rosalina",
@@ -544,14 +541,6 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(-1);
         }
     } else if (strcmp(section, "misc") == 0) {
-        for (size_t i = 0; i < sizeof(singleOptionIniNamesMisc)/sizeof(singleOptionIniNamesMisc[0]); i++) {
-            if (strcmp(name, singleOptionIniNamesMisc[i]) == 0) {
-                bool opt;
-                CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
-                cfg->config |= (u32)opt << (i + (u32)PATCHUNITINFO);
-                return 1;
-            }
-        }
 
         if (strcmp(name, "force_audio_output") == 0) {
             if (strcasecmp(value, "off") == 0) {
@@ -651,7 +640,9 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(LOADEXTFIRMSANDMODULES),
         (int)CONFIG(PATCHGAMES), (int)CONFIG(REDIRECTAPPTHREADS),
         (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
-        (int)CONFIG(ENABLEDSIEXTFILTER), (int)CONFIG(ALLOWUPDOWNLEFTRIGHTDSI),
+        (int)CONFIG(ALLOWUPDOWNLEFTRIGHTDSI), (int)CONFIG(CUTWIFISLEEP),
+        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
+        (int)CONFIG(ENABLESAFEFIRMROSALINA),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -669,10 +660,7 @@ static size_t saveLumaIniConfigToStr(char *out)
 
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
-        forceAudioOutputStr,
-
-        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
-        (int)CONFIG(ENABLESAFEFIRMROSALINA)
+        forceAudioOutputStr
     );
 
     return n < 0 ? 0 : (size_t)n;
@@ -743,7 +731,6 @@ static bool readConfigMcu(void)
         memset(&configDataMcu, 0, sizeof(CfgDataMcu));
         configData.bootConfig = 0;
         // Perform upgrade process (ignoring failures)
-        doLumaUpgradeProcess();
         writeConfigMcu();
 
         return false;
@@ -752,7 +739,6 @@ static bool readConfigMcu(void)
     if (configDataMcu.lumaVersion < curVer)
     {
         // Perform upgrade process (ignoring failures)
-        doLumaUpgradeProcess();
         writeConfigMcu();
     }
 
@@ -769,11 +755,12 @@ bool readConfig(void)
        configData.formatVersionMajor != CONFIG_VERSIONMAJOR ||
        configData.formatVersionMinor != CONFIG_VERSIONMINOR)
     {
+        // default config values
         memset(&configData, 0, sizeof(CfgData));
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
-        configData.config |= 1u << PATCHVERSTRING;
-        configData.splashDurationMsec = 3000;
+        configData.config |= 1u;
+        configData.splashDurationMsec = 2000;
         configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
         configData.topScreenFilter.cct = 6500; // default temp, no-op
@@ -831,8 +818,11 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
-                                               "( ) Enable custom upscaling filters for DSi",
                                                "( ) Allow Left+Right / Up+Down combos for DSi",
+                                               "( ) Cut 3DS Wifi in sleep mode",
+                                               "( ) Enable development UNITINFO",
+                                               "( ) Disable ARM11 Exception loaders",
+                                               "( ) Enable Rosalina on SAFE_FIRM",
 
                                                // Should always be the last entry
                                                "\nSave and exit"
@@ -921,17 +911,38 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Enable showing the GBA boot screen\n"
                                                  "when booting GBA games.",
 
-                                                 "Enable replacing the default upscaling\n"
-                                                 "filter used for DS(i) software by the\n"
-                                                 "contents of:\n\n"
-                                                 "/luma/twl_upscaling_filter.bin\n\n"
-                                                 "Refer to the wiki for further details.",
-
                                                  "Allow Left+Right and Up+Down button\n"
                                                  "combos (using DPAD and CPAD\n"
                                                  "simultaneously) in DS(i) software.\n\n"
                                                  "Commercial software filter these\n"
                                                  "combos on their own too, though.",
+
+                                                 "Cut the 3DS wifi in sleep mode.\n\n"
+                                                 "This saves battery but prevent some\n"
+                                                 "features like streetpass or spotpass\n"
+                                                 "to work on sleep mode.\n\n"
+                                                 "Use this if you don't use them or\n"
+                                                 "want to save battery in sleep mode.",
+
+                                                 "Make the console be always detected\n"
+                                                 "as a development unit, and conversely.\n"
+                                                 "(which breaks online features, amiibo\n"
+                                                 "and retail CIAs, but allows installing\n"
+                                                 "and booting some developer software).\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
+
+                                                 "Don't Enable if you don't know what\n"
+                                                 "you are doing.",
+
+                                                 "Enables Rosalina, the kernel ext.\n"
+                                                 "and sysmodule reimplementations on\n"
+                                                 "SAFE_FIRM (New 3DS only).\n\n"
+                                                 "Also suppresses QTM error 0xF96183FE,\n"
+                                                 "allowing to use 8.1-11.3 N3DS on\n"
+                                                 "New 2DS XL consoles.\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
                                                 
                                                  // Should always be the last entry
                                                  "Save the changes and exit. To discard\n"
@@ -976,6 +987,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
+        { .visible = true },
+        { .visible = false },
+        { .visible = ISN3DS },
         { .visible = true },
     };
 
@@ -1030,7 +1044,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     endPos += SPACING_Y / 2;
 
     //Display all the normal options in white except for the first one
-    for(u32 i = 0, color = COLOR_RED; i < singleOptionsAmount; i++)
+    for(u32 i = 0, color = COLOR_GREEN; i < singleOptionsAmount; i++)
     {
         if(!singleOptions[i].visible) continue;
 
@@ -1038,7 +1052,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         endPos = drawString(true, 10, singleOptions[i].posY, color, singleOptionsText[i]);
         if(singleOptions[i].enabled && singleOptionsText[i][0] == '(') drawCharacter(true, 10 + SPACING_X, singleOptions[i].posY, color, selected);
 
-        if(color == COLOR_RED)
+        if(color == COLOR_GREEN)
         {
             singleSelected = i;
             selectedOption = i + multiOptionsAmount;
@@ -1127,8 +1141,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                 if(singleOptions[singleOldSelected].enabled) drawCharacter(true, 10 + SPACING_X, singleOptions[singleOldSelected].posY, COLOR_WHITE, selected);
             }
 
-            if(isMultiOption) drawString(true, 10, multiOptions[selectedOption].posY, COLOR_RED, multiOptionsText[selectedOption]);
-            else drawString(true, 10, singleOptions[singleSelected].posY, COLOR_RED, singleOptionsText[singleSelected]);
+            if(isMultiOption) drawString(true, 10, multiOptions[selectedOption].posY, COLOR_GREEN, multiOptionsText[selectedOption]);
+            else drawString(true, 10, singleOptions[singleSelected].posY, COLOR_GREEN, singleOptionsText[singleSelected]);
 
             drawString(false, 10, 10, COLOR_BLACK, optionsDescription[oldSelectedOption]);
             drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
@@ -1149,7 +1163,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                 // Save and exit was selected.
                 if (singleSelected == singleOptionsAmount - 1)
                 {
-                    drawString(true, 10, singleOptions[singleSelected].posY, COLOR_GREEN, singleOptionsText[singleSelected]);
+                    drawString(true, 10, singleOptions[singleSelected].posY, COLOR_TITLE, singleOptionsText[singleSelected]);
                     startPressed = false;
                     break;
                 }
@@ -1163,8 +1177,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         }
 
         //In any case, if the current option is enabled (or a multiple choice option is selected) we must display a red 'x'
-        if(isMultiOption) drawCharacter(true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_RED, selected);
-        else if(singleOptions[singleSelected].enabled && singleOptionsText[singleSelected][0] == '(') drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_RED, selected);
+        if(isMultiOption) drawCharacter(true, 10 + multiOptions[selectedOption].posXs[multiOptions[selectedOption].enabled] * SPACING_X, multiOptions[selectedOption].posY, COLOR_GREEN, selected);
+        else if(singleOptions[singleSelected].enabled && singleOptionsText[singleSelected][0] == '(') drawCharacter(true, 10 + SPACING_X, singleOptions[singleSelected].posY, COLOR_GREEN, selected);
     }
 
     //Parse and write the new configuration
@@ -1172,7 +1186,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     for(u32 i = 0; i < multiOptionsAmount; i++)
         configData.multiConfig |= multiOptions[i].enabled << (i * 2);
 
-    configData.config &= ~((1 << (u32)NUMCONFIGURABLE) - 1);
+    configData.config = 0;
     for(u32 i = 0; i < singleOptionsAmount; i++)
         configData.config |= (singleOptions[i].enabled ? 1 : 0) << i;
 

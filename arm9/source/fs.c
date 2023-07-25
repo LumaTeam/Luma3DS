@@ -325,10 +325,10 @@ bool payloadMenu(char *path, bool *hasDisplayedMenu)
         drawString(true, 10, 10, COLOR_TITLE, "Luma3DS chainloader");
         drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
 
-        for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
+        for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_GREEN; i < payloadNum; i++, posY += SPACING_Y)
         {
             drawString(true, 10, posY, color, payloadList[i]);
-            if(color == COLOR_RED) color = COLOR_WHITE;
+            if(color == COLOR_GREEN) color = COLOR_WHITE;
         }
 
         while(pressed != BUTTON_A && pressed != BUTTON_START)
@@ -362,7 +362,7 @@ bool payloadMenu(char *path, bool *hasDisplayedMenu)
             if(oldSelectedPayload == selectedPayload) continue;
 
             drawString(true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE, payloadList[oldSelectedPayload]);
-            drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED, payloadList[selectedPayload]);
+            drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_GREEN, payloadList[selectedPayload]);
         }
     }
 
@@ -438,114 +438,4 @@ void findDumpFile(const char *folderPath, char *fileName)
     }
 
     if(result == FR_OK) f_closedir(&dir);
-}
-
-static u8 fileCopyBuffer[0x10000];
-
-static const u8 boot9Sha256[32] = {
-    0x2F, 0x88, 0x74, 0x4F, 0xEE, 0xD7, 0x17, 0x85, 0x63, 0x86, 0x40, 0x0A, 0x44, 0xBB, 0xA4, 0xB9,
-    0xCA, 0x62, 0xE7, 0x6A, 0x32, 0xC7, 0x15, 0xD4, 0xF3, 0x09, 0xC3, 0x99, 0xBF, 0x28, 0x16, 0x6F
-};
-
-static const u8 boot11Sha256[32] = {
-    0x74, 0xDA, 0xAC, 0xE1, 0xF8, 0x06, 0x7B, 0x66, 0xCC, 0x81, 0xFC, 0x30, 0x7A, 0x3F, 0xDB, 0x50,
-    0x9C, 0xBE, 0xDC, 0x32, 0xF9, 0x03, 0xAE, 0xBE, 0x90, 0x61, 0x44, 0xDE, 0xA7, 0xA0, 0x75, 0x12
-};
-
-static bool backupEssentialFiles(void)
-{
-    size_t sz = sizeof(fileCopyBuffer);
-
-    bool ok = true;
-    ok = ok && fileCopy("nand:/ro/sys/HWCAL0.dat", "backups/HWCAL0.dat", false, fileCopyBuffer, sz);
-    ok = ok && fileCopy("nand:/ro/sys/HWCAL1.dat", "backups/HWCAL1.dat", false, fileCopyBuffer, sz);
-
-    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_A", "backups/LocalFriendCodeSeed_A", false, fileCopyBuffer, sz); // often doesn't exist
-    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_B", "backups/LocalFriendCodeSeed_B", false, fileCopyBuffer, sz);
-
-    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_A", "backups/SecureInfo_A", false, fileCopyBuffer, sz);
-    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_B", "backups/SecureInfo_B", false, fileCopyBuffer, sz); // often doesn't exist
-
-    if (!ok) return false;
-
-    alignedseqmemcpy(fileCopyBuffer, (const void *)0x10012000, 0x100);
-    if (getFileSize("backups/otp.bin") != 0x100)
-        ok = ok && fileWrite(fileCopyBuffer, "backups/otp.bin", 0x100);
-
-    if (!ok) return false;
-
-    // On dev boards, but not O3DS IS_DEBUGGER, hwcal is on an EEPROM chip accessed via I2C
-    u8 c = mcuConsoleInfo[0];
-    if (c == 2 || c == 4 || (ISN3DS && c == 5) || c == 6)
-    {
-        I2C_readRegBuf(I2C_DEV_EEPROM, 0, fileCopyBuffer, 0x1000); // Up to two instances of hwcal, with the second one @0x800
-        if (getFileSize("backups/HWCAL_01_EEPROM.dat") != 0x1000)
-            ok = ok && fileWrite(fileCopyBuffer, "backups/HWCAL_01_EEPROM.dat", 0x1000);
-    }
-
-    // B9S bootrom backups
-    u32 hash[32/4];
-    sha(hash, (const void *)0x08080000, 0x10000, SHA_256_MODE);
-    if (memcmp(hash, boot9Sha256, 32) == 0 && getFileSize("backups/boot9.bin") != 0x10000)
-        ok = ok && fileWrite((const void *)0x08080000, "backups/boot9.bin", 0x10000);
-    sha(hash, (const void *)0x08090000, 0x10000, SHA_256_MODE);
-    if (memcmp(hash, boot11Sha256, 32) == 0 && getFileSize("backups/boot11.bin") != 0x10000)
-        ok = ok && fileWrite((const void *)0x08090000, "backups/boot11.bin", 0x10000);
-
-    return ok;
-}
-
-bool doLumaUpgradeProcess(void)
-{
-    FirmwareSource oldCtrNandLocation = ctrNandLocation;
-    bool ok = true, ok2 = true, ok3 = true;
-
-#if 0
-    Unfortunately the sdmmc driver is really flaky and returns TMIO_STAT_CMD_RESPEND as error.
-    (after timing out)
-    TODO: fix all this tech debt... one day, maybe?
-
-    // Ensure SysNAND CTRNAND is mounted
-    if (isSdMode)
-    {
-        ctrNandLocation = FIRMWARE_SYSNAND;
-        if (!remountCtrNandPartition(false))
-        {
-            error("failed to mount");
-            ctrNandLocation = oldCtrNandLocation;
-            return false;
-        }
-    }
-#else
-    (void)oldCtrNandLocation;
-    // Ensure CTRNAND is mounted
-    remountCtrNandPartition(false);
-#endif
-
-    // Try to boot.firm to CTRNAND, when applicable
-#ifndef BUILD_FOR_EXPLOIT_DEV
-    if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
-        ok = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
-#endif
-
-    // Try to backup essential files
-    ok2 = backupEssentialFiles();
-
-    // Clean up some of the old files
-    fileDelete("sdmc:/luma/config.bin");
-    fileDelete("nand:/rw/luma/config.bin");
-
-#if 0
-    if (isSdMode)
-    {
-        ctrNandLocation = oldCtrNandLocation;
-        ok3 = remountCtrNandPartition(false);
-        if (!ok3)
-            error("failed to unmount");
-    }
-#else
-    (void)ok3;
-#endif
-
-    return ok && ok2 && ok3;
 }

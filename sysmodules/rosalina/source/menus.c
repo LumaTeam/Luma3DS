@@ -54,11 +54,10 @@ Menu rosalinaMenu = {
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Screen filters...", MENU, .menu = &screenFiltersMenu },
-        { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
+        { "New 3DS settings:", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Save settings", METHOD, .method = &RosalinaMenu_SaveSettings },
-        { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
-        { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
+        { "Power options...", METHOD, .method = &RosalinaMenu_PowerOptions },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
         { "Debug info", METHOD, .method = &RosalinaMenu_ShowDebugInfo, .visibility = &rosalinaMenuShouldShowDebugInfo },
         {},
@@ -195,34 +194,6 @@ void RosalinaMenu_ShowCredits(void)
     while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
-void RosalinaMenu_Reboot(void)
-{
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
-    do
-    {
-        Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Reboot");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
-
-        u32 pressed = waitInputWithTimeout(1000);
-
-        if(pressed & KEY_A)
-        {
-            menuLeave();
-            APT_HardwareResetAsync();
-            return;
-        } else if(pressed & KEY_B)
-            return;
-    }
-    while(!menuShouldExit);
-}
-
 void RosalinaMenu_ChangeScreenBrightness(void)
 {
     Draw_Lock();
@@ -235,6 +206,8 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     u32 luminance = getCurrentLuminance(false);
     u32 minLum = getMinLuminancePreset();
     u32 maxLum = getMaxLuminancePreset();
+    u32 trueMax = 172; // https://www.3dbrew.org/wiki/GSPLCD:SetBrightnessRaw
+    u32 trueMin = 8;
 
     do
     {
@@ -245,17 +218,27 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             10,
             posY,
             COLOR_WHITE,
-            "Current luminance: %lu (min. %lu, max. %lu)\n\n",
-            luminance,
+            "Current luminance: %lu\n",
+            luminance
+        );
+        posY = Draw_DrawFormattedString(
+            10,
+            posY,
+            COLOR_WHITE,
+            "Preset: %lu to %lu, Extended: %lu to %lu.\n\n",
             minLum,
-            maxLum
+            maxLum,
+            trueMin,
+            trueMax
         );
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Hold L/R for extended limits.\n\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
 
         posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by the presets.\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * values rarely glitch >172, do not use these!\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * all changes revert on shell reopening.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until exit.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
@@ -283,6 +266,8 @@ void RosalinaMenu_ChangeScreenBrightness(void)
 
     do
     {
+        u32 kHeld = 0;
+        kHeld = HID_PAD;
         u32 pressed = waitInputWithTimeout(1000);
         if (pressed & DIRECTIONAL_KEYS)
         {
@@ -295,8 +280,16 @@ void RosalinaMenu_ChangeScreenBrightness(void)
             else if (pressed & KEY_LEFT)
                 lum -= 10;
 
-            lum = lum < (s32)minLum ? (s32)minLum : lum;
-            lum = lum > (s32)maxLum ? (s32)maxLum : lum;
+            if (kHeld & (KEY_L | KEY_R))
+            {
+                lum = lum < (s32)trueMin ? (s32)trueMin : lum;
+                lum = lum > (s32)trueMax ? (s32)trueMax : lum;
+            }
+            else
+            {
+                lum = lum < (s32)minLum ? (s32)minLum : lum;
+                lum = lum > (s32)maxLum ? (s32)maxLum : lum;
+            }
 
             // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
             // This is actually SetLuminance:
@@ -322,7 +315,7 @@ void RosalinaMenu_ChangeScreenBrightness(void)
     Draw_Unlock();
 }
 
-void RosalinaMenu_PowerOff(void) // Soft shutdown.
+void RosalinaMenu_PowerOptions(void) 
 {
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -332,17 +325,24 @@ void RosalinaMenu_PowerOff(void) // Soft shutdown.
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Power off");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Power options");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press X to power off, press Y to reboot,");
+        Draw_DrawString(10, 40, COLOR_WHITE, "Press B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & KEY_A)
+        if(pressed & KEY_X) // Soft shutdown.
         {
             menuLeave();
             srvPublishToSubscriber(0x203, 0);
+            return;
+        }
+        else if(pressed & KEY_Y)
+        {
+            menuLeave();
+            APT_HardwareResetAsync();
             return;
         }
         else if(pressed & KEY_B)

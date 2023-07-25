@@ -249,7 +249,7 @@ static void ERRF_DisplayError(ERRF_FatalErrInfo *info)
     posY = posY < 30 ? 30 : posY;
 
     posY = Draw_DrawString(10, posY, COLOR_WHITE, buf);
-    posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Press any button to reboot.");
+    posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_TITLE, "Press any button to continue.\nThere is a high chance that it crashed.\nTo reboot, press A + B + X + Y + Start.");
 
     Draw_FlushFramebuffer();
     Draw_Unlock();
@@ -322,15 +322,16 @@ void ERRF_HandleCommands(void)
                 ERRF_DisplayError(&info);
 
                 /*
-                If we ever wanted to return:
-                Draw_Unlock();
-                menuLeave();
-
-                but we don't
-                */
-                waitInput();
+                If we wanted to reboot:
                 svcKernelSetState(7);
                 __builtin_unreachable();
+
+                But we don't in this build :)
+                */
+
+                waitInput();
+                Draw_Unlock();
+                menuLeave();
             }
 
             cmdbuf[0] = IPC_MakeHeader(1, 1, 0);

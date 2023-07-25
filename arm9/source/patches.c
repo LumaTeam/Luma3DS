@@ -782,7 +782,7 @@ void patchTwlBg(u8 *pos, u32 size)
     };
 
     // "error" func doesn't seem to work here
-    if (CONFIG(ENABLEDSIEXTFILTER))
+    if (CONFIG(LOADEXTFIRMSANDMODULES))
     {
         u16 filter[5*6] = { 0 };
         u32 rd = fileRead(filter, "twl_upscaling_filter.bin", sizeof(filter));
