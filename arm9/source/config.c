@@ -1078,7 +1078,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         if(pressed & BUTTON_START) 
         {
             startPressed = true;
-            pressed |= (BUTTON_RIGHT);
+            // This moves the cursor to the last entry
+            pressed = BUTTON_RIGHT;
         }
 
         if(pressed & DPAD_BUTTONS)
