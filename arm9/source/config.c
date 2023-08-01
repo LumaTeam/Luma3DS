@@ -824,6 +824,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Enable development UNITINFO",
                                                "( ) Disable ARM11 Exception loaders",
                                                "( ) Enable Rosalina on SAFE_FIRM",
+                                               "( ) Enable instant reboot + disable Errdisp",
 
                                                // Should always be the last entry
                                                "\nSave and exit"
@@ -933,8 +934,14 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Only select this if you know what you\n"
                                                  "are doing!",
 
-                                                 "Don't Enable if you don't know what\n"
-                                                 "you are doing.",
+                                                 "Disables the fatal error exception\n"
+                                                 "handlers for the Arm11 CPU.\n\n"
+                                                 "Note: Disabling the exception handlers\n"
+                                                 "will disqualify you from submitting\n"
+                                                 "issues or bug reports to the Luma3DS\n"
+                                                 "GitHub repository!\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
 
                                                  "Enables Rosalina, the kernel ext.\n"
                                                  "and sysmodule reimplementations on\n"
@@ -942,6 +949,14 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Also suppresses QTM error 0xF96183FE,\n"
                                                  "allowing to use 8.1-11.3 N3DS on\n"
                                                  "New 2DS XL consoles.\n\n"
+                                                 "Only select this if you know what you\n"
+                                                 "are doing!",
+
+                                                 "Disable rebooting after an Errdisp\n"
+                                                 "error occurs. It also enable instant\n"
+                                                 "reboot combo, this can corrupt your\n"
+                                                 "SDcard so be careful with this.\n"
+                                                 "The combo is A + B + X + Y + Start.\n\n"
                                                  "Only select this if you know what you\n"
                                                  "are doing!",
                                                 
@@ -991,6 +1006,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = false },
         { .visible = ISN3DS },
+        { .visible = false},
         { .visible = true },
     };
 
@@ -1079,7 +1095,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         if(pressed & BUTTON_START) 
         {
             startPressed = true;
-            pressed |= (BUTTON_RIGHT);
+            // This moves the cursor to the last entry
+            pressed = BUTTON_RIGHT;
         }
 
         if(pressed & DPAD_BUTTONS)
