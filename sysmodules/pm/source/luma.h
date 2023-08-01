@@ -35,6 +35,7 @@ enum singleOptions
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
+    NOERRDISPINSTANTREBOOT,
 };
 
 extern u32 config, multiConfig, bootConfig;

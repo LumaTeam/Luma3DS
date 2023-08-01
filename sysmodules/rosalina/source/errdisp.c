@@ -31,6 +31,7 @@
 #include "memory.h"
 #include "fmt.h"
 #include "ifile.h"
+#include "luma_config.h"
 
 extern Handle preTerminationEvent;
 
@@ -238,7 +239,7 @@ static int ERRF_FormatError(char *out, const ERRF_FatalErrInfo *info, bool isLog
 }
 
 
-static void ERRF_DisplayError(ERRF_FatalErrInfo *info)
+static void ERRF_DisplayError(ERRF_FatalErrInfo *info, bool continueAfterErrdisp)
 {
     Draw_Lock();
 
@@ -249,7 +250,10 @@ static void ERRF_DisplayError(ERRF_FatalErrInfo *info)
     posY = posY < 30 ? 30 : posY;
 
     posY = Draw_DrawString(10, posY, COLOR_WHITE, buf);
-    posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_TITLE, "Press any button to continue.\nThere is a high chance that it crashed.\nTo reboot, press A + B + X + Y + Start.");
+    if(continueAfterErrdisp)
+        posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_TITLE, "Press any button to continue.\nThere is a high chance that it crashed.\nTo reboot, press A + B + X + Y + Start.");
+    else
+        posY = Draw_DrawString(10, posY + SPACING_Y, COLOR_WHITE, "Press any button to reboot.");
 
     Draw_FlushFramebuffer();
     Draw_Unlock();
@@ -319,19 +323,24 @@ void ERRF_HandleCommands(void)
                 Draw_ClearFramebuffer();
                 Draw_FlushFramebuffer();
 
-                ERRF_DisplayError(&info);
+                s64 out = 0;
+                svcGetSystemInfo(&out, 0x10000, 3);
+                u32 config = (u32)out;
+                bool continueAfterErrdisp = ((config >> (u32)NOERRDISPINSTANTREBOOT) & 1) != 0;
 
-                /*
-                If we wanted to reboot:
-                svcKernelSetState(7);
-                __builtin_unreachable();
-
-                But we don't in this build :)
-                */
+                ERRF_DisplayError(&info, continueAfterErrdisp);
 
                 waitInput();
-                Draw_Unlock();
-                menuLeave();
+                if(continueAfterErrdisp)
+                {
+                    Draw_Unlock();
+                    menuLeave();
+                }
+                else
+                {
+                    svcKernelSetState(7);
+                    __builtin_unreachable();
+                }
             }
 
             cmdbuf[0] = IPC_MakeHeader(1, 1, 0);

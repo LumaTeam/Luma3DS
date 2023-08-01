@@ -284,6 +284,11 @@ void menuThreadMain(void)
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;
 
+    s64 out = 0;
+    svcGetSystemInfo(&out, 0x10000, 3);
+    u32 config = (u32)out;
+    bool instantReboot = ((config >> (u32)NOERRDISPINSTANTREBOOT) & 1) != 0;
+
     while(!preTerminationRequested)
     {
         svcSleepThread(50 * 1000 * 1000LL);
@@ -301,8 +306,8 @@ void menuThreadMain(void)
             menuLeave();
         }
 
-        // force reboot combo key
-        if(((scanHeldKeys() & (KEY_A | KEY_B | KEY_X | KEY_Y | KEY_START)) == (KEY_A | KEY_B | KEY_X | KEY_Y | KEY_START)))
+        // instant reboot combo key
+        if(instantReboot & ((scanHeldKeys() & (KEY_A | KEY_B | KEY_X | KEY_Y | KEY_START)) == (KEY_A | KEY_B | KEY_X | KEY_Y | KEY_START)))
         {
             svcKernelSetState(7);
             __builtin_unreachable();

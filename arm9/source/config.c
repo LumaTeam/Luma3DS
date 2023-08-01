@@ -69,6 +69,7 @@ static const char *singleOptionIniNamesBoot[] = {
     "use_dev_unitinfo",
     "disable_arm11_exception_handlers",
     "enable_safe_firm_rosalina",
+    "disable_errdisp_enable_instant_reboot",
 };
 
 static const char *keyNames[] = {
@@ -642,7 +643,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
         (int)CONFIG(ALLOWUPDOWNLEFTRIGHTDSI), (int)CONFIG(CUTWIFISLEEP),
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
-        (int)CONFIG(ENABLESAFEFIRMROSALINA),
+        (int)CONFIG(ENABLESAFEFIRMROSALINA), (int)CONFIG(NOERRDISPINSTANTREBOOT),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -1078,8 +1079,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         if(pressed & BUTTON_START) 
         {
             startPressed = true;
-            // This moves the cursor to the last entry
-            pressed = BUTTON_RIGHT;
+            pressed |= (BUTTON_RIGHT);
         }
 
         if(pressed & DPAD_BUTTONS)

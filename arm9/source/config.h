@@ -67,6 +67,7 @@ enum singleOptions
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
+    NOERRDISPINSTANTREBOOT,
 };
 
 typedef enum ConfigurationStatus
