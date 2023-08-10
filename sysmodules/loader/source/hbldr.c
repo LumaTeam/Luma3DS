@@ -172,10 +172,10 @@ static const u32 kernelCaps[] =
 {
     0xFC00022C, // Kernel release version 8.0 is necessary for using the new linear mapping. Modified below.
 
-    // Normal applications only have access to 0x1FF50000-0x1FF58000, 0x1FF70000-0x1FF78000,
+    // Normal applications only have access to 0x1FF50000-0x1FF58000, 0x1FF70000-0x1FF78000 (both as IO),
     // however we can load unsigned DSP firmware binaries.
     0xFF81FF00, // RW static range mapping: 0x1FF00000 (DSP RAM, start)
-    0xFF91FF80, // RW static range mapping: 0x1FF80000 (DSP RAM, end)
+    0xFF81FF80, // RW static range mapping: 0x1FF80000 (DSP RAM, end)
 
     0xFF91F000, // RO static range mapping: 0x1F000000 (VRAM, start)
     0xFF91F600, // RO static range mapping: 0x1F600000 (VRAM, end)
