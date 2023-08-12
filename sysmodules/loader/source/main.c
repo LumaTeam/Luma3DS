@@ -59,7 +59,11 @@ static inline void loadCFWInfo(void)
         if (numKips >= 6)
             panic(0xDEADCAFE);
 
-        config = 0; // all options 0
+#ifndef BUILD_FOR_EXPLOIT_DEV
+        config = 1u << PATCHVERSTRING; // all options 0, except maybe the MSET version display patch
+#else
+        config = 0;
+#endif
         multiConfig = 0;
         bootConfig = 0;
         isN3DS = OS_KernelConfig->app_memtype >= 6;
