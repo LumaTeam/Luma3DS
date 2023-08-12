@@ -135,33 +135,17 @@ void KProcessHwInfo__MapL2Section_Hook(void);
 
 static void installMmuHooks(void)
 {
-    u32 *mapL1Section = NULL;
-    u32 *mapL2Section = NULL;
+    // Older versions of k11 had different VA memory mappings
+    u32 k11TextStartVa = (u32)originalHandlers[2] & ~0xFFFF;
     u32 *off;
 
-    for(off = (u32 *)officialSVCs[0x1F]; *off != 0xE1CD60F0; ++off);
-    off = decodeArmBranch(off + 1);
+    for (off = (u32 *)k11TextStartVa; off[0] != 0xE3A05801 || off[1] != 0xE2010EE3; off++);
+    for (; (off[0] >> 16) != 0xE92D; off--);
+    u32 *mapL2Section = PA_FROM_VA_PTR(off); // fragile, might break due to cache
 
-    for (; *off != 0xE58D5000; ++off);
-    off = decodeArmBranch(off + 1);
-
-    for (; *off != 0xE58DC000; ++off);
-    off = decodeArmBranch(off + 1);
-    for (; *off != 0xE1A0000B; ++off);
-    off = decodeArmBranch(off + 1);
-    for (; *off != 0xE59D2030; ++off);
-    off = decodeArmBranch(off + 1);
-
-    for (; *off != 0xE88D1100; ++off);
-    mapL2Section = (u32 *)PA_FROM_VA_PTR(decodeArmBranch(off + 1));
-
-    do
-    {
-        for (; *off != 0xE58D8000; ++off);
-        u32 *loc = (u32 *)PA_FROM_VA_PTR(decodeArmBranch(++off));
-        if (loc != mapL2Section)
-            mapL1Section = loc;
-    } while (mapL1Section == NULL);
+    for (off = (u32 *)k11TextStartVa; off[0] != 0x13A0A401 || off[1] != 0x03A0A601; off++);
+    for (; (off[0] >> 16) != 0xE92D; off--);
+    u32 *mapL1Section = PA_FROM_VA_PTR(off);
 
     mapL1Section[1] = 0xE28FE004; // add lr, pc, #4
     mapL1Section[2] = 0xE51FF004; // ldr pc, [pc, #-4]
@@ -176,8 +160,10 @@ static void findUsefulSymbols(void)
 {
     u32 *off;
 
+    // Older versions of k11 had different VA memory mappings
+    u32 k11TextStartVa = (u32)originalHandlers[2] & ~0xFFFF;
     // Get fcramDescriptor
-    for (off = (u32 *)0xFFF00000; ; ++off)
+    for (off = (u32 *)k11TextStartVa; ; ++off)
     {
         if (  (off[0] >> 16) == 0xE59F
            && (off[1] >> 16) == 0xE3A0

@@ -422,7 +422,7 @@ static void mergeSection0(FirmwareType firmType, u32 firmVersion, bool loadFromS
     }
 
     // SAFE_FIRM only for N3DS and only if ENABLESAFEFIRMROSALINA is on
-    if((firmType == NATIVE_FIRM || firmType == SAFE_FIRM) && (ISN3DS || firmVersion >= 0x1D))
+    if((firmType == NATIVE_FIRM || firmType == SAFE_FIRM) && (ISN3DS || firmVersion >= 0x25))
     {
         //2) Merge that info with our own modules'
         for(u8 *src = (u8 *)0x18180000; memcmp(((Cxi *)src)->ncch.magic, "NCCH", 4) == 0; src += srcModuleSize)
@@ -528,8 +528,8 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         ret = 0;
 
 #ifndef BUILD_FOR_EXPLOIT_DEV
-    //Skip on FIRMs < 4.0
-    if(ISN3DS || firmVersion >= 0x1D)
+    //Skip on FIRMs < 5.0
+    if(ISN3DS || firmVersion >= 0x25)
     {
         //Find the Kernel11 SVC table and handler, exceptions page and free space locations
         u8 *arm11Section1 = (u8 *)firm + firm->section[1].offset;
@@ -550,7 +550,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     ret += patchSignatureChecks(process9Offset, process9Size);
 
     //Apply EmuNAND patches
-    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, firm->section[2].address, firmVersion);
+    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(process9Offset, process9Size, firmVersion);
 
     //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
     else if(isFirmProtEnabled) ret += patchFirmWrites(process9Offset, process9Size);
