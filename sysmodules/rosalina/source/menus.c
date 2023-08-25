@@ -186,8 +186,9 @@ void RosalinaMenu_ShowCredits(void)
                 "  fincs, WinterMute, mtheall, piepie62,\n"
                 "  Luma3DS contributors, libctru contributors,\n"
                 "  other people\n\n"
-                "Credits for this fork:\n"
-                "  DullPointer, Sono, Nutez, cooolgamer"
+                "People who made this fork possible:\n"
+                "  DullPointer, Sono, Nutez, cooolgamer,\n"
+                "  DeathChaos25, Core-2-Extreme"
             ));
 
         Draw_FlushFramebuffer();
