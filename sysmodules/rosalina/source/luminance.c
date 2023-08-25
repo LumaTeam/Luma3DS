@@ -124,6 +124,22 @@ u32 getCurrentLuminance(bool top)
     return brightnessToLuminance(brightness, coeffs, ratio);
 }
 
+void setBrightnessAlt(u32 lumTop, u32 lumBot) 
+{
+    u32 regbaseTop = 0x10202200;
+    u32 regbaseBot = 0x10202A00; 
+    u32 offset = 0x40; // https://www.3dbrew.org/wiki/LCD_Registers
+    const float *coeffsTop = s_blPwmData.coeffs[1];
+    const float *coeffsBot = s_blPwmData.coeffs[0];
+    float ratioTop = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbaseTop + 0x44));
+    float ratioBot = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbaseBot + 0x44));
+    u8 *screenTop = (u8 *)PA_PTR(regbaseTop +  offset);
+    u8 *screenBot = (u8 *)PA_PTR(regbaseBot +  offset);
+
+    *screenBot = luminanceToBrightness(lumBot, coeffsBot, 0, ratioBot);
+    *screenTop = luminanceToBrightness(lumTop, coeffsTop, 0, ratioTop);
+}
+
 void Luminance_RecalibrateBrightnessDefaults(void)
 {
     Draw_Lock();
