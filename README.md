@@ -31,6 +31,7 @@ Note: some features are taken from [DullPointer's luma fork](https://github.com/
 - Added a option to cut wifi while in sleep mode allowing to save battery -> [Original](https://github.com/DullPointer/Luma3DS/commit/174ed486ab59bd249488c9035682fa7d058d1e80)
 - Added the ability to redirect layeredFS path -> [Original](https://github.com/DeathChaos25/Luma3DS/commit/8f68d0a19d2ed80fb41bbe8499cb2b7b027e8a8c)
 - Added loading of custom logo while launching a app from luma/logo.bin (Can't find the original commit...)
+- Added loading of external decrypted otp from luma/otp.bin -> [Original](https://github.com/truedread/Luma3DS/commit/aa395a5910113b991e6ad7edc3415152be9bbb03#diff-ef6e6ba78a0250ac4b86068018f17d423fe816bb00fb3b550725f1cb6f983d29)
 - Changed colors on config menu because why not
 - Continue running after a errdisp error happens, this is the same option as instant reboot because they kinda go together (you decide when to reboot after an error occur).
 
