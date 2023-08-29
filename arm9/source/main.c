@@ -39,6 +39,7 @@
 #include "screen.h"
 #include "i2c.h"
 #include "fmt.h"
+#include "itcm.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
 extern u8 __itcm_start__[], __itcm_lma__[], __itcm_bss_start__[], __itcm_end__[];
@@ -301,6 +302,9 @@ void main(int argc, char **argv, u32 magicWord)
     else if((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
             (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
+    // Writes plaintext OTP to ITCM, if OTP exists
+    if (getFileSize(OTP_PATH)) patchITCM();
+    
     if(splashMode == 2 && loadSplash()) pressed = HID_PAD;
 
     //Check SAFE_MODE combo again
