@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*'
+      - 'LICENSE.txt'
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*'
+      - 'LICENSE.txt'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: pablomk7/luma3dsbuildtools
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: safedir
+      run: git config --system --add safe.directory /__w/Luma3DS/Luma3DS
+    - name: debug
+      run: git describe --tags
+    - name: Build
+      run: make -j$(nproc --all)
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Luma3DS
+        path: boot.firm
