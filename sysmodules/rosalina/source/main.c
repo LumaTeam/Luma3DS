@@ -37,6 +37,7 @@
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
+#include "menus/config_extra.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -183,6 +184,12 @@ static void handleShellNotification(u32 notificationId)
         handleShellOpened();
         menuShouldExit = false;
 
+        if(configExtra.suppressLeds){
+            mcuHwcInit();
+            u8 off = 0;
+            MCUHWC_WriteRegister(0x28, &off, 1);
+            mcuHwcExit();
+        }
         if(wifiOnBeforeSleep && cutWifiInSleep && isServiceUsable("nwm::EXT")){
             nwmExtInit();
             NWMEXT_ControlWirelessEnabled(true);
@@ -264,6 +271,15 @@ static const ServiceManagerServiceEntry services[] = {
     { NULL },
 };
 
+static void handleHomeButtonNotification(u32 notificationId)
+{
+    (void)notificationId;
+    if(configExtra.homeToRosalina && isHidInitialized && !rosalinaOpen && !menuShouldExit && !preTerminationRequested && !g_blockMenuOpen)
+    {
+        openRosalina();
+    }
+}
+
 static const ServiceManagerNotificationEntry notifications[] = {
     { 0x100 ,                       handleTermNotification                  },
     { PTMNOTIFID_SLEEP_REQUESTED,   handleSleepNotification                 },
@@ -273,6 +289,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
     { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
     { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
+    { 0x204,                        handleHomeButtonNotification            },
     { 0x213,                        handleShellNotification                 },
     { 0x214,                        handleShellNotification                 },
     { 0x1000,                       handleNextApplicationDebuggedByForce    },
@@ -281,11 +298,26 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { 0x000, NULL },
 };
 
+static void cutPowerToCardSlotWhenTWLCard(void)
+{
+    FS_CardType card;
+    bool status;
+    if(R_SUCCEEDED(FSUSER_GetCardType(&card)) && card == 1){
+        FSUSER_CardSlotPowerOff(&status);
+    }
+}
+
 // Some changes to commit
 int main(void)
 {
     Sleep__Init();
     PluginLoader__Init();
+
+    ConfigExtra_ReadConfigExtra();
+    if (configExtra.cutSlotPower)
+    {
+        cutPowerToCardSlotWhenTWLCard();
+    }
 
     if(R_FAILED(svcCreateEvent(&preTerminationEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);

@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include "menus/sysconfig.h"
+#include "menus/config_extra.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
@@ -42,6 +43,7 @@ Menu sysconfigMenu = {
         { "Toggle Power to Card Slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
         { "Permanent Brightness Recalibration", METHOD, .method = &Luminance_RecalibrateBrightnessDefaults },
         { "Software Volume Control", METHOD, .method = &Volume_ControlVolume },
+        { "Extra Config...", MENU, .menu = &configExtraMenu },
         { "Tips", METHOD, .method = &SysConfigMenu_Tip },
         {},
     }

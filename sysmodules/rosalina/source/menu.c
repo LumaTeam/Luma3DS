@@ -33,6 +33,7 @@
 #include "menus.h"
 #include "utils.h"
 #include "luma_config.h"
+#include "menus/config_extra.h"
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "minisoc.h"
@@ -44,6 +45,7 @@
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
+bool rosalinaOpen = false;
 
 // libctru redefinition:
 
@@ -276,6 +278,8 @@ void menuThreadMain(void)
     if(isN3DS)
         N3DSMenu_UpdateStatus();
 
+    ConfigExtra_UpdateAllMenuItems();
+
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu") || !isServiceUsable("cdc:CHK"))
         svcSleepThread(250 * 1000 * 1000LL);
 
@@ -297,13 +301,9 @@ void menuThreadMain(void)
 
         Cheat_ApplyCheats();
 
-        if(((scanHeldKeys() & menuCombo) == menuCombo) && !g_blockMenuOpen)
+        if(((scanHeldKeys() & menuCombo) == menuCombo) && !rosalinaOpen && !g_blockMenuOpen)
         {
-            menuEnter();
-            if(isN3DS) N3DSMenu_UpdateStatus();
-            PluginLoader__UpdateMenu();
-            menuShow(&rosalinaMenu);
-            menuLeave();
+            openRosalina();
         }
 
         // instant reboot combo key
@@ -314,7 +314,7 @@ void menuThreadMain(void)
         }
 
         // toggle bottom screen combo
-        if(((scanHeldKeys() & (KEY_SELECT | KEY_START)) == (KEY_SELECT | KEY_START)))
+        if(((scanHeldKeys() & (KEY_SELECT | KEY_START)) == (KEY_SELECT | KEY_START)) && configExtra.toggleBtmLCD)
         {
             u8 result, botStatus;
             mcuHwcInit();
@@ -340,6 +340,17 @@ void menuThreadMain(void)
             saveSettingsRequest = false;
         }
     }
+}
+
+void openRosalina(void)
+{
+    rosalinaOpen = true;
+    menuEnter();
+    if(isN3DS) N3DSMenu_UpdateStatus();
+    PluginLoader__UpdateMenu();
+    menuShow(&rosalinaMenu);
+    menuLeave();
+    rosalinaOpen = false;
 }
 
 static s32 menuRefCount = 0;
