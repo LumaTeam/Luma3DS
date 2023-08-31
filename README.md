@@ -23,6 +23,11 @@ Note: some features are taken from [DullPointer's luma fork](https://github.com/
   - Press A + B + X + Y + Start to instantly reboot the console. Useful in case of freeze, but can corrupt your sdcard. This is why this option is now hidden in the `config.ini` file
   - Press Start on Rosalina menu to toggle wifi -> [Original](https://github.com/DullPointer/Luma3DS/commit/c1a20558bed3d792d54069719a898006af20ba85)
   - Press Select on Rosalina menu to toggle LEDs -> [Original](https://github.com/DullPointer/Luma3DS/commit/fa70d374c00e39dee8b9ef54f60deb1da35a0c51) (and press Y to force blue led as a workaround when the battery is low)
+- Added [Extra Config menu](https://github.com/DullPointer/Luma3DS/commit/174ed486ab59bd249488c9035682fa7d058d1e80) including:
+  - Automatically suppress LEDs
+  - Cut power to TWL Flashcards allowing to save battery
+  - Home button opens Rosalina
+  - start + select shortcut to toggle bottom screen
 - Improved system modules speed -> [Original](https://github.com/Core-2-Extreme/Luma3DS/commit/523b7f75d32e5795c67a16ecd45b28fe188bb08d)
 - Added n3ds clock + L2 status in rosalina menu -> [Original](https://github.com/DullPointer/Luma3DS/commit/2dbfa8b5c9b719b7f3056691f54332f42da6de8d)
 - Added Software Volume Control -> [Original](https://github.com/DullPointer/Luma3DS/commit/dc636d82492d1e87eb51785fa7f2a98617e7ece9)
