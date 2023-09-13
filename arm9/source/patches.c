@@ -809,3 +809,22 @@ void patchTwlBg(u8 *pos, u32 size)
         }
     }
 }
+
+u32 patchLgyK11(u8 *section1, u32 section1Size)
+{
+    u32 *off;
+
+    // Fix a bug where Legacy K11 maps user TLS with "user no access" permissions
+    // Map it as RWX (just like the rest of other user-accessible pages) instead
+    for (off = (u32 *)section1; (u8 *)off <= section1 + section1Size && *off != 0xE0100000; off++);
+
+    if ((u8 *)off >= section1 + section1Size)
+        return 1;
+
+    ++off;
+
+    *off &= ~0x231; // clear APX mask and XN
+    *off |= 0x030; // re-set APX (to user/kernel RW)
+
+    return 0;
+}

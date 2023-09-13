@@ -595,6 +595,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 
 u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 {
+    u8 *section1 = (u8 *)firm + firm->section[1].offset;
+    u32 section1Size = firm->section[1].size;
+
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
     // Below 3.0, do not actually do anything.
@@ -626,6 +629,8 @@ u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch)
 
     //Apply UNITINFO patch
     if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
+
+    ret += patchLgyK11(section1, section1Size);
 
     // Also patch TwlBg here
     mergeSection0(TWL_FIRM, 0, loadFromStorage);

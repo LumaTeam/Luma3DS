@@ -67,3 +67,4 @@ u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size);
 u32 patchTwlShaHashChecks(u8 *pos, u32 size);
 u32 patchAgbBootSplash(u8 *pos, u32 size);
 void patchTwlBg(u8 *pos, u32 size); // silently fails
+u32 patchLgyK11(u8 *section1, u32 section1Size);
