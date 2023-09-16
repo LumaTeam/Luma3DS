@@ -1,5 +1,3 @@
-Message to DullPointer: as I didn't found a way to contact you, I'm leaving a note here hoping you'll see it. Your luma fork source got removed so I searched for the reason everywhere and didn't found it, maybe a missclick or something? Or there's a other reason behind this? Thanks for reading this if you did and, as for replying, issues tab is open on this repo.
-
 # Luma3DS
 *Noob-proof (N)3DS "Custom Firmware"*
 
