@@ -84,7 +84,8 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     *(vu32 *)0x10400490 = 0x000002D0;
     *(vu32 *)0x1040049C = 0x00000000;
 
-    //Disco register
+    // Color LUT
+    *(vu32 *)0x10400480 = 0;
     for(u32 i = 0; i < 256; i++)
         *(vu32 *)0x10400484 = 0x10101 * i;
 
@@ -119,7 +120,8 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     *(vu32 *)0x10400590 = 0x000002D0;
     *(vu32 *)0x1040059C = 0x00000000;
 
-    //Disco register
+    // Color LUT
+    *(vu32 *)0x10400580 = 0;
     for(u32 i = 0; i < 256; i++)
         *(vu32 *)0x10400584 = 0x10101 * i;
 
