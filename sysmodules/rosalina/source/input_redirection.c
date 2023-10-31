@@ -39,7 +39,7 @@ bool inputRedirectionEnabled = false;
 Handle inputRedirectionThreadStartedEvent;
 
 static MyThread inputRedirectionThread;
-static u8 ALIGN(8) inputRedirectionThreadStack[0x4000];
+static u8 CTR_ALIGN(8) inputRedirectionThreadStack[0x4000];
 
 MyThread *inputRedirectionCreateThread(void)
 {

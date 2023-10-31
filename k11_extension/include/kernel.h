@@ -53,7 +53,7 @@ struct KMutexLinkedList;
 struct KPreemptionTimer;
 
 /* 12 */
-typedef struct ALIGN(4) KAutoObject
+typedef struct CTR_ALIGN(4) KAutoObject
 {
   struct Vtable__KAutoObject *vtable;
   u32 refCount;
@@ -96,7 +96,7 @@ typedef struct KMutexLinkedListNode
 } KMutexLinkedListNode;
 
 /* 1 */
-typedef struct ALIGN(4) KMutex
+typedef struct CTR_ALIGN(4) KMutex
 {
   KSynchronizationObject syncObject;
   KMutexLinkedListNode mutexListNode;
@@ -153,7 +153,7 @@ typedef struct KClassToken
 } KClassToken;
 
 /* 44 */
-typedef struct ALIGN(4) Vtable__KAutoObject
+typedef struct CTR_ALIGN(4) Vtable__KAutoObject
 {
   void *field_0;
   void *field_4;
@@ -174,7 +174,7 @@ typedef struct KBaseInterruptEvent
 } KBaseInterruptEvent;
 
 /* 55 */
-typedef struct ALIGN(4) Vtable__KBaseInterruptEvent
+typedef struct CTR_ALIGN(4) Vtable__KBaseInterruptEvent
 {
   struct KSchedulableInterruptEvent *(*handleInterruptEvent)(KBaseInterruptEvent *, u32);
 } Vtable__KBaseInterruptEvent;
@@ -210,7 +210,7 @@ typedef struct KThreadLinkedListNode
 
 
 /* 93 */
-typedef struct ALIGN(4) KPreemptionTimer
+typedef struct CTR_ALIGN(4) KPreemptionTimer
 {
   u32 nLimitedTicks;
   u32 timer;
@@ -219,7 +219,7 @@ typedef struct ALIGN(4) KPreemptionTimer
 } KPreemptionTimer;
 
 /* 15 */
-typedef struct PACKED ALIGN(4) KThread
+typedef struct CTR_PACKED CTR_ALIGN(4) KThread
 {
   KSynchronizationObject syncObject;
   KTimeableInterruptEvent timeableInterruptEvent;
@@ -277,7 +277,7 @@ typedef enum ProcessStatus
 } ProcessStatus;
 
 /* 3 */
-typedef struct ALIGN(4) HandleDescriptor
+typedef struct CTR_ALIGN(4) HandleDescriptor
 {
   u32 info;
   KAutoObject *pointer;
@@ -297,7 +297,7 @@ typedef struct KProcessHandleTable
 } KProcessHandleTable;
 
 /* 4 */
-typedef struct ALIGN(4) KDebugThread
+typedef struct CTR_ALIGN(4) KDebugThread
 {
   KThread *linkedThread;
   bool usedSvcBreak;
@@ -355,7 +355,7 @@ typedef enum {
 } ExceptionEventType;
 
 /* 6 */
-typedef struct ALIGN(4) KDebug
+typedef struct CTR_ALIGN(4) KDebug
 {
   KSynchronizationObject syncObject;
   KSendableInterruptEvent sendableInterruptEvent;
@@ -422,7 +422,7 @@ typedef struct KCodeSetMemDescriptor
 } KCodeSetMemDescriptor;
 
 /* 5 */
-typedef struct PACKED ALIGN(4) KCodeSet
+typedef struct CTR_PACKED CTR_ALIGN(4) KCodeSet
 {
   KAutoObject autoObject;
   KCodeSetMemDescriptor textSection;
@@ -497,7 +497,7 @@ typedef struct KUserBindableInterruptEvent
 } KUserBindableInterruptEvent;
 
 /* 14 */
-typedef struct ALIGN(4) KEvent
+typedef struct CTR_ALIGN(4) KEvent
 {
   KSynchronizationObject syncObject;
   KUserBindableInterruptEvent userBindableInterruptEvent;
@@ -601,7 +601,7 @@ typedef struct KMemoryBlock
 } KMemoryBlock;
 
 /* 28 */
-typedef struct ALIGN(4) KScheduler
+typedef struct CTR_ALIGN(4) KScheduler
 {
   KSchedulableInterruptEvent interruptEvent;
   u32 threadSwitchAttempts;
@@ -619,7 +619,7 @@ typedef struct ALIGN(4) KScheduler
 } KScheduler;
 
 /* 46 */
-typedef struct PACKED CodeSetInfo
+typedef struct CTR_PACKED CodeSetInfo
 {
   char name[8];
   u16 unknown_1;
@@ -639,7 +639,7 @@ typedef struct PACKED CodeSetInfo
 } CodeSetInfo;
 
 /* 53 */
-typedef struct ALIGN(4) InterruptData
+typedef struct CTR_ALIGN(4) InterruptData
 {
   KBaseInterruptEvent *interruptEvent;
   bool disableUponReceipt;
@@ -740,7 +740,7 @@ typedef enum ResetType
 } ResetType;
 
 /* 81 */
-typedef struct PACKED ALIGN(4) KTimer
+typedef struct CTR_PACKED CTR_ALIGN(4) KTimer
 {
   KSynchronizationObject syncObject;
   KTimeableInterruptEvent timeableInterruptEvent;
@@ -768,7 +768,7 @@ typedef KSchedulableInterruptEvent KThreadTerminationInterruptEvent;
 typedef KSchedulableInterruptEvent KThreadExitInterruptEvent;
 
 /* 89 */
-typedef struct ALIGN(4) KInterruptEventMailbox
+typedef struct CTR_ALIGN(4) KInterruptEventMailbox
 {
   u32 mailboxID;
   KSendableInterruptEvent *first;
@@ -795,7 +795,7 @@ typedef enum LimitableResource
 } LimitableResource;
 
 /* 99 */
-typedef struct ALIGN(4) CpuRegisters
+typedef struct CTR_ALIGN(4) CpuRegisters
 {
   u32 r[13];
   u32 sp;
@@ -809,7 +809,7 @@ typedef struct FpuRegisters
 {
   union
   {
-      struct PACKED { double d[16]; };
+      struct CTR_PACKED { double d[16]; };
       float  s[32];
   };
   u32 fpscr;
@@ -974,7 +974,7 @@ typedef struct KEventInfo
   };
 } KEventInfo;
 
-typedef struct ALIGN(0x1000) KCoreObjectContext
+typedef struct CTR_ALIGN(0x1000) KCoreObjectContext
 {
   KThread *volatile currentThread;
   union KProcess *volatile currentProcess;
@@ -1004,7 +1004,7 @@ extern KCoreContext *coreCtxs;
 
 #define DEFINE_CONSOLE_SPECIFIC_STRUCTS(console, nbCores)
 /* 60 */
-typedef struct ALIGN(4) KProcessHwInfoN3DS
+typedef struct CTR_ALIGN(4) KProcessHwInfoN3DS
 {
   KObjectMutex mutex;
   u32 processTLBEntriesNeedToBeFlushedOnCore[4];
@@ -1023,7 +1023,7 @@ typedef struct ALIGN(4) KProcessHwInfoN3DS
   u32 *mmuTableVA;
 } KProcessHwInfoN3DS;
 
-typedef struct ALIGN(4) KProcessHwInfoO3DS8x
+typedef struct CTR_ALIGN(4) KProcessHwInfoO3DS8x
 {
   KObjectMutex mutex;
   u32 processTLBEntriesNeedToBeFlushedOnCore[2];
@@ -1042,7 +1042,7 @@ typedef struct ALIGN(4) KProcessHwInfoO3DS8x
   u32 *mmuTableVA;
 } KProcessHwInfoO3DS8x;
 
-typedef struct ALIGN(4) KProcessHwInfoO3DSPre8x
+typedef struct CTR_ALIGN(4) KProcessHwInfoO3DSPre8x
 {
   KObjectMutex mutex;
   u32 processTLBEntriesNeedToBeFlushedOnCore[2];

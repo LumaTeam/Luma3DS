@@ -69,11 +69,11 @@ typedef s32 Result;                 ///< Function result.
 #define BIT(n) (1U<<(n))
 
 /// Aligns a struct (and other types?) to m, making sure that the size of the struct is a multiple of m.
-#define ALIGN(m)   __attribute__((aligned(m)))
+#define CTR_ALIGN(m)   __attribute__((aligned(m)))
 /// Packs a struct (and other types?) so it won't include padding bytes.
-#define PACKED      __attribute__((packed))
-#define USED        __attribute__((used))
-#define UNUSED      __attribute__((unused))
+#define CTR_PACKED      __attribute__((packed))
+#define CTR_USED        __attribute__((used))
+#define CTR_UNUSED      __attribute__((unused))
 /// Packs a system version from its components.
 #define SYSTEM_VERSION(major, minor, revision) \
     (((major)<<24)|((minor)<<16)|((revision)<<8))

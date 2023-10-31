@@ -44,7 +44,7 @@ typedef struct SessionManager
 } SessionManager;
 
 //Page alignment is mandatory there
-extern u32 ALIGN(0x1000) staticBuffers[NB_STATIC_BUFFERS][0x1000/4];
+extern u32 CTR_ALIGN(0x1000) staticBuffers[NB_STATIC_BUFFERS][0x1000/4];
 
 extern Handle PXISyncInterrupt, PXITransferMutex;
 extern Handle terminationRequestedEvent;

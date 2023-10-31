@@ -26,7 +26,7 @@
 
 #include "svc/SetGpuProt.h"
 
-Result SetGpuProt(bool prot UNUSED)
+Result SetGpuProt(bool prot CTR_UNUSED)
 {
     return 0;
 }

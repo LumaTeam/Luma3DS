@@ -128,7 +128,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { 0x000, NULL },
 };
 
-static u8 ALIGN(4) staticBufferForHbldr[0x400];
+static u8 CTR_ALIGN(4) staticBufferForHbldr[0x400];
 static_assert(ARGVBUF_SIZE > 2 * PATH_MAX, "Wrong 3DSX argv buffer size");
 
 int main(void)

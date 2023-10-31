@@ -35,7 +35,7 @@
 extern Handle preTerminationEvent;
 
 static MyThread errDispThread;
-static u8 ALIGN(8) errDispThreadStack[0xD00];
+static u8 CTR_ALIGN(8) errDispThreadStack[0xD00];
 
 static char userString[0x100 + 1] = {0};
 static char staticBuf[sizeof(userString)] = {0};
