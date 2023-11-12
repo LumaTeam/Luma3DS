@@ -5,7 +5,7 @@
 TaskRunner g_taskRunner;
 
 static MyThread taskRunnerThread;
-static u8 ALIGN(8) taskRunnerThreadStack[0x1000];
+static u8 CTR_ALIGN(8) taskRunnerThreadStack[0x1000];
 
 static void taskRunnerNoOpFunction(void *args)
 {

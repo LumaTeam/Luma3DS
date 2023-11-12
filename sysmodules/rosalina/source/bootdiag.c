@@ -33,7 +33,7 @@
 #ifdef  BOOTDIAG_ENABLED
 
 static MyThread bootdiagThread;
-static u8 ALIGN(0x1000) bootdiagThreadStack[0x1000];
+static u8 CTR_ALIGN(0x1000) bootdiagThreadStack[0x1000];
 
 #define BOOTDIAG_WAIT_TIME      (3500 * 1000 * 1000u) // 2 seconds
 #define BOOTDIAG_DUMP_PLIST     1

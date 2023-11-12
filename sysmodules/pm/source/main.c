@@ -16,9 +16,9 @@
 #include "luma.h"
 
 static MyThread processMonitorThread, taskRunnerThread;
-static u8 ALIGN(8) processDataBuffer[0x40 * sizeof(ProcessData)] = {0};
-static u8 ALIGN(8) exheaderInfoBuffer[6 * sizeof(ExHeader_Info)] = {0};
-static u8 ALIGN(8) threadStacks[2][THREAD_STACK_SIZE] = {0};
+static u8 CTR_ALIGN(8) processDataBuffer[0x40 * sizeof(ProcessData)] = {0};
+static u8 CTR_ALIGN(8) exheaderInfoBuffer[6 * sizeof(ExHeader_Info)] = {0};
+static u8 CTR_ALIGN(8) threadStacks[2][THREAD_STACK_SIZE] = {0};
 
 // this is called after main exits
 void __wrap_exit(int rc)

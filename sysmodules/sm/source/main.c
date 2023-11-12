@@ -22,7 +22,7 @@ SessionDataList sessionDataWaitingPortReadyList = {NULL, NULL};
 static SessionData sessionDataPool[76];
 static ProcessData processDataPool[64];
 
-static u8 ALIGN(4) serviceAccessListStaticBuffer[0x110];
+static u8 CTR_ALIGN(4) serviceAccessListStaticBuffer[0x110];
 
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 

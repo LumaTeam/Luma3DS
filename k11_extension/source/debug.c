@@ -31,7 +31,7 @@
 KRecursiveLock dbgParamsLock = { NULL };
 u32 dbgParamWatchpointId, dbgParamDVA, dbgParamWCR, dbgParamContextId;
 
-KSchedulableInterruptEvent *enableMonitorModeDebugging(KBaseInterruptEvent *this UNUSED, u32 interruptID UNUSED)
+KSchedulableInterruptEvent *enableMonitorModeDebugging(KBaseInterruptEvent *this CTR_UNUSED, u32 interruptID CTR_UNUSED)
 {
     coreBarrier();
 
@@ -76,7 +76,7 @@ static void disableWatchpoint1(void)
     __asm__ __volatile__("mcr p14, 0, %[val], c0, c5, 5" :: [val] "r" (control));
 }
 
-KSchedulableInterruptEvent *disableWatchpoint(KBaseInterruptEvent *this UNUSED, u32 interruptID UNUSED)
+KSchedulableInterruptEvent *disableWatchpoint(KBaseInterruptEvent *this CTR_UNUSED, u32 interruptID CTR_UNUSED)
 {
     coreBarrier();
 
@@ -131,7 +131,7 @@ static void setWatchpoint1WithContextId(u32 DVA, u32 WCR, u32 contextId)
     __asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 5" :: [val] "r" (0) : "memory"); // DMB
 }
 
-KSchedulableInterruptEvent *setWatchpointWithContextId(KBaseInterruptEvent *this UNUSED, u32 interruptID UNUSED)
+KSchedulableInterruptEvent *setWatchpointWithContextId(KBaseInterruptEvent *this CTR_UNUSED, u32 interruptID CTR_UNUSED)
 {
     coreBarrier();
 
