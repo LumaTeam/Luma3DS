@@ -671,7 +671,7 @@ static char tmpIniBuffer[0x2000];
 
 static bool readLumaIniConfig(void)
 {
-    u32 rd = fileRead(tmpIniBuffer, "config.ini", sizeof(tmpIniBuffer) - 1);
+    u32 rd = fileRead(tmpIniBuffer, "configfork.ini", sizeof(tmpIniBuffer) - 1);
     if (rd == 0) return false;
 
     tmpIniBuffer[rd] = '\0';
@@ -682,7 +682,7 @@ static bool readLumaIniConfig(void)
 static bool writeLumaIniConfig(void)
 {
     size_t n = saveLumaIniConfigToStr(tmpIniBuffer);
-    return n != 0 && fileWrite(tmpIniBuffer, "config.ini", n);
+    return n != 0 && fileWrite(tmpIniBuffer, "configfork.ini", n);
 }
 
 // ===========================================================
@@ -726,7 +726,7 @@ static bool readConfigMcu(void)
         checksum += data[i];
     checksum = ~checksum;
 
-    if (checksum != configDataMcu.checksum || configDataMcu.lumaVersion < MAKE_LUMA_VERSION_MCU(10, 3, 0))
+    if (checksum != configDataMcu.checksum || configDataMcu.lumaVersion > curVer)
     {
         // Invalid data stored in MCU...
         memset(&configDataMcu, 0, sizeof(CfgDataMcu));
@@ -844,8 +844,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "button hints).\n\n"
                                                  "\t* 'After payloads' displays it\n"
                                                  "afterwards.\n\n"
-                                                 "Edit the duration in config.ini (3s\n"
-                                                 "default).",
+                                                 "Edit the duration in configfork.ini\n"
+                                                 "(2s default).",
 
                                                  "Activate a PIN lock.\n\n"
                                                  "The PIN will be asked each time\n"
