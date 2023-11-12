@@ -1,6 +1,8 @@
 # Luma3DS
 *Noob-proof (N)3DS "Custom Firmware"*
 
+### IMPORTANT NOTE:
+Thanks to libcru updates, it fucked the config menu, if you compile the code with the last version of libraries (it won't compile if you don't), the config menu show show up every time you power on the console, I'm looking into it...
 ### What it is
 **Luma3DS** is a program to patch the system software of (New) Nintendo (2)3DS handheld consoles "on the fly", adding features such as per-game language settings, debugging capabilities for developers, and removing restrictions enforced by Nintendo such as the region lock.
 
