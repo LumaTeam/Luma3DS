@@ -567,6 +567,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             } else {
                 CHECK_PARSE_OPTION(-1);
             }
+        } else if (strcmp(name, "volume_slider_override") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -1, 100));
+            cfg->volumeSliderOverride = (s8)opt;
+            return 1;
         } else {
             CHECK_PARSE_OPTION(-1);
         }
@@ -671,6 +676,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         cfg->autobootTwlTitleId, (int)cfg->autobootCtrAppmemtype,
 
         forceAudioOutputStr,
+        cfg->volumeSliderOverride,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
         (int)CONFIG(ENABLESAFEFIRMROSALINA)
@@ -775,6 +781,7 @@ bool readConfig(void)
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
         configData.config |= 1u << PATCHVERSTRING;
         configData.splashDurationMsec = 3000;
+        configData.volumeSliderOverride = -1;
         configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
         configData.topScreenFilter.cct = 6500; // default temp, no-op
