@@ -386,7 +386,7 @@ void SysConfigMenu_ToggleCardIfPower(void)
 
 static Result SysConfigMenu_ApplyVolumeOverride(void)
 {
-    // Thanks profi200!
+    // Credit: profi200
     u8 tmp;
     Result res = cdcChkInit();
 
@@ -400,11 +400,11 @@ static Result SysConfigMenu_ApplyVolumeOverride(void)
     if (currVolumeSliderOverride >= 0) {
         s8 calculated = -128 + (((float)currVolumeSliderOverride/100.f) * 108);
         if (calculated > -20)
-            return -1; // Just in case
+            res = -1; // Just in case
         s8 volumes[2] = {calculated, calculated}; // Volume in 0.5 dB steps. -128 (muted) to 48. Do not go above -20 (100%).
         if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 65, volumes, 2); // CDC_REG_DAC_L_VOLUME_CTRL, CDC_REG_DAC_R_VOLUME_CTRL
     }
-    
+
     cdcChkExit();
     return res;
 }
@@ -478,7 +478,7 @@ void SysConfigMenu_AdjustVolume(void)
                 tempVolumeOverride+=10;
             else if (pressed & KEY_DLEFT)
                 tempVolumeOverride-=10;
-            
+
             if (tempVolumeOverride < 0)
                 tempVolumeOverride = 0;
             if (tempVolumeOverride > 100)
