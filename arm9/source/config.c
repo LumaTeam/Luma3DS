@@ -39,6 +39,7 @@
 #include "pin.h"
 #include "i2c.h"
 #include "ini.h"
+#include "firm.h"
 
 #include "config_template_ini.h" // note that it has an extra NUL byte inserted
 
@@ -834,8 +835,9 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Enable custom upscaling filters for DSi",
                                                "( ) Allow Left+Right / Up+Down combos for DSi",
 
-                                               // Should always be the last entry
-                                               "\nSave and exit"
+                                               // Should always be the last 2 entries
+                                               "\nBoot chainloader",
+                                               "Save and exit"
                                              };
 
     static const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -933,7 +935,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Commercial software filter these\n"
                                                  "combos on their own too, though.",
                                                 
-                                                 // Should always be the last entry
+                                                
+                                                // Should always be the last 2 entries
+                                                "Boot to the Luma3DS chainloader menu.",
+
                                                  "Save the changes and exit. To discard\n"
                                                  "any changes press the POWER button.\n"
                                                  "Use START as a shortcut to this entry."
@@ -972,6 +977,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = ISN3DS },
+        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },
@@ -1152,6 +1158,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                 {
                     drawString(true, 10, singleOptions[singleSelected].posY, COLOR_GREEN, singleOptionsText[singleSelected]);
                     startPressed = false;
+                    break;
+                }
+                else if (singleSelected == singleOptionsAmount - 2) {
+                    loadHomebrewFirm(0);
                     break;
                 }
                 else
