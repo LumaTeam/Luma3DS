@@ -36,7 +36,8 @@ Note: most features are taken from [DullPointer's luma fork](https://github.com/
 - Added loading of custom logo while launching a app from luma/logo.bin (Can't find the original commit...)
 - Added loading of external decrypted otp from luma/otp.bin -> [Original](https://github.com/truedread/Luma3DS/commit/aa395a5910113b991e6ad7edc3415152be9bbb03#diff-ef6e6ba78a0250ac4b86068018f17d423fe816bb00fb3b550725f1cb6f983d29)
 - Changed colors on config menu because why not
-- Continue running after a errdisp error happens, this is the same option as instant reboot because they kinda go together (you decide when to reboot after an error occur).
+- Continue running after a errdisp error happens, this is the same option as instant reboot because they kinda go together (you decide when to reboot after an error occur)
+- Added play coin maximize to rosalina menu -> [Original](https://github.com/Gruetzig/Luma3DS/commit/1e329b55dade61ba74a0bb1cc6e59d2504d0bde1)
 
 #
 ### Compiling
