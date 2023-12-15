@@ -732,6 +732,7 @@ static bool readConfigMcu(void)
         memset(&configDataMcu, 0, sizeof(CfgDataMcu));
         configData.bootConfig = 0;
         // Perform upgrade process (ignoring failures)
+        doLumaUpgradeProcess();
         writeConfigMcu();
 
         return false;
@@ -740,6 +741,7 @@ static bool readConfigMcu(void)
     if (configDataMcu.lumaVersion < curVer)
     {
         // Perform upgrade process (ignoring failures)
+        doLumaUpgradeProcess();
         writeConfigMcu();
     }
 
@@ -760,7 +762,7 @@ bool readConfig(void)
         memset(&configData, 0, sizeof(CfgData));
         configData.formatVersionMajor = CONFIG_VERSIONMAJOR;
         configData.formatVersionMinor = CONFIG_VERSIONMINOR;
-        configData.config |= 1u;
+        configData.config |= 1u << PATCHVERSTRING;
         configData.splashDurationMsec = 2000;
         configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
