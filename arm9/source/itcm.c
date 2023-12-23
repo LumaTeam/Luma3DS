@@ -25,6 +25,4 @@ void patchITCM() {
     ARM9_ITCM->otp.ctcertExponent = otp.ctcertExponent;
     memcpy(ARM9_ITCM->otp.ctcertPrivK, otp.ctcertPrivK, sizeof(otp.ctcertPrivK));
     memcpy(ARM9_ITCM->otp.ctcertSignature, otp.ctcertSignature, sizeof(otp.ctcertSignature));
-    // Not in the original fork
-    memcpy(ARM9_ITCM->otp.fallbackKeyY, otp.fallbackKeyY, sizeof(otp.fallbackKeyY));
 }

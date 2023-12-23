@@ -304,7 +304,7 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
             off[1] = 0xEA000003;
         }
     }
-    
+
     // Patch core #1 usage limit.
     // When game/homebrew apps use APT_SetAppCpuTimeLimit(), it will limit the time
     // allowed to run system thread even if user threads use little CPU time.
@@ -321,7 +321,6 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
         //We are replacing if(core_id == 1) with if(core_id == 4) so that it will always be false.
         off[1] = 0x040050E3;//cmp r0, #0x1 -> cmp r0, #0x4
     }
-
 
     return 0;
 }
@@ -827,4 +826,40 @@ void patchTwlBg(u8 *pos, u32 size)
                 off2[i] = 0x46C0;
         }
     }
+}
+
+u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size)
+{
+    u32 *off;
+
+    // Fix a bug where Legacy K11 maps user TLS with "user no access" permissions
+    // Map it as RWX (just like the rest of other user-accessible pages) instead
+    for (off = (u32 *)section1; (u8 *)off <= section1 + section1Size && *off != 0xE0100000; off++);
+
+    if ((u8 *)off >= section1 + section1Size)
+        return 1;
+
+    ++off;
+
+    *off &= ~0x231; // clear APX mask and XN
+    *off |= 0x030; // re-set APX (to user/kernel RW)
+
+    // Patch two pointer-to-bool to point to a non-zero byte, enabling user exception handling.
+    // It is impossible to enable it by normal means, otherwise
+    for (off = (u32 *)section2; (u8 *)off <= section2 + section2Size && *off != 0x100021F; off++);
+    if ((u8 *)off >= section2 + section2Size)
+        return 1;
+    off[1] = 0xFFFF0F00;
+    off[2] = 0xFFFF0F04;
+
+    // Dispatch-to-user code checks for memory block type and permissions (etc.), but
+    // LGY K11 doesn't do any memory management, so these checks will always fail.
+    // Patch with b +0x38 to skip all those checks
+    u16 *off2;
+    for (off2 = (u16 *)section2; (u8 *)off2 <= section2 + section2Size && (off2[0] != 0xDB1F || off2[1] != 0x4915); off2++);
+    if ((u8 *)off2 >= section2 + section2Size)
+        return 1;
+    *off2 = 0xE01A;
+
+    return 0;
 }
