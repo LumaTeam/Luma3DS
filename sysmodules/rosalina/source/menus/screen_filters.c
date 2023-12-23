@@ -30,6 +30,7 @@
 #include "menu.h"
 #include "menus/screen_filters.h"
 #include "draw.h"
+#include "redshift/redshift.h"
 #include "redshift/colorramp.h"
 
 typedef union {
@@ -152,6 +153,7 @@ Menu screenFiltersMenu = {
         { "[1900K] Candle", METHOD, .method = &ScreenFiltersMenu_SetCandle },
         { "[1200K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
         { "Advanced configuration", METHOD, .method = &ScreenFiltersMenu_AdvancedConfiguration },
+        { "Night/Light Config", METHOD, .method = &Redshift_ConfigureNightLightSettings},
         {},
     }
 };
@@ -160,6 +162,7 @@ Menu screenFiltersMenu = {
 void ScreenFiltersMenu_Set##name(void)\
 {\
     ScreenFiltersMenu_SetCct(temp);\
+    Redshift_UpdateNightLightStatuses();\
 }
 
 void ScreenFiltersMenu_RestoreSettings(void)

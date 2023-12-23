@@ -38,6 +38,7 @@
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
 #include "menus/config_extra.h"
+#include "redshift/redshift.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -190,6 +191,12 @@ static void handleShellNotification(u32 notificationId)
             MCUHWC_WriteRegister(0x28, &off, 1);
             mcuHwcExit();
         }
+
+        if(nightLightSettingsRead)
+        { 
+            Redshift_ApplyNightLightSettings();
+        }
+
         if(wifiOnBeforeSleep && cutWifiInSleep && isServiceUsable("nwm::EXT")){
             nwmExtInit();
             NWMEXT_ControlWirelessEnabled(true);
@@ -318,6 +325,8 @@ int main(void)
     {
         cutPowerToCardSlotWhenTWLCard();
     }
+
+    nightLightSettingsRead = Redshift_ReadNightLightSettings();
 
     if(R_FAILED(svcCreateEvent(&preTerminationEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);

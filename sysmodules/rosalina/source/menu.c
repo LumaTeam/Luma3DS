@@ -41,6 +41,7 @@
 #include "menus/screen_filters.h"
 #include "shell.h"
 #include "volume.h"
+#include "redshift/redshift.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
@@ -348,6 +349,8 @@ void openRosalina(void)
     menuEnter();
     if(isN3DS) N3DSMenu_UpdateStatus();
     PluginLoader__UpdateMenu();
+    nightLightSettingsRead = Redshift_ReadNightLightSettings();
+    Redshift_UpdateNightLightStatuses();
     menuShow(&rosalinaMenu);
     menuLeave();
     rosalinaOpen = false;
@@ -587,6 +590,11 @@ void menuShow(Menu *root)
             result = ~result;
             MCUHWC_WriteRegister(0x28, &result, 1);
             mcuHwcExit();
+        }
+        else if(pressed & KEY_X)
+        {
+            nightLightOverride = !nightLightOverride;
+            Redshift_UpdateNightLightStatuses();
         }
         else if(pressed & KEY_Y)
         {

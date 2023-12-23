@@ -67,7 +67,7 @@ void SysConfigMenu_UpdateStatus(bool control)
     }
 }
 
-static bool SysConfigMenu_ForceWifiConnection(u32 slot)
+static bool SysConfigMenu_ForceWifiConnection(int slot)
 {
     char ssid[0x20 + 1] = {0};
     isConnectionForced = false;
@@ -105,7 +105,7 @@ static bool SysConfigMenu_ForceWifiConnection(u32 slot)
     if(forcedConnection)
         sprintf(infoString, "Succesfully forced a connection to: %s", ssid);
     else
-       sprintf(infoString, "Failed to connect to slot %d", (int)slot + 1);
+       sprintf(infoString, "Failed to connect to slot %d", slot + 1);
 
     Draw_Lock();
     Draw_ClearFramebuffer();
@@ -180,30 +180,16 @@ void SysConfigMenu_ControlWifi(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    u32 slot = 0;
-    char ssids[3][32] = {{0}};
-
-    Result resInit = acInit();
-    for (u32 i = 0; i < 3; i++)
-    {
-        // ssid[0] = '\0' if result is an error here
-        ACI_LoadNetworkSetting(i);
-        ACI_GetNetworkWirelessEssidSecuritySsid(ssids[i]);
-    }
-    if (R_SUCCEEDED(resInit))
-        acExit();
-
+    int slot = 0;
+    char slotString[12] = {0};
+    sprintf(slotString, ">1<  2   3 ");
     do
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Press A to force a connection to slot, B to go back\n\n");
-
-        for (u32 i = 0; i < 3; i++)
-        {
-            Draw_DrawString(10, posY + SPACING_Y * i, COLOR_TITLE, slot == i ? ">" : " ");
-            Draw_DrawFormattedString(30, posY + SPACING_Y * i, COLOR_WHITE, "[%d] %s", (int)i + 1, ssids[i]);
-        }
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to force a connection to slot:");
+        Draw_DrawString(10, 40, COLOR_WHITE, slotString);
+        Draw_DrawString(10, 60, COLOR_WHITE, "Press B to go back.");
 
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -223,13 +209,25 @@ void SysConfigMenu_ControlWifi(void)
             Draw_FlushFramebuffer();
             Draw_Unlock();
         }
-        else if(pressed & KEY_DOWN)
+        else if(pressed & KEY_LEFT)
         {
-            slot = (slot + 1) % 3;
+            slotString[slot * 4] = ' ';
+            slotString[(slot * 4) + 2] = ' ';
+            slot--;
+            if(slot == -1)
+                slot = 2;
+            slotString[slot * 4] = '>';
+            slotString[(slot * 4) + 2] = '<';
         }
-        else if(pressed & KEY_UP)
+        else if(pressed & KEY_RIGHT)
         {
-            slot = (3 + slot - 1) % 3;
+            slotString[slot * 4] = ' ';
+            slotString[(slot * 4) + 2] = ' ';
+            slot++;
+            if(slot == 3)
+                slot = 0;
+            slotString[slot * 4] = '>';
+            slotString[(slot * 4) + 2] = '<';
         }
         else if(pressed & KEY_B)
             return;
