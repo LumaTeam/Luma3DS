@@ -500,14 +500,6 @@ bool doLumaUpgradeProcess(void)
     FirmwareSource oldCtrNandLocation = ctrNandLocation;
     bool ok = true, ok2 = true, ok3 = true;
 
-    // Try to backup essential files
-    if (getFileSize("sdmc:/gm9/out/essential.exefs") < 0x10000) // Check if gm9-created essential.exefs doesn't exist/doesn't have a normal size to avoid useless copy
-        ok = backupEssentialFiles();
-
-    // Clean up some of the old files, commented because they can be useful if you decide to dual boot with a older luma
-    // fileDelete("sdmc:/luma/config.bin");
-    // fileDelete("nand:/rw/luma/config.bin");
-
 #if 0
     Unfortunately the sdmmc driver is really flaky and returns TMIO_STAT_CMD_RESPEND as error.
     (after timing out)
@@ -533,10 +525,18 @@ bool doLumaUpgradeProcess(void)
     // Try to boot.firm to CTRNAND, when applicable, removed because it can be annoying sometimes
 #if 0 // #ifndef BUILD_FOR_EXPLOIT_DEV
     if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
-        ok2 = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
+        ok = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
 #else
-    (void)ok2;
+    (void)ok;
 #endif
+
+    // Try to backup essential files
+    if (getFileSize("sdmc:/gm9/out/essential.exefs") < 0x10000) // Check if gm9-created essential.exefs doesn't exist/doesn't have a normal size to avoid useless copy
+        ok2 = backupEssentialFiles();
+
+    // Clean up some of the old files, commented because they can be useful if you decide to dual boot with a older luma
+    // fileDelete("sdmc:/luma/config.bin");
+    // fileDelete("nand:/rw/luma/config.bin");
 
 #if 0
     if (isSdMode)

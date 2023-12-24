@@ -34,7 +34,7 @@
 #define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
 #define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
-#define CONFIG_FILE         "configfork.ini"
+#define CONFIG_FILE         "configplus.ini"
 #define CONFIG_VERSIONMAJOR 3
 #define CONFIG_VERSIONMINOR 12
 

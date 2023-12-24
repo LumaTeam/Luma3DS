@@ -170,7 +170,7 @@ void RosalinaMenu_ShowCredits(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS credits");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Luma3DS+ credits");
 
         u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Luma3DS (c) 2016-2023 AuroraWright, TuxSH") + SPACING_Y;
 
