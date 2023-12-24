@@ -61,7 +61,17 @@ See https://github.com/LumaTeam/Luma3DS/wiki
 
 #
 ### Credits
-See https://github.com/LumaTeam/Luma3DS/wiki/Credits
+See https://github.com/LumaTeam/Luma3DS/wiki/Credits for original Luma3DS credits
+
+People who made this fork possible:
+- DullPointer
+- Sono
+- Nutez
+- cooolgamer,
+- DeathChaos25
+- Core-2-Extreme
+- truedread
+- Gruetzig
 
 #
 ### Licensing
