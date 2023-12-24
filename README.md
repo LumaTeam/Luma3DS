@@ -11,7 +11,9 @@ Since v8.0, Luma3DS has its own in-game menu, triggerable by <kbd>L+Down+Select<
 
 #
 ### Changes with the official build
-Note: most features are taken from [DullPointer's luma fork](https://github.com/DullPointer/Luma3DS) because the main goal of this build is updating DullPointer's fork to the latest luma version. There's also some features taken from other luma forks as well and some that I added myself.
+Note: Most features are taken from [DullPointer's luma fork](https://github.com/DullPointer/Luma3DS) because the main goal of this build is updating DullPointer's fork to the latest luma version. There's also some features taken from other luma forks as well and some that I added myself.
+
+Note2: The config file is different from the original luma3DS, it's "configplus.ini" instead of "config.ini" to avoid conflicts if you want to switch between this modified version and the official one (like for playing CTGP-7 for example).
 
 - Removed auto-copy to ctrnand
 - Restored UNITINFO and enable rosalina on safe_firm options on the luma config menu (TWL patch option is now with "enable external firms and modules")
