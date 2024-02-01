@@ -580,12 +580,12 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
     static const char *updateRomFsMounts[] = { "ro2:",
-                                               "pat1",
                                                "rom2:",
                                                "rex:",
                                                "patch:",
                                                "ext:",
-                                               "rom:" };
+                                               "rom:",
+                                               "pat1"};
     u32 updateRomFsIndex;
 
     //Locate update RomFSes
