@@ -579,7 +579,9 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
-    static const char *updateRomFsMounts[] = { "rom2:",
+    static const char *updateRomFsMounts[] = { "ro2:",
+                                               "pat1",
+                                               "rom2:",
                                                "rex:",
                                                "patch:",
                                                "ext:",
