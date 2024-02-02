@@ -586,18 +586,18 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
                                                "ext:",
                                                "rom:" };
 
-    bool isMarioKart7 = progId == 0x0004000000030600LL || //JPN MK7
-                        progId == 0x0004000000030700LL || //EUR MK7
-                        progId == 0x0004000000030800LL || //USA MK7
-                        progId == 0x0004000000030A00LL || //KOR MK7
-                        progId == 0x000400000008B400LL;   //TWN MK7
+    bool isMarioKart7 = (u32)progId == 0x00030600 || //JPN MK7
+                        (u32)progId == 0x00030700 || //EUR MK7
+                        (u32)progId == 0x00030800 || //USA MK7
+                        (u32)progId == 0x00030A00 || //KOR MK7
+                        (u32)progId == 0x0008B400;   //TWN MK7
                         // Exclude CHN as it never got updates
 
-    char *updateRomFsMount;
+    const char *updateRomFsMount;
 
     if (isMarioKart7)
     {
-        updateRomFsMount = (char*)"pat1"; // Isolated to prevent false-positives
+        updateRomFsMount = "pat1"; // Isolated to prevent false-positives
     }
     
     else
@@ -613,7 +613,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
             memcpy(temp + 1, updateRomFsMounts[updateRomFsIndex], patternSize);
             if(memsearch(code, temp, size, patternSize + 1) != NULL) break;
         }
-        updateRomFsMount = (char*)updateRomFsMounts[updateRomFsIndex];
+        updateRomFsMount = updateRomFsMounts[updateRomFsIndex];
     }
 
     //Setup the payload
