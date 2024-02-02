@@ -584,18 +584,36 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
                                                "rex:",
                                                "patch:",
                                                "ext:",
-                                               "rom:",
-                                               "pat1"};
-    u32 updateRomFsIndex;
+                                               "rom:" };
 
-    //Locate update RomFSes
-    for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
+    bool isMarioKart7 = progId == 0x0004000000030600LL || //JPN MK7
+                        progId == 0x0004000000030700LL || //EUR MK7
+                        progId == 0x0004000000030800LL || //USA MK7
+                        progId == 0x0004000000030A00LL || //KOR MK7
+                        progId == 0x000400000008B400LL;   //TWN MK7
+                        // Exclude CHN as it never got updates
+
+    char *updateRomFsMount;
+
+    if (isMarioKart7)
     {
-        u32 patternSize = strlen(updateRomFsMounts[updateRomFsIndex]);
-        u8 temp[7];
-        temp[0] = 0;
-        memcpy(temp + 1, updateRomFsMounts[updateRomFsIndex], patternSize);
-        if(memsearch(code, temp, size, patternSize + 1) != NULL) break;
+        updateRomFsMount = (char*)"pat1"; // Isolated to prevent false-positives
+    }
+    
+    else
+    {
+        u32 updateRomFsIndex;
+
+        //Locate update RomFS
+        for(updateRomFsIndex = 0; updateRomFsIndex < sizeof(updateRomFsMounts) / sizeof(char *) - 1; updateRomFsIndex++)
+        {
+            u32 patternSize = strlen(updateRomFsMounts[updateRomFsIndex]);
+            u8 temp[7];
+            temp[0] = 0;
+            memcpy(temp + 1, updateRomFsMounts[updateRomFsIndex], patternSize);
+            if(memsearch(code, temp, size, patternSize + 1) != NULL) break;
+        }
+        updateRomFsMount = (char*)updateRomFsMounts[updateRomFsIndex];
     }
 
     //Setup the payload
@@ -609,7 +627,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
     romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
     romfsRedirPatchArchiveId = archiveId;
-    memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMounts[updateRomFsIndex], 4);
+    memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMount, 4);
 
     memcpy(payload, romfsRedirPatch, romfsRedirPatchSize);
 
