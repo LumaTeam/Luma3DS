@@ -270,18 +270,22 @@ bool findPayload(char *path, u32 pressed)
     DIR dir;
     FILINFO info;
     FRESULT result;
+    const char* folders[] = {"payloads", "playloads", "payload", "payloads (1)"};
 
-    result = f_findfirst(&dir, &info, "payloads", pattern);
+    for (int i = 0; i < sizeof(folders) / sizeof(folders[0]); i++) {
+        result = f_findfirst(&dir, &info, folders[i], pattern);
 
-    if(result != FR_OK) return false;
+        if (result == FR_OK) {
+            f_closedir(&dir);
 
-    f_closedir(&dir);
+            if (info.fname[0]) {
+                sprintf(path, "%s/%s", folders[i], info.fname);
+                return true;
+            }
+        }
+    }
 
-    if(!info.fname[0]) return false;
-
-    sprintf(path, "payloads/%s", info.fname);
-
-    return true;
+    return false;
 }
 
 bool payloadMenu(char *path, bool *hasDisplayedMenu)
