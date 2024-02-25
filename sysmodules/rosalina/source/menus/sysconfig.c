@@ -34,7 +34,6 @@
 #include "utils.h"
 #include "ifile.h"
 #include "luminance.h"
-#include "volume.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",

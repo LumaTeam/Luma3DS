@@ -201,3 +201,18 @@ int floatToString(char *out, float f, u32 precision, bool pad)
         return n2;
     }
 }
+
+float Volume_ExtractVolume(int nul, int one, int slider)
+{
+    if(slider <= nul || one < nul)
+        return 0;
+    
+    if(one == nul) //hardware returns 0 on divbyzero
+        return (slider > one) ? 1.0F : 0;
+    
+    float ret = (float)(slider - nul) / (float)(one - nul);
+    if((ret + (1 / 256.0F)) < 1.0F)
+        return ret;
+    else
+        return 1.0F;
+}

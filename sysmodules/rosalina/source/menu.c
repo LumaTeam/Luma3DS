@@ -40,7 +40,6 @@
 #include "plugin.h"
 #include "menus/screen_filters.h"
 #include "shell.h"
-#include "volume.h"
 #include "redshift/redshift.h"
 
 u32 menuCombo = 0;

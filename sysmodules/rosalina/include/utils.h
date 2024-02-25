@@ -90,3 +90,4 @@ void formatUserMemoryState(char *outbuf, MemState state);
 u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);
 int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat);
 int floatToString(char *out, float f, u32 precision, bool pad);
+float Volume_ExtractVolume(int nul, int one, int slider);
