@@ -45,7 +45,7 @@ export HBLDR_DEFAULT_3DSX_TID ?= 000400000D921E00
 # DATA is a list of directories containing data files
 # INCLUDES is a list of directories containing header files
 #---------------------------------------------------------------------------------
-APP_TITLE	:=	Luma3DS
+APP_TITLE	:=	Luma3DS+
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source source/fatfs source/fatfs/sdmmc

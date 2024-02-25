@@ -73,6 +73,7 @@ Menu miscellaneousMenu = {
         { "Update time and date via NTP", METHOD, .method = &MiscellaneousMenu_UpdateTimeDateNtp },
         { "Nullify user time offset", METHOD, .method = &MiscellaneousMenu_NullifyUserTimeOffset },
         { "Dump DSP firmware", METHOD, .method = &MiscellaneousMenu_DumpDspFirm },
+        { "Set Play Coins to 300", METHOD, .method = &MiscellaneousMenu_MaxPlayCoins },
         {},
     }
 };
@@ -464,6 +465,7 @@ static Result MiscellaneousMenu_DumpDspFirmCallback(Handle procHandle, u32 textS
 
     return res;
 }
+
 void MiscellaneousMenu_DumpDspFirm(void)
 {
     Result res = OperateOnProcessByName("menu", MiscellaneousMenu_DumpDspFirmCallback);
@@ -485,6 +487,76 @@ void MiscellaneousMenu_DumpDspFirm(void)
                 "Operation failed (0x%08lx).\n\nMake sure that Home Menu is running and that your\nSD card is inserted.",
                 res
             );
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
+}
+
+static Result MiscellaneousMenu_SetPlayCoins(u16 amount)
+{
+    FS_Archive archive; //extdata archive
+    Handle file; //gamecoin file handle
+    Result res; //result variable
+    FS_Path pathData;
+    //its on nand so mediatype nand and extdata id is 0xf000000b, for some reason the low comes before high here,
+    //high is always 00048000 for nand extdata https://www.3dbrew.org/wiki/Extdata
+    u32 extdataPath[3] = {MEDIATYPE_NAND, 0xf000000b, 0x00048000};  //type low high
+    pathData.type = PATH_BINARY; //binary path because titleid
+    pathData.size = 12; //3*sizeof(u32)
+    pathData.data = (const void*)extdataPath; //data
+    //shared extdata archive https://www.3dbrew.org/wiki/Extdata#NAND_Shared_Extdata has the f000000b archive
+    res = FSUSER_OpenArchive(&archive, ARCHIVE_SHARED_EXTDATA, pathData);
+    if (R_FAILED(res)) { //return if error
+        return res;
+    }
+    // open /gamecoin.dat in extdata archive
+    // https://www.3dbrew.org/wiki/Extdata#Shared_Extdata_0xf000000b_gamecoin.dat
+    
+    res = FSUSER_OpenFile(&file, archive, fsMakePath(PATH_ASCII, "/gamecoin.dat"), FS_OPEN_WRITE, 0); //open for writing, no attributes necessary
+    if (R_FAILED(res)) { //return if error
+        FSUSER_CloseArchive(archive); //dont care about error, just close archive since it opened without error
+        return res;
+    }
+    // from 3dbrew
+    // offset: 0x4 size: 0x2 desc: Number of Play Coins, (note: size 0x2 so its a u16 value)
+    //I think we dont care about the amount of bytes written, so NULL, as buffer we use the provided u16 argument, size is sizeof(u16) which should be 0x2, as u8 (one byte) * 2 is u16
+    res = FSFILE_Write(file, NULL, 0x4, &amount, sizeof(u16), 0); 
+    if (R_FAILED(res)) {
+        FSFILE_Close(file); //dont care about error, just close file since it opened without error
+        FSUSER_CloseArchive(archive); //dont care about error, just close archive since it opened without error
+        return res;
+    }
+    res = FSFILE_Close(file);
+    if (R_FAILED(res)) { //return if error
+        FSUSER_CloseArchive(archive); //dont care about error, just close archive since it opened without error
+        return res;
+    }
+    res = FSUSER_CloseArchive(archive);
+    return res;
+}
+
+void MiscellaneousMenu_MaxPlayCoins(void)
+{
+    Result res = MiscellaneousMenu_SetPlayCoins(300);
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Miscellaneous options menu");
+        if(R_SUCCEEDED(res))
+            Draw_DrawString(10, 30, COLOR_WHITE, "Play Coins successfully set to 300.");
+        else
+
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE,
+            "Error occured while setting Play Coins (0x%08lx).",
+            res
+        );
+        
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }

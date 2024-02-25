@@ -243,6 +243,7 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
 {
     static const u8 patternKPanic[] = {0x02, 0x0B, 0x44, 0xE2};
     static const u8 patternKThreadDebugReschedule[] = {0x34, 0x20, 0xD4, 0xE5, 0x00, 0x00, 0x55, 0xE3, 0x80, 0x00, 0xA0, 0x13};
+    static const u8 patternSuspendThread[] = {0xB0, 0x01, 0xD5, 0xE1, 0x01, 0x00, 0x50, 0xE3};
 
     //Assumption: ControlMemory, DebugActiveProcess and KernelSetState are in the first 0x20000 bytes
     //Patch ControlMemory
@@ -304,6 +305,23 @@ u32 patchKernel11(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm
                 return 1;
             off[1] = 0xEA000003;
         }
+    }
+
+    // Patch core #1 usage limit.
+    // When game/homebrew apps use APT_SetAppCpuTimeLimit(), it will limit the time
+    // allowed to run system thread even if user threads use little CPU time.
+    // e.g. Let's say we called APT_SetAppCpuTimeLimit(60);
+    // Then, 60% of CPU time will constantly be allocated to user threads
+    // by suspending system threads even when user app uses little cpu time
+    // so that system thread can run only use 40% of CPU time.
+    // This will cause significant slow down for system modules such as fs, httpc, y2r, mvd etc...
+    // This patch disables "suspending system threads" behavior so that if user threads
+    // use little CPU time, then system threads can use rest of CPU time.
+    off = (u32 *)memsearch(pos, patternSuspendThread, size, sizeof(patternSuspendThread));
+    if(off)
+    {
+        //We are replacing if(core_id == 1) with if(core_id == 4) so that it will always be false.
+        off[1] = 0x040050E3;//cmp r0, #0x1 -> cmp r0, #0x4
     }
 
     return 0;
@@ -784,7 +802,7 @@ void patchTwlBg(u8 *pos, u32 size)
     };
 
     // "error" func doesn't seem to work here
-    if (CONFIG(ENABLEDSIEXTFILTER))
+    if (CONFIG(LOADEXTFIRMSANDMODULES))
     {
         u16 filter[5*6] = { 0 };
         u32 rd = fileRead(filter, "twl_upscaling_filter.bin", sizeof(filter));

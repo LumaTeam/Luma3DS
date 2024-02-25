@@ -27,110 +27,32 @@
 #include <3ds.h>
 #include "luma_config.h"
 #include "menus/sysconfig.h"
+#include "menus/config_extra.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
 #include "utils.h"
 #include "ifile.h"
+#include "luminance.h"
+#include "volume.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",
     {
         { "Control volume", METHOD, .method=&SysConfigMenu_AdjustVolume},
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
-        { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
-        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
-        { "Toggle power to card slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
+        { "Toggle Power to Card Slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
+        { "Permanent Brightness Recalibration", METHOD, .method = &Luminance_RecalibrateBrightnessDefaults },
+        { "Control volume", METHOD, .method=&SysConfigMenu_AdjustVolume},
+        { "Extra Config...", MENU, .menu = &configExtraMenu },
+        { "Tips", METHOD, .method = &SysConfigMenu_Tip },
         {},
     }
 };
 
 bool isConnectionForced = false;
 s8 currVolumeSliderOverride = -1;
-
-void SysConfigMenu_ToggleLEDs(void)
-{
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
-    do
-    {
-        Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
-        Draw_DrawString(10, 50, COLOR_RED, "WARNING:");
-        Draw_DrawString(10, 60, COLOR_WHITE, "  * Entering sleep mode will reset the LED state!");
-        Draw_DrawString(10, 70, COLOR_WHITE, "  * LEDs cannot be toggled when the battery is low!");
-
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
-
-        u32 pressed = waitInputWithTimeout(1000);
-
-        if(pressed & KEY_A)
-        {
-            mcuHwcInit();
-            u8 result;
-            MCUHWC_ReadRegister(0x28, &result, 1);
-            result = ~result;
-            MCUHWC_WriteRegister(0x28, &result, 1);
-            mcuHwcExit();
-        }
-        else if(pressed & KEY_B)
-            return;
-    }
-    while(!menuShouldExit);
-}
-
-void SysConfigMenu_ToggleWireless(void)
-{
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
-    bool nwmRunning = isServiceUsable("nwm::EXT");
-
-    do
-    {
-        Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
-
-        u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
-
-        if(nwmRunning)
-        {
-            Draw_DrawString(10, 50, COLOR_WHITE, "Current status:");
-            Draw_DrawString(100, 50, (wireless ? COLOR_GREEN : COLOR_RED), (wireless ? " ON " : " OFF"));
-        }
-        else
-        {
-            Draw_DrawString(10, 50, COLOR_RED, "NWM isn't running.");
-            Draw_DrawString(10, 60, COLOR_RED, "If you're currently on Test Menu,");
-            Draw_DrawString(10, 70, COLOR_RED, "exit then press R+RIGHT to toggle the WiFi.");
-            Draw_DrawString(10, 80, COLOR_RED, "Otherwise, simply exit and wait a few seconds.");
-        }
-
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
-
-        u32 pressed = waitInputWithTimeout(1000);
-
-        if(pressed & KEY_A && nwmRunning)
-        {
-            nwmExtInit();
-            NWMEXT_ControlWirelessEnabled(!wireless);
-            nwmExtExit();
-        }
-        else if(pressed & KEY_B)
-            return;
-    }
-    while(!menuShouldExit);
-}
 
 void SysConfigMenu_UpdateStatus(bool control)
 {
@@ -486,4 +408,37 @@ void SysConfigMenu_AdjustVolume(void)
         }
 
     } while(!menuShouldExit);
+}
+
+void SysConfigMenu_Tip(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Tips");
+        Draw_DrawString(10, 30, COLOR_WHITE, "On Rosalina menu:");
+        Draw_DrawString(10, 50, COLOR_WHITE, "  * Press start to toggle Wifi");
+        Draw_DrawString(10, 60, COLOR_WHITE, "  * Press select to toggle LEDs (cannot be toggled");
+        Draw_DrawString(10, 70, COLOR_WHITE, "  if battery is low or if the system is put on");
+        Draw_DrawString(10, 80, COLOR_WHITE, "  sleep mode)");
+        Draw_DrawString(10, 90, COLOR_WHITE, "  * Press Y to force blue led (allows bypassing");
+        Draw_DrawString(10, 100, COLOR_WHITE, "  toggle led restriction on low battery)");
+        Draw_DrawString(10, 120, COLOR_WHITE, "While system is running:");
+        Draw_DrawString(10, 140, COLOR_WHITE, "  * Press A + B + X + Y + Start to instant reboot");
+        Draw_DrawString(10, 150, COLOR_WHITE, "  * Press Start + Select to toggle bottom screen");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & KEY_B)
+            return;
+    }
+    while(!menuShouldExit);
 }

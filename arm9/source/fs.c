@@ -325,10 +325,10 @@ bool payloadMenu(char *path, bool *hasDisplayedMenu)
         drawString(true, 10, 10, COLOR_TITLE, "Luma3DS chainloader");
         drawString(true, 10, 10 + SPACING_Y, COLOR_TITLE, "Press A to select, START to quit");
 
-        for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_RED; i < payloadNum; i++, posY += SPACING_Y)
+        for(u32 i = 0, posY = 10 + 3 * SPACING_Y, color = COLOR_GREEN; i < payloadNum; i++, posY += SPACING_Y)
         {
             drawString(true, 10, posY, color, payloadList[i]);
-            if(color == COLOR_RED) color = COLOR_WHITE;
+            if(color == COLOR_GREEN) color = COLOR_WHITE;
         }
 
         while(pressed != BUTTON_A && pressed != BUTTON_START)
@@ -362,7 +362,7 @@ bool payloadMenu(char *path, bool *hasDisplayedMenu)
             if(oldSelectedPayload == selectedPayload) continue;
 
             drawString(true, 10, 10 + (3 + oldSelectedPayload) * SPACING_Y, COLOR_WHITE, payloadList[oldSelectedPayload]);
-            drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_RED, payloadList[selectedPayload]);
+            drawString(true, 10, 10 + (3 + selectedPayload) * SPACING_Y, COLOR_GREEN, payloadList[selectedPayload]);
         }
     }
 
@@ -522,18 +522,21 @@ bool doLumaUpgradeProcess(void)
     remountCtrNandPartition(false);
 #endif
 
-    // Try to boot.firm to CTRNAND, when applicable
-#ifndef BUILD_FOR_EXPLOIT_DEV
+    // Try to boot.firm to CTRNAND, when applicable, removed because it can be annoying sometimes
+#if 0 // #ifndef BUILD_FOR_EXPLOIT_DEV
     if (isSdMode && memcmp(launchedPathForFatfs, "sdmc:", 5) == 0)
         ok = fileCopy(launchedPathForFatfs, "nand:/boot.firm", true, fileCopyBuffer, sizeof(fileCopyBuffer));
+#else
+    (void)ok;
 #endif
 
     // Try to backup essential files
-    ok2 = backupEssentialFiles();
+    if (getFileSize("sdmc:/gm9/out/essential.exefs") < 0x10000) // Check if gm9-created essential.exefs doesn't exist/doesn't have a normal size to avoid useless copy
+        ok2 = backupEssentialFiles();
 
-    // Clean up some of the old files
-    fileDelete("sdmc:/luma/config.bin");
-    fileDelete("nand:/rw/luma/config.bin");
+    // Clean up some of the old files, commented because they can be useful if you decide to dual boot with a older luma
+    // fileDelete("sdmc:/luma/config.bin");
+    // fileDelete("nand:/rw/luma/config.bin");
 
 #if 0
     if (isSdMode)

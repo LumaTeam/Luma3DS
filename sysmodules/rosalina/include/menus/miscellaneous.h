@@ -38,3 +38,4 @@ void MiscellaneousMenu_InputRedirection(void);
 void MiscellaneousMenu_UpdateTimeDateNtp(void);
 void MiscellaneousMenu_NullifyUserTimeOffset(void);
 void MiscellaneousMenu_DumpDspFirm(void);
+void MiscellaneousMenu_MaxPlayCoins(void);

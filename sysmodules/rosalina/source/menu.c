@@ -33,16 +33,20 @@
 #include "menus.h"
 #include "utils.h"
 #include "luma_config.h"
+#include "menus/config_extra.h"
 #include "menus/n3ds.h"
 #include "menus/cheats.h"
 #include "minisoc.h"
 #include "plugin.h"
 #include "menus/screen_filters.h"
 #include "shell.h"
+#include "volume.h"
+#include "redshift/redshift.h"
 
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
+bool rosalinaOpen = false;
 
 // libctru redefinition:
 
@@ -179,6 +183,9 @@ static u8 CTR_ALIGN(8) menuThreadStack[0x3000];
 static float batteryPercentage;
 static float batteryVoltage;
 static u8 batteryTemperature;
+// volume
+static u8 volumeSlider[2];
+static u8 dspVolumeSlider[2];
 
 static Result menuUpdateMcuInfo(void)
 {
@@ -226,6 +233,11 @@ static Result menuUpdateMcuInfo(void)
         mcuFwVersion = SYSTEM_VERSION(major - 0x10, minor, 0);
     }
 
+    // https://www.3dbrew.org/wiki/I2C_Registers#Device_3
+    MCUHWC_ReadRegister(0x58, dspVolumeSlider, 2); // Register-mapped ADC register
+    MCUHWC_ReadRegister(0x27, volumeSlider + 0, 1); // Raw volume slider state
+    MCUHWC_ReadRegister(0x09, volumeSlider + 1, 1); // Volume slider state
+
     svcCloseHandle(*mcuHwcHandlePtr);
     return res;
 }
@@ -267,6 +279,8 @@ void menuThreadMain(void)
     if(isN3DS)
         N3DSMenu_UpdateStatus();
 
+    ConfigExtra_UpdateAllMenuItems();
+
     while (!isServiceUsable("ac:u") || !isServiceUsable("hid:USER") || !isServiceUsable("gsp::Gpu") || !isServiceUsable("cdc:CHK"))
         svcSleepThread(250 * 1000 * 1000LL);
 
@@ -274,6 +288,11 @@ void menuThreadMain(void)
 
     hidInit(); // assume this doesn't fail
     isHidInitialized = true;
+
+    s64 out = 0;
+    svcGetSystemInfo(&out, 0x10000, 3);
+    u32 config = (u32)out;
+    bool instantReboot = ((config >> (u32)NOERRDISPINSTANTREBOOT) & 1) != 0;
 
     while(!preTerminationRequested)
     {
@@ -283,13 +302,38 @@ void menuThreadMain(void)
 
         Cheat_ApplyCheats();
 
-        if(((scanHeldKeys() & menuCombo) == menuCombo) && !g_blockMenuOpen)
+        if(((scanHeldKeys() & menuCombo) == menuCombo) && !rosalinaOpen && !g_blockMenuOpen)
         {
-            menuEnter();
-            if(isN3DS) N3DSMenu_UpdateStatus();
-            PluginLoader__UpdateMenu();
-            menuShow(&rosalinaMenu);
-            menuLeave();
+            openRosalina();
+        }
+
+        // instant reboot combo key
+        if(instantReboot & ((scanHeldKeys() & (KEY_A | KEY_B | KEY_X | KEY_Y | KEY_START)) == (KEY_A | KEY_B | KEY_X | KEY_Y | KEY_START)))
+        {
+            svcKernelSetState(7);
+            __builtin_unreachable();
+        }
+
+        // toggle bottom screen combo
+        if(((scanHeldKeys() & (KEY_SELECT | KEY_START)) == (KEY_SELECT | KEY_START)) && configExtra.toggleBtmLCD)
+        {
+            u8 result, botStatus;
+            mcuHwcInit();
+            MCUHWC_ReadRegister(0x0F, &result, 1); // https://www.3dbrew.org/wiki/I2C_Registers#Device_3
+            mcuHwcExit();  
+            botStatus = (result >> 5) & 1; // right shift result to bit 5 ("Bottom screen backlight on") and perform bitwise AND with 1
+
+            gspLcdInit();
+            if(botStatus)
+            {
+                GSPLCD_PowerOffBacklight(BIT(GSP_SCREEN_BOTTOM));
+            }
+            else
+            {
+                GSPLCD_PowerOnBacklight(BIT(GSP_SCREEN_BOTTOM));
+            }
+            gspLcdExit();
+            while (!(waitInput() & (KEY_SELECT | KEY_START)));
         }
 
         if (saveSettingsRequest) {
@@ -297,6 +341,19 @@ void menuThreadMain(void)
             saveSettingsRequest = false;
         }
     }
+}
+
+void openRosalina(void)
+{
+    rosalinaOpen = true;
+    menuEnter();
+    if(isN3DS) N3DSMenu_UpdateStatus();
+    PluginLoader__UpdateMenu();
+    nightLightSettingsRead = Redshift_ReadNightLightSettings();
+    Redshift_UpdateNightLightStatuses();
+    menuShow(&rosalinaMenu);
+    menuLeave();
+    rosalinaOpen = false;
 }
 
 static s32 menuRefCount = 0;
@@ -397,14 +454,27 @@ static void menuDraw(Menu *menu, u32 selected)
             percentageInt, percentageFrac
         );
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, buf);
+
+        float coe = Volume_ExtractVolume(dspVolumeSlider[0], dspVolumeSlider[1], volumeSlider[0]);
+        u32 out = (u32)((coe * 100.0F) + (1 / 256.0F));
+        char volBuf[32];
+        int n2 = sprintf(volBuf, "Volume: %lu%%", out);
+        if(miniSocEnabled)
+        {
+            Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n2, SCREEN_BOT_HEIGHT - 30, COLOR_WHITE, volBuf);
+        }
+        else 
+        {
+            Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n2, 10, COLOR_WHITE, volBuf);
+        }
     }
     else
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 19, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "%19s", "");
 
     if(isRelease)
-        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s", versionString);
+        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS+ %s", versionString);
     else
-        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS %s-%08lx", versionString, commitHash);
+        Draw_DrawFormattedString(10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE, "Luma3DS+ %s-%08lx", versionString, commitHash);
 
     Draw_FlushFramebuffer();
 }
@@ -500,6 +570,40 @@ void menuShow(Menu *root)
             selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
             if (menuItemIsHidden(&currentMenu->items[selectedItem]))
                 selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
+        }
+        else if(pressed & KEY_START)
+        {
+            if (isServiceUsable("nwm::EXT"))
+            {
+                u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+                nwmExtInit();
+                NWMEXT_ControlWirelessEnabled(!wireless);
+                nwmExtExit();
+            }
+        }
+        else if(pressed & KEY_SELECT)
+        {
+            // Toggle LEDs
+            mcuHwcInit();
+            u8 result;
+            MCUHWC_ReadRegister(0x28, &result, 1);
+            result = ~result;
+            MCUHWC_WriteRegister(0x28, &result, 1);
+            mcuHwcExit();
+        }
+        else if(pressed & KEY_X)
+        {
+            nightLightOverride = !nightLightOverride;
+            Redshift_UpdateNightLightStatuses();
+        }
+        else if(pressed & KEY_Y)
+        {
+            // Force Blue LED
+            mcuHwcInit();
+            u8 result;
+            result = 1;
+            MCUHWC_WriteRegister(0x29, &result, 1);
+            mcuHwcExit();
         }
 
         Draw_Lock();

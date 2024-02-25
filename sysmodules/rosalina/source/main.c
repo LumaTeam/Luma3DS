@@ -37,6 +37,8 @@
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
+#include "menus/config_extra.h"
+#include "redshift/redshift.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -46,7 +48,10 @@
 #include "task_runner.h"
 #include "plugin.h"
 
+#include "luma_config.h"
+
 bool isN3DS;
+bool wifiOnBeforeSleep;
 
 Result __sync_init(void);
 Result __sync_fini(void);
@@ -166,6 +171,11 @@ static void handleShellNotification(u32 notificationId)
 {
     // Quick dirty fix
     Sleep__HandleNotification(notificationId);
+
+    s64 out = 0;
+    svcGetSystemInfo(&out, 0x10000, 3);
+    u32 config = (u32)out;
+    bool cutWifiInSleep = ((config >> (u32)CUTWIFISLEEP) & 1) != 0;
     
     if (notificationId == 0x213) {
         // Shell opened
@@ -174,9 +184,44 @@ static void handleShellNotification(u32 notificationId)
         // and shell close, then NS demuxes it and fires 0x213 and 0x214.
         handleShellOpened();
         menuShouldExit = false;
+
+        if(configExtra.suppressLeds){
+            mcuHwcInit();
+            u8 off = 0;
+            MCUHWC_WriteRegister(0x28, &off, 1);
+            mcuHwcExit();
+        }
+
+        if(nightLightSettingsRead)
+        { 
+            Redshift_ApplyNightLightSettings();
+        }
+
+        if(wifiOnBeforeSleep && cutWifiInSleep && isServiceUsable("nwm::EXT")){
+            nwmExtInit();
+            NWMEXT_ControlWirelessEnabled(true);
+            nwmExtExit();
+        }
+
     } else {
         // Shell closed
         menuShouldExit = true;
+
+        if(cutWifiInSleep)
+        {      
+            u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+
+            if (isServiceUsable("nwm::EXT") && wireless)
+            {
+                wifiOnBeforeSleep = true;
+                nwmExtInit();
+                NWMEXT_ControlWirelessEnabled(false);
+                nwmExtExit();
+            }
+            else {
+                wifiOnBeforeSleep = false;
+            }
+        }
     }
 
 }
@@ -233,6 +278,15 @@ static const ServiceManagerServiceEntry services[] = {
     { NULL },
 };
 
+static void handleHomeButtonNotification(u32 notificationId)
+{
+    (void)notificationId;
+    if(configExtra.homeToRosalina && isHidInitialized && !rosalinaOpen && !menuShouldExit && !preTerminationRequested && !g_blockMenuOpen)
+    {
+        openRosalina();
+    }
+}
+
 static const ServiceManagerNotificationEntry notifications[] = {
     { 0x100 ,                       handleTermNotification                  },
     { PTMNOTIFID_SLEEP_REQUESTED,   handleSleepNotification                 },
@@ -242,6 +296,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { PTMNOTIFID_FULLY_WAKING_UP,   handleSleepNotification                 },
     { PTMNOTIFID_FULLY_AWAKE,       handleSleepNotification                 },
     { PTMNOTIFID_HALF_AWAKE,        handleSleepNotification                 },
+    { 0x204,                        handleHomeButtonNotification            },
     { 0x213,                        handleShellNotification                 },
     { 0x214,                        handleShellNotification                 },
     { 0x1000,                       handleNextApplicationDebuggedByForce    },
@@ -250,11 +305,28 @@ static const ServiceManagerNotificationEntry notifications[] = {
     { 0x000, NULL },
 };
 
+static void cutPowerToCardSlotWhenTWLCard(void)
+{
+    FS_CardType card;
+    bool status;
+    if(R_SUCCEEDED(FSUSER_GetCardType(&card)) && card == 1){
+        FSUSER_CardSlotPowerOff(&status);
+    }
+}
+
 // Some changes to commit
 int main(void)
 {
     Sleep__Init();
     PluginLoader__Init();
+
+    ConfigExtra_ReadConfigExtra();
+    if (configExtra.cutSlotPower)
+    {
+        cutPowerToCardSlotWhenTWLCard();
+    }
+
+    nightLightSettingsRead = Redshift_ReadNightLightSettings();
 
     if(R_FAILED(svcCreateEvent(&preTerminationEvent, RESET_STICKY)))
         svcBreak(USERBREAK_ASSERT);

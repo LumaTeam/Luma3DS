@@ -26,8 +26,11 @@
 
 #include <3ds.h>
 #include <math.h>
+#include <stdio.h>
 #include "luminance.h"
 #include "utils.h"
+#include "draw.h"
+#include "menu.h"
 
 extern bool isN3DS;
 
@@ -119,4 +122,117 @@ u32 getCurrentLuminance(bool top)
     float ratio = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbase + 0x44));
 
     return brightnessToLuminance(brightness, coeffs, ratio);
+}
+
+void setBrightnessAlt(u32 lumTop, u32 lumBot) 
+{
+    u32 regbaseTop = 0x10202200;
+    u32 regbaseBot = 0x10202A00; 
+    u32 offset = 0x40; // https://www.3dbrew.org/wiki/LCD_Registers
+    const float *coeffsTop = s_blPwmData.coeffs[1];
+    const float *coeffsBot = s_blPwmData.coeffs[0];
+    float ratioTop = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbaseTop + 0x44));
+    float ratioBot = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbaseBot + 0x44));
+    u8 *screenTop = (u8 *)PA_PTR(regbaseTop +  offset);
+    u8 *screenBot = (u8 *)PA_PTR(regbaseBot +  offset);
+
+    *screenBot = luminanceToBrightness(lumBot, coeffsBot, 0, ratioBot);
+    *screenTop = luminanceToBrightness(lumTop, coeffsTop, 0, ratioTop);
+}
+
+void Luminance_RecalibrateBrightnessDefaults(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    u32 kHeld = 0;
+    int sel = 0, minBri = 0, maxBri = 172;
+    char fmtbuf[0x40];
+
+    cfguInit();
+        CFG_GetConfigInfoBlk8(sizeof(BlPwmData), 0x50002, &s_blPwmData);
+    cfguExit();
+    
+    s_blPwmData.brightnessMin = 1;
+
+    do
+    {
+        kHeld = HID_PAD;
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if (pressed & DIRECTIONAL_KEYS)
+        {
+            if(pressed & KEY_DOWN)
+            {
+                if(++sel > 4) sel = 4;
+            }
+            else if(pressed & KEY_UP)
+            {
+                if(--sel < 0) sel = 0;
+            }
+            else if (pressed & KEY_RIGHT)
+            {
+                s_blPwmData.luminanceLevels[sel] += (kHeld & (KEY_L | KEY_R)) ? 10 : 1;
+                s_blPwmData.luminanceLevels[sel] = s_blPwmData.luminanceLevels[sel] > maxBri ? minBri : s_blPwmData.luminanceLevels[sel];
+            }
+            else if (pressed & KEY_LEFT)
+            {
+                s_blPwmData.luminanceLevels[sel] -= (kHeld & (KEY_L | KEY_R)) ? 10 : 1;
+                s_blPwmData.luminanceLevels[sel] = s_blPwmData.luminanceLevels[sel] > maxBri ? maxBri : s_blPwmData.luminanceLevels[sel];
+            }
+        }
+        
+        if (pressed & KEY_B)
+            break;
+
+        if(pressed & KEY_START)
+        {
+            cfguInit();
+            if(R_SUCCEEDED(CFG_SetConfigInfoBlk8(sizeof(BlPwmData), 0x50002, &s_blPwmData))) 
+            {
+                CFG_UpdateConfigSavegame();
+            }
+            cfguExit();
+            break;
+        }
+
+        Draw_Lock();
+        Draw_ClearFramebuffer();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Permanent brightness recalibration - by Nutez");
+        u32 posY = 30;
+        
+        posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: ") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * brightness preview not possible here\n    due to glitch risk.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * test values via 'Change screen brightness'.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * avoid frequent use to minimise NAND(!) wear.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * 172 is only presumed(!) safe for prolonged use.") + (SPACING_Y*2);
+
+        sprintf(fmtbuf, "%c Level 1 value: %i", (sel == 0 ? '>' : ' '), s_blPwmData.luminanceLevels[0]);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Level 2 value: %i", (sel == 1 ? '>' : ' '), s_blPwmData.luminanceLevels[1]);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Level 3 value: %i", (sel == 2 ? '>' : ' '), s_blPwmData.luminanceLevels[2]);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Level 4 value: %i", (sel == 3 ? '>' : ' '), s_blPwmData.luminanceLevels[3]);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + SPACING_Y;
+
+        sprintf(fmtbuf, "%c Level 5 value: %i", (sel == 4 ? '>' : ' '), s_blPwmData.luminanceLevels[4]);
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, fmtbuf) + (SPACING_Y*2);
+
+        posY = Draw_DrawString(10, posY, COLOR_GREEN, "Controls:") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " UP/DOWN to choose level to edit.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " RIGHT/LEFT for +/-1, +hold L1 or R1 for +/-10.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " Press START to save all value changes.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " Reboot may be required to see applied changes.") + SPACING_Y;
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, " Press B to exit.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while (!menuShouldExit);
 }

@@ -34,9 +34,9 @@
 #define MULTICONFIG(a)   ((configData.multiConfig >> (2 * (a))) & 3)
 #define BOOTCONFIG(a, b) ((configData.bootConfig >> (a)) & (b))
 
-#define CONFIG_FILE         "config.ini"
+#define CONFIG_FILE         "configplus.ini"
 #define CONFIG_VERSIONMAJOR 3
-#define CONFIG_VERSIONMINOR 11
+#define CONFIG_VERSIONMINOR 12
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 1)
 #define BOOTCFG_EMUINDEX     BOOTCONFIG(1, 3)
@@ -62,13 +62,12 @@ enum singleOptions
     REDIRECTAPPTHREADS,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    ENABLEDSIEXTFILTER,
     ALLOWUPDOWNLEFTRIGHTDSI,
+    CUTWIFISLEEP,
     PATCHUNITINFO,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
-
-    NUMCONFIGURABLE = PATCHUNITINFO,
+    NOERRDISPINSTANTREBOOT,
 };
 
 typedef enum ConfigurationStatus
