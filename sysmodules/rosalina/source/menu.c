@@ -174,7 +174,7 @@ u32 waitCombo(void)
 }
 
 static MyThread menuThread;
-static u8 ALIGN(8) menuThreadStack[0x3000];
+static u8 CTR_ALIGN(8) menuThreadStack[0x3000];
 
 static float batteryPercentage;
 static float batteryVoltage;

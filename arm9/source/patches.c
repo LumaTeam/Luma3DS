@@ -132,6 +132,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u16 configFormatVersionMajor, configFormatVersionMinor;
             u32 config, multiConfig, bootConfig;
             u32 splashDurationMsec;
+            s8 volumeSliderOverride;
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
             u32 pluginLoaderFlags;
@@ -215,6 +216,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->multiConfig = configData.multiConfig;
     info->bootConfig = configData.bootConfig;
     info->splashDurationMsec = configData.splashDurationMsec;
+    info->volumeSliderOverride = configData.volumeSliderOverride;
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->pluginLoaderFlags = configData.pluginLoaderFlags;
@@ -810,7 +812,7 @@ void patchTwlBg(u8 *pos, u32 size)
     }
 }
 
-u32 patchLgyK11(u8 *section1, u32 section1Size)
+u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size)
 {
     u32 *off;
 
@@ -825,6 +827,23 @@ u32 patchLgyK11(u8 *section1, u32 section1Size)
 
     *off &= ~0x231; // clear APX mask and XN
     *off |= 0x030; // re-set APX (to user/kernel RW)
+
+    // Patch two pointer-to-bool to point to a non-zero byte, enabling user exception handling.
+    // It is impossible to enable it by normal means, otherwise
+    for (off = (u32 *)section2; (u8 *)off <= section2 + section2Size && *off != 0x100021F; off++);
+    if ((u8 *)off >= section2 + section2Size)
+        return 1;
+    off[1] = 0xFFFF0F00;
+    off[2] = 0xFFFF0F04;
+
+    // Dispatch-to-user code checks for memory block type and permissions (etc.), but
+    // LGY K11 doesn't do any memory management, so these checks will always fail.
+    // Patch with b +0x38 to skip all those checks
+    u16 *off2;
+    for (off2 = (u16 *)section2; (u8 *)off2 <= section2 + section2Size && (off2[0] != 0xDB1F || off2[1] != 0x4915); off2++);
+    if ((u8 *)off2 >= section2 + section2Size)
+        return 1;
+    *off2 = 0xE01A;
 
     return 0;
 }

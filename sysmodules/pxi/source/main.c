@@ -38,7 +38,7 @@ const char *serviceNames[10] =
 
 const u32 nbStaticBuffersByService[10] = {0, 2, 2, 2, 2, 1, 4, 4, 4, 0};
 
-u32 ALIGN(0x1000) staticBuffers[NB_STATIC_BUFFERS][0x400] = {{0}};
+u32 CTR_ALIGN(0x1000) staticBuffers[NB_STATIC_BUFFERS][0x400] = {{0}};
 
 static inline void initPXI(void)
 {
@@ -95,9 +95,9 @@ static inline void exitPXI(void)
     PXIReset();
 }
 
-static u8 ALIGN(8) receiverStack[THREAD_STACK_SIZE];
-static u8 ALIGN(8) senderStack[THREAD_STACK_SIZE];
-static u8 ALIGN(8) PXISRV11HandlerStack[THREAD_STACK_SIZE];
+static u8 CTR_ALIGN(8) receiverStack[THREAD_STACK_SIZE];
+static u8 CTR_ALIGN(8) senderStack[THREAD_STACK_SIZE];
+static u8 CTR_ALIGN(8) PXISRV11HandlerStack[THREAD_STACK_SIZE];
 static MyThread receiverThread = {0}, senderThread = {0}, PXISRV11HandlerThread = {0};
 
 Result __sync_init(void);

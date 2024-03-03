@@ -46,7 +46,7 @@ struct KExtParameters
     CfwInfo cfwInfo;
 } kExtParameters = { .basePA = 0x12345678 }; // place this in .data
 
-static ALIGN(1024) u32 g_L2Table[256] = {0};
+static CTR_ALIGN(1024) u32 g_L2Table[256] = {0};
 
 void relocateAndSetupMMU(u32 coreId, u32 *L1Table)
 {

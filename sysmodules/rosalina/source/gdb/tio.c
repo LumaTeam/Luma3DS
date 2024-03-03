@@ -85,7 +85,7 @@
 typedef u32 gdbhio_time_t;
 typedef int gdbhio_mode_t;
 
-struct PACKED ALIGN(4) gdbhio_stat {
+struct CTR_PACKED CTR_ALIGN(4) gdbhio_stat {
     u32  gst_dev;               /* device */
     u32  gst_ino;               /* inode */
     gdbhio_mode_t gst_mode;     /* protection */
