@@ -438,11 +438,12 @@ void SysConfigMenu_AdjustVolume(void)
         Draw_DrawString(10, posY, COLOR_WHITE, "Current status:");
         posY = Draw_DrawString(100, posY, (tempVolumeOverride == -1) ? COLOR_RED : COLOR_GREEN, (tempVolumeOverride == -1) ? " DISABLED" : " ENABLED ");
         if (tempVolumeOverride != -1) {
-            posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "\nValue: [%d%%]", tempVolumeOverride);
+            posY = Draw_DrawFormattedString(30, posY, COLOR_WHITE, "\nValue: [%d%%]    ", tempVolumeOverride);
         } else {
             posY = Draw_DrawString(30, posY, COLOR_WHITE, "\n                 ");
         }
 
+        Draw_FlushFramebuffer();
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & KEY_A)
@@ -484,6 +485,5 @@ void SysConfigMenu_AdjustVolume(void)
             if (tempVolumeOverride > 100)
                 tempVolumeOverride = 100;
         }
-
     } while(!menuShouldExit);
 }
