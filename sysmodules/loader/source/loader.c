@@ -25,6 +25,9 @@ extern bool isN3DS, isSdMode, nextGamePatchDisabled;
 static u64 g_cached_programHandle; // for exheader info only
 static ExHeader_Info g_exheaderInfo;
 
+// Last application exheader info, for use with custom cmd 0x102
+static ExHeader_Info g_lastAppExheaderInfo;
+
 static IFile g_cached_sysmoduleCxiFile;
 static u64 g_cached_sysmoduleCxiCookie;
 static Ncch g_cached_sysmoduleCxiNcch;
@@ -380,6 +383,9 @@ static Result GetProgramInfo(u64 programHandle)
     {
         res = GetProgramInfoImpl(&g_exheaderInfo, programHandle);
         g_cached_programHandle = R_SUCCEEDED(res) ? programHandle : 0;
+        if (R_SUCCEEDED(res) && (u32)((g_exheaderInfo.aci.local_caps.title_id >> 0x20) & 0xFFFFFFEDULL) == 0x00040000) {
+            memcpy(&g_lastAppExheaderInfo, &g_exheaderInfo, sizeof(g_lastAppExheaderInfo));
+        }
     }
 
     return res;
@@ -594,7 +600,13 @@ void loaderHandleCommands(void *ctx)
             cmdbuf[0] = IPC_MakeHeader(0x101, 2, 0);
             cmdbuf[1] = (Result)0;
             memcpy(&cmdbuf[2], &g_memoryOverrideConfig, sizeof(ControlApplicationMemoryModeOverrideConfig));
-            break; 
+            break;
+        case 0x102: // GetLastApplicationProgramInfo
+            cmdbuf[0] = IPC_MakeHeader(0x102, 1, 2);
+            cmdbuf[1] = (Result)0;
+            cmdbuf[2] = IPC_Desc_StaticBuffer(sizeof(ExHeader_Info), 0);
+            cmdbuf[3] = (u32)&g_lastAppExheaderInfo;
+            break;
         default: // error
             cmdbuf[0] = IPC_MakeHeader(0, 1, 0);
             cmdbuf[1] = 0xD900182F;
