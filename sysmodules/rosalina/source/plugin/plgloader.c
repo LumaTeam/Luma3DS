@@ -449,7 +449,7 @@ static void     __strex__(s32 *addr, s32 val)
 
 void    PLG__NotifyEvent(PLG_Event event, bool signal)
 {
-    if (!PluginLoaderCtx.plgEventPA) return;
+    if (PluginLoaderCtx.eventsSelfManaged || !PluginLoaderCtx.plgEventPA) return;
 
     __strex__(PluginLoaderCtx.plgEventPA, event);
     if (signal)
@@ -458,6 +458,7 @@ void    PLG__NotifyEvent(PLG_Event event, bool signal)
 
 void    PLG__WaitForReply(void)
 {
+    if (PluginLoaderCtx.eventsSelfManaged) return;
     __strex__(PluginLoaderCtx.plgReplyPA, PLG_WAIT);
     svcArbitrateAddress(PluginLoaderCtx.arbiter, (u32)PluginLoaderCtx.plgReplyPA, ARBITRATION_WAIT_IF_LESS_THAN_TIMEOUT, PLG_OK, 10000000000ULL);
 }
@@ -482,8 +483,8 @@ static void WaitForProcessTerminated(void *arg)
     (void)arg;
     PluginLoaderContext *ctx = &PluginLoaderCtx;
 
-    // Wait until all threads of the process have finished (svcWaitSynchronization == 0) or 5 seconds have passed.
-    for (u32 i = 0; svcWaitSynchronization(ctx->target, 0) != 0 && i < 100; i++) svcSleepThread(50000000); // 50ms
+    // Wait until all threads of the process have finished (svcWaitSynchronization == 0) or 2.5 seconds have passed.
+    for (u32 i = 0; svcWaitSynchronization(ctx->target, 0) != 0 && i < 50; i++) svcSleepThread(50000000); // 50ms
     
     // Unmap plugin's memory before closing the process
     if (!ctx->pluginIsSwapped) {
@@ -500,6 +501,7 @@ static void WaitForProcessTerminated(void *arg)
     ctx->isExeLoadFunctionset = false;
     ctx->isSwapFunctionset = false;
     ctx->pluginMemoryStrategy = PLG_STRATEGY_SWAP;
+    ctx->eventsSelfManaged = false;
     g_blockMenuOpen = 0;
     MemoryBlock__ResetSwapSettings();
     //if (!ctx->userLoadParameters.noIRPatch)
