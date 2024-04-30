@@ -205,6 +205,19 @@ bool     TryToLoadPlugin(Handle process)
     if (!res && R_FAILED((res = Read_3gx_Header(&plugin, &fileHeader))))
         ctx->error.message = "Couldn't read file";
 
+    // Check compatibility
+    if (!res && fileHeader.infos.compatibility == PLG_COMPAT_EMULATOR) {
+        ctx->error.message = "Plugin is only compatible with emulators";
+        return false;
+    }
+
+    // Flags
+    if (!res) {
+        ctx->eventsSelfManaged = fileHeader.infos.eventsSelfManaged;
+        if (ctx->pluginMemoryStrategy == PLG_STRATEGY_SWAP && fileHeader.infos.swapNotNeeded)
+            ctx->pluginMemoryStrategy = PLG_STRATEGY_NONE;
+    }
+
     // Set memory region size according to header
     if (!res && R_FAILED((res = MemoryBlock__SetSize(memRegionSizes[fileHeader.infos.memoryRegionSize])))) {
         ctx->error.message = "Couldn't set memblock size.";

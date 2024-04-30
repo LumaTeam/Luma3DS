@@ -20,7 +20,10 @@ typedef struct CTR_PACKED
             u32     embeddedExeLoadFunc : 1;
             u32     embeddedSwapSaveLoadFunc : 1;
             u32     memoryRegionSize : 2;
-            u32     unused : 28;
+            u32     compatibility : 2;
+            u32     eventsSelfManaged : 1;
+            u32     swapNotNeeded : 1;
+            u32     unused : 24;
         };
     };
     u32             exeLoadChecksum;
@@ -66,6 +69,12 @@ typedef struct CTR_PACKED
     _3gx_Symtable   symtable;
 } _3gx_Header;
 
+
+enum _3gx_Compatibility {
+    PLG_COMPAT_CONSOLE = 0,
+    PLG_COMPAT_EMULATOR = 1,
+    PLG_COMPAT_CONSOLE_EMULATOR = 2,
+};
 
 Result  Check_3gx_Magic(IFile *file);
 Result  Read_3gx_Header(IFile *file, _3gx_Header *header);

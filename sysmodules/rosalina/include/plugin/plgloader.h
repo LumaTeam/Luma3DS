@@ -91,6 +91,8 @@ typedef struct
     u8              pluginMemoryStrategy;
     u32             exeLoadChecksum;
     u32             swapLoadChecksum;    
+
+    bool            eventsSelfManaged;
 }   PluginLoaderContext;
 
 extern PluginLoaderContext PluginLoaderCtx;
