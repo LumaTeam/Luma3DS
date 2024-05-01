@@ -797,19 +797,6 @@ void patchTwlBg(u8 *pos, u32 size)
             // else error("Failed to apply enable_dsi_external_filter.");
         }
     }
-
-    if (CONFIG(ALLOWUPDOWNLEFTRIGHTDSI))
-    {
-        u16 *off2;
-        for (off2 = (u16 *)pos; (u8 *)off2 < pos + size && (off2[0] != 0x2040 || off2[1] != 0x4020); off2++);
-
-        if ((u8 *)off2 < pos + size)
-        {
-            // else error("Failed to apply allow_updown_leftright_dsi.");
-            for (u32 i = 0; i < 8; i++)
-                off2[i] = 0x46C0;
-        }
-    }
 }
 
 u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size)

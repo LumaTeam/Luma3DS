@@ -65,12 +65,11 @@ static const char *singleOptionIniNamesBoot[] = {
     "app_syscore_threads_on_core_2",
     "show_system_settings_string",
     "show_gba_boot_screen",
-    "enable_dsi_external_filter",
-    "allow_updown_leftright_dsi",
 };
 
 static const char *singleOptionIniNamesMisc[] = {
     "use_dev_unitinfo",
+    "enable_dsi_external_filter",
     "disable_arm11_exception_handlers",
     "enable_safe_firm_rosalina",
 };
@@ -484,7 +483,7 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             return 1;
         } else if (strcmp(name, "screen_filters_top_gamma") == 0) {
             s64 opt;
-            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 1411 * FLOAT_CONV_MULT));
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 8 * FLOAT_CONV_MULT));
             cfg->topScreenFilter.gammaEnc = opt;
             return 1;
         } else if (strcmp(name, "screen_filters_top_contrast") == 0) {
@@ -509,7 +508,7 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             return 1;
         } else if (strcmp(name, "screen_filters_bot_gamma") == 0) {
             s64 opt;
-            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 1411 * FLOAT_CONV_MULT));
+            CHECK_PARSE_OPTION(parseDecFloatOption(&opt, value, 0, 8 * FLOAT_CONV_MULT));
             cfg->bottomScreenFilter.gammaEnc = opt;
             return 1;
         } else if (strcmp(name, "screen_filters_bot_contrast") == 0) {
@@ -657,7 +656,6 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)CONFIG(AUTOBOOTEMU), (int)CONFIG(LOADEXTFIRMSANDMODULES),
         (int)CONFIG(PATCHGAMES), (int)CONFIG(REDIRECTAPPTHREADS),
         (int)CONFIG(PATCHVERSTRING), (int)CONFIG(SHOWGBABOOT),
-        (int)CONFIG(ENABLEDSIEXTFILTER), (int)CONFIG(ALLOWUPDOWNLEFTRIGHTDSI),
 
         1 + (int)MULTICONFIG(DEFAULTEMU), 4 - (int)MULTICONFIG(BRIGHTNESS),
         splashPosStr, (unsigned int)cfg->splashDurationMsec,
@@ -678,8 +676,8 @@ static size_t saveLumaIniConfigToStr(char *out)
         forceAudioOutputStr,
         cfg->volumeSliderOverride,
 
-        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
-        (int)CONFIG(ENABLESAFEFIRMROSALINA)
+        (int)CONFIG(PATCHUNITINFO), (int)CONFIG(ENABLEDSIEXTFILTER),
+        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA)
     );
 
     return n < 0 ? 0 : (size_t)n;
@@ -839,8 +837,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                "( ) Redirect app. syscore threads to core2",
                                                "( ) Show NAND or user string in System Settings",
                                                "( ) Show GBA boot screen in patched AGB_FIRM",
-                                               "( ) Enable custom upscaling filters for DSi",
-                                               "( ) Allow Left+Right / Up+Down combos for DSi",
 
                                                // Should always be the last 2 entries
                                                "\nBoot chainloader",
@@ -930,19 +926,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "Enable showing the GBA boot screen\n"
                                                  "when booting GBA games.",
 
-                                                 "Enable replacing the default upscaling\n"
-                                                 "filter used for DS(i) software by the\n"
-                                                 "contents of:\n\n"
-                                                 "/luma/twl_upscaling_filter.bin\n\n"
-                                                 "Refer to the wiki for further details.",
-
-                                                 "Allow Left+Right and Up+Down button\n"
-                                                 "combos (using DPAD and CPAD\n"
-                                                 "simultaneously) in DS(i) software.\n\n"
-                                                 "Commercial software filter these\n"
-                                                 "combos on their own too, though.",
-                                                
-                                                
                                                 // Should always be the last 2 entries
                                                 "Boot to the Luma3DS chainloader menu.",
 
@@ -984,8 +967,6 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = ISN3DS },
-        { .visible = true },
-        { .visible = true },
         { .visible = true },
         { .visible = true },
         { .visible = true },
@@ -1060,13 +1041,13 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
     }
 
     drawString(false, 10, 10, COLOR_WHITE, optionsDescription[selectedOption]);
-    
+
     bool startPressed = false;
     //Boring configuration menu
     while(true)
     {
         u32 pressed = 0;
-        if (!startPressed) 
+        if (!startPressed)
         do
         {
             pressed = waitInput(true) & MENU_BUTTONS;
@@ -1074,7 +1055,7 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
         while(!pressed);
 
         // Force the selection of "save and exit" and trigger it.
-        if(pressed & BUTTON_START) 
+        if(pressed & BUTTON_START)
         {
             startPressed = true;
             // This moves the cursor to the last entry

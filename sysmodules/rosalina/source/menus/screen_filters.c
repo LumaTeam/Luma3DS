@@ -198,7 +198,7 @@ void ScreenFiltersMenu_LoadConfig(void)
 
     svcGetSystemInfo(&out, 0x10000, 0x104);
     topScreenFilter.gamma = (float)(out / FLOAT_CONV_MULT);
-    if (topScreenFilter.gamma < 0.0f || topScreenFilter.gamma > 1411.0f)
+    if (topScreenFilter.gamma < 0.0f || topScreenFilter.gamma > 8.0f)
         topScreenFilter.gamma = 1.0f;
 
     svcGetSystemInfo(&out, 0x10000, 0x105);
@@ -221,7 +221,7 @@ void ScreenFiltersMenu_LoadConfig(void)
 
     svcGetSystemInfo(&out, 0x10000, 0x109);
     bottomScreenFilter.gamma = (float)(out / FLOAT_CONV_MULT);
-    if (bottomScreenFilter.gamma < 0.0f || bottomScreenFilter.gamma > 1411.0f)
+    if (bottomScreenFilter.gamma < 0.0f || bottomScreenFilter.gamma > 8.0f)
         bottomScreenFilter.gamma = 1.0f;
 
     svcGetSystemInfo(&out, 0x10000, 0x10A);
@@ -253,7 +253,7 @@ DEF_CCT_SETTER(1200, Ember)
 static void ScreenFiltersMenu_ClampFilter(ScreenFilter *filter)
 {
     filter->cct = CLAMP(filter->cct, 1000, 25100);
-    filter->gamma = CLAMP(filter->gamma, 0.0f, 1411.0f); // ln(255) / ln(254/255): (254/255)^1411 <= 1/255
+    filter->gamma = CLAMP(filter->gamma, 0.0f, 8.0f);
     filter->contrast = CLAMP(filter->contrast, 0.0f, 255.0f);
     filter->brightness = CLAMP(filter->brightness, -1.0f, 1.0f);
 }
