@@ -170,7 +170,7 @@ bool     TryToLoadPlugin(Handle process)
     // Try to open plugin file
     if (ctx->useUserLoadParameters && (ctx->userLoadParameters.lowTitleId == 0 || (u32)tid == ctx->userLoadParameters.lowTitleId))
     {
-        ctx->useUserLoadParameters = false;
+        if (!ctx->userLoadParameters.persistent) ctx->useUserLoadParameters = false;
         ctx->pluginMemoryStrategy = ctx->userLoadParameters.pluginMemoryStrategy;
         if (OpenFile(&plugin, ctx->userLoadParameters.path))
             return false;

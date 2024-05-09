@@ -11,6 +11,7 @@ typedef struct
 {
     bool    noFlash;
     u8      pluginMemoryStrategy;
+    u8      persistent;
     u32     lowTitleId;
     char    path[256];
     u32     config[32];
