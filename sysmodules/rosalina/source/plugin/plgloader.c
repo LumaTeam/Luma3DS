@@ -14,6 +14,8 @@
 
 #define THREADVARS_MAGIC  0x21545624 // !TV$
 
+#define PERS_USER_FILE_MAGIC 0x53524550 // PERS
+
 static const char *g_title = "Plugin loader";
 PluginLoaderContext PluginLoaderCtx;
 extern u32 g_blockMenuOpen;
@@ -43,6 +45,24 @@ void        PluginLoader__Init(void)
     assertSuccess(svcCreateEvent(&ctx->kernelEvent, RESET_ONESHOT));
 
     svcKernelSetState(0x10007, ctx->kernelEvent, 0, 0);
+
+    IFile file;
+    if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/plugins/user_param.bin"), FS_OPEN_READ)))
+    {
+        PluginLoadParameters *params = &ctx->userLoadParameters;
+        u64 temp_read;
+        u32 magic = 0;
+        if (R_SUCCEEDED(IFile_Read(&file, &temp_read, &magic, sizeof(magic))) && temp_read == sizeof(magic) && magic == PERS_USER_FILE_MAGIC
+            && R_SUCCEEDED(IFile_Read(&file, &temp_read, params, sizeof(PluginLoadParameters))) && temp_read == sizeof(PluginLoadParameters))
+        {
+            ctx->useUserLoadParameters = true;
+        }
+        else
+        {
+            memset(params, 0, sizeof(PluginLoadParameters));
+        }
+        IFile_Close(&file);
+    }
 }
 
 void    PluginLoader__Error(const char *message, Result res)
@@ -218,10 +238,24 @@ void     PluginLoader__HandleCommands(void *_ctx)
             ctx->useUserLoadParameters = true;
             params->noFlash = cmdbuf[1] & 0xFF;
             params->pluginMemoryStrategy = (cmdbuf[1] >> 8) & 0xFF;
+            params->persistent = (cmdbuf[1] >> 16) & 0x1;
             params->lowTitleId = cmdbuf[2];
             
             strncpy(params->path, (const char *)cmdbuf[4], 255);
             memcpy(params->config, (void *)cmdbuf[6], 32 * sizeof(u32));
+
+            if (params->persistent)
+            {
+                IFile file;
+                if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/plugins/user_param.bin"), 
+                                           FS_OPEN_CREATE | FS_OPEN_READ | FS_OPEN_WRITE))) {
+                    u64 tempWritten;
+                    u32 magic = PERS_USER_FILE_MAGIC;
+                    IFile_Write(&file, &tempWritten, &magic, sizeof(magic), 0);
+                    IFile_Write(&file, &tempWritten, params, sizeof(PluginLoadParameters), 0);
+                    IFile_Close(&file);
+                }
+            }
 
             if (params->pluginMemoryStrategy == PLG_STRATEGY_MODE3)
                 cmdbuf[1] = PluginLoader__SetMode3AppMode(true);
@@ -412,6 +446,28 @@ void     PluginLoader__HandleCommands(void *_ctx)
             ctx->isExeLoadFunctionset = true;
 
             svcInvalidateEntireInstructionCache(); // Could use the range one
+
+            cmdbuf[1] = 0;
+            break;
+        }
+
+        case 14: // Clear user load parameters
+        {
+            if (cmdbuf[0] != IPC_MakeHeader(14, 0, 0))
+            {
+                error(cmdbuf, 0xD9001830);
+                break;
+            }
+
+            ctx->useUserLoadParameters = false;
+            memset(&ctx->userLoadParameters, 0, sizeof(PluginLoadParameters));
+
+            FS_Archive sd;
+            if(R_SUCCEEDED(FSUSER_OpenArchive(&sd, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
+            {
+                FSUSER_DeleteFile(sd, fsMakePath(PATH_ASCII, "/luma/plugins/user_param.bin"));
+                FSUSER_CloseArchive(sd);
+            }
 
             cmdbuf[1] = 0;
             break;
