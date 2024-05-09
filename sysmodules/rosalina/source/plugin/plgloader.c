@@ -10,7 +10,7 @@
 #include "sleep.h"
 #include "task_runner.h"
 
-#define PLGLDR_VERSION (SYSTEM_VERSION(1, 0, 1))
+#define PLGLDR_VERSION (SYSTEM_VERSION(1, 0, 2))
 
 #define THREADVARS_MAGIC  0x21545624 // !TV$
 
