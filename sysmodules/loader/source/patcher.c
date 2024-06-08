@@ -502,7 +502,7 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 
                                       "HK", "MO", "--", "--", "--", "--", "--", "--", "ID", "SG", "TH", "PH",
                                       "MY", "--", "--", "--", "CN", "--", "--", "--", "--", "--", "--", "--",
                                       "AE", "IN", "EG", "OM", "QA", "KW", "SA", "SY", "BH", "JO", "--", "--",
-                                      "--", "--", "--", "--", "SM", "VA"};
+                                      "--", "--", "--", "--", "SM", "VA", "BM"};
 
     u32 i;
     for(i = 0; i < sizeof(regions) / sizeof(char *); i++)
@@ -599,7 +599,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     {
         updateRomFsMount = "pat1"; // Isolated to prevent false-positives
     }
-    
+
     else
     {
         u32 updateRomFsIndex;
@@ -821,6 +821,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     else if((progId & ~0xF0000001ULL) == 0x0004013000001702LL) //CFG, SAFE_FIRM CFG
     {
+#if 0
         static const u8 pattern[] = {
             0x06, 0x46, 0x10, 0x48
         },
@@ -849,6 +850,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                    sizeof(patch) - 2, 2
                ) != 2) goto error;
         }
+#endif
     }
 
     else if(progId == 0x0004013000003702LL && progVer > 0) //RO
