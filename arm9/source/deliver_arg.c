@@ -29,6 +29,7 @@
 #include "memory.h"
 #include "config.h"
 #include "fs.h"
+#include "i2c.h"
 
 u8 *loadDeliverArg(void)
 {
@@ -150,6 +151,26 @@ static bool configureHomebrewAutobootCtr(u8 *deliverArg)
 
     // Tell NS to run the title, and that it's not a title jump from legacy mode
     *(u32 *)(deliverArg + 0x460) = (0 << 1) | (1 << 0);
+
+    // Whenever power button is held long enough ("force shutdown"), mcu sysmodule
+    // stores a flag in free reg 0. It will clear it next boot.
+
+    // During that next boot, if that flag was set and if CFG_BOOTENV.bit0 is set
+    // (warmboot/firm chainload, i.e. not coldbooting), then main() will simulate
+    // a "power button held" interrupt (after upgrading mcu fw if necessary -- it
+    // will reboot console after if it has upgraded mcu fw, I guess that's one of
+    // the reasons the flag is there). This obviously cause other processes to initiate
+    // a shutdown, and it also sets that flag again.
+
+    // In the case of autoboot, ns will panic when this happens. This caused
+    // hb autoboot to keep failing over and over again.
+
+    // Select free reg 0, read it, select it again, write it (clearing force shutdown flag)
+    I2C_writeReg(I2C_DEV_MCU, 0x60, 0);
+    u8 flags = I2C_readReg(I2C_DEV_MCU, 0x61);
+    flags &= ~4;
+    I2C_writeReg(I2C_DEV_MCU, 0x60, 0);
+    I2C_writeReg(I2C_DEV_MCU, 0x61, flags);
 
     CFG_BOOTENV = 1;
 
