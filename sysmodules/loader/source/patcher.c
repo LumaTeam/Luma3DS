@@ -821,7 +821,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
     else if((progId & ~0xF0000001ULL) == 0x0004013000001702LL) //CFG, SAFE_FIRM CFG
     {
-#if 0
         static const u8 pattern[] = {
             0x06, 0x46, 0x10, 0x48
         },
@@ -850,7 +849,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                    sizeof(patch) - 2, 2
                ) != 2) goto error;
         }
-#endif
     }
 
     else if(progId == 0x0004013000003702LL && progVer > 0) //RO
