@@ -645,6 +645,11 @@ u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[3].offset;
 
+    u8 *section1 = (u8 *)firm + firm->section[1].offset;
+    u32 section1Size = firm->section[1].size;
+    u8 *section2 = (u8 *)firm + firm->section[2].offset;
+    u32 section2Size = firm->section[2].size;
+
     //On N3DS, decrypt Arm9Bin and patch Arm9 entrypoint to skip kernel9loader
     if(ISN3DS)
     {
@@ -662,6 +667,7 @@ u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
 
     ret += patchLgySignatureChecks(process9Offset, process9Size);
     if(CONFIG(SHOWGBABOOT)) ret += patchAgbBootSplash(process9Offset, process9Size);
+    ret += patchLgyK11(section1, section1Size, section2, section2Size);
 
     //Apply UNITINFO patch
     if(doUnitinfoPatch) ret += patchUnitInfoValueSet(arm9Section, kernel9Size);
