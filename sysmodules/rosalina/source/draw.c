@@ -203,7 +203,7 @@ u32 Draw_SetupFramebuffer(void)
     GPU_FB_BOTTOM_ADDR_1 = GPU_FB_BOTTOM_ADDR_2 = FB_BOTTOM_VRAM_PA;
     GPU_FB_BOTTOM_FMT = format;
     GPU_FB_BOTTOM_STRIDE = 240 * 2;
-    
+
     gpuSavedFillColor = LCD_BOT_FILLCOLOR;
     LCD_BOT_FILLCOLOR = 0;
 
@@ -214,7 +214,7 @@ void Draw_RestoreFramebuffer(void)
 {
     memcpy(FB_BOTTOM_VRAM_ADDR, framebufferCache, FB_BOTTOM_SIZE);
     Draw_FlushFramebuffer();
-    
+
     LCD_BOT_FILLCOLOR = gpuSavedFillColor;
     GPU_FB_BOTTOM_ADDR_1 = gpuSavedFramebufferAddr1;
     GPU_FB_BOTTOM_ADDR_2 = gpuSavedFramebufferAddr2;
@@ -350,6 +350,7 @@ typedef struct FrameBufferConvertArgs {
     u32 width;
     u8 startingLine;
     u8 numLines;
+    u8 scaleFactorY;
     bool top;
     bool left;
 } FrameBufferConvertArgs;
@@ -367,16 +368,19 @@ static void Draw_ConvertFrameBufferLinesKernel(const FrameBufferConvertArgs *arg
 
     for (u32 y = args->startingLine; y < args->startingLine + args->numLines; y++)
     {
-        for(u32 x = 0; x < width; x++)
+        for (u8 i = 0; i < args->scaleFactorY; i++)
         {
-            __builtin_prefetch(addr + x * stride + y * formatSizes[fmt], 0, 3);
-            Draw_ConvertPixelToBGR8(args->buf + (x + width * y) * 3 , addr + x * stride + y * formatSizes[fmt], fmt);
+            for(u32 x = 0; x < width; x++)
+            {
+                __builtin_prefetch(addr + x * stride + y * formatSizes[fmt], 0, 3);
+                Draw_ConvertPixelToBGR8(args->buf + (x + width * (args->scaleFactorY * y + i)) * 3 , addr + x * stride + y * formatSizes[fmt], fmt);
+            }
         }
     }
 }
 
-void Draw_ConvertFrameBufferLines(u8 *buf, u32 width, u32 startingLine, u32 numLines, bool top, bool left)
+void Draw_ConvertFrameBufferLines(u8 *buf, u32 width, u32 startingLine, u32 numLines, u32 scaleFactorY, bool top, bool left)
 {
-    FrameBufferConvertArgs args = { buf, width, (u8)startingLine, (u8)numLines, top, left };
+    FrameBufferConvertArgs args = { buf, width, (u8)startingLine, (u8)numLines, (u8)scaleFactorY, top, left };
     svcCustomBackdoor(Draw_ConvertFrameBufferLinesKernel, &args);
 }

@@ -362,7 +362,12 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, boo
     u64 total;
     Result res = 0;
     u32 lineSize = 3 * width;
-    u32 remaining = lineSize * 240;
+
+    // When dealing with 800px mode (800x240 with half-width pixels), duplicate each line
+    // to restore aspect ratio and obtain faithful 800x480 screenshots
+    u32 scaleFactorY = width > 400 ? 2 : 1;
+    u32 numLinesScaled = 240 * scaleFactorY;
+    u32 remaining = lineSize * numLinesScaled;
 
     TRY(Draw_AllocateFramebufferCacheForScreenshot(remaining));
 
@@ -370,7 +375,7 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, boo
     u8 *framebufferCacheEnd = framebufferCache + Draw_GetFramebufferCacheSize();
 
     u8 *buf = framebufferCache;
-    Draw_CreateBitmapHeader(framebufferCache, width, 240);
+    Draw_CreateBitmapHeader(framebufferCache, width, numLinesScaled);
     buf += 54;
 
     u32 y = 0;
@@ -380,16 +385,16 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, boo
         s64 t0 = svcGetSystemTick();
         u32 available = (u32)(framebufferCacheEnd - buf);
         u32 size = available < remaining ? available : remaining;
-        u32 nlines = size / lineSize;
-        Draw_ConvertFrameBufferLines(buf, width, y, nlines, top, left);
+        u32 nlines = size / (lineSize * scaleFactorY);
+        Draw_ConvertFrameBufferLines(buf, width, y, nlines, scaleFactorY, top, left);
 
         s64 t1 = svcGetSystemTick();
         timeSpentConvertingScreenshot += t1 - t0;
-        TRY(IFile_Write(file, &total, framebufferCache, (y == 0 ? 54 : 0) + lineSize * nlines, 0)); // don't forget to write the header
+        TRY(IFile_Write(file, &total, framebufferCache, (y == 0 ? 54 : 0) + lineSize * nlines * scaleFactorY, 0)); // don't forget to write the header
         timeSpentWritingScreenshot += svcGetSystemTick() - t1;
 
         y += nlines;
-        remaining -= lineSize * nlines;
+        remaining -= lineSize * nlines * scaleFactorY;
         buf = framebufferCache;
     }
     end:
