@@ -225,3 +225,61 @@ _rebootPatchEnd:
 .global rebootPatchSize
 rebootPatchSize:
     .word _rebootPatchEnd - rebootPatch
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+.section .large_patch.readFileSHA256Vtab11, "aw", %progbits
+.arm
+.align 4
+
+.global readFileSHA256Vtab11Patch
+readFileSHA256Vtab11Patch: //Result Write(this, u32 off, u8 *data, u32 size)
+    push {r0-r4, lr}
+
+    @ Allocate memory for DataChainProcessor struct
+    sub sp, #0x14
+    push {sp}
+
+    @ DataChainProcessor::DataChainProcessor(&proc);
+    ldr r0, [sp]
+    ldr r4, readFileSHA256Vtab11PatchCtorPtr
+    blx r4
+
+    @ DataChainProcessor::Init(&proc, data, size);
+    ldr r0, [sp]
+    ldr r1, [sp, #0x20]
+    ldr r2, [sp, #0x24]
+    ldr r4, readFileSHA256Vtab11PatchInitPtr
+    blx r4
+
+    @ DataChainProcessor::Process(&proc, this, off, 0, size);
+    ldr r0, [sp]
+
+    ldr r1, [sp, #0x24]
+    str r1, [sp] @ size argument
+
+    ldr r1, [sp, #0x18]
+    ldr r2, [sp, #0x1c]
+    mov r3, #0
+    ldr r4, readFileSHA256Vtab11PatchProcessPtr
+    blx r4
+
+    add sp, #0x18
+    pop {r0-r4, pc}
+
+.global readFileSHA256Vtab11PatchCtorPtr 
+.global readFileSHA256Vtab11PatchInitPtr
+.global readFileSHA256Vtab11PatchProcessPtr
+
+readFileSHA256Vtab11PatchCtorPtr:       .word   0 @ Pointer to DataChainProcessor::DataChainProcessor
+readFileSHA256Vtab11PatchInitPtr:       .word   0 @ Pointer to DataChainProcessor::Init
+readFileSHA256Vtab11PatchProcessPtr:    .word   0 @ Pointer to DataChainProcessor::ProcessBytes
+
+.pool
+.balign 4
+
+_readFileSHA256Vtab11PatchEnd:
+
+.global readFileSHA256Vtab11PatchSize
+readFileSHA256Vtab11PatchSize:
+    .word _readFileSHA256Vtab11PatchEnd - readFileSHA256Vtab11Patch
