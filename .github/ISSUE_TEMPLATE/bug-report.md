@@ -25,7 +25,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 
 **SysNAND version (+emu/redNAND version if applicable):**
 
-[e.g. 11.13.0-45U SysNAND, 11.13.0-45E EmuNAND]
+[e.g. 11.17.0-50U SysNAND, 11.17.0-50E EmuNAND]
 <!--You can check which version you're on in System Settings. It will be on the bottom right of the top screen.-->
 
 **Entrypoint (How/what you're using to boot Luma3DS):**
@@ -34,7 +34,7 @@ about: Use this to report bugs you encounter with Luma3DS. Make sure you upload 
 
 **Luma3DS version:**
 
-[e.g. v10.2 stable or if using non-releases specify the commit like this https://github.com/LumaTeam/Luma3DS/commit/0543c208fd154e6326ea5da8cbf66ffcbdef010c]
+[e.g. v13.1.2 stable or if using non-releases specify the commit like this https://github.com/LumaTeam/Luma3DS/commit/988ec17ebfce513fc4589f7b12e0d6e3894ae542]
 
 **Luma3DS configuration/options:**
 
@@ -52,12 +52,11 @@ PIN lock: ( )
 New 3DS CPU: ( )
 <!--This option is only available on New 3DS (XL)/New 2DS XL.-->
 
+Hbmenu autoboot: ( )
+
 --
 
 Autoboot EmuNAND: ( )
-<!--This option is only available if there's at least one EmuNAND.-->
-
-Use EmuNAND FIRM if booting with R: ( )
 <!--This option is only available if there's at least one EmuNAND.-->
 
 Enable loading external FIRMs and modules: ( )
@@ -66,16 +65,12 @@ Enable loading external FIRMs and modules: ( )
 
 Enable game patching: ( )
 
+Redirect app. syscore threads to core2: ( )
+<!--This option is only available on New 3DS (XL)/New 2DS XL.-->
+
 Show NAND or user string in System Settings: ( )
 
 Show GBA boot screen in patched AGB_FIRM: ( )
-
-Set developer UNITINFO: ( )
-
-Disable Arm11 exception handlers: ( )
-
-Enable Rosalina on SAFE_FIRM: ( )
-<!--This option is only available on New 3DS (XL)/New 2DS XL.-->
 
 --
 
@@ -94,7 +89,8 @@ Enable Rosalina on SAFE_FIRM: ( )
 2.
 
 
-**Dump file:**
-<!--If the issue leads to a crash you must uncheck the "Disable Arm11 exception handlers" option.
+**Dump file (if applicable):**
+<!--If the issue leads to a crash you must ensure the "Disable Arm11 exception handlers"
+-- option is not disabled in config.ini.
 -- The error message will tell you where the dump is.
 -- Zip the dmp file and drag & drop it below.-->
