@@ -43,7 +43,7 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 s32 toCopy = (s32)sizeof(cfwInfo.launchedPath) - offset;
                 if (toCopy > 8) toCopy = 8;
                 memcpy(out, (u8*)cfwInfo.launchedPath + offset, (toCopy > 0) ? toCopy : 0);
-            } 
+            }
             else switch(param)
             {
                 // Please do not use these, except 0, 1, and 0x200
@@ -119,6 +119,12 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     break;
                 case 0x10C:
                     *out = (s64)cfwInfo.bottomScreenFilter.invert;
+                    break;
+                case 0x10D:
+                    *out = (s64)cfwInfo.topScreenFilter.colorCurveCorrection;
+                    break;
+                case 0x10E:
+                    *out = (s64)cfwInfo.bottomScreenFilter.colorCurveCorrection;
                     break;
                 case 0x180:
                     *out = cfwInfo.pluginLoaderFlags;

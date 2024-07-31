@@ -501,6 +501,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
             cfg->topScreenFilter.invert = opt;
             return 1;
+        } else if (strcmp(name, "screen_filters_top_color_curve_adj") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 0, 2));
+            cfg->topScreenFilter.colorCurveCorrection = (u8)opt;
+            return 1;
         } else if (strcmp(name, "screen_filters_bot_cct") == 0) {
             s64 opt;
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 1000, 25100));
@@ -525,6 +530,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             bool opt;
             CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
             cfg->bottomScreenFilter.invert = opt;
+            return 1;
+        } else if (strcmp(name, "screen_filters_bot_color_curve_adj") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, 0, 2));
+            cfg->bottomScreenFilter.colorCurveCorrection = (u8)opt;
             return 1;
         } else {
             CHECK_PARSE_OPTION(-1);
@@ -666,6 +676,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         (int)cfg->ntpTzOffetMinutes,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
+        (int)cfg->topScreenFilter.colorCurveCorrection, (int)cfg->bottomScreenFilter.colorCurveCorrection,
         topScreenFilterGammaStr, bottomScreenFilterGammaStr,
         topScreenFilterContrastStr, bottomScreenFilterContrastStr,
         topScreenFilterBrightnessStr, bottomScreenFilterBrightnessStr,

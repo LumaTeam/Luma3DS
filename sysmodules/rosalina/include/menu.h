@@ -62,7 +62,7 @@ typedef struct MenuItem {
 typedef struct Menu {
     const char *title;
 
-    MenuItem items[16];
+    MenuItem items[24];
 } Menu;
 
 extern u32 menuCombo;

@@ -180,6 +180,7 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         (int)cfg->ntpTzOffetMinutes,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
+        (int)cfg->topScreenFilter.colorCurveCorrection, (int)cfg->bottomScreenFilter.colorCurveCorrection,
         topScreenFilterGammaStr, bottomScreenFilterGammaStr,
         topScreenFilterContrastStr, bottomScreenFilterContrastStr,
         topScreenFilterBrightnessStr, bottomScreenFilterBrightnessStr,

@@ -131,6 +131,7 @@ extern void* (*kAlloc)(FcramDescriptor *fcramDesc, u32 nbPages, u32 alignment, u
 typedef struct ScreenFiltersCfgData {
     u16 cct;
     bool invert;
+    u8 colorCurveCorrection;
     s64 gammaEnc;
     s64 contrastEnc;
     s64 brightnessEnc;
