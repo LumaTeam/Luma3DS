@@ -68,6 +68,8 @@ typedef struct Menu {
 extern u32 menuCombo;
 extern bool isHidInitialized;
 extern u32 mcuFwVersion;
+extern u8 mcuInfoTable[9];
+extern bool mcuInfoTableRead;
 
 // From main.c
 extern bool isN3DS;

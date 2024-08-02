@@ -43,6 +43,8 @@
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 u32 mcuFwVersion = 0;
+u8 mcuInfoTable[9] = {0};
+bool mcuInfoTableRead = false;
 
 // libctru redefinition:
 
@@ -225,6 +227,9 @@ static Result menuUpdateMcuInfo(void)
         // If it has failed, mcuFwVersion will be set to 0 again
         mcuFwVersion = SYSTEM_VERSION(major - 0x10, minor, 0);
     }
+
+    if (!mcuInfoTableRead)
+        mcuInfoTableRead = R_SUCCEEDED(MCUHWC_ReadRegister(0x7F, mcuInfoTable, sizeof(mcuInfoTable)));
 
     svcCloseHandle(*mcuHwcHandlePtr);
     return res;
