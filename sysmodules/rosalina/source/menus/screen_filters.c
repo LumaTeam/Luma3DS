@@ -101,7 +101,7 @@ static void ScreenFilterMenu_WritePolynomialColorLut(bool top, u8 curveCorrectio
     for (int i = 0; i <= 255; i++) {
         Pixel px;
         int inLevel = invert ? 255 - i : i;
-        const u8 (*tbl)[3] = curveCorrection == 2 ? ctrToSrgbTableTop : ctrToSrgbTableBottom;
+        const u8 (*tbl)[3] = curveCorrection == 2 ? ctrToSrgbTableBottom : ctrToSrgbTableTop;
 
         u8 inLevelR = curveCorrection > 0 ? tbl[inLevel][0] : inLevel;
         u8 inLevelG = curveCorrection > 0 ? tbl[inLevel][1] : inLevel;
