@@ -70,6 +70,9 @@ extern bool isHidInitialized;
 extern u32 mcuFwVersion;
 extern u8 mcuInfoTable[9];
 extern bool mcuInfoTableRead;
+extern const char *topScreenType;
+extern const char *bottomScreenType;
+extern bool areScreenTypesInitialized;
 
 // From main.c
 extern bool isN3DS;

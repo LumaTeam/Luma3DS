@@ -59,6 +59,7 @@ Menu rosalinaMenu = {
         { "Save settings", METHOD, .method = &RosalinaMenu_SaveSettings },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
+        { "System info", METHOD, .method = &RosalinaMenu_ShowSystemInfo },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
         { "Debug info", METHOD, .method = &RosalinaMenu_ShowDebugInfo, .visibility = &rosalinaMenuShouldShowDebugInfo },
         {},
@@ -96,6 +97,37 @@ void RosalinaMenu_SaveSettings(void)
     while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
+void RosalinaMenu_ShowSystemInfo(void)
+{
+    u32 kver = osGetKernelVersion();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- System info");
+
+        u32 posY = 30;
+
+        if (areScreenTypesInitialized)
+        {
+            posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Top screen type:    %s\n", topScreenType);
+            posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Bottom screen type: %s\n\n", bottomScreenType);
+        }
+
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Kernel version:     %lu.%lu-%lu\n\n", GET_VERSION_MAJOR(kver), GET_VERSION_MINOR(kver), GET_VERSION_REVISION(kver));
+        if (mcuFwVersion != 0 && mcuInfoTableRead)
+        {
+            posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "MCU FW version:     %lu.%lu\n", GET_VERSION_MAJOR(mcuFwVersion), GET_VERSION_MINOR(mcuFwVersion));
+            posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "PMIC vendor:        %hhu\n", mcuInfoTable[1]);
+            posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Battery vendor:     %hhu\n\n", mcuInfoTable[2]);
+        }
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
+}
+
 void RosalinaMenu_ShowDebugInfo(void)
 {
     Draw_Lock();
@@ -111,7 +143,6 @@ void RosalinaMenu_ShowDebugInfo(void)
     u32 kextPa = (u32)((u64)kextAddrSize >> 32);
     u32 kextSize = (u32)kextAddrSize;
 
-    u32 kernelVer = osGetKernelVersion();
     FS_SdMmcSpeedInfo speedInfo;
 
     do
@@ -119,24 +150,10 @@ void RosalinaMenu_ShowDebugInfo(void)
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Debug info");
 
-        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, memoryMap);
+        u32 posY = 30;
+
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, memoryMap);
         posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Kernel ext PA: %08lx - %08lx\n\n", kextPa, kextPa + kextSize);
-        posY = Draw_DrawFormattedString(
-            10, posY, COLOR_WHITE, "Kernel version: %lu.%lu-%lu\n",
-            GET_VERSION_MAJOR(kernelVer), GET_VERSION_MINOR(kernelVer), GET_VERSION_REVISION(kernelVer)
-        );
-        if (mcuFwVersion != 0 && mcuInfoTableRead)
-        {
-            posY = Draw_DrawFormattedString(
-                10, posY, COLOR_WHITE, "MCU FW version: %lu.%lu (PMIC vendor: %hhu)\n",
-                GET_VERSION_MAJOR(mcuFwVersion), GET_VERSION_MINOR(mcuFwVersion),
-                mcuInfoTable[1]
-            );
-            posY = Draw_DrawFormattedString(
-                10, posY, COLOR_WHITE, "Battery: vendor: %hhu gauge IC ver.: %hhu.%hhu RCOMP: %hhu\n",
-                mcuInfoTable[2], mcuInfoTable[3], mcuInfoTable[4], mcuInfoTable[4]
-            );
-        }
         if (R_SUCCEEDED(FSUSER_GetSdmcSpeedInfo(&speedInfo)))
         {
             u32 clkDiv = 1 << (1 + (speedInfo.sdClkCtrl & 0xFF));
