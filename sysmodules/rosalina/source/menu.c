@@ -263,7 +263,7 @@ static void menuReadScreenTypes(void)
     }
     else
     {
-        srvSetBlockingPolicy(true);
+        srvSetBlockingPolicy(false);
 
         Result res = gspLcdInit();
         if (R_SUCCEEDED(res))
@@ -279,7 +279,7 @@ static void menuReadScreenTypes(void)
             gspLcdExit();
         }
 
-        srvSetBlockingPolicy(false);
+        srvSetBlockingPolicy(true);
     }
 }
 
