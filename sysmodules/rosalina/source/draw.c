@@ -140,7 +140,7 @@ Result Draw_AllocateFramebufferCache(u32 size)
     if (framebufferCache != NULL)
         __builtin_trap();
 
-    Result res = svcControlMemoryEx(&tmp, addr, 0, size, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READWRITE, true);
+    Result res = svcControlMemoryEx(&tmp, addr, 0, size, MEMOP_ALLOC | MEMOP_REGION_SYSTEM, MEMPERM_READWRITE, true);
     if (R_FAILED(res))
     {
         framebufferCache = NULL;

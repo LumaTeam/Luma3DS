@@ -110,7 +110,7 @@ Result miniSocInit(void)
     ret = srvGetServiceHandle(&miniSocHandle, "soc:U");
     if(ret != 0) goto cleanup;
 
-    ret = svcControlMemoryEx(&tmp, socContextAddr, 0, socContextSize, MEMOP_ALLOC, MEMREGION_SYSTEM | MEMPERM_READ | MEMPERM_WRITE, true);
+    ret = svcControlMemoryEx(&tmp, socContextAddr, 0, socContextSize, MEMOP_ALLOC | MEMOP_REGION_SYSTEM, MEMPERM_READ | MEMPERM_WRITE, true);
     if(ret != 0) goto cleanup;
 
     socContextAddr = tmp;
