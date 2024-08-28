@@ -321,6 +321,12 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
     int utcOffset = dt / 60;
     int utcOffsetMinute = dt%60;
     int absOffset;
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
     do
     {
         Draw_Lock();
@@ -331,14 +337,14 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
         posY = Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Current UTC offset:  %c%02d%02d", utcOffset < 12 ? '-' : '+', absOffset, utcOffsetMinute);
         posY = Draw_DrawFormattedString(10, posY + SPACING_Y, COLOR_WHITE, "Use DPAD Left/Right to change hour offset.\nUse DPAD Up/Down to change minute offset.\nPress A when done.") + SPACING_Y;
 
-        input = waitInput();
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
 
+        input = waitInput();
         if(input & KEY_LEFT) utcOffset = (27 + utcOffset - 1) % 27; // ensure utcOffset >= 0
         if(input & KEY_RIGHT) utcOffset = (utcOffset + 1) % 27;
         if(input & KEY_UP) utcOffsetMinute = (utcOffsetMinute + 1) % 60;
         if(input & KEY_DOWN) utcOffsetMinute = (60 + utcOffsetMinute - 1) % 60;
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
     }
     while(!(input & (KEY_A | KEY_B)) && !menuShouldExit);
 
@@ -361,6 +367,11 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
         }
     }
 
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
     do
     {
         Draw_Lock();
@@ -376,13 +387,10 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
         else
             Draw_DrawFormattedString(10, posY + 2 * SPACING_Y, COLOR_WHITE, "Time/date updated successfully.") + SPACING_Y;
 
-        input = waitInput();
-
         Draw_FlushFramebuffer();
         Draw_Unlock();
     }
-    while(!(input & KEY_B) && !menuShouldExit);
-
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
 void MiscellaneousMenu_NullifyUserTimeOffset(void)
