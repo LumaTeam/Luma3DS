@@ -101,7 +101,7 @@ static void ScreenFilterMenu_WritePolynomialColorLut(bool top, u8 curveCorrectio
     for (int i = 0; i <= 255; i++) {
         Pixel px;
         int inLevel = invert ? 255 - i : i;
-        const u8 (*tbl)[3] = curveCorrection == 2 ? ctrToSrgbTableBottom : ctrToSrgbTableTop;
+        const u8 (*tbl)[3] = ctrToSrgbTableTop;
 
         u8 inLevelR = curveCorrection > 0 ? tbl[inLevel][0] : inLevel;
         u8 inLevelG = curveCorrection > 0 ? tbl[inLevel][1] : inLevel;
@@ -148,14 +148,14 @@ static void ScreenFiltersMenu_SetCct(u16 cct)
 
 static void ScreenFiltersMenu_UpdateEntries(void)
 {
-    if (topScreenFilter.colorCurveCorrection == 0 || bottomScreenFilter.colorCurveCorrection == 0)
+    if (topScreenFilter.colorCurveCorrection == 0)
     {
-        screenFiltersMenu.items[10].title = "Adjust both screens color curve to sRGB";
-        screenFiltersMenu.items[10].method = &ScreenFiltersMenu_SetSrgbColorCurves;
+        screenFiltersMenu.items[10].title = "[IPS recommended] Enhance top screen colors";
+        screenFiltersMenu.items[10].method = &ScreenFiltersMenu_SetTopScreenSrgbColorCurve;
     }
     else
     {
-        screenFiltersMenu.items[10].title = "Restore both screens color curve";
+        screenFiltersMenu.items[10].title = "Restore top screen color curve";
         screenFiltersMenu.items[10].method = &ScreenFiltersMenu_RestoreColorCurves;
     }
 }
@@ -183,7 +183,7 @@ Menu screenFiltersMenu = {
         { "[2300K] Warm Incandescent", METHOD, .method = &ScreenFiltersMenu_SetWarmIncandescent },
         { "[1900K] Candle", METHOD, .method = &ScreenFiltersMenu_SetCandle },
         { "[1200K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
-        { "Adjust both screen color curve to sRGB", METHOD, .method = &ScreenFiltersMenu_SetSrgbColorCurves },
+        { "[IPS recommended] Enhance top screen colors", METHOD, .method = &ScreenFiltersMenu_SetTopScreenSrgbColorCurve },
         { "Advanced configuration...", METHOD, .method = &ScreenFiltersMenu_AdvancedConfiguration },
         {},
     }
@@ -297,16 +297,16 @@ DEF_CCT_SETTER(2300, WarmIncandescent)
 DEF_CCT_SETTER(1900, Candle)
 DEF_CCT_SETTER(1200, Ember)
 
-void ScreenFiltersMenu_SetSrgbColorCurves(void)
+void ScreenFiltersMenu_SetTopScreenSrgbColorCurve(void)
 {
     ScreenFiltersMenu_SetColorCurveCorrection(true, 1);
-    ScreenFiltersMenu_SetColorCurveCorrection(false, 2);
+    // Bottom screen color curve not figured out, ignore
 }
 
 void ScreenFiltersMenu_RestoreColorCurves(void)
 {
     ScreenFiltersMenu_SetColorCurveCorrection(true, 0);
-    ScreenFiltersMenu_SetColorCurveCorrection(false, 0);
+    // Bottom screen color curve not figured out, ignore
 }
 
 static void ScreenFiltersMenu_ClampFilter(ScreenFilter *filter)
