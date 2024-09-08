@@ -32,6 +32,7 @@
 #include "fmt.h"
 #include "utils.h"
 #include "ifile.h"
+#include "luminance.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",
@@ -42,6 +43,9 @@ Menu sysconfigMenu = {
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         { "Toggle power to card slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
+        { "Change screen brightness", METHOD, .method = &SysConfigMenu_ChangeScreenBrightness },
+        { "Power off", METHOD, .method = &SysConfigMenu_PowerOff },
+        { "Reboot", METHOD, .method = &SysConfigMenu_Reboot },
         {},
     }
 };
@@ -487,4 +491,160 @@ void SysConfigMenu_AdjustVolume(void)
                 tempVolumeOverride = 100;
         }
     } while(!menuShouldExit);
+}
+
+void SysConfigMenu_ChangeScreenBrightness(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
+    // Assume top and bottom screen luminances are the same (should be; if not, we'll set them to the same values).
+    u32 luminance = getCurrentLuminance(false);
+    u32 minLum = getMinLuminancePreset();
+    u32 maxLum = getMaxLuminancePreset();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Screen brightness");
+        u32 posY = 30;
+        posY = Draw_DrawFormattedString(
+            10,
+            posY,
+            COLOR_WHITE,
+            "Current luminance: %lu (min. %lu, max. %lu)\n\n",
+            luminance,
+            minLum,
+            maxLum
+        );
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
+
+        posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by the presets.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if (pressed & KEY_A)
+            break;
+
+        if (pressed & KEY_B)
+            return;
+    }
+    while (!menuShouldExit);
+
+    Draw_Lock();
+
+    Draw_RestoreFramebuffer();
+    Draw_FreeFramebufferCache();
+
+    svcKernelSetState(0x10000, 2); // unblock gsp
+    gspLcdInit(); // assume it doesn't fail. If it does, brightness won't change, anyway.
+
+    // gsp:LCD will normalize the brightness between top/bottom screen, handle PWM, etc.
+
+    s32 lum = (s32)luminance;
+
+    do
+    {
+        u32 pressed = waitInputWithTimeout(1000);
+        if (pressed & DIRECTIONAL_KEYS)
+        {
+            if (pressed & KEY_UP)
+                lum += 1;
+            else if (pressed & KEY_DOWN)
+                lum -= 1;
+            else if (pressed & KEY_RIGHT)
+                lum += 10;
+            else if (pressed & KEY_LEFT)
+                lum -= 10;
+
+            lum = lum < (s32)minLum ? (s32)minLum : lum;
+            lum = lum > (s32)maxLum ? (s32)maxLum : lum;
+
+            // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
+            // This is actually SetLuminance:
+            GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP) | BIT(GSP_SCREEN_BOTTOM), lum);
+        }
+
+        if (pressed & KEY_B)
+            break;
+    }
+    while (!menuShouldExit);
+
+    gspLcdExit();
+    svcKernelSetState(0x10000, 2); // block gsp again
+
+    if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
+    {
+        // Shouldn't happen
+        __builtin_trap();
+    }
+    else
+        Draw_SetupFramebuffer();
+
+    Draw_Unlock();
+}
+
+void SysConfigMenu_PowerOff(void) // Soft shutdown.
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Power off");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & KEY_A)
+        {
+            menuLeave();
+            srvPublishToSubscriber(0x203, 0);
+            return;
+        }
+        else if(pressed & KEY_B)
+            return;
+    }
+    while(!menuShouldExit);
+}
+
+void SysConfigMenu_Reboot(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "Reboot");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & KEY_A)
+        {
+            menuLeave();
+            APT_HardwareResetAsync();
+            return;
+        } else if(pressed & KEY_B)
+            return;
+    }
+    while(!menuShouldExit);
 }
