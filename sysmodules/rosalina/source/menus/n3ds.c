@@ -37,11 +37,20 @@ Menu N3DSMenu = {
     {
         { "Enable L2 cache", METHOD, .method = &N3DSMenu_EnableDisableL2Cache },
         { clkRateBuf, METHOD, .method = &N3DSMenu_ChangeClockRate },
+        { "Temporarily disable Super-Stable 3D", METHOD, .method = &N3DSMenu_ToggleSs3d, .visibility = &N3DSMenu_CheckNotN2dsXl },
         {},
     }
 };
 
 static s64 clkRate = 0, higherClkRate = 0, L2CacheEnabled = 0;
+static bool qtmUnavailableAndNotBlacklisted = false; // true on N2DSXL, though we check MCU system model data first
+static QtmStatus lastUpdatedQtmStatus;
+
+bool N3DSMenu_CheckNotN2dsXl(void)
+{
+    // Also check if qtm could be initialized
+    return isQtmInitialized && mcuInfoTableRead && mcuInfoTable[9] != 5 && !qtmUnavailableAndNotBlacklisted;
+}
 
 void N3DSMenu_UpdateStatus(void)
 {
@@ -51,6 +60,28 @@ void N3DSMenu_UpdateStatus(void)
 
     N3DSMenu.items[0].title = L2CacheEnabled ? "Disable L2 cache" : "Enable L2 cache";
     sprintf(clkRateBuf, "Set clock rate to %luMHz", clkRate != 268 ? 268 : (u32)higherClkRate);
+
+    if (N3DSMenu_CheckNotN2dsXl())
+    {
+        // Read status
+        if (R_FAILED(QTMS_GetQtmStatus(&lastUpdatedQtmStatus)))
+            qtmUnavailableAndNotBlacklisted = true; // stop showing QTM options if unavailable but not blacklisted
+
+        if ((lastUpdatedQtmStatus & 0xFF) == QTM_STATUS_UNAVAILABLE)
+            __builtin_trap();
+
+        bool blacklisted = false;
+        if (lastUpdatedQtmStatus == QTM_STATUS_UNAVAILABLE)
+            qtmUnavailableAndNotBlacklisted = R_FAILED(QTMU_IsCurrentAppBlacklisted(&blacklisted)) || !blacklisted;
+
+
+        MenuItem *item = &N3DSMenu.items[2];
+
+        if (lastUpdatedQtmStatus == QTM_STATUS_ENABLED)
+            item->title = "Temporarily disable Super-Stable 3D";
+        else
+            item->title = "Temporarily enable Super-Stable 3D";
+    }
 }
 
 void N3DSMenu_ChangeClockRate(void)
@@ -69,6 +100,19 @@ void N3DSMenu_EnableDisableL2Cache(void)
 
     s64 newBitMask = ((L2CacheEnabled ^ 1) << 1) | (clkRate != 268 ? 1 : 0);
     svcKernelSetState(10, (u32)newBitMask);
+
+    N3DSMenu_UpdateStatus();
+}
+
+void N3DSMenu_ToggleSs3d(void)
+{
+    if (qtmUnavailableAndNotBlacklisted)
+        return;
+
+    if (lastUpdatedQtmStatus == QTM_STATUS_ENABLED)
+        QTMS_SetQtmStatus(QTM_STATUS_SS3D_DISABLED);
+    else // both SS3D disabled and unavailable/blacklisted states
+        QTMS_SetQtmStatus(QTM_STATUS_ENABLED);
 
     N3DSMenu_UpdateStatus();
 }

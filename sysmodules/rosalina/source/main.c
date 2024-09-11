@@ -166,7 +166,7 @@ static void handleShellNotification(u32 notificationId)
 {
     // Quick dirty fix
     Sleep__HandleNotification(notificationId);
-    
+
     if (notificationId == 0x213) {
         // Shell opened
         // Note that this notification is also fired on system init.
@@ -205,6 +205,8 @@ static void handlePreTermNotification(u32 notificationId)
     Draw_Lock();
     if (isHidInitialized)
         hidExit();
+    if (isQtmInitialized)
+        qtmExit();
 
     // Termination request
     menuShouldExit = true;
