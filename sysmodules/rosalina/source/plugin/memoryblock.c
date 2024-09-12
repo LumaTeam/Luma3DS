@@ -61,8 +61,10 @@ Result      MemoryBlock__IsReady(void)
 
         // Then allocate our plugin memory block
         if (R_SUCCEEDED(res))
+        {
             res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
                                         g_memBlockSize, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+        }
 
         // Finally release game reserve block
         if (R_SUCCEEDED(res))
@@ -209,7 +211,7 @@ Result     MemoryBlock__MountInProcess(void)
     Result       res = 0;
 
     // Executable
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, 0x07000000, CUR_PROCESS_HANDLE, (u32)memblock->memblock, header->exeSize))))
+    if (R_FAILED((res = svcMapProcessMemoryEx(target, 0x07000000, CUR_PROCESS_HANDLE, (u32) memblock->memblock, header->exeSize, true))))
     {
         error->message = "Couldn't map exe memory block";
         error->code = res;
@@ -217,7 +219,7 @@ Result     MemoryBlock__MountInProcess(void)
     }
 
     // Heap (to be used by the plugin)
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32)memblock->memblock + header->exeSize, header->heapSize))))
+    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, false))))
     {
         error->message = "Couldn't map heap memory block";
         error->code = res;

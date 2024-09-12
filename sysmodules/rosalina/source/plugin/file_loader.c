@@ -292,7 +292,7 @@ bool     TryToLoadPlugin(Handle process)
 
         extern u32  g_savedGameInstr[2];
 
-        if (R_FAILED((res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, procStart, process, procStart, 0x1000))))
+        if (R_FAILED((res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, procStart, process, procStart, 0x1000, true))))
         {
             ctx->error.message = "Couldn't map process";
             ctx->error.code = res;

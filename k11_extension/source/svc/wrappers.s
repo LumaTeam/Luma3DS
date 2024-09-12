@@ -119,7 +119,8 @@ ControlMemoryUnsafeWrapper:
 .type   MapProcessMemoryExWrapper, %function
 MapProcessMemoryExWrapper:
     push {lr}
+    str r5, [sp, #-4]!
     str r4, [sp, #-4]!
     bl MapProcessMemoryEx
-    add sp, #4
+    add sp, #8
     pop {pc}
