@@ -80,8 +80,9 @@ void svcInvalidateEntireInstructionCache(void);
  * @param srcProcessHandle Handle of the process to map the memory from (source)
  * @param srcAddress Start address of the memory block in the source process
  * @param size Size of the block of the memory to map (truncated to a multiple of 0x1000 bytes)
+ * @param shared Flag for whether to set the memory's state to SHARED instead of PRIVATE
 */
-Result svcMapProcessMemoryEx(Handle dstProcessHandle, u32 destAddress, Handle srcProcessHandle, u32 srcAddress, u32 size);
+Result svcMapProcessMemoryEx(Handle dstProcessHandle, u32 destAddress, Handle srcProcessHandle, u32 srcAddress, u32 size, bool shared);
 
 /**
  * @brief Unmaps a block of process memory.
