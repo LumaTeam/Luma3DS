@@ -219,7 +219,7 @@ Result     MemoryBlock__MountInProcess(void)
     }
 
     // Heap (to be used by the plugin)
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, false))))
+    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, (header->heapSize > 0x500000) ? true : false))))
     {
         error->message = "Couldn't map heap memory block";
         error->code = res;
