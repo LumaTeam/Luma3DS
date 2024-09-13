@@ -124,11 +124,11 @@ MapProcessMemoryExWrapper:
     add sp, #4
     pop {pc}
 
-.global MapPluginMemoryWrapper
-.type   MapPluginMemoryWrapper, %function
-MapPluginMemoryWrapper:
+.global MapProcessMemoryPrivateWrapper
+.type   MapProcessMemoryPrivateWrapper, %function
+MapProcessMemoryPrivateWrapper:
     push {lr}
     str r4, [sp, #-4]!
-    bl MapPluginMemory
+    bl MapProcessMemoryPrivate
     add sp, #4
     pop {pc}

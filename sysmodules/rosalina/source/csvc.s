@@ -95,7 +95,7 @@ SVC_BEGIN svcFreeMemory
     bx   lr
 SVC_END
 
-SVC_BEGIN svcMapPluginMemory
+SVC_BEGIN svcMapProcessMemoryPrivate
     str r4, [sp, #-4]!
     ldr r4, [sp, #4]
     svc 0xA4

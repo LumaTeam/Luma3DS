@@ -223,7 +223,7 @@ Result     MemoryBlock__MountInProcess(void)
     }
     else
     {
-        res = svcMapPluginMemory(target, header->heapVA, CUR_PROCESS_HANDLE, (u32)memblock->memblock + header->exeSize, header->heapSize);
+        res = svcMapProcessMemoryPrivate(target, header->heapVA, CUR_PROCESS_HANDLE, (u32)memblock->memblock + header->exeSize, header->heapSize);
     }
 
     if (R_FAILED(res))

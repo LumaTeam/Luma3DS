@@ -30,5 +30,5 @@
 #include "kernel.h"
 #include "svc.h"
 
-Result MapPluginMemory(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
-Result MapPluginMemoryWrapper(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
+Result MapProcessMemoryPrivate(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
+Result MapProcessMemoryPrivateWrapper(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);

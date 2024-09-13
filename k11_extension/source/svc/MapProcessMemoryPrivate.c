@@ -24,9 +24,9 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "svc/MapPluginMemory.h"
+#include "svc/MapProcessMemoryPrivate.h"
 
-Result  MapPluginMemory(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size)
+Result  MapProcessMemoryPrivate(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size)
 {
     Result          res = 0;
     u32             sizeInPage = size >> 12;
