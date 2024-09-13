@@ -61,10 +61,8 @@ Result      MemoryBlock__IsReady(void)
 
         // Then allocate our plugin memory block
         if (R_SUCCEEDED(res))
-        {
             res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
                                         g_memBlockSize, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
-        }
 
         // Finally release game reserve block
         if (R_SUCCEEDED(res))
