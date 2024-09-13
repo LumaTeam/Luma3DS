@@ -59,13 +59,10 @@ SVC_BEGIN svcInvalidateEntireInstructionCache
 SVC_END
 
 SVC_BEGIN svcMapProcessMemoryEx
-    str r5, [sp, #-4]!
     str r4, [sp, #-4]!
-    ldr r4, [sp, #8]
-    ldr r5, [sp, #12]
+    ldr r4, [sp, #4]
     svc 0xA0
     ldr r4, [sp], #4
-    ldr r5, [sp], #4
     bx lr
 SVC_END
 
@@ -96,6 +93,14 @@ SVC_END
 SVC_BEGIN svcFreeMemory
     svc  0xA3
     bx   lr
+SVC_END
+
+SVC_BEGIN svcMapPluginMemory
+    str r4, [sp, #-4]!
+    ldr r4, [sp, #4]
+    svc 0xA4
+    ldr r4, [sp], #4
+    bx lr
 SVC_END
 
 SVC_BEGIN svcControlService

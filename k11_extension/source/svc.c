@@ -42,6 +42,7 @@
 #include "svc/KernelSetState.h"
 #include "svc/CustomBackdoor.h"
 #include "svc/MapProcessMemoryEx.h"
+#include "svc/MapPluginMemory.h"
 #include "svc/UnmapProcessMemoryEx.h"
 #include "svc/ControlService.h"
 #include "svc/ControlProcess.h"
@@ -98,6 +99,7 @@ void buildAlteredSvcTable(void)
     alteredSvcTable[0xA1] = UnmapProcessMemoryEx;
     alteredSvcTable[0xA2] = ControlMemoryEx;
     alteredSvcTable[0xA3] = ControlMemoryUnsafeWrapper;
+    alteredSvcTable[0xA4] = MapPluginMemoryWrapper;
 
     alteredSvcTable[0xB0] = ControlService;
     alteredSvcTable[0xB1] = CopyHandleWrapper;

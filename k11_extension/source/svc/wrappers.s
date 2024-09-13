@@ -119,8 +119,16 @@ ControlMemoryUnsafeWrapper:
 .type   MapProcessMemoryExWrapper, %function
 MapProcessMemoryExWrapper:
     push {lr}
-    str r5, [sp, #-4]!
     str r4, [sp, #-4]!
     bl MapProcessMemoryEx
-    add sp, #8
+    add sp, #4
+    pop {pc}
+
+.global MapPluginMemoryWrapper
+.type   MapPluginMemoryWrapper, %function
+MapPluginMemoryWrapper:
+    push {lr}
+    str r4, [sp, #-4]!
+    bl MapPluginMemory
+    add sp, #4
     pop {pc}

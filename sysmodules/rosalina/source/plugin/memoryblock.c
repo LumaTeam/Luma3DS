@@ -209,7 +209,7 @@ Result     MemoryBlock__MountInProcess(void)
     Result       res = 0;
 
     // Executable
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, 0x07000000, CUR_PROCESS_HANDLE, (u32) memblock->memblock, header->exeSize, true))))
+    if (R_FAILED((res = svcMapProcessMemoryEx(target, 0x07000000, CUR_PROCESS_HANDLE, (u32) memblock->memblock, header->exeSize))))
     {
         error->message = "Couldn't map exe memory block";
         error->code = res;
@@ -217,7 +217,16 @@ Result     MemoryBlock__MountInProcess(void)
     }
 
     // Heap (to be used by the plugin)
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, (header->heapSize > 0x500000) ? true : false))))
+    if (header->heapSize > 0x500000)
+    {
+        res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize);
+    }
+    else
+    {
+        res = svcMapPluginMemory(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize);
+    }
+
+    if (R_FAILED(res))
     {
         error->message = "Couldn't map heap memory block";
         error->code = res;
@@ -234,7 +243,7 @@ Result     MemoryBlock__UnmountFromProcess(void)
 
     Result  res = 0;
 
-    res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, true);
+    res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize);
 
     res |= svcUnmapProcessMemoryEx(target, 0x07000000, header->exeSize);
     res |= svcUnmapProcessMemoryEx(target, header->heapVA, header->heapSize);
