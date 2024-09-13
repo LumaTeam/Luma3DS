@@ -232,10 +232,13 @@ Result     MemoryBlock__UnmountFromProcess(void)
 {
     Handle          target = PluginLoaderCtx.target;
     PluginHeader    *header = &PluginLoaderCtx.header;
+    MemoryBlock     *memblock = &PluginLoaderCtx.memblock;
 
     Result  res = 0;
 
-    res = svcUnmapProcessMemoryEx(target, 0x07000000, header->exeSize);
+    res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, true);
+
+    res |= svcUnmapProcessMemoryEx(target, 0x07000000, header->exeSize);
     res |= svcUnmapProcessMemoryEx(target, header->heapVA, header->heapSize);
 
     return res;
