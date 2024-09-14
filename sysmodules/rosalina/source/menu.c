@@ -44,7 +44,7 @@ u32 menuCombo = 0;
 bool isHidInitialized = false;
 bool isQtmInitialized = false;
 u32 mcuFwVersion = 0;
-u8 mcuInfoTable[9] = {0};
+u8 mcuInfoTable[10] = {0};
 bool mcuInfoTableRead = false;
 
 const char *topScreenType = NULL;
@@ -289,9 +289,17 @@ static void menuInitializeQtm(void)
     if (isQtmInitialized)
         return;
 
-    // Open last remaining qtm:sp session (out of 3) on >= 9.3,
-    // or one of the two qtm:s handles below 9.3
-    isQtmInitialized = R_SUCCEEDED(qtmInit(GET_VERSION_MINOR(osGetKernelVersion()) >= 48 ? QTM_SERVICE_SYSTEM_PROCESS : QTM_SERVICE_SYSTEM));
+    // Steal QTM handle from GSP, because there is a limit of 3 sessions (or 2 before 9.3) for ALL qtm services
+    Handle qtmHandle = 0;
+    for (int i = 0; i < 20 && !qtmIsInitialized(); i++)
+    {
+        if (R_SUCCEEDED(svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, &qtmHandle, "qtm:sp")))
+            *qtmGetSessionHandle() = qtmHandle;
+        else
+            svcSleepThread(100 * 100 * 1000LL);
+    }
+
+    isQtmInitialized = qtmIsInitialized();
 }
 
 static inline u32 menuAdvanceCursor(u32 pos, u32 numItems, s32 displ)
@@ -335,6 +343,7 @@ void menuThreadMain(void)
     {
         while (!isServiceUsable("qtm:u"))
             svcSleepThread(250 * 1000 * 1000LL);
+        menuInitializeQtm();
         N3DSMenu_UpdateStatus();
     }
 
@@ -344,8 +353,6 @@ void menuThreadMain(void)
     isHidInitialized = true;
 
     menuReadScreenTypes();
-
-    menuInitializeQtm();
 
     while(!preTerminationRequested)
     {

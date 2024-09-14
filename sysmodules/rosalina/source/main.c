@@ -206,7 +206,7 @@ static void handlePreTermNotification(u32 notificationId)
     if (isHidInitialized)
         hidExit();
     if (isQtmInitialized)
-        qtmExit();
+        svcCloseHandle(*qtmGetSessionHandle()); // qtmExit();
 
     // Termination request
     menuShouldExit = true;
