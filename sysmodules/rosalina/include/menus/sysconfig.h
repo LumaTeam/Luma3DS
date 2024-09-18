@@ -44,5 +44,3 @@ void SysConfigMenu_ToggleCardIfPower(void);
 void SysConfigMenu_LoadConfig(void);
 void SysConfigMenu_AdjustVolume(void);
 void SysConfigMenu_ChangeScreenBrightness(void);
-void SysConfigMenu_PowerOff(void);
-void SysConfigMenu_Reboot(void);

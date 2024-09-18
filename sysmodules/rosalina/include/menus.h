@@ -38,6 +38,8 @@ void RosalinaMenu_ProcessList(void);
 void RosalinaMenu_SaveSettings(void);
 void RosalinaMenu_Cheats(void);
 
+void RosalinaMenu_PowerOffOrReboot(void);
+
 void RosalinaMenu_ShowSystemInfo();
 
 bool rosalinaMenuShouldShowDebugInfo(void);

@@ -44,8 +44,6 @@ Menu sysconfigMenu = {
         { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
         { "Toggle power to card slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
         { "Change screen brightness", METHOD, .method = &SysConfigMenu_ChangeScreenBrightness },
-        { "Power off", METHOD, .method = &SysConfigMenu_PowerOff },
-        { "Reboot", METHOD, .method = &SysConfigMenu_Reboot },
         {},
     }
 };
@@ -590,61 +588,4 @@ void SysConfigMenu_ChangeScreenBrightness(void)
         Draw_SetupFramebuffer();
 
     Draw_Unlock();
-}
-
-void SysConfigMenu_PowerOff(void) // Soft shutdown.
-{
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
-    do
-    {
-        Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Power off");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to power off, press B to go back.");
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
-
-        u32 pressed = waitInputWithTimeout(1000);
-
-        if(pressed & KEY_A)
-        {
-            menuLeave();
-            srvPublishToSubscriber(0x203, 0);
-            return;
-        }
-        else if(pressed & KEY_B)
-            return;
-    }
-    while(!menuShouldExit);
-}
-
-void SysConfigMenu_Reboot(void)
-{
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
-    do
-    {
-        Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Reboot");
-        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to reboot, press B to go back.");
-        Draw_FlushFramebuffer();
-        Draw_Unlock();
-
-        u32 pressed = waitInputWithTimeout(1000);
-
-        if(pressed & KEY_A)
-        {
-            menuLeave();
-            APT_HardwareResetAsync();
-            return;
-        } else if(pressed & KEY_B)
-            return;
-    }
-    while(!menuShouldExit);
 }
