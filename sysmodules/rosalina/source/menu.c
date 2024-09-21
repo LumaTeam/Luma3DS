@@ -291,7 +291,7 @@ static void menuInitializeQtm(void)
 
     // Steal QTM handle from GSP, because there is a limit of 3 sessions (or 2 before 9.3) for ALL qtm services
     Handle qtmHandle = 0;
-    for (int i = 0; i < 20 && !qtmIsInitialized(); i++)
+    for (int i = 0; i < 30 && !qtmIsInitialized(); i++)
     {
         if (R_SUCCEEDED(svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, &qtmHandle, "qtm:sp")))
             *qtmGetSessionHandle() = qtmHandle;

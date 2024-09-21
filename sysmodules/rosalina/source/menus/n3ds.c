@@ -71,15 +71,13 @@ void N3DSMenu_UpdateStatus(void)
 
     if (N3DSMenu_CheckNotN2dsXl())
     {
+        bool blacklisted = false;
+
         // Read status
         if (R_FAILED(QTMS_GetQtmStatus(&lastUpdatedQtmStatus)))
             qtmUnavailableAndNotBlacklisted = true; // stop showing QTM options if unavailable but not blacklisted
 
-        if ((lastUpdatedQtmStatus & 0xFF) == QTM_STATUS_UNAVAILABLE)
-            __builtin_trap();
-
-        bool blacklisted = false;
-        if (lastUpdatedQtmStatus == QTM_STATUS_UNAVAILABLE)
+        else if (lastUpdatedQtmStatus == QTM_STATUS_UNAVAILABLE)
             qtmUnavailableAndNotBlacklisted = R_FAILED(QTMU_IsCurrentAppBlacklisted(&blacklisted)) || !blacklisted;
 
 
