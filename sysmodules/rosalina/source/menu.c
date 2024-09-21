@@ -576,17 +576,12 @@ void menuShow(Menu *root)
             else
                 break;
         }
-        else if(pressed & KEY_DOWN)
+        else if(pressed & (KEY_DOWN | KEY_UP))
         {
-            selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
-            if (menuItemIsHidden(&currentMenu->items[selectedItem]))
-                selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
-        }
-        else if(pressed & KEY_UP)
-        {
-            selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
-            if (menuItemIsHidden(&currentMenu->items[selectedItem]))
-                selectedItem = menuAdvanceCursor(selectedItem, numItems, -1);
+            s32 n = (pressed & KEY_DOWN) != 0 ? 1 : -1;
+            do {
+                selectedItem = menuAdvanceCursor(selectedItem, numItems, n);
+            } while (menuItemIsHidden(&currentMenu->items[selectedItem])); // assume at least one item is visible
         }
 
         Draw_Lock();
