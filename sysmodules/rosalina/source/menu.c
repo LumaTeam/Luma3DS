@@ -40,6 +40,8 @@
 #include "menus/screen_filters.h"
 #include "shell.h"
 
+//#define ROSALINA_MENU_SELF_SCREENSHOT 1 // uncomment this to enable the feature
+
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 bool isQtmInitialized = false;
@@ -61,8 +63,20 @@ bool hidShouldUseIrrst(void)
 
 static inline u32 convertHidKeys(u32 keys)
 {
-    // Nothing to do yet
+    // No actual conversion done
     return keys;
+}
+
+void scanInputHook(void)
+{
+    hidScanInput();
+
+#ifdef ROSALINA_MENU_SELF_SCREENSHOT
+    // Ugly hack but should work. For self-documentation w/o capture card purposes only.
+    u32 selfScreenshotCombo = KEY_L | KEY_DUP | KEY_SELECT;
+    if ((hidKeysHeld() & selfScreenshotCombo) == selfScreenshotCombo && (hidKeysDown() & selfScreenshotCombo) != 0)
+        menuTakeSelfScreenshot();
+#endif
 }
 
 u32 waitInputWithTimeout(s32 msec)
@@ -82,7 +96,7 @@ u32 waitInputWithTimeout(s32 msec)
         }
         n++;
 
-        hidScanInput();
+        scanInputHook();
         keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
         Draw_Unlock();
     } while (keys == 0 && !menuShouldExit && isHidInitialized && (msec < 0 || n < msec));
@@ -108,7 +122,7 @@ u32 waitInputWithTimeoutEx(u32 *outHeldKeys, s32 msec)
         }
         n++;
 
-        hidScanInput();
+        scanInputHook();
         keys = convertHidKeys(hidKeysDown()) | (convertHidKeys(hidKeysDownRepeat()) & DIRECTIONAL_KEYS);
         *outHeldKeys = convertHidKeys(hidKeysHeld());
         Draw_Unlock();
@@ -133,7 +147,7 @@ static u32 scanHeldKeys(void)
         keys = 0;
     else
     {
-        hidScanInput();
+        scanInputHook();
         keys = convertHidKeys(hidKeysHeld());
     }
 
@@ -362,7 +376,9 @@ void menuThreadMain(void)
 
         Cheat_ApplyCheats();
 
-        if(((scanHeldKeys() & menuCombo) == menuCombo) && !g_blockMenuOpen)
+        u32 kHeld = scanHeldKeys();
+
+        if(((kHeld & menuCombo) == menuCombo) && !g_blockMenuOpen)
         {
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
@@ -459,14 +475,7 @@ static void menuDraw(Menu *menu, u32 selected)
         int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
-#if 0
-    else if (areScreenTypesInitialized)
-    {
-        char screenTypesBuffer[32];
-        int n = sprintf(screenTypesBuffer, "T: %s | B: %s", topScreenType, bottomScreenType);
-        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, screenTypesBuffer);
-    }
-#endif
+
     else
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
 
