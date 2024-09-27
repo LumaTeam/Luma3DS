@@ -171,6 +171,17 @@ const char *GDB_ParseHexIntegerList64(u64 *dst, const char *src, u32 nb, char la
     return GDB_ParseIntegerList64(dst, src, nb, ',', lastSep, 16, false);
 }
 
+#ifdef DEBUG_GDB_COMMUNICATIONS
+void GDB_LogPacket(GDBContext *ctx, void* buffer, u32 pLen, bool incoming)
+{
+    u64 written;
+    IFile_Write(&ctx->debugFile, &written, incoming ? "<-\t" : "->\t", 3, 0);
+    IFile_Write(&ctx->debugFile, &written, buffer, pLen, 0);
+    IFile_Write(&ctx->debugFile, &written, "\n", 1, 0);
+    IFile_Flush(&ctx->debugFile);
+}
+#endif
+
 int GDB_ReceivePacket(GDBContext *ctx)
 {
     char backupbuf[GDB_BUF_LEN + 4];
@@ -189,6 +200,9 @@ int GDB_ReceivePacket(GDBContext *ctx)
         r = socRecv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             return -1;
+#ifdef DEBUG_GDB_COMMUNICATIONS
+        GDB_LogPacket(ctx, ctx->buffer, r, true);
+#endif
 
         ctx->buffer[0] = 0;
 
@@ -197,9 +211,19 @@ int GDB_ReceivePacket(GDBContext *ctx)
         if(r == -1)
             goto packet_error;
     }
-    else if(ctx->buffer[0] == '-')
+
+#ifdef DEBUG_GDB_COMMUNICATIONS
+        GDB_LogPacket(ctx, ctx->buffer, r, true);
+#endif
+
+    if(ctx->buffer[0] == '-')
     {
         socSend(ctx->super.sockfd, backupbuf, ctx->latestSentPacketSize, 0);
+
+#ifdef DEBUG_GDB_COMMUNICATIONS
+        GDB_LogPacket(ctx, backupbuf, ctx->latestSentPacketSize, false);
+#endif
+
         return 0;
     }
     int maxlen = r > (int)sizeof(ctx->buffer) ? (int)sizeof(ctx->buffer) : r;
@@ -239,6 +263,9 @@ int GDB_ReceivePacket(GDBContext *ctx)
         int r2 = socSend(ctx->super.sockfd, "+", 1, 0);
         if(r2 != 1)
             return -1;
+#ifdef DEBUG_GDB_COMMUNICATIONS
+        GDB_LogPacket(ctx, "+", 1, false);
+#endif
     }
 
     if(ctx->noAckSent)
@@ -255,8 +282,12 @@ packet_error:
         r = socSend(ctx->super.sockfd, "-", 1, 0);
         if(r != 1)
             return -1;
-        else
+        else {
+#ifdef DEBUG_GDB_COMMUNICATIONS
+            GDB_LogPacket(ctx, "-", 1, false);
+#endif
             return 0;
+        }
     }
     else
         return -1;
@@ -265,6 +296,9 @@ packet_error:
 static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
 {
     int r = socSend(ctx->super.sockfd, ctx->buffer, len, 0);
+#ifdef DEBUG_GDB_COMMUNICATIONS
+    GDB_LogPacket(ctx, ctx->buffer, len, false);
+#endif
 
     if(r > 0)
         ctx->latestSentPacketSize = r;
