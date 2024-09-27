@@ -149,3 +149,8 @@ Result IFile_Write(IFile *file, u64 *total, const void *buffer, u32 len, u32 fla
   *total = cur;
   return res;
 }
+
+Result IFile_Flush(IFile *file)
+{
+  return FSFILE_Flush(file->handle);
+}
