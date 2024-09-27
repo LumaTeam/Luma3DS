@@ -245,8 +245,8 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
         svcQueryProcessMemory(&mem, &out, processHandle, heapStartAddress);
         heapTotalSize = mem.size;
 
-        Result codeRes = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, codeDestAddress, processHandle, codeStartAddress, codeTotalSize);
-        Result heapRes = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, heapDestAddress, processHandle, heapStartAddress, heapTotalSize);
+        Result codeRes = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, codeDestAddress, processHandle, codeStartAddress, codeTotalSize, 0);
+        Result heapRes = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, heapDestAddress, processHandle, heapStartAddress, heapTotalSize, 0);
 
         bool codeAvailable = R_SUCCEEDED(codeRes);
         bool heapAvailable = R_SUCCEEDED(heapRes);

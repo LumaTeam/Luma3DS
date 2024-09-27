@@ -205,11 +205,12 @@ Result     MemoryBlock__MountInProcess(void)
     Error           *error = &PluginLoaderCtx.error;
     PluginHeader    *header = &PluginLoaderCtx.header;
     MemoryBlock     *memblock = &PluginLoaderCtx.memblock;
+    bool            isPrivate = PluginLoaderCtx.isMemPrivate;
 
     Result       res = 0;
 
     // Executable
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, 0x07000000, CUR_PROCESS_HANDLE, (u32)memblock->memblock, header->exeSize))))
+    if (R_FAILED((res = svcMapProcessMemoryEx(target, 0x07000000, CUR_PROCESS_HANDLE, (u32) memblock->memblock, header->exeSize, isPrivate ? MAPEXFLAGS_PRIVATE : 0))))
     {
         error->message = "Couldn't map exe memory block";
         error->code = res;
@@ -217,7 +218,7 @@ Result     MemoryBlock__MountInProcess(void)
     }
 
     // Heap (to be used by the plugin)
-    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32)memblock->memblock + header->exeSize, header->heapSize))))
+    if (R_FAILED((res = svcMapProcessMemoryEx(target, header->heapVA, CUR_PROCESS_HANDLE, (u32) memblock->memblock + header->exeSize, header->heapSize, isPrivate ? MAPEXFLAGS_PRIVATE : 0))))
     {
         error->message = "Couldn't map heap memory block";
         error->code = res;
@@ -233,7 +234,7 @@ Result     MemoryBlock__UnmountFromProcess(void)
 
     Result  res = 0;
 
-    res = svcUnmapProcessMemoryEx(target, 0x07000000, header->exeSize);
+    res |= svcUnmapProcessMemoryEx(target, 0x07000000, header->exeSize);
     res |= svcUnmapProcessMemoryEx(target, header->heapVA, header->heapSize);
 
     return res;

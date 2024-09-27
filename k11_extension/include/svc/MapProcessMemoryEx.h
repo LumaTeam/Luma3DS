@@ -30,5 +30,11 @@
 #include "kernel.h"
 #include "svc.h"
 
-Result MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
-Result MapProcessMemoryExWrapper(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size);
+/// Flags for svcMapProcessMemoryEx
+typedef enum MapExFlags
+{
+    MAPEXFLAGS_PRIVATE = BIT(0), ///< Maps the memory as PRIVATE (0xBB05) instead of SHARED (0x5806)
+} MapExFlags;
+
+Result MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size, MapExFlags flags);
+Result MapProcessMemoryExWrapper(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size, MapExFlags flags);

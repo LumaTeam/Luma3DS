@@ -93,6 +93,7 @@ typedef struct
     u32             swapLoadChecksum;    
 
     bool            eventsSelfManaged;
+    bool            isMemPrivate;
 }   PluginLoaderContext;
 
 extern PluginLoaderContext PluginLoaderCtx;

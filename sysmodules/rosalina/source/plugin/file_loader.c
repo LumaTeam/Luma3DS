@@ -214,6 +214,7 @@ bool     TryToLoadPlugin(Handle process)
     // Flags
     if (!res) {
         ctx->eventsSelfManaged = fileHeader.infos.eventsSelfManaged;
+        ctx->isMemPrivate = fileHeader.infos.usePrivateMemory;
         if (ctx->pluginMemoryStrategy == PLG_STRATEGY_SWAP && fileHeader.infos.swapNotNeeded)
             ctx->pluginMemoryStrategy = PLG_STRATEGY_NONE;
     }
@@ -292,7 +293,7 @@ bool     TryToLoadPlugin(Handle process)
 
         extern u32  g_savedGameInstr[2];
 
-        if (R_FAILED((res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, procStart, process, procStart, 0x1000))))
+        if (R_FAILED((res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, procStart, process, procStart, 0x1000, 0))))
         {
             ctx->error.message = "Couldn't map process";
             ctx->error.code = res;

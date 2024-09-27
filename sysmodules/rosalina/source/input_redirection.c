@@ -223,7 +223,7 @@ static Result InputRedirection_DoUndoIrPatches(Handle processHandle, bool doPatc
     totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
     svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-    res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
+    res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize, 0);
 
     if(R_SUCCEEDED(res) && !patchPrepared)
     {
@@ -356,7 +356,7 @@ static Result InputRedirection_DoUndoHidPatches(Handle processHandle, bool doPat
     totalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
 
     svcGetProcessInfo(&startAddress, processHandle, 0x10005);
-    res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize);
+    res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, processHandle, (u32) startAddress, totalSize, 0);
 
     if (R_SUCCEEDED(res) && !patchPrepared)
     {

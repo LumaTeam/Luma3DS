@@ -26,7 +26,7 @@
 
 #include "svc/MapProcessMemoryEx.h"
 
-Result  MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size)
+Result  MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcessHandle, u32 vaSrc, u32 size, MapExFlags flags)
 {
     Result          res = 0;
     u32             sizeInPage = size >> 12;
@@ -69,7 +69,7 @@ Result  MapProcessMemoryEx(Handle dstProcessHandle, u32 vaDst, Handle srcProcess
         // Check if the destination address is free and large enough
         res = KProcessHwInfo__CheckVaState(hwInfoOfProcess(dstProcess), vaDst, size, 0, 0);
         if (res == 0)
-            res = KProcessHwInfo__MapListOfKBlockInfo(hwInfoOfProcess(dstProcess), vaDst, &list, 0x5806, MEMPERM_RW | 0x18, 0);
+            res = KProcessHwInfo__MapListOfKBlockInfo(hwInfoOfProcess(dstProcess), vaDst, &list, (flags & MAPEXFLAGS_PRIVATE) ? 0xBB05 : 0x5806, MEMPERM_RW | 0x18, 0);
     }
 
     KLinkedList_KBlockInfo__Clear(&list);

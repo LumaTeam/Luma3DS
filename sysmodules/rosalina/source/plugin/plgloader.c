@@ -558,6 +558,7 @@ static void WaitForProcessTerminated(void *arg)
     ctx->isSwapFunctionset = false;
     ctx->pluginMemoryStrategy = PLG_STRATEGY_SWAP;
     ctx->eventsSelfManaged = false;
+    ctx->isMemPrivate = false;
     g_blockMenuOpen = 0;
     MemoryBlock__ResetSwapSettings();
     //if (!ctx->userLoadParameters.noIRPatch)

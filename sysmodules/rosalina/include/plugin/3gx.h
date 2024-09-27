@@ -23,7 +23,8 @@ typedef struct CTR_PACKED
             u32     compatibility : 2;
             u32     eventsSelfManaged : 1;
             u32     swapNotNeeded : 1;
-            u32     unused : 24;
+            u32     usePrivateMemory : 1;
+            u32     unused : 23;
         };
     };
     u32             exeLoadChecksum;
