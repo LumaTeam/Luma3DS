@@ -101,7 +101,7 @@ static void ScreenFilterMenu_WritePolynomialColorLut(bool top, u8 curveCorrectio
     for (int i = 0; i <= 255; i++) {
         Pixel px;
         int inLevel = invert ? 255 - i : i;
-        const u8 (*tbl)[3] = ctrToSrgbTableTop;
+        const u8 (*tbl)[3] = curveCorrection == 2 ? ctrToSrgbTableBottom : ctrToSrgbTableTop;
 
         u8 inLevelR = curveCorrection > 0 ? tbl[inLevel][0] : inLevel;
         u8 inLevelG = curveCorrection > 0 ? tbl[inLevel][1] : inLevel;
@@ -156,7 +156,18 @@ static void ScreenFiltersMenu_UpdateEntries(void)
     else
     {
         screenFiltersMenu.items[10].title = "Restore top screen color curve";
-        screenFiltersMenu.items[10].method = &ScreenFiltersMenu_RestoreColorCurves;
+        screenFiltersMenu.items[10].method = &ScreenFiltersMenu_RestoreTopScreenColorCurve;
+    }
+
+    if (bottomScreenFilter.colorCurveCorrection == 0)
+    {
+        screenFiltersMenu.items[11].title = "[IPS recommended] Enhance bottom screen colors";
+        screenFiltersMenu.items[11].method = &ScreenFiltersMenu_SetBottomScreenSrgbColorCurve;
+    }
+    else
+    {
+        screenFiltersMenu.items[11].title = "Restore bottom screen color curve";
+        screenFiltersMenu.items[11].method = &ScreenFiltersMenu_RestoreBottomScreenColorCurve;
     }
 }
 static void ScreenFiltersMenu_SetColorCurveCorrection(bool top, u8 colorCurveCorrection)
@@ -184,6 +195,7 @@ Menu screenFiltersMenu = {
         { "[1900K] Candle", METHOD, .method = &ScreenFiltersMenu_SetCandle },
         { "[1200K] Ember", METHOD, .method = &ScreenFiltersMenu_SetEmber },
         { "[IPS recommended] Enhance top screen colors", METHOD, .method = &ScreenFiltersMenu_SetTopScreenSrgbColorCurve },
+        { "[IPS recommended] Enhance bottom screen colors", METHOD, .method = &ScreenFiltersMenu_SetTopScreenSrgbColorCurve },
         { "Advanced configuration...", METHOD, .method = &ScreenFiltersMenu_AdvancedConfiguration },
         {},
     }
@@ -300,13 +312,21 @@ DEF_CCT_SETTER(1200, Ember)
 void ScreenFiltersMenu_SetTopScreenSrgbColorCurve(void)
 {
     ScreenFiltersMenu_SetColorCurveCorrection(true, 1);
-    // Bottom screen color curve not figured out, ignore
 }
 
-void ScreenFiltersMenu_RestoreColorCurves(void)
+void ScreenFiltersMenu_RestoreTopScreenColorCurve(void)
 {
     ScreenFiltersMenu_SetColorCurveCorrection(true, 0);
-    // Bottom screen color curve not figured out, ignore
+}
+
+void ScreenFiltersMenu_SetBottomScreenSrgbColorCurve(void)
+{
+    ScreenFiltersMenu_SetColorCurveCorrection(false, 2);
+}
+
+void ScreenFiltersMenu_RestoreBottomScreenColorCurve(void)
+{
+    ScreenFiltersMenu_SetColorCurveCorrection(false, 0);
 }
 
 static void ScreenFiltersMenu_ClampFilter(ScreenFilter *filter)
