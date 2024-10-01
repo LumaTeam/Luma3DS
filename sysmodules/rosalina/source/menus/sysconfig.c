@@ -437,7 +437,7 @@ void SysConfigMenu_AdjustVolume(void)
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
-        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Y: Toggle volume slider override.\nDPAD: Adjust the volume level.\nA: Apply\nB: Go back\n\n");
+        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "Y: Toggle volume slider override.\nDPAD/CPAD: Adjust the volume level.\nA: Apply\nB: Go back\n\n");
         Draw_DrawString(10, posY, COLOR_WHITE, "Current status:");
         posY = Draw_DrawString(100, posY, (tempVolumeOverride == -1) ? COLOR_RED : COLOR_GREEN, (tempVolumeOverride == -1) ? " DISABLED" : " ENABLED ");
         if (tempVolumeOverride != -1) {
@@ -447,7 +447,11 @@ void SysConfigMenu_AdjustVolume(void)
         }
 
         Draw_FlushFramebuffer();
+        Draw_Unlock();
+
         u32 pressed = waitInputWithTimeout(1000);
+
+        Draw_Lock();
 
         if(pressed & KEY_A)
         {
@@ -471,16 +475,16 @@ void SysConfigMenu_AdjustVolume(void)
                 tempVolumeOverride = -1;
             }
         }
-        else if ((pressed & (KEY_DUP | KEY_DDOWN | KEY_DLEFT | KEY_DRIGHT)) && tempVolumeOverride != -1)
+        else if ((pressed & (KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT)) && tempVolumeOverride != -1)
         {
             Draw_DrawString(10, posY, COLOR_WHITE, "\n                 ");
-            if (pressed & KEY_DUP)
+            if (pressed & KEY_UP)
                 tempVolumeOverride++;
-            else if (pressed & KEY_DDOWN)
+            else if (pressed & KEY_DOWN)
                 tempVolumeOverride--;
-            else if (pressed & KEY_DRIGHT)
+            else if (pressed & KEY_RIGHT)
                 tempVolumeOverride+=10;
-            else if (pressed & KEY_DLEFT)
+            else if (pressed & KEY_LEFT)
                 tempVolumeOverride-=10;
 
             if (tempVolumeOverride < 0)
@@ -488,6 +492,9 @@ void SysConfigMenu_AdjustVolume(void)
             if (tempVolumeOverride > 100)
                 tempVolumeOverride = 100;
         }
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
     } while(!menuShouldExit);
 }
 
