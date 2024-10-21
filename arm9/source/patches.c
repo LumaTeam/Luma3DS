@@ -834,3 +834,76 @@ u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size)
 
     return 0;
 }
+
+static bool getVtableAddress(u8 *pos, u32 size, const u8 *pattern, u32 patternSize, s32 patternOff, u32 memAddr, u32 *vtableAddr)
+{
+    u8 *tmp = memsearch(pos, pattern, size, patternSize);
+
+    if(tmp == NULL) return false;
+
+    u16 *instrPtr = (u16 *)(tmp + patternOff); //ldr rX, [PTR_TO_VTABLE]
+    if((*instrPtr & 0xf800) != 0x4800) return false; //Check the instruction opcode
+
+    *vtableAddr = *(u32 *)(((u32)instrPtr + 4 + 4*(*instrPtr & 0xff)) & ~0x3);
+
+    if(*vtableAddr < memAddr || *vtableAddr >= memAddr + size) return false;
+
+    return true;
+}
+
+u32 patchReadFileSHA256Vtab11(u8 *pos, u32 size, u32 process9MemAddr)
+{
+    static const u8 ncchVtableRefPattern[] = {0x77, 0x46, 0x06, 0x74, 0x47, 0x74};
+    static const u8 shaVtable1RefPattern[] = {0x00, 0x1f, 0x01, 0x60, 0x20, 0x30};
+    static const u8 shaVtable2RefPattern[] = {0x00, 0x1f, 0x01, 0x60, 0x01, 0x00, 0x20, 0x31};
+
+    u32 ncchVtableAddr;
+    if(!getVtableAddress(pos, size, ncchVtableRefPattern, sizeof(ncchVtableRefPattern), sizeof(ncchVtableRefPattern), process9MemAddr, &ncchVtableAddr)) return 1;
+
+    u32 shaVtable1Addr;
+    if(!getVtableAddress(pos, size, shaVtable1RefPattern, sizeof(shaVtable1RefPattern), -2, process9MemAddr, &shaVtable1Addr)) return 1;
+
+    u32 shaVtable2Addr;
+    if(!getVtableAddress(pos, size, shaVtable2RefPattern, sizeof(shaVtable2RefPattern), -2, process9MemAddr, &shaVtable2Addr)) return 1;
+
+    u32 *ncchVtable11Ptr = (u32 *)(pos + (ncchVtableAddr - process9MemAddr)) + 11,
+        *shaVtable1_11Ptr = (u32 *)(pos + (shaVtable1Addr - process9MemAddr)) + 11,
+        *shaVtable2_11Ptr = (u32 *)(pos + (shaVtable2Addr - process9MemAddr)) + 11;
+
+    if((*ncchVtable11Ptr & 0x1) == 0 || (*shaVtable1_11Ptr & 0x1) == 0 || (*shaVtable2_11Ptr & 0x1) == 0) return 1; //Must be Thumb
+
+    //Find needed function addresses by inspecting all bl branch targets
+    u16 *ncchWriteFnc = (u16 *)(pos + ((*ncchVtable11Ptr & ~0x1) - process9MemAddr));
+    if(*(u32 *)ncchWriteFnc != 0x0005b5f0) return 1; //Check if we got the right function
+
+    readFileSHA256Vtab11PatchCtorPtr = readFileSHA256Vtab11PatchInitPtr = readFileSHA256Vtab11PatchProcessPtr = 0;
+
+    for(; ((*ncchWriteFnc) & 0xff00) != 0xbd00; ncchWriteFnc++) { //Stop whe encountering a pop {..., pc}
+        if((ncchWriteFnc[0] & 0xf800) != 0xf000 || (ncchWriteFnc[1] & 0xf800) != 0xf800) continue; //Check the instruction opcode
+
+        s32 callOff = ((ncchWriteFnc[0] & 0x07ff) << 11) | (ncchWriteFnc[1] & 0x07ff);
+        callOff = (callOff & 0x1fffff) - (callOff & 0x200000);
+
+        u32 callTargetAddr = process9MemAddr + ((u8 *)ncchWriteFnc - pos) + 4 + 2*callOff;
+
+        if(callTargetAddr < process9MemAddr || callTargetAddr >= process9MemAddr + size) return false;
+
+        switch(*(u32 *)(pos + (callTargetAddr - process9MemAddr))) {
+            case 0x60422201: //DataChainProcessor::DataChainProcessor
+                readFileSHA256Vtab11PatchCtorPtr = callTargetAddr | 0x1;
+                break;
+            case 0x000db538: //DataChainProcessor::Init
+                readFileSHA256Vtab11PatchInitPtr = callTargetAddr | 0x1;
+                break;
+            case 0x0006b5f0: //DataChainProcessor::ProcessBytes
+                readFileSHA256Vtab11PatchProcessPtr = callTargetAddr | 0x1;
+                break;
+        }
+    }
+
+    if(readFileSHA256Vtab11PatchCtorPtr == 0 || readFileSHA256Vtab11PatchInitPtr == 0 || readFileSHA256Vtab11PatchProcessPtr == 0) return 1;
+
+    *shaVtable1_11Ptr = *shaVtable2_11Ptr = (u32) &readFileSHA256Vtab11Patch; //The patched vtable11 function is in ITCM, so we don't have to copy it somewhere else
+
+    return 0;
+}
