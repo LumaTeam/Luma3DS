@@ -386,6 +386,9 @@ boot:
         case NATIVE_FIRM1X2X:
             res = patch1x2xNativeAndSafeFirm();
             break;
+        case NATIVE_PROTOTYPE:
+            res = patchPrototypeNative();
+            break;
     }
 
     if(res != 0) error("Failed to apply %u FIRM patch(es).", res);

@@ -31,6 +31,7 @@
 *   FIRM partition writes patches by delebile
 *   Idea for svcBreak patches from yellows8 and others on #3dsdev
 *   TWL_FIRM patches by Steveice10 and others
+*   Signature patches for prototype FW by PabloMK7
 */
 
 #pragma once
@@ -68,3 +69,4 @@ u32 patchTwlShaHashChecks(u8 *pos, u32 size);
 u32 patchAgbBootSplash(u8 *pos, u32 size);
 void patchTwlBg(u8 *pos, u32 size); // silently fails
 u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size);
+u32 patchProtoNandSignatureCheck(u8 *pos, u32 size);

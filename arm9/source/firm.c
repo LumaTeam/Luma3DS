@@ -39,6 +39,7 @@
 #include "chainloader.h"
 
 static Firm *firm = (Firm *)0x20001000;
+u32 firmProtoVersion = 0;
 
 static __attribute__((noinline)) bool overlaps(u32 as, u32 ae, u32 bs, u32 be)
 {
@@ -203,29 +204,38 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
     {
         firmVersion = 0xFFFFFFFF;
 
-        if(!ISN3DS && *firmType == NATIVE_FIRM)
+        if(!ISN3DS && (*firmType == NATIVE_FIRM || *firmType == NATIVE_FIRM1X2X))
         {
-            __attribute__((aligned(4))) static const u8 hashes[3][0x20] = {
+            __attribute__((aligned(4))) static const u8 hashes[4][0x20] = {
+                {0xD7, 0x43, 0x0F, 0x27, 0x8D, 0xC9, 0x3F, 0x4C, 0x96, 0xB5, 0xA8, 0x91, 0x48, 0xDB, 0x08, 0x8A,
+                 0x7E, 0x46, 0xB3, 0x95, 0x65, 0xA2, 0x05, 0xF1, 0xF2, 0x41, 0x21, 0xF1, 0x0C, 0x59, 0x6A, 0x9D},
                 {0x39, 0x75, 0xB5, 0x28, 0x24, 0x5E, 0x8B, 0x56, 0xBC, 0x83, 0x79, 0x41, 0x09, 0x2C, 0x42, 0xE6,
                  0x26, 0xB6, 0x80, 0x59, 0xA5, 0x56, 0xF9, 0xF9, 0x6E, 0xF3, 0x63, 0x05, 0x58, 0xDF, 0x35, 0xEF},
                 {0x81, 0x9E, 0x71, 0x58, 0xE5, 0x44, 0x73, 0xF7, 0x48, 0x78, 0x7C, 0xEF, 0x5E, 0x30, 0xE2, 0x28,
                  0x78, 0x0B, 0x21, 0x23, 0x94, 0x63, 0xE8, 0x4E, 0x06, 0xBB, 0xD6, 0x8D, 0xA0, 0x99, 0xAE, 0x98},
                 {0x1D, 0xD5, 0xB0, 0xC2, 0xD9, 0x4A, 0x4A, 0xF3, 0x23, 0xDD, 0x2F, 0x65, 0x21, 0x95, 0x9B, 0x7E,
-                 0xF2, 0x71, 0x7E, 0xB6, 0x7A, 0x3A, 0x74, 0x78, 0x0D, 0xE3, 0xB5, 0x0C, 0x2B, 0x7F, 0x85, 0x37}
+                 0xF2, 0x71, 0x7E, 0xB6, 0x7A, 0x3A, 0x74, 0x78, 0x0D, 0xE3, 0xB5, 0x0C, 0x2B, 0x7F, 0x85, 0x37},
             };
 
             u32 i;
-            for(i = 0; i < 3; i++) if(memcmp(firm->section[1].hash, hashes[i], 0x20) == 0) break;
+            for(i = 0; i < 4; i++) if(memcmp(firm->section[1].hash, hashes[i], 0x20) == 0) break;
 
             switch(i)
             {
+                // Beta
                 case 0:
+                    firmVersion = 0x0;
+                    firmProtoVersion = 243;
+                    *firmType = NATIVE_PROTOTYPE;
+                    break;
+                // Release
+                case 1:
                     firmVersion = 0x18;
                     break;
-                case 1:
+                case 2:
                     firmVersion = 0x1D;
                     break;
-                case 2:
+                case 3:
                     firmVersion = 0x1F;
                     break;
                 default:
@@ -735,6 +745,26 @@ u32 patch1x2xNativeAndSafeFirm(void)
     }
 
     return ret;
+}
+
+u32 patchPrototypeNative(void)
+{
+    u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
+
+    //Find the Process9 .code location, size and memory address
+    u32 process9Size,
+        process9MemAddr;
+    u8 *process9Offset = getProcess9Info(arm9Section, firm->section[2].size, &process9Size, &process9MemAddr);
+
+    u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
+        ret = 0;
+    
+    ret += patchProtoNandSignatureCheck(process9Offset, process9Size);
+
+    //Arm9 exception handlers
+    ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
+
+    return ret; 
 }
 
 void launchFirm(int argc, char **argv)
