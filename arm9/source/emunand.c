@@ -111,6 +111,23 @@ void locateEmuNand(FirmwareSource *nandType, u32 *emunandIndex, bool configureCt
     else *nandType = FIRMWARE_SYSNAND;
 }
 
+static inline u32 getProtoSdmmc(u32 *sdmmc, u32 firmVersion)
+{
+    switch(firmVersion)
+    {
+        case 243: // SDK 0.9.x (0.9.7?)
+            *sdmmc = (0x080AAA28 + 0x4e0);
+            break;
+        case 238: // SDK 0.10
+            *sdmmc = (0x080BEA70 + 0x690);
+            break;
+        default:
+            return 1;
+    }
+
+    return 0;
+}
+
 static inline u32 getOldSdmmc(u32 *sdmmc, u32 firmVersion)
 {
     switch(firmVersion)
@@ -166,6 +183,111 @@ static inline u32 patchNandRw(u8 *pos, u32 size, u32 hookAddr)
     return 0;
 }
 
+static inline u32 patchProtoNandRw(u8 *pos, u32 size, u32 hookAddr, u32 hookCidAddr)
+{
+    //Look for read/write code
+    static const u8 pattern[] = {
+        0x03, 0x00, 0x51, 0xE3, // cmp r1, #3
+        0x02, 0xC0, 0xA0, 0xE1, // mov r12, r2
+        0x04, 0x00, 0x80, 0xE2, // add r0, r0, #4
+    };
+
+    u32 *writeOffset = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(writeOffset == NULL) return 1;
+
+    u32 *readOffset = (u32 *)memsearch((u8 *)(writeOffset + 3), pattern, 0x400, sizeof(pattern));
+
+    if(readOffset == NULL) return 1;
+
+    // Find the sdmmc mount/init(?) function
+    static const u8 mount_pattern[] = {
+        0x20, 0x00, 0x84, 0xE2, // add r0, r4, 0x20
+        0x01, 0x20, 0xA0, 0xE3, // mov r2, #1
+        0x00, 0x10, 0xA0, 0xE3, // mov r1, #0
+    };
+    u32* mountOffset = (u32*) memsearch(pos, mount_pattern, size, sizeof(mount_pattern));
+    if (mountOffset == NULL) return 1;
+
+    // Find the sdmmc read cid function.
+    static const u8 readcid_pattern[] = {
+        0x31, 0xFF, 0x2F, 0xE1, // blx r1
+        0x20, 0x60, 0x9F, 0xE5, // ldr r6, [pc, #0x20] // =failing_result
+        0x00, 0x00, 0x50, 0xE3, // cmp r0, #0
+    };
+    u32* readCidOffset = (u32*) memsearch(pos, readcid_pattern, size, sizeof(readcid_pattern));
+    if (readCidOffset == NULL) return 1;
+    readCidOffset -= 5;
+
+    mountOffset[1] = 0xe3a02000; // mov r2, #0 // sd-card
+
+    readOffset[0] = writeOffset[0] = 0xe52de004; // push {lr}
+    readOffset[1] = writeOffset[1] = 0xe59fc000; // ldr r12, [pc, #0]
+    readOffset[2] = writeOffset[2] = 0xe12fff3c; // blx r12
+    readOffset[3] = writeOffset[3] = hookAddr;
+
+    readCidOffset[0] = 0xe59fc000; // ldr r12, [pc, #0]
+    readCidOffset[1] = 0xe12fff3c; // blx r12
+    readCidOffset[2] = hookCidAddr;
+
+    // Read the emmc cid into the place hook will copy it from
+    sdmmc_get_cid(1, emunandPatchNandCid);
+
+    return 0;
+}
+
+static inline u32 patchProtoNandRw238(u8 *pos, u32 size, u32 hookAddr, u32 hookCidAddr)
+{
+    //Look for read/write code
+    static const u8 pattern[] = {
+        0x03, 0x00, 0x50, 0xE3, // cmp r0, #3
+        0x00, 0x00, 0xA0, 0x13, // movne r0, #0
+        0x01, 0x00, 0xA0, 0x03, // moveq r0, #1
+    };
+
+    u32 *writeOffset = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(writeOffset == NULL) return 1;
+
+    u32 *readOffset = (u32 *)memsearch((u8 *)(writeOffset + 3), pattern, 0x400, sizeof(pattern));
+
+    if(readOffset == NULL) return 1;
+
+    // Find the mmc static ctor...
+    static const u8 mount_pattern[] = {
+        0x08, // last byte of some ptr to something in P9
+        0x01, 0x01, 0x00, 0x00, // emmc controller id
+    };
+    u8* mountOffset = (u8*) memsearch(pos, mount_pattern, size, sizeof(mount_pattern));
+    if (mountOffset == NULL) return 1;
+    mountOffset++;
+
+    // Find the sdmmc read cid function.
+    static const u8 readcid_pattern[] = {
+        0x31, 0xFF, 0x2F, 0xE1, // blx r1
+        0x20, 0x60, 0x9F, 0xE5, // ldr r6, [pc, #0x20] // =failing_result
+        0x00, 0x00, 0x50, 0xE3, // cmp r0, #0
+    };
+    u32* readCidOffset = (u32*) memsearch(pos, readcid_pattern, size, sizeof(readcid_pattern));
+    if (readCidOffset == NULL) return 1;
+    readCidOffset -= 5;
+
+    *(u32*)mountOffset = 0x300; // sd card
+
+    readOffset[0] = writeOffset[0] = 0xe59fc000; // ldr r12, [pc, #0]
+    readOffset[1] = writeOffset[1] = 0xe12fff3c; // blx r12
+    readOffset[2] = writeOffset[2] = hookAddr;
+
+    readCidOffset[0] = 0xe59fc000; // ldr r12, [pc, #0]
+    readCidOffset[1] = 0xe12fff3c; // blx r12
+    readCidOffset[2] = hookCidAddr;
+
+    // Read the emmc cid into the place hook will copy it from
+    sdmmc_get_cid(1, emunandPatchNandCid);
+
+    return 0;
+}
+
 u32 patchEmuNand(u8 *process9Offset, u32 process9Size, u32 firmVersion)
 {
     u32 ret = 0;
@@ -181,6 +303,36 @@ u32 patchEmuNand(u8 *process9Offset, u32 process9Size, u32 firmVersion)
 
     //Add EmuNAND hooks
     ret += patchNandRw(process9Offset, process9Size, (u32)emunandPatch);
+
+    return ret;
+}
+
+u32 patchProtoEmuNand(u8 *process9Offset, u32 process9Size)
+{
+    extern u32 firmProtoVersion;
+    u32 ret = 0;
+
+    // Add the data of the found EmuNAND
+    emunandPatchNandOffset = emuOffset;
+    emunandPatchNcsdHeaderOffset = emuHeader;
+
+    // Find and add the SDMMC struct
+    u32 sdmmc;
+    ret += getProtoSdmmc(&sdmmc, firmProtoVersion);
+    if(!ret) emunandPatchSdmmcStructPtr = sdmmc;
+
+    // Add EmuNAND hooks
+    switch (firmProtoVersion) {
+        case 243: // SDK 0.9.x (0.9.7?)
+            ret += patchProtoNandRw(process9Offset, process9Size, (u32)emunandProtoPatch, (u32)emunandProtoCidPatch);
+            break;
+        case 238: // SDK 0.10.x
+            ret += patchProtoNandRw238(process9Offset, process9Size, (u32)emunandProtoPatch238, (u32)emunandProtoCidPatch);
+            break;
+        default:
+            ret++;
+            break;
+    }
 
     return ret;
 }

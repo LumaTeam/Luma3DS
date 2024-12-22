@@ -39,3 +39,4 @@ extern u32 emuOffset,
 
 void locateEmuNand(FirmwareSource *nandType, u32 *emunandIndex, bool configureCtrNandParams);
 u32 patchEmuNand(u8 *process9Offset, u32 process9Size, u32 firmVersion);
+u32 patchProtoEmuNand(u8 *process9Offset, u32 process9Size);

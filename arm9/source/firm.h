@@ -35,5 +35,5 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
 u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
 u32 patch1x2xNativeAndSafeFirm(void);
-u32 patchPrototypeNative(void);
+u32 patchPrototypeNative(FirmwareSource nandType);
 void launchFirm(int argc, char **argv);

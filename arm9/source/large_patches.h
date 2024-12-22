@@ -28,9 +28,11 @@
 
 #include "types.h"
 
-extern const u8 emunandPatch[];
-extern const u32 emunandPatchSize;
+extern const u8 emunandPatch[], emunandProtoPatch[], emunandProtoCidPatch[];
+extern const u8 emunandProtoPatch238[];
+extern const u32 emunandPatchSize, emunandPatchBssSize;
 extern u32 emunandPatchSdmmcStructPtr, emunandPatchNandOffset, emunandPatchNcsdHeaderOffset;
+extern u32 emunandPatchNandCid[4];
 
 extern const u8 rebootPatch[];
 extern const u32 rebootPatchSize;
