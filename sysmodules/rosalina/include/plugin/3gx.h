@@ -24,7 +24,8 @@ typedef struct CTR_PACKED
             u32     eventsSelfManaged : 1;
             u32     swapNotNeeded : 1;
             u32     usePrivateMemory : 1;
-            u32     unused : 23;
+            u32     allowHomebrewLoad : 1;
+            u32     unused : 22;
         };
     };
     u32             exeLoadChecksum;
