@@ -34,7 +34,7 @@ u32         saveSwapFunc(void* startAddr, void* endAddr, void* args);
 u32         loadSwapFunc(void* startAddr, void* endAddr, void* args);
 u32		    loadExeFunc(void* startAddr, void* endAddr, void* args);
 
-bool     TryToLoadPlugin(Handle process);
+bool     TryToLoadPlugin(Handle process, bool isHomebrew);
 void    PLG__NotifyEvent(PLG_Event event, bool signal);
 void     PLG__SetConfigMemoryStatus(u32 status);
 u32      PLG__GetConfigMemoryStatus(void);
