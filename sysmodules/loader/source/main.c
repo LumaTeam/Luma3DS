@@ -10,7 +10,7 @@
 #include "hbldr.h"
 
 u32 config, multiConfig, bootConfig;
-bool isN3DS, isSdMode, nextGamePatchDisabled;
+bool isN3DS, isSdMode, nextGamePatchDisabled, isLumaWithKext;
 
 // MAKE SURE fsreg has been init before calling this
 static Result fsldrPatchPermissions(void)
@@ -33,7 +33,7 @@ static inline void loadCFWInfo(void)
     s64 out;
     u64 hbldrTid = 0;
 
-    bool isLumaWithKext = svcGetSystemInfo(&out, 0x20000, 0) == 1;
+    isLumaWithKext = svcGetSystemInfo(&out, 0x20000, 0) == 1;
     if (isLumaWithKext)
     {
         svcGetSystemInfo(&out, 0x10000, 3);
@@ -60,7 +60,8 @@ static inline void loadCFWInfo(void)
             panic(0xDEADCAFE);
 
 #ifndef BUILD_FOR_EXPLOIT_DEV
-        config = 1u << PATCHVERSTRING; // all options 0, except maybe the MSET version display patch
+        // Most options 0, except select ones
+        config = BIT(PATCHVERSTRING) | BIT(PATCHGAMES) | BIT(LOADEXTFIRMSANDMODULES);
 #else
         config = 0;
 #endif
