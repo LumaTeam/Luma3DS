@@ -222,7 +222,10 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
             };
 
             u32 i;
-            for(i = 0; i < 4; i++) if(memcmp(firm->section[1].hash, hashes[i], 0x20) == 0) break;
+            for(i = 0; i < sizeof(hashes)/sizeof(hashes[0]); i++)
+            {
+                if(memcmp(firm->section[1].hash, hashes[i], 0x20) == 0) break;
+            }
 
             switch(i)
             {
