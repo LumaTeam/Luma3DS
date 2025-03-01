@@ -89,11 +89,13 @@ void SysConfigMenu_LoadSettings(void)
     FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
     Result res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/sysconfig.bin"), FS_OPEN_READ);
 
+    u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
     if (!R_SUCCEEDED(res)) //file doesnt exist
     {
         failtoload = true;
         //default settings
-        data.powerbutton = data.wireless = false; 
+        data.powerbutton = false;
+        data.wireless = wireless; 
         Sys_SetWireless(data.wireless);
         Sys_SetPowerButton(data.powerbutton);
         IFile_Close(&file);
