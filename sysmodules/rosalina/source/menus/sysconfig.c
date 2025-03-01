@@ -216,6 +216,7 @@ static bool SysConfigMenu_ForceWifiConnection(u32 slot)
 }
 
 void togglePowerButton(void) {
+    u32 mcuIRQMask;
     mcuHwcInit();
     MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
     mcuIRQMask ^= 0x00000001;
