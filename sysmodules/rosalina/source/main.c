@@ -265,7 +265,7 @@ int main(void)
     Cheat_SeedRng(svcGetSystemTick());
     ScreenFiltersMenu_LoadConfig();
     SysConfigMenu_LoadConfig();
-    togglePowerButton();
+    SysConfigMenu_LoadSettings();
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();

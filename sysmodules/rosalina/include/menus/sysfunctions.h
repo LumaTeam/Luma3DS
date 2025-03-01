@@ -26,25 +26,8 @@
 
 #pragma once
 
+
 #include <3ds/types.h>
-#include "menu.h"
 
-extern Menu sysconfigMenu;
-extern bool isConnectionForced;
-extern s8 currVolumeSliderOverride;
-
-void SysConfigMenu_UpdateStatus(bool control);
-
-void SysConfigMenu_LoadSettings(void);
-
-void SysConfigMenu_ToggleLEDs(void);
-void SysConfigMenu_ToggleWireless(void);
-void togglePowerButton(void);
-void SysConfigMenu_TogglePowerButton(void);
-void SysConfigMenu_ControlWifi(void);
-void SysConfigMenu_DisableForcedWifiConnection(void);
-void SysConfigMenu_ToggleCardIfPower(void);
-void SysConfigMenu_LoadConfig(void);
-void SysConfigMenu_AdjustVolume(void);
-void SysConfigMenu_ChangeScreenBrightness(void);
-void SysConfigMenu_SaveData(void);
+void Sys_SetWireless(bool set);
+void Sys_SetPowerButton(bool set);

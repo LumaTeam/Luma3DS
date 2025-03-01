@@ -1,6 +1,6 @@
 /*
 *   This file is part of Luma3DS
-*   Copyright (C) 2016-2020 Aurora Wright, TuxSH
+*   Copyright (C) 2016-2021 Aurora Wright, TuxSH
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -23,28 +23,26 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 */
+#include "sysfunctions.h"
+#include <3ds.h>
 
-#pragma once
+void Sys_SetWireless(bool set)
+{
+    (set);
+    nwmExtInit();
+    NWMEXT_ControlWirelessEnabled(set);
+    nwmExtExit();
+}
 
-#include <3ds/types.h>
-#include "menu.h"
-
-extern Menu sysconfigMenu;
-extern bool isConnectionForced;
-extern s8 currVolumeSliderOverride;
-
-void SysConfigMenu_UpdateStatus(bool control);
-
-void SysConfigMenu_LoadSettings(void);
-
-void SysConfigMenu_ToggleLEDs(void);
-void SysConfigMenu_ToggleWireless(void);
-void togglePowerButton(void);
-void SysConfigMenu_TogglePowerButton(void);
-void SysConfigMenu_ControlWifi(void);
-void SysConfigMenu_DisableForcedWifiConnection(void);
-void SysConfigMenu_ToggleCardIfPower(void);
-void SysConfigMenu_LoadConfig(void);
-void SysConfigMenu_AdjustVolume(void);
-void SysConfigMenu_ChangeScreenBrightness(void);
-void SysConfigMenu_SaveData(void);
+void Sys_SetPowerButton(bool set)
+{
+    u32 mcuIRQMask;
+    mcuHwcInit();
+    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+    if (set)
+        mcuIRQMask = 0xC0FF1001;   
+    else
+        mcuIRQMask = 0xC0FF1000;
+    MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
+    mcuHwcExit();
+}
