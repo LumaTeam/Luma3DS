@@ -215,6 +215,14 @@ static bool SysConfigMenu_ForceWifiConnection(u32 slot)
     return forcedConnection;
 }
 
+void togglePowerButton(void) {
+    mcuHwcInit();
+    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+    mcuIRQMask ^= 0x00000001;
+    MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
+    mcuHwcExit();
+}
+
 void SysConfigMenu_TogglePowerButton(void)
 {
     u32 mcuIRQMask;
@@ -244,11 +252,7 @@ void SysConfigMenu_TogglePowerButton(void)
 
         if(pressed & KEY_A)
         {
-            mcuHwcInit();
-            MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
-            mcuIRQMask ^= 0x00000001;
-            MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
-            mcuHwcExit();
+            togglePowerButton();
         }
         else if(pressed & KEY_B)
             return;
