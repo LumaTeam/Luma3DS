@@ -441,21 +441,33 @@ static bool backupEssentialFiles(void)
 {
     size_t sz = sizeof(fileCopyBuffer);
 
+    u32 deviceID = *(vu32*)0x01FFB804;
+    char pathStart[0x20];
+    sprintf(pathStart, "backups/%08lX/", deviceID);
+    char fullPath[0x80];
+
     bool ok = true;
-    ok = ok && fileCopy("nand:/ro/sys/HWCAL0.dat", "backups/HWCAL0.dat", false, fileCopyBuffer, sz);
-    ok = ok && fileCopy("nand:/ro/sys/HWCAL1.dat", "backups/HWCAL1.dat", false, fileCopyBuffer, sz);
+    sprintf(fullPath, "%sHWCAL0.dat", pathStart);
+    ok = ok && fileCopy("nand:/ro/sys/HWCAL0.dat", fullPath, false, fileCopyBuffer, sz);
+    sprintf(fullPath, "%sHWCAL1.dat", pathStart);
+    ok = ok && fileCopy("nand:/ro/sys/HWCAL1.dat", fullPath, false, fileCopyBuffer, sz);
 
-    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_A", "backups/LocalFriendCodeSeed_A", false, fileCopyBuffer, sz); // often doesn't exist
-    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_B", "backups/LocalFriendCodeSeed_B", false, fileCopyBuffer, sz);
+    sprintf(fullPath, "%sLocalFriendCodeSeed_A", pathStart);
+    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_A", fullPath, false, fileCopyBuffer, sz); // often doesn't exist
+    sprintf(fullPath, "%sLocalFriendCodeSeed_B", pathStart);
+    ok = ok && fileCopy("nand:/rw/sys/LocalFriendCodeSeed_B", fullPath, false, fileCopyBuffer, sz);
 
-    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_A", "backups/SecureInfo_A", false, fileCopyBuffer, sz);
-    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_B", "backups/SecureInfo_B", false, fileCopyBuffer, sz); // often doesn't exist
+    sprintf(fullPath, "%sSecureInfo_A", pathStart);
+    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_A", fullPath, false, fileCopyBuffer, sz);
+    sprintf(fullPath, "%sSecureInfo_B", pathStart);
+    ok = ok && fileCopy("nand:/rw/sys/SecureInfo_B", fullPath, false, fileCopyBuffer, sz); // often doesn't exist
 
     if (!ok) return false;
 
     alignedseqmemcpy(fileCopyBuffer, (const void *)0x10012000, 0x100);
-    if (getFileSize("backups/otp.bin") != 0x100)
-        ok = ok && fileWrite(fileCopyBuffer, "backups/otp.bin", 0x100);
+    sprintf(fullPath, "%sotp.bin", pathStart);
+    if (getFileSize(fullPath) != 0x100)
+        ok = ok && fileWrite(fileCopyBuffer, fullPath, 0x100);
 
     if (!ok) return false;
 
@@ -463,19 +475,22 @@ static bool backupEssentialFiles(void)
     u8 c = mcuConsoleInfo[0];
     if (c == 2 || c == 4 || (ISN3DS && c == 5) || c == 6)
     {
+        sprintf(fullPath, "%sHWCAL_01_EEPROM.dat", pathStart);
         I2C_readRegBuf(I2C_DEV_EEPROM, 0, fileCopyBuffer, 0x1000); // Up to two instances of hwcal, with the second one @0x800
-        if (getFileSize("backups/HWCAL_01_EEPROM.dat") != 0x1000)
-            ok = ok && fileWrite(fileCopyBuffer, "backups/HWCAL_01_EEPROM.dat", 0x1000);
+        if (getFileSize(fullPath) != 0x1000)
+            ok = ok && fileWrite(fileCopyBuffer, fullPath, 0x1000);
     }
 
     // B9S bootrom backups
     u32 hash[32/4];
     sha(hash, (const void *)0x08080000, 0x10000, SHA_256_MODE);
-    if (memcmp(hash, boot9Sha256, 32) == 0 && getFileSize("backups/boot9.bin") != 0x10000)
-        ok = ok && fileWrite((const void *)0x08080000, "backups/boot9.bin", 0x10000);
+    sprintf(fullPath, "%sboot9.bin", pathStart);
+    if (memcmp(hash, boot9Sha256, 32) == 0 && getFileSize(fullPath) != 0x10000)
+        ok = ok && fileWrite((const void *)0x08080000, fullPath, 0x10000);
     sha(hash, (const void *)0x08090000, 0x10000, SHA_256_MODE);
-    if (memcmp(hash, boot11Sha256, 32) == 0 && getFileSize("backups/boot11.bin") != 0x10000)
-        ok = ok && fileWrite((const void *)0x08090000, "backups/boot11.bin", 0x10000);
+    sprintf(fullPath, "%sboot11.bin", pathStart);
+    if (memcmp(hash, boot11Sha256, 32) == 0 && getFileSize(fullPath) != 0x10000)
+        ok = ok && fileWrite((const void *)0x08090000, fullPath, 0x10000);
 
     return ok;
 }
