@@ -137,6 +137,7 @@ bool fileWrite(const void *buffer, const char *path, u32 size)
             return result == FR_OK && (u32)written == size;
         }
         case FR_NO_PATH:
+            // Only create the last dir in the hierarchy
             for(u32 i = 1; path[i] != 0; i++)
                 if(path[i] == '/')
                 {
@@ -178,6 +179,7 @@ bool fileCopy(const char *pathSrc, const char *pathDst, bool replace, void *tmpB
     }
     else if (res == FR_NO_PATH)
     {
+        // Only create the last dir in the hierarchy
         const char *c;
         for (c = pathDst + strlen(pathDst); *c != '/' && c >= pathDst; --c);
         if (c >= pathDst && c - pathDst <= FF_MAX_LFN && *c != '\0')
@@ -445,6 +447,11 @@ static bool backupEssentialFiles(void)
     char pathStart[0x20];
     sprintf(pathStart, "backups/%08lX/", deviceID);
     char fullPath[0x80];
+
+    // Since the other funcs in this file don't create directories recursively (only the last one),
+    // and nor does f_mkdir, create the directories anyway and ignore the result
+    f_mkdir("backups");
+    f_mkdir(pathStart);
 
     bool ok = true;
     sprintf(fullPath, "%sHWCAL0.dat", pathStart);
