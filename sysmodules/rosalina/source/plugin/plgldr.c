@@ -113,7 +113,7 @@ Result  PLGLDR__SetPluginLoadParameters(PluginLoadParameters *parameters)
     }
     return res;
 }
-void     Flash(u32 color);
+
 Result  PLGLDR__DisplayMenu(PluginMenu *menu)
 {
     Result res = 0;
@@ -136,7 +136,6 @@ Result  PLGLDR__DisplayMenu(PluginMenu *menu)
     {
         res = cmdbuf[1];
     }
-    else Flash(0xFF0000);
 
     return res;
 }
