@@ -27,6 +27,7 @@
 #include <3ds.h>
 #include "luma_config.h"
 #include "menus/sysconfig.h"
+#include "menus/sysfunctions.h"
 #include "memory.h"
 #include "draw.h"
 #include "fmt.h"
@@ -34,22 +35,78 @@
 #include "ifile.h"
 #include "luminance.h"
 
+#define ARRAY_LENGTH(array) (sizeof((array))/sizeof((array)[0]))
+
+//settings to save
+typedef struct CfgData {
+    u8 powerbutton;
+    u8 wireless;
+} CfgData;
+
 Menu sysconfigMenu = {
     "System configuration menu",
     {
         { "Control volume", METHOD, .method=&SysConfigMenu_AdjustVolume},
-        { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
-        { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
-        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
-        { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton },
+        { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi},
+        { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs},
+        { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless},
+        { "Toggle Power Button", METHOD, .method=&SysConfigMenu_TogglePowerButton},
         { "Toggle power to card slot", METHOD, .method=&SysConfigMenu_ToggleCardIfPower},
-        { "Change screen brightness", METHOD, .method = &SysConfigMenu_ChangeScreenBrightness },
+        { "Change screen brightness", METHOD, .method = &SysConfigMenu_ChangeScreenBrightness},
+        { "Save settings", METHOD, .method = &SysConfigMenu_SaveData},
         {},
     }
 };
 
+bool failtoload = false;
 bool isConnectionForced = false;
 s8 currVolumeSliderOverride = -1;
+
+CfgData data;
+
+void SysConfigMenu_SaveSettings(void)
+{
+    IFile file;
+    s64 out;
+    svcGetSystemInfo(&out, 0x10000, 0x203);
+    bool isSdMode = (bool)out;
+
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    Result res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/sysconfig.bin"), FS_OPEN_CREATE | FS_OPEN_WRITE);
+
+    u64 total;
+    if(R_SUCCEEDED(res))
+        res = IFile_Write(&file, &total, (const char *)&data, sizeof(CfgData), 0);
+    IFile_Close(&file);
+}
+
+void SysConfigMenu_LoadSettings(void)
+{
+    IFile file;
+    s64 out;
+    svcGetSystemInfo(&out, 0x10000, 0x203);
+    bool isSdMode = (bool)out;
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    Result res = IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/sysconfig.bin"), FS_OPEN_READ);
+
+    u8 wireless = (*(vu8 *)((0x10140000 | (1u << 31)) + 0x180));
+    if (!R_SUCCEEDED(res)) //file doesnt exist
+    {
+        failtoload = true;
+        //default settings
+        data.powerbutton = false;
+        data.wireless = wireless; 
+        Sys_SetWireless(data.wireless);
+        Sys_SetPowerButton(data.powerbutton);
+        IFile_Close(&file);
+        return;
+    }
+    u64 total;
+    IFile_Read(&file, &total, (void *)&data, sizeof(CfgData));
+    Sys_SetWireless(data.wireless);
+    Sys_SetPowerButton(data.powerbutton);
+    IFile_Close(&file);
+}
 
 void SysConfigMenu_ToggleLEDs(void)
 {
@@ -73,7 +130,7 @@ void SysConfigMenu_ToggleLEDs(void)
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & KEY_A)
-        {
+        {            
             mcuHwcInit();
             u8 result;
             MCUHWC_ReadRegister(0x28, &result, 1);
@@ -124,9 +181,8 @@ void SysConfigMenu_ToggleWireless(void)
 
         if(pressed & KEY_A && nwmRunning)
         {
-            nwmExtInit();
-            NWMEXT_ControlWirelessEnabled(!wireless);
-            nwmExtExit();
+            Sys_SetWireless(!wireless);
+            data.wireless = !wireless;
         }
         else if(pressed & KEY_B)
             return;
@@ -224,18 +280,18 @@ void SysConfigMenu_TogglePowerButton(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    mcuHwcInit();
-    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
-    mcuHwcExit();
-
     do
     {
         Draw_Lock();
+        mcuHwcInit();
+        MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
+
+        bool toggled = ((mcuIRQMask & 0x00000001) == 0x00000001);
         Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
 
         Draw_DrawString(10, 50, COLOR_WHITE, "Current status:");
-        Draw_DrawString(100, 50, (((mcuIRQMask & 0x00000001) == 0x00000001) ? COLOR_RED : COLOR_GREEN), (((mcuIRQMask & 0x00000001) == 0x00000001) ? " DISABLED" : " ENABLED "));
+        Draw_DrawString(100, 50, (toggled ? COLOR_RED : COLOR_GREEN), (toggled ? " DISABLED" : " ENABLED "));
 
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -244,14 +300,12 @@ void SysConfigMenu_TogglePowerButton(void)
 
         if(pressed & KEY_A)
         {
-            mcuHwcInit();
-            MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
-            mcuIRQMask ^= 0x00000001;
-            MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
-            mcuHwcExit();
+            Sys_SetPowerButton(!toggled);
+            data.powerbutton = !toggled;
         }
         else if(pressed & KEY_B)
             return;
+        mcuHwcExit();
     }
     while(!menuShouldExit);
 }
@@ -377,9 +431,10 @@ void SysConfigMenu_ToggleCardIfPower(void)
                 res = FSUSER_CardSlotPowerOn(&updatedCardIfStatus);
             else
                 res = FSUSER_CardSlotPowerOff(&updatedCardIfStatus);
-
             if (R_SUCCEEDED(res))
-                cardIfStatus = !updatedCardIfStatus;
+            {
+                cardIfStatus = !updatedCardIfStatus; 
+            }
         }
         else if(pressed & KEY_B)
             return;
@@ -626,4 +681,33 @@ void SysConfigMenu_ChangeScreenBrightness(void)
         Draw_SetupFramebuffer();
 
     Draw_Unlock();
+}
+
+void SysConfigMenu_SaveData(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to save, press B to go back.");
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        if(pressed & KEY_A)
+        {           
+            SysConfigMenu_SaveSettings();
+            return;
+        }
+        else if(pressed & KEY_B)
+            return;
+    }
+    while(!menuShouldExit);
 }
