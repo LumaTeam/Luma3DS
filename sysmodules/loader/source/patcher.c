@@ -478,7 +478,7 @@ static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 
     if(R_FAILED(IFile_GetSize(&file, &fileSize)) || fileSize < 3) goto exit;
     if(fileSize >= 12) fileSize = 12;
 
-    char buf[12] = "------------";
+    char buf[12+1] = "------------";
     u64 total;
 
     if(R_FAILED(IFile_Read(&file, &total, buf, fileSize))) goto exit;

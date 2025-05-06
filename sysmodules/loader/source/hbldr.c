@@ -34,6 +34,12 @@
 
 extern bool isN3DS;
 
+// Note: just switch to [[attribute]] once we use clangd and cmake
+// vscode-cpptools has (or had?) some issues with C23 support
+#if __GNUC__ >= 15
+// Required by GCC 15+ but ignored (with warning) before
+__attribute__((nonstring))
+#endif
 static const char serviceList[34][8] =
 {
     "APT:U",
