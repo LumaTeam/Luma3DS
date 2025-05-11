@@ -71,7 +71,7 @@ u8 *loadDeliverArg(void)
                 bool hasMagic = memcmp(tlnc, "TLNC", 4) == 0;
                 u8 crcLen = tlnc[5];
                 u16 crc = *(u16 *)(tlnc + 6);
-                if (!hasMagic || crcLen <= 248 || crc != crc16(tlnc + 8, crcLen, 0xFFFF))
+                if (!hasMagic || (8 + crcLen) > 0x100 || crc != crc16(tlnc + 8, crcLen, 0xFFFF))
                     memset(tlnc, 0, 0x100);
 
                 memset(deliverArg + 0x400, 0, 0xC00);
@@ -141,6 +141,8 @@ static bool configureHomebrewAutobootCtr(u8 *deliverArg)
         return false;
 
     u8 memtype = configData.autobootCtrAppmemtype;
+    // autobootCtrAppmemtype already checked, but it doesn't hurt to check again
+    memtype = memtype >= 5 ? 0 : memtype;
     deliverArg[0x400] = ISN3DS ? appmemtypesN3ds[memtype] : appmemtypesO3ds[memtype];
 
     // Determine whether to load from the SD card or from NAND. We don't support gamecards for this
