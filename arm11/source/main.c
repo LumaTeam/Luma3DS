@@ -195,6 +195,28 @@ static void deinitScreens(void)
     *(vu32 *)0x10202014 = 0;
 }
 
+static void zerofillN3dsAblRegisters(void)
+{
+    // It should be fine to write to these regs even on O3DS as they
+    // are RAZ/WI
+
+    // TODO: read from calibration, but null values should do just
+    // fine. From testing, LUT explicitly ignores null values, and
+    // it is probably the case of reg @ 0x54 as well.
+    *(vu32 *)0x10202250 = 0; // unknown 24-bit value, seen: 0
+    *(vu32 *)0x10202254 = 0; // unknown 24-bit value, seen: nonzero
+
+    *(vu32 *)0x10202A50 = 0; // unknown 24-bit value, seen: 0
+    *(vu32 *)0x10202A54 = 0; // unknown 24-bit value, seen: nonzero
+
+    for (u32 i = 0; i < 64; i++) {
+        // Blend colors (w/ color multiplication) for each group
+        // of 4 relative-luminance Rs
+        *(vu32 *)(0x10202300 + 4*i) = 0;
+        *(vu32 *)(0x10202B00 + 4*i) = 0;
+    }
+}
+
 void main(void)
 {
     operation = ARM11_READY;
@@ -222,6 +244,9 @@ void main(void)
                 break;
             case DEINIT_SCREENS:
                 deinitScreens();
+                break;
+            case ZEROFILL_N3DS_ABL_REGISTERS:
+                zerofillN3dsAblRegisters();
                 break;
             case PREPARE_ARM11_FOR_FIRMLAUNCH:
                 memcpy((void *)0x1FFFFC00, (void *)prepareForFirmlaunch, prepareForFirmlaunchSize);

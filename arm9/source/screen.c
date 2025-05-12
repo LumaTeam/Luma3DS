@@ -118,3 +118,8 @@ void initScreens(void)
     clearScreens(false);
     swapFramebuffers(false);
 }
+
+void zerofillN3dsAblRegisters(void)
+{
+    invokeArm11Function(ZEROFILL_N3DS_ABL_REGISTERS);
+}

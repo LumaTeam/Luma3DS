@@ -59,6 +59,7 @@ typedef enum
     SWAP_FRAMEBUFFERS,
     UPDATE_BRIGHTNESS,
     DEINIT_SCREENS,
+    ZEROFILL_N3DS_ABL_REGISTERS,
     PREPARE_ARM11_FOR_FIRMLAUNCH,
     ARM11_READY,
 } Arm11Operation;
@@ -73,3 +74,4 @@ void swapFramebuffers(bool isAlternate);
 void updateBrightness(u32 brightnessIndex);
 void clearScreens(bool isAlternate);
 void initScreens(void);
+void zerofillN3dsAblRegisters(void);

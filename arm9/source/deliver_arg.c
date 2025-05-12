@@ -30,6 +30,7 @@
 #include "config.h"
 #include "fs.h"
 #include "i2c.h"
+#include "screen.h"
 
 u8 *loadDeliverArg(void)
 {
@@ -199,6 +200,29 @@ static bool configureHomebrewAutobootTwl(u8 *deliverArg)
     *(u16 *)(tlnc + 0x18) = (1 << 4) | (3 << 1) | (1 << 0);
 
     *(u16 *)(tlnc + 6) = crc16(tlnc + 8, 0x18, 0xFFFF);
+
+    // Even though (when running TWL/AGB FIRM) the SoC is in O3DS mode, and the GPU also is,
+    // as well as most other components behaving as such (external RAM, L2C not usable, etc.),
+    // this is NOT the case for the LCD and adaptive backlight logic which retains FULL N3DS
+    // functionality, including a feature where the window is blended with a given color depending
+    // on the overall relative luminance of that window.
+
+    // However, Nintendo's own code mistakenly assumes the opposite, and clearly so ("if GPU in N3DS mode"
+    // checks, not passing N3DS extra adaptive backlight (ABL) to TWL/AGB_FIRM). This has implications:
+
+    // - Powersaving (ABL) settings in TWL/AGB_FIRM is inconsistent with *both* O3DS (because the new RGB blend LUT
+    // has been set to its current value by NATIVE_FIRM) and N3DS (because "pwn_cnt" and "inertia" are missing
+    // their N3DS-only bits)
+    // - "rave party" when booting into TWL/AGB_FIRM or O3DS NATIVE_FIRM without these regs (well, the LUT) initialized.
+    // Easiest way to do so is by leveraging the "DSi autooboot" feature Luma provides. It is worth noting at least
+    // the LUT survives hardware reboots (if Nintendo were using DSi software that was using TLNC-based reboots,
+    // they wouldn't have noticed).
+
+    // As such, zerofill these registers (from testing, hardware explicitly discards null values, so this
+    // should be fine). For now, only touch the Luma-initiated autoboot path
+
+    if (ISN3DS)
+        zerofillN3dsAblRegisters();
 
     CFG_BOOTENV = 3;
 
