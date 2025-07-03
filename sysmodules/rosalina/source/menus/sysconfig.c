@@ -560,7 +560,7 @@ void SysConfigMenu_ChangeScreenBrightness(void)
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
 
         posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by the presets.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by calibration.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
         Draw_FlushFramebuffer();
         Draw_Unlock();

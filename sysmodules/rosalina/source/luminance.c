@@ -104,8 +104,13 @@ u32 getMinLuminancePreset(void)
 
 u32 getMaxLuminancePreset(void)
 {
+    // Unlike SetLuminanceLevel, SetLuminance doesn't
+    // check if preset <= 5, and actually allows the lumiance
+    // levels provisioned for the "brightness boost mode" (brighter
+    // when adapter is plugged in), even when the feature is disabled
+    // (it is disabled for anything but the OG model, iirc)
     readCalibration();
-    return s_blPwmData.luminanceLevels[s_blPwmData.numLevels - 1];
+    return s_blPwmData.luminanceLevels[6];
 }
 
 u32 getCurrentLuminance(bool top)
@@ -114,7 +119,8 @@ u32 getCurrentLuminance(bool top)
 
     readCalibration();
 
-    const float *coeffs = s_blPwmData.coeffs[top ? (isN3DS ? 2 : 1) : 0];
+    bool is3d = (REG32(0x10202000 + 0x000) & 1) != 0;
+    const float *coeffs = s_blPwmData.coeffs[top ? (is3d ? 2 : 1) : 0];
     u32 brightness = REG32(regbase + 0x40);
     float ratio = getPwmRatio(s_blPwmData.brightnessMax, REG32(regbase + 0x44));
 
