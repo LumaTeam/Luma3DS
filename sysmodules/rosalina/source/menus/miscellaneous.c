@@ -367,11 +367,6 @@ void MiscellaneousMenu_UpdateTimeDateNtp(void)
         }
     }
 
-    Draw_Lock();
-    Draw_ClearFramebuffer();
-    Draw_FlushFramebuffer();
-    Draw_Unlock();
-
     do
     {
         Draw_Lock();
