@@ -273,7 +273,8 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, boo
 
     u8 *buf = framebufferCache;
     Draw_CreateBitmapHeader(framebufferCache, width, numLinesScaled);
-    buf += 54;
+    const u32 headerSize = 0x40;
+    buf += headerSize;
 
     u32 y = 0;
     // Our buffer might be smaller than the size of the screenshot...
@@ -287,7 +288,7 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, boo
 
         s64 t1 = svcGetSystemTick();
         timeSpentConvertingScreenshot += t1 - t0;
-        TRY(IFile_Write(file, &total, framebufferCache, (y == 0 ? 54 : 0) + lineSize * nlines * scaleFactorY, 0)); // don't forget to write the header
+        TRY(IFile_Write(file, &total, framebufferCache, (y == 0 ? headerSize : 0) + lineSize * nlines * scaleFactorY, 0)); // don't forget to write the header
         timeSpentWritingScreenshot += svcGetSystemTick() - t1;
 
         y += nlines;
