@@ -843,6 +843,13 @@ u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size)
         return 1;
     *off2 = 0xE01A;
 
+    // Patch kernelpanic to skip devunit check, so that it sets the LCD fill regs
+    // which are useful to detect such panics
+    u16 *off3;
+    for (off3 = (u16 *)section1; (u8 *)off3 <= section1 + section1Size && (off3[0] != 0x481D || off3[1] != 0xB570); off3++);
+    if ((u8 *)off3 >= section1 + section1Size)
+        return 1;
+    off3[2] = 0x2001; // movs r0, #1
     return 0;
 }
 
