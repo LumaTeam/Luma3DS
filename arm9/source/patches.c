@@ -850,6 +850,17 @@ u32 patchLgyK11(u8 *section1, u32 section1Size, u8 *section2, u32 section2Size)
     if ((u8 *)off3 >= section1 + section1Size)
         return 1;
     off3[2] = 0x2001; // movs r0, #1
+
+    // Patch kernel to avoid allocating the two "configuration memory" pages, freeing
+    // 0x2000 bytes of kernel "heap" (which is 0xD000 AXIWRAM bytes on LGY K11 instead
+    // of the entire FCRAM on NFIRM). This is indeed a bug because if prevents two of the
+    // 12 KThread objects from being created
+    u16 *off4;
+    for (off4 = (u16 *)section1; (u8 *)off4 <= section1 + section1Size && (off4[0] != 0xB570 || off4[1] != 0x2200); off4++);
+    if ((u8 *)off4 >= section1 + section1Size)
+        return 1;
+    *off4 = 0x4770; // bx lr
+
     return 0;
 }
 
