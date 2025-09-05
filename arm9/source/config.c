@@ -694,7 +694,7 @@ static size_t saveLumaIniConfigToStr(char *out)
     return n < 0 ? 0 : (size_t)n;
 }
 
-static char tmpIniBuffer[0x2000];
+static char tmpIniBuffer[0x3000];
 
 static bool readLumaIniConfig(void)
 {
