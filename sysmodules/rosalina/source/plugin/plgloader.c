@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "sleep.h"
 #include "task_runner.h"
+#include "draw.h"
 
 #define PLGLDR_VERSION (SYSTEM_VERSION(1, 0, 2))
 
@@ -171,10 +172,10 @@ void     PluginLoader__HandleCommands(void *_ctx)
                     // A little flash to notify the user that the plugin is loaded
                     for (u32 i = 0; i < 64; i++)
                     {
-                        REG32(0x10202204) = 0x01FF9933;
+                        LCD_TOP_FILLCOLOR = 0x01FF9933;
                         svcSleepThread(5000000);
                     }
-                    REG32(0x10202204) = 0;
+                    LCD_TOP_FILLCOLOR = 0;
                 }
                 //if (!ctx->userLoadParameters.noIRPatch)
                 //    IR__Patch();
