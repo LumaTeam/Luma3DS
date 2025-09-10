@@ -53,6 +53,27 @@ const char *topScreenType = NULL;
 const char *bottomScreenType = NULL;
 bool areScreenTypesInitialized = false;
 
+static void menuClearIPAddress()
+{
+    Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
+}
+
+static void menuDrawIPAddress() 
+{
+    u32 ip = socGethostid();
+
+    // Only draw if there's an active connection.
+    if (ip != 0) {
+        char ipBuffer[17];
+        u8 *addr = (u8 *)&ip;
+        int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
+        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
+    }
+
+    else
+        menuClearIPAddress();
+}
+
 // libctru redefinition:
 
 bool hidShouldUseIrrst(void)
@@ -469,15 +490,24 @@ static void menuDraw(Menu *menu, u32 selected)
 
     if(miniSocEnabled)
     {
-        char ipBuffer[17];
-        u32 ip = socGethostid();
-        u8 *addr = (u8 *)&ip;
-        int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
-        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
+        menuDrawIPAddress();
     }
-
     else
-        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
+    {
+        Result miniSocRes = 0;
+        miniSocRes = miniSocInit();
+
+        if (R_FAILED(miniSocRes))
+        {
+            menuClearIPAddress();
+        }
+        else
+        {
+            menuDrawIPAddress();
+        }
+
+        miniSocExit();
+    }
 
     if(mcuInfoRes == 0)
     {
