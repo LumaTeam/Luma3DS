@@ -5,19 +5,11 @@
 #include "ifile.h"
 #include "util.h"
 #include "hbldr.h"
+#include "loader.h"
 
 #define SYSMODULE_CXI_COOKIE_MASK 0xEEEE000000000000ull
 
-// Used by the custom loader command 0x101 (ControlApplicationMemoryModeOverride)
-typedef struct ControlApplicationMemoryModeOverrideConfig {
-    u32 query : 1; //< Only query the current configuration, do not update it.
-    u32 enable_o3ds : 1; //< Enable o3ds memory mode override
-    u32 enable_n3ds : 1; //< Enable n3ds memory mode override
-    u32 o3ds_mode : 3; //< O3ds memory mode
-    u32 n3ds_mode : 3; //< N3ds memory mode
-} ControlApplicationMemoryModeOverrideConfig;
-
-static ControlApplicationMemoryModeOverrideConfig g_memoryOverrideConfig = { 0 };
+extern ControlApplicationMemoryModeOverrideConfig g_memoryOverrideConfig;
 
 extern u32 config, multiConfig, bootConfig;
 extern bool isN3DS, isSdMode, nextGamePatchDisabled;
@@ -597,7 +589,20 @@ void loaderHandleCommands(void *ctx)
         case 0x101: // ControlApplicationMemoryModeOverride
             memcpy(&memModeOverride, &cmdbuf[1], sizeof(ControlApplicationMemoryModeOverrideConfig));
             if (!memModeOverride.query)
+            {
                 g_memoryOverrideConfig = memModeOverride;
+                if (g_memoryOverrideConfig.enable_o3ds || g_memoryOverrideConfig.enable_n3ds)
+                {
+                    IFile file;
+                    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+                    if (R_SUCCEEDED(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/memtype_override.bin"), 
+                                            FS_OPEN_CREATE | FS_OPEN_READ | FS_OPEN_WRITE))) {
+                        u64 written;
+                        IFile_Write(&file, &written, &g_memoryOverrideConfig, sizeof(ControlApplicationMemoryModeOverrideConfig), 0);
+                        IFile_Close(&file);
+                    }
+                }
+            }
             cmdbuf[0] = IPC_MakeHeader(0x101, 2, 0);
             cmdbuf[1] = (Result)0;
             memcpy(&cmdbuf[2], &g_memoryOverrideConfig, sizeof(ControlApplicationMemoryModeOverrideConfig));
