@@ -516,7 +516,7 @@ void    PLG__WaitForReply(void)
 {
     if (PluginLoaderCtx.eventsSelfManaged) return;
     __strex__(PluginLoaderCtx.plgReplyPA, PLG_WAIT);
-    svcArbitrateAddress(PluginLoaderCtx.arbiter, (u32)PluginLoaderCtx.plgReplyPA, ARBITRATION_WAIT_IF_LESS_THAN_TIMEOUT, PLG_OK, 10000000000ULL);
+    svcArbitrateAddress(PluginLoaderCtx.arbiter, (u32)PluginLoaderCtx.plgReplyPA, ARBITRATION_WAIT_IF_LESS_THAN_TIMEOUT, PLG_OK, MemoryBlock__GetMappedPluginHeader()->waitForReplyTimeout);
 }
 
 void     PLG__SetConfigMemoryStatus(u32 status)
