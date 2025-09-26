@@ -56,10 +56,12 @@ typedef struct
     s32*            plgldrEvent; ///< Used for synchronization
     s32*            plgldrReply; ///< Used for synchronization
     u8              notifyHomeEvent;
-    u8              padding[3];
-    u32             reserved[23];
+    u8              padding[7];
+    u64             waitForReplyTimeout;
+    u32             reserved[20];
     u32             config[32];
-}   PluginHeader;
+} PluginHeader;
+_Static_assert(sizeof(PluginHeader) == 0x100, "Invalid PluginHeader size");
 
 typedef void (*OnPlgLdrEventCb_t)(s32 eventType);
 
