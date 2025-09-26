@@ -9,6 +9,8 @@
 #include "3dsx.h"
 #include "hbldr.h"
 
+ControlApplicationMemoryModeOverrideConfig g_memoryOverrideConfig = { 0 };
+
 u32 config, multiConfig, bootConfig;
 bool isN3DS, isSdMode, nextGamePatchDisabled, isLumaWithKext;
 
@@ -77,6 +79,27 @@ static inline void loadCFWInfo(void)
     Luma_SharedConfig->use_hbldr = true;
 }
 
+static inline void loadMemOverrideCfg(void)
+{
+    IFile file;
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    if (R_SUCCEEDED(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/memtype_override.bin"), FS_OPEN_READ)))
+    {
+        u64 read;
+        Result res = IFile_Read(&file, &read, &g_memoryOverrideConfig, sizeof(ControlApplicationMemoryModeOverrideConfig));
+        if (R_FAILED(res) || read != sizeof(ControlApplicationMemoryModeOverrideConfig))
+            memset(&g_memoryOverrideConfig, 0, sizeof(ControlApplicationMemoryModeOverrideConfig));
+        IFile_Close(&file);
+
+        FS_Archive ar;
+        if(R_SUCCEEDED(FSUSER_OpenArchive(&ar, archiveId, fsMakePath(PATH_EMPTY, ""))))
+        {
+            FSUSER_DeleteFile(ar, fsMakePath(PATH_ASCII, "/luma/memtype_override.bin"));
+            FSUSER_CloseArchive(ar);
+        }
+    }
+}
+
 void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 
 // this is called after main exits
@@ -134,6 +157,7 @@ static_assert(ARGVBUF_SIZE > 2 * PATH_MAX, "Wrong 3DSX argv buffer size");
 
 int main(void)
 {
+    loadMemOverrideCfg();
     nextGamePatchDisabled = false;
 
     // Loader doesn't use any input static buffer, so we should be fine
