@@ -459,6 +459,44 @@ error:
     while(true);
 }
 
+bool overrideTitleRemasterVersion(u64 progId, u16 *remasterVersion)
+{
+    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/remaster.bin"
+       If it exists it should contain a 16-bit integer */
+
+    char path[] = "/luma/titles/0000000000000000/remaster.bin";
+    progIdToStr(path + 28, progId);
+
+    IFile file;
+    u16 targetVersion;
+
+    if(!openLumaFile(&file, path)) return false;
+
+    u64 fileSize;
+
+    if(R_FAILED(IFile_GetSize(&file, &fileSize)) || (fileSize != 2)) goto error;
+    else
+    {
+        u64 total;
+
+        if(R_FAILED(IFile_Read(&file, &total, &targetVersion, 2)) || total != 2) goto error;
+    }
+
+    IFile_Close(&file);
+
+    // force the target version to be treated as the "newest" remaster version available
+    if (targetVersion >= *remasterVersion) return false;
+    *remasterVersion = 0;
+
+    return true;
+
+error:
+    IFile_Close(&file);
+
+    svcBreak(USERBREAK_ASSERT);
+    while(true);
+}
+
 static inline bool loadTitleLocaleConfig(u64 progId, u8 *mask, u8 *regionId, u8 *languageId, u8 *countryId, u8 *stateId)
 {
     /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/locale.txt"
