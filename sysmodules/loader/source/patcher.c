@@ -165,8 +165,11 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
             case 0xE24DD028:
                 if(addr <= size - 16 && *fsMountArchive == 0xFFFFFFFF && addr32[1] == 0xE1A04000 && addr32[2] == 0xE59F60A8 && addr32[3] == 0xE3A0C001) temp = fsMountArchive;
                 break;
+            case 0xE2844001:
+                if(addr <= size - 12 && *fsUnMountArchive == 0xFFFFFFFF && addr32[1] == 0xE3540020 && addr32[2] == 0x3AFFFFF0) temp = fsUnMountArchive;
+                break;
             case 0xE353003A:
-                if(addr <= size - 12 && *fsUnMountArchive == 0xFFFFFFFF && addr32[1] == 0x0A000019 && addr32[2] == 0xE1A05400) temp = fsUnMountArchive;
+                if(addr <= size - 12 && *fsUnMountArchive == 0xFFFFFFFF && (addr32[1] & 0xFFFFFF0F) == 0x0A000009 && (addr32[2] & 0xFFFF0FF0) == 0xE1A00400) temp = fsUnMountArchive;
                 break;
             case 0xE3500008:
                 if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && (addr32[1] & 0xFFF00FF0) == 0xE1800400 && (addr32[2] & 0xFFF00FF0) == 0xE1800FC0) temp = fsRegisterArchive;
