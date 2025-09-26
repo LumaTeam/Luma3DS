@@ -10,6 +10,7 @@ extern u32 romfsRedirPatchSubstituted2, romfsRedirPatchHook2;
 
 extern u32 romfsRedirPatchArchiveName;
 extern u32 romfsRedirPatchFsMountArchive;
+extern u32 romfsRedirPatchFsUnMountArchive;
 extern u32 romfsRedirPatchFsRegisterArchive;
 extern u32 romfsRedirPatchArchiveId;
 extern u32 romfsRedirPatchRomFsMount;
