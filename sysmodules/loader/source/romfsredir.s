@@ -31,19 +31,22 @@ romfsRedirPatch:
         bne     romfsRedirPatchSubstituted1
         stmfd   sp!, {r0-r4, lr}
         adr     r0, romfsRedirPatchArchiveName
-        ldr     r4, romfsRedirPatchFsUnMountArchive
-        blx     r4
+        .global romfsRedirPatchFsUnMountArchive
+        romfsRedirPatchFsUnMountArchive:
+            .word 0xdead0004
         sub     sp, sp, #4
         ldr     r1, romfsRedirPatchArchiveId
         mov     r0, sp
-        ldr     r4, romfsRedirPatchFsMountArchive
-        blx     r4
+        .global romfsRedirPatchFsMountArchive
+        romfsRedirPatchFsMountArchive:
+            .word 0xdead0005
         mov     r3, #0
         mov     r2, #0
         ldr     r1, [sp]
         adr     r0, romfsRedirPatchArchiveName
-        ldr     r4, romfsRedirPatchFsRegisterArchive
-        blx     r4
+        .global romfsRedirPatchFsRegisterArchive
+        romfsRedirPatchFsRegisterArchive:
+            .word 0xdead0006
         add     sp, sp, #4
         ldmfd   sp!, {r0-r4, lr}
         b       romfsRedirPatchSubstituted1
@@ -111,22 +114,16 @@ romfsRedirPatch:
 .balign 4
 
     .global romfsRedirPatchArchiveName
-    .global romfsRedirPatchFsMountArchive
-    .global romfsRedirPatchFsUnMountArchive
-    .global romfsRedirPatchFsRegisterArchive
     .global romfsRedirPatchArchiveId
     .global romfsRedirPatchRomFsMount
     .global romfsRedirPatchUpdateRomFsMount
     .global romfsRedirPatchCustomPath
 
     romfsRedirPatchArchiveName       : .ascii "lf:\0"
-    romfsRedirPatchFsMountArchive    : .word 0xdead0005
-    romfsRedirPatchFsUnMountArchive  : .word 0xdead0009
-    romfsRedirPatchFsRegisterArchive : .word 0xdead0006
     romfsRedirPatchArchiveId         : .word 0xdead0007
     romfsRedirPatchRomFsMount        : .ascii "rom:"
     romfsRedirPatchUpdateRomFsMount  : .word 0xdead0008
-    romfsRedirPatchCustomPath        : .word 0xdead0004
+    romfsRedirPatchCustomPath        : .word 0xdead0009
 
 _romfsRedirPatchEnd:
 

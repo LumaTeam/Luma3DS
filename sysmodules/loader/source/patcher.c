@@ -631,9 +631,9 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     romfsRedirPatchSubstituted2 = *(u32 *)(code + fsTryOpenFile);
     romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
     romfsRedirPatchCustomPath = pathAddress;
-    romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
-    romfsRedirPatchFsUnMountArchive = 0x100000 + fsUnMountArchive;
-    romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
+    romfsRedirPatchFsMountArchive = MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsMountArchive - (u32)romfsRedirPatch, fsMountArchive);
+    romfsRedirPatchFsUnMountArchive = MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsUnMountArchive - (u32)romfsRedirPatch, fsUnMountArchive);
+    romfsRedirPatchFsRegisterArchive = MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsRegisterArchive - (u32)romfsRedirPatch, fsRegisterArchive);
     romfsRedirPatchArchiveId = archiveId;
     memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMount, 4);
 
