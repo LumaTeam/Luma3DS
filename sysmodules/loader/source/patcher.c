@@ -148,7 +148,7 @@ static u32 findFunctionStart(u8 *code, u32 pos)
     return 0xFFFFFFFF;
 }
 
-static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly)
+static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive, u32 *fsRegisterArchive, u32 *fsTryOpenFile, u32 *fsOpenFileDirectly, u32 *fsUnMountArchive)
 {
     u32 found = 0,
         *temp = NULL;
@@ -164,6 +164,12 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
                 break;
             case 0xE24DD028:
                 if(addr <= size - 16 && *fsMountArchive == 0xFFFFFFFF && addr32[1] == 0xE1A04000 && addr32[2] == 0xE59F60A8 && addr32[3] == 0xE3A0C001) temp = fsMountArchive;
+                break;
+            case 0xE2844001:
+                if(addr <= size - 12 && *fsUnMountArchive == 0xFFFFFFFF && addr32[1] == 0xE3540020 && addr32[2] == 0x3AFFFFF0) temp = fsUnMountArchive;
+                break;
+            case 0xE353003A:
+                if(addr <= size - 12 && *fsUnMountArchive == 0xFFFFFFFF && (addr32[1] & 0xFFFFFF0F) == 0x0A000009 && (addr32[2] & 0xFFFF0FF0) == 0xE1A00400) temp = fsUnMountArchive;
                 break;
             case 0xE3500008:
                 if(addr <= size - 12 && *fsRegisterArchive == 0xFFFFFFFF && (addr32[1] & 0xFFF00FF0) == 0xE1800400 && (addr32[2] & 0xFFF00FF0) == 0xE1800FC0) temp = fsRegisterArchive;
@@ -183,14 +189,14 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
             if(*temp != 0xFFFFFFFF)
             {
                 found++;
-                if(found == 4) break;
+                if(found == 5) break;
             }
 
             temp = NULL;
         }
     }
 
-    return found == 4;
+    return found == 5;
 }
 
 static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress, u32 *payloadOffset, u32 *pathOffset, u32 *pathAddress)
@@ -569,6 +575,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     if(!archiveId) return true;
 
     u32 fsMountArchive = 0xFFFFFFFF,
+        fsUnMountArchive = 0xFFFFFFFF,
         fsRegisterArchive = 0xFFFFFFFF,
         fsTryOpenFile = 0xFFFFFFFF,
         fsOpenFileDirectly = 0xFFFFFFFF,
@@ -576,7 +583,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
         pathOffset = 0,
         pathAddress = 0xDEADCAFE;
 
-    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly) ||
+    if(!findLayeredFsSymbols(code, textSize, &fsMountArchive, &fsRegisterArchive, &fsTryOpenFile, &fsOpenFileDirectly, &fsUnMountArchive) ||
        !findLayeredFsPayloadOffset(code, textSize, roSize, dataSize, roAddress, dataAddress, &payloadOffset, &pathOffset, &pathAddress)) return false;
 
     static const char *updateRomFsMounts[] = { "ro2:",
@@ -625,6 +632,7 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
     romfsRedirPatchCustomPath = pathAddress;
     romfsRedirPatchFsMountArchive = 0x100000 + fsMountArchive;
+    romfsRedirPatchFsUnMountArchive = 0x100000 + fsUnMountArchive;
     romfsRedirPatchFsRegisterArchive = 0x100000 + fsRegisterArchive;
     romfsRedirPatchArchiveId = archiveId;
     memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMount, 4);
