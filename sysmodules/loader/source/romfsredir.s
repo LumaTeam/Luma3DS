@@ -30,6 +30,9 @@ romfsRedirPatch:
         cmp     r3, #3
         bne     romfsRedirPatchSubstituted1
         stmfd   sp!, {r0-r4, lr}
+        adr     r0, romfsRedirPatchArchiveName
+        ldr     r4, romfsRedirPatchFsUnMountArchive
+        blx     r4
         sub     sp, sp, #4
         ldr     r1, romfsRedirPatchArchiveId
         mov     r0, sp
@@ -109,6 +112,7 @@ romfsRedirPatch:
 
     .global romfsRedirPatchArchiveName
     .global romfsRedirPatchFsMountArchive
+    .global romfsRedirPatchFsUnMountArchive
     .global romfsRedirPatchFsRegisterArchive
     .global romfsRedirPatchArchiveId
     .global romfsRedirPatchRomFsMount
@@ -117,6 +121,7 @@ romfsRedirPatch:
 
     romfsRedirPatchArchiveName       : .ascii "lf:\0"
     romfsRedirPatchFsMountArchive    : .word 0xdead0005
+    romfsRedirPatchFsUnMountArchive  : .word 0xdead0009
     romfsRedirPatchFsRegisterArchive : .word 0xdead0006
     romfsRedirPatchArchiveId         : .word 0xdead0007
     romfsRedirPatchRomFsMount        : .ascii "rom:"
