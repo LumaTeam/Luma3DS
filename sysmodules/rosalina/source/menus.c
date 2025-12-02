@@ -307,6 +307,8 @@ void RosalinaMenu_HomeMenu(void) {
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
+    Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Return to Home");
+
     do {
         srvPublishToSubscriber(0x204, 0);
 
