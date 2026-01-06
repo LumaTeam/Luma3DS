@@ -734,33 +734,65 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
              progId == 0x0004001000022000LL || //EUR MSET
              progId == 0x0004001000026000LL || //CHN MSET
              progId == 0x0004001000027000LL || //KOR MSET
-             progId == 0x0004001000028000LL) //TWN MSET
-            && CONFIG(PATCHVERSTRING))
+             progId == 0x0004001000028000LL)) //TWN MSET
     {
-        static const u16 pattern[] = u"Ve";
-        const u16 *patch;
-        u32 patchSize = 0,
-        currentNand = BOOTCFG_NAND;
-
-        u16 customVerString[19];
-        loadCustomVerString(customVerString, &patchSize, currentNand);
-
-        if(patchSize != 0) patch = customVerString;
-        else
+        if (CONFIG(PATCHVERSTRING))
         {
-            patchSize = 8;
+            static const u16 pattern[] = u"Ve";
+            const u16 *patch;
+            u32 patchSize = 0,
+            currentNand = BOOTCFG_NAND;
 
-            static const u16 *const verStringNandEmu[] = { u" Emu", u"Emu2", u"Emu3", u"Emu4" };
-            patch = currentNand == 0 ? u" Sys" : verStringNandEmu[BOOTCFG_EMUINDEX];
+            u16 customVerString[19];
+            loadCustomVerString(customVerString, &patchSize, currentNand);
+
+            if(patchSize != 0) patch = customVerString;
+            else
+            {
+                patchSize = 8;
+
+                static const u16 *const verStringNandEmu[] = { u" Emu", u"Emu2", u"Emu3", u"Emu4" };
+                patch = currentNand == 0 ? u" Sys" : verStringNandEmu[BOOTCFG_EMUINDEX];
+            }
+
+            //Patch Ver. string
+            if(!patchMemory(code, textSize,
+                    pattern,
+                    sizeof(pattern) - 2, 0,
+                    patch,
+                    patchSize, 1
+                )) goto error;
         }
 
-        //Patch Ver. string
-        if(!patchMemory(code, textSize,
-                pattern,
-                sizeof(pattern) - 2, 0,
-                patch,
-                patchSize, 1
-            )) goto error;
+        // Allow date picker to select year up to 2099, not just 2050.
+        // NNID user's year-of-birth seems to have a similar restriction,
+        // I'm not removing that as long as any NNID stuff is still active.
+
+        // Patch date picker check on entry (date load):
+        // Look for:
+        // 32 00 5x E3 CMP             Rx, #0x32
+        // ...
+        // 32 x0 A0 C3 MOVGT           Rx, #0x32
+        u32 *off = (u32 *)code;
+        for (; (u8 *)off < code + textSize && ((off[0] & 0xFFF0FFFF) != 0xE3500032 || (off[2] & 0xFFFF0FFF) != 0xC3A00032); off++)
+        {
+            if (((off[0] >> 16) & 0xF) != ((off[2] >> 12) & 0xF)) // ensure same register used
+                continue;
+        }
+        if ((u8 *)off >= code + textSize) goto error;
+        off[0] = (off[0] & ~0xFF) | 99;
+        off[2] = (off[2] & ~0xFF) | 99;
+
+        // Patch date picker actions:
+        // Look for:
+        // 01 00 80 E2 ADD             R0, R0, #1
+        // 32 00 50 E3 CMP             R0, #0x32
+        off = (u32 *)code;
+        for (; (u8 *)off < code + textSize && (off[0] != 0xE2800001 || off[1] != 0xE3500032); off++);
+        if ((u8 *)off >= code + textSize) goto error;
+
+        off[1] = (off[1] & ~0xFF) | 99; // patch increment wrap-around compare instruction
+        off[9] = (off[9] & ~0xFF) | 99; // patch decrement wrap-around conditional move instruction
     }
 
     else if(progId == 0x0004013000008002LL) //NS
