@@ -694,7 +694,7 @@ static size_t saveLumaIniConfigToStr(char *out)
     return n < 0 ? 0 : (size_t)n;
 }
 
-static char tmpIniBuffer[0x2000];
+static char tmpIniBuffer[0x2000 + 0x400]; // eyeballed. TODO use #embed
 
 static bool readLumaIniConfig(void)
 {
@@ -709,6 +709,13 @@ static bool readLumaIniConfig(void)
 static bool writeLumaIniConfig(void)
 {
     size_t n = saveLumaIniConfigToStr(tmpIniBuffer);
+
+    // FIXME: this is UB we should port snprintf sometime (as well as fix other tech debt)
+    if (n + 1 >= sizeof(tmpIniBuffer)) {
+        error("Configuration data buffer overflow, please report this issue");
+        __builtin_unreachable();
+    }
+
     return n != 0 && fileWrite(tmpIniBuffer, "config.ini", n);
 }
 

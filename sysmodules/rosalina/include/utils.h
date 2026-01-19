@@ -30,6 +30,7 @@
 #include <3ds/srv.h>
 #include <3ds/result.h>
 #include <3ds/ipc.h>
+#include <assert.h>
 #include "csvc.h"
 #include "luma_shared_config.h"
 
