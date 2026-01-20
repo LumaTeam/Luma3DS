@@ -55,7 +55,7 @@ Menu rosalinaMenu = {
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Save settings", METHOD, .method = &RosalinaMenu_SaveSettings },
-        { "Return To Home Menu", METHOD, .method = &RosalinaMenu_HomeMenu },
+        { "Return To Home Menu", METHOD, .method = &RosalinaMenu_ReturnToHomeMenu },
         { "Power off / reboot", METHOD, .method = &RosalinaMenu_PowerOffOrReboot },
         { "System info", METHOD, .method = &RosalinaMenu_ShowSystemInfo },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
@@ -302,28 +302,29 @@ static Result RosalinaMenu_WriteScreenshot(IFile *file, u32 width, bool top, boo
     return res;
 }
 
-void RosalinaMenu_HomeMenu(void) {
+void RosalinaMenu_ReturnToHomeMenu(void)
+{
     Draw_Lock();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    do {
-        Draw_DrawString(10, 10, COLOR_TITLE, "Rosalina -- Return to Home");
-        
-        srvPublishToSubscriber(0x204, 0);
-
+    do
+    {
         Draw_Lock();
-        Draw_ClearFramebuffer();
-        Draw_DrawString(10, 30, COLOR_WHITE, "Exit Rosalina to get back to the Home Menu.");
-        Draw_DrawString(10, 40, COLOR_WHITE, "Press A to confirm");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Return to Home Menu");
+        Draw_DrawString(10, 30, COLOR_WHITE, "Press A to confirm.\nPress B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
         u32 pressed = waitInputWithTimeout(1000);
 
         if(pressed & KEY_A)
+        {
+            menuLeave();
+            srvPublishToSubscriber(0x204, 0);
             return;
+        }
         else if(pressed & KEY_B)
             return;
     }
