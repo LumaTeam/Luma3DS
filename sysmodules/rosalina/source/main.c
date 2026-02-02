@@ -59,18 +59,14 @@ void __ctru_exit(int rc) { (void)rc; } // needed to avoid linking error
 void __wrap_exit(int rc)
 {
     (void)rc;
-    // TODO: make pm terminate rosalina
     __libc_fini_array();
 
-    // Kernel will take care of it all
-    /*
-    pmDbgExit();
-    acExit();
-    fsExit();
-    svcCloseHandle(*fsRegGetSessionHandle());
-    srvExit();
-    __sync_fini();*/
-
+    // Note: We use svcExitProcess() directly here rather than PMAPP_TerminateProcess()
+    // because self-termination via PM would cause a deadlock - Rosalina would be waiting
+    // for the PM call to return while PM waits for Rosalina to handle the termination
+    // notification. Proper cleanup (service handles, debugger, etc.) is already handled
+    // by handlePreTermNotification() when PM sends notification 0x2000 during system
+    // shutdown/reboot.
     svcExitProcess();
 }
 
@@ -207,6 +203,10 @@ static void handlePreTermNotification(u32 notificationId)
         hidExit();
     if (isQtmInitialized)
         svcCloseHandle(*qtmGetSessionHandle()); // qtmExit();
+    if (isCdcChkInitialized)
+        closeAudioServiceHandle();
+    if (isMcuHwcInitialized)
+        menuCloseMcuHwc();
 
     // Termination request
     menuShouldExit = true;

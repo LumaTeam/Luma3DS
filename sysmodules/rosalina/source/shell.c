@@ -30,6 +30,36 @@
 #include "screen_filters.h"
 #include "luma_config.h"
 
+bool isCdcChkInitialized = false;
+
+void initAudioServiceHandle(void)
+{
+    if (isCdcChkInitialized)
+        return;
+
+    Handle *cdcChkHandlePtr = cdcChkGetSessionHandle();
+    *cdcChkHandlePtr = 0;
+
+    Result res = srvGetServiceHandle(cdcChkHandlePtr, "cdc:CHK");
+    // Try to steal the handle if some other process is using the service (custom SVC)
+    if (R_FAILED(res))
+        res = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, cdcChkHandlePtr, "cdc:CHK");
+
+    if (R_SUCCEEDED(res))
+        isCdcChkInitialized = true;
+}
+
+void closeAudioServiceHandle(void)
+{
+    if (!isCdcChkInitialized)
+        return;
+
+    Handle *cdcChkHandlePtr = cdcChkGetSessionHandle();
+    svcCloseHandle(*cdcChkHandlePtr);
+    *cdcChkHandlePtr = 0;
+    isCdcChkInitialized = false;
+}
+
 static void forceAudioOutput(u32 forceOp)
 {
     // DSP/Codec sysmodule already have a way to force headphone output,
@@ -41,21 +71,10 @@ static void forceAudioOutput(u32 forceOp)
     // sysmodule. For example, inserting then removing HPs will undo what this
     // function does.
 
-    // TODO: stop opening and closing cdc:CHK (and mcu::HWC), which
-    // unecessarily spawns and despawns threads.
-
     // Wait for CSND to do its job
     svcSleepThread(20 * 1000 * 1000LL);
 
-    Handle *cdcChkHandlePtr = cdcChkGetSessionHandle();
-    *cdcChkHandlePtr = 0;
-
-    Result res = srvGetServiceHandle(cdcChkHandlePtr, "cdc:CHK");
-    // Try to steal the handle if some other process is using the service (custom SVC)
-    if (R_FAILED(res))
-        res = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, cdcChkHandlePtr, "cdc:CHK");
-
-    if (R_FAILED(res))
+    if (!isCdcChkInitialized)
         return;
 
     u8 reg;
@@ -71,9 +90,7 @@ static void forceAudioOutput(u32 forceOp)
             reg = 0x20;
             break;
     }
-    res = CDCCHK_WriteRegisters2(100, 69, &reg, 1);
-
-    svcCloseHandle(*cdcChkHandlePtr);
+    CDCCHK_WriteRegisters2(100, 69, &reg, 1);
 }
 
 void handleShellOpened(void)

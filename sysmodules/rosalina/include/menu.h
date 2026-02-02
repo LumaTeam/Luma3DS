@@ -68,6 +68,7 @@ typedef struct Menu {
 extern u32 menuCombo;
 extern bool isHidInitialized;
 extern bool isQtmInitialized;
+extern bool isMcuHwcInitialized;
 extern u32 mcuFwVersion;
 extern u8 mcuInfoTable[10];
 extern bool mcuInfoTableRead;
@@ -95,6 +96,8 @@ MyThread *menuCreateThread(void);
 void    menuEnter(void);
 void    menuLeave(void);
 void    menuThreadMain(void);
+void    menuInitializeMcuHwc(void);
+void    menuCloseMcuHwc(void);
 void    menuShow(Menu *root);
 void    DispMessage(const char *title, const char *message);
 u32     DispErrMessage(const char *title, const char *message, const Result error);

@@ -33,6 +33,8 @@
 #include "utils.h"
 #include "ifile.h"
 #include "luminance.h"
+#include "menu.h"
+#include "shell.h"
 
 Menu sysconfigMenu = {
     "System configuration menu",
@@ -72,14 +74,12 @@ void SysConfigMenu_ToggleLEDs(void)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & KEY_A)
+        if(pressed & KEY_A && isMcuHwcInitialized)
         {
-            mcuHwcInit();
             u8 result;
             MCUHWC_ReadRegister(0x28, &result, 1);
             result = ~result;
             MCUHWC_WriteRegister(0x28, &result, 1);
-            mcuHwcExit();
         }
         else if(pressed & KEY_B)
             return;
@@ -224,9 +224,8 @@ void SysConfigMenu_TogglePowerButton(void)
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
-    mcuHwcInit();
-    MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
-    mcuHwcExit();
+    if (isMcuHwcInitialized)
+        MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
 
     do
     {
@@ -242,13 +241,11 @@ void SysConfigMenu_TogglePowerButton(void)
 
         u32 pressed = waitInputWithTimeout(1000);
 
-        if(pressed & KEY_A)
+        if(pressed & KEY_A && isMcuHwcInitialized)
         {
-            mcuHwcInit();
             MCUHWC_ReadRegister(0x18, (u8*)&mcuIRQMask, 4);
             mcuIRQMask ^= 0x00000001;
             MCUHWC_WriteRegister(0x18, (u8*)&mcuIRQMask, 4);
-            mcuHwcExit();
         }
         else if(pressed & KEY_B)
             return;
@@ -398,11 +395,12 @@ static Result SysConfigMenu_ApplyVolumeOverride(void)
 
     // Original credit: profi200
 
+    if (!isCdcChkInitialized)
+        return -1;
+
     u8 i2s1Mux;
     u8 i2s2Mux;
-    Result res = cdcChkInit();
-
-    if (R_SUCCEEDED(res)) res = CDCCHK_ReadRegisters2(0,  116, &i2s1Mux, 1); // used for shutter sound in TWL mode, and all GBA/DSi/3DS application
+    Result res = CDCCHK_ReadRegisters2(0,  116, &i2s1Mux, 1); // used for shutter sound in TWL mode, and all GBA/DSi/3DS application
     if (R_SUCCEEDED(res)) res = CDCCHK_ReadRegisters2(100, 49, &i2s2Mux, 1); // used for shutter sound in CTR mode and CTR mode library applets
 
     if (currVolumeSliderOverride >= 0)
@@ -439,7 +437,6 @@ static Result SysConfigMenu_ApplyVolumeOverride(void)
     if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 116, &i2s1Mux, 1);
     if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(100, 49, &i2s2Mux, 1);
 
-    cdcChkExit();
     return res;
 }
 

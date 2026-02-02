@@ -45,6 +45,7 @@
 u32 menuCombo = 0;
 bool isHidInitialized = false;
 bool isQtmInitialized = false;
+bool isMcuHwcInitialized = false;
 u32 mcuFwVersion = 0;
 u8 mcuInfoTable[10] = {0};
 bool mcuInfoTableRead = false;
@@ -201,23 +202,41 @@ static float batteryPercentage;
 static float batteryVoltage;
 static u8 batteryTemperature;
 
+void menuInitializeMcuHwc(void)
+{
+    if (isMcuHwcInitialized)
+        return;
+
+    Handle *mcuHwcHandlePtr = mcuHwcGetSessionHandle();
+    *mcuHwcHandlePtr = 0;
+
+    Result res = srvGetServiceHandle(mcuHwcHandlePtr, "mcu::HWC");
+    // Try to steal the handle if some other process is using the service (custom SVC)
+    if (R_FAILED(res))
+        res = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, mcuHwcHandlePtr, "mcu::HWC");
+
+    if (R_SUCCEEDED(res))
+        isMcuHwcInitialized = true;
+}
+
+void menuCloseMcuHwc(void)
+{
+    if (!isMcuHwcInitialized)
+        return;
+
+    Handle *mcuHwcHandlePtr = mcuHwcGetSessionHandle();
+    svcCloseHandle(*mcuHwcHandlePtr);
+    *mcuHwcHandlePtr = 0;
+    isMcuHwcInitialized = false;
+}
+
 static Result menuUpdateMcuInfo(void)
 {
     Result res = 0;
     u8 data[4];
 
-    if (!isServiceUsable("mcu::HWC"))
+    if (!isMcuHwcInitialized)
         return -1;
-
-    Handle *mcuHwcHandlePtr = mcuHwcGetSessionHandle();
-    *mcuHwcHandlePtr = 0;
-
-    res = srvGetServiceHandle(mcuHwcHandlePtr, "mcu::HWC");
-    // Try to steal the handle if some other process is using the service (custom SVC)
-    if (R_FAILED(res))
-        res = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, mcuHwcHandlePtr, "mcu::HWC");
-    if (res != 0)
-        return res;
 
     // Read single-byte mcu regs 0x0A to 0x0D directly
     res = MCUHWC_ReadRegister(0xA, data, 4);
@@ -250,7 +269,6 @@ static Result menuUpdateMcuInfo(void)
     if (!mcuInfoTableRead)
         mcuInfoTableRead = R_SUCCEEDED(MCUHWC_ReadRegister(0x7F, mcuInfoTable, sizeof(mcuInfoTable)));
 
-    svcCloseHandle(*mcuHwcHandlePtr);
     return res;
 }
 
@@ -361,6 +379,8 @@ void menuThreadMain(void)
         N3DSMenu_UpdateStatus();
     }
 
+    initAudioServiceHandle();
+    menuInitializeMcuHwc();
     handleShellOpened();
 
     hidInit(); // assume this doesn't fail

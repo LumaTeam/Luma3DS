@@ -26,4 +26,8 @@
 
 #include <3ds/types.h>
 
+extern bool isCdcChkInitialized;
+
+void initAudioServiceHandle(void);
+void closeAudioServiceHandle(void);
 void handleShellOpened(void);
