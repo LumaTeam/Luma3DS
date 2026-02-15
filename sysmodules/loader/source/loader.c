@@ -349,20 +349,30 @@ static Result GetProgramInfoImpl(ExHeader_Info *exheaderInfo, u64 programHandle)
     else
     {
         bool exhLoadedExternally = false;
+        bool remasterVersionOverridden = false;
         if (CONFIG(PATCHGAMES))
         {
             // Require both "load external FIRM & modules" and "patch games" for sysmodules
             if (IsSysmoduleId(originalTitleId))
+            {
                 exhLoadedExternally = CONFIG(LOADEXTFIRMSANDMODULES);
+                remasterVersionOverridden = CONFIG(LOADEXTFIRMSANDMODULES);
+            }
             else
+            {
                 exhLoadedExternally = true;
+                remasterVersionOverridden = true;
+            }
         }
 
         if (exhLoadedExternally)
             exhLoadedExternally = loadTitleExheaderInfo(originalTitleId, exheaderInfo);
 
-        if(exhLoadedExternally)
+        if (exhLoadedExternally)
             exheaderInfo->aci.local_caps.title_id = originalTitleId;
+
+        if (remasterVersionOverridden)
+            remasterVersionOverridden = overrideTitleRemasterVersion(originalTitleId, &(exheaderInfo->sci.codeset_info.flags.remaster_version));
     }
     
     if (IsApplicationId(originalTitleId)) {
