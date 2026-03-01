@@ -25,7 +25,6 @@
 */
 
 #include <3ds.h>
-#include <3ds/types.h>
 #include "menu.h"
 #include "draw.h"
 #include "fmt.h"
