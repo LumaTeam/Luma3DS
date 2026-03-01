@@ -25,6 +25,7 @@
 */
 
 #include <3ds.h>
+#include <3ds/types.h>
 #include "menu.h"
 #include "draw.h"
 #include "fmt.h"
@@ -475,9 +476,13 @@ static void menuDraw(Menu *menu, u32 selected)
         int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
     }
-
     else
-        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
+    {
+        char buf[32];
+        u64 timeNow = osGetTime();
+        int n = dateTimeToString(buf, timeNow, false);
+        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, buf);
+    }
 
     if(mcuInfoRes == 0)
     {
