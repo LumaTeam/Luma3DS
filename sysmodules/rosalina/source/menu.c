@@ -479,7 +479,7 @@ static void menuDraw(Menu *menu, u32 selected)
     {
         char buf[32];
         u64 timeNow = osGetTime();
-        dateTimeToString(buf, timeNow, false);
+        dateTimeToString(buf, timeNow, DATE_TIME_HUMAN);
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 23, 10, COLOR_WHITE, "%23s", buf);
     }
 
