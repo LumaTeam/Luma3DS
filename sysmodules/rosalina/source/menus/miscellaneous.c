@@ -26,6 +26,7 @@
 
 #include <3ds.h>
 #include "menus/miscellaneous.h"
+#include "menu.h"
 #include "luma_config.h"
 #include "input_redirection.h"
 #include "ntp.h"
@@ -73,6 +74,7 @@ Menu miscellaneousMenu = {
         { "Update time and date via NTP", METHOD, .method = &MiscellaneousMenu_UpdateTimeDateNtp },
         { "Nullify user time offset", METHOD, .method = &MiscellaneousMenu_NullifyUserTimeOffset },
         { "Dump DSP firmware", METHOD, .method = &MiscellaneousMenu_DumpDspFirm },
+        { "Toggle clock display", METHOD, .method = &MiscellaneousMenu_ToggleClockDisplayInRosalina },
         {},
     }
 };
@@ -492,4 +494,10 @@ void MiscellaneousMenu_DumpDspFirm(void)
         Draw_Unlock();
     }
     while(!(waitInput() & KEY_B) && !menuShouldExit);
+}
+
+void MiscellaneousMenu_ToggleClockDisplayInRosalina(void)
+{
+    showClockInRosalina = !showClockInRosalina;
+    LumaConfig_RequestSaveSettings();
 }

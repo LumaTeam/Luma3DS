@@ -472,6 +472,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -779, 899));
             cfg->ntpTzOffetMinutes = (s16)opt;
             return 1;
+        } else if (strcmp(name, "show_clock_in_rosalina") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->showClockInRosalina = (u8)opt;
+            return 1;
         } else {
             CHECK_PARSE_OPTION(-1);
         }
@@ -674,6 +679,7 @@ static size_t saveLumaIniConfigToStr(char *out)
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
         (int)cfg->ntpTzOffetMinutes,
+        (int)cfg->showClockInRosalina,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
         (int)cfg->topScreenFilter.colorCurveCorrection, (int)cfg->bottomScreenFilter.colorCurveCorrection,
@@ -800,6 +806,7 @@ bool readConfig(void)
         configData.volumeSliderOverride = -1;
         configData.hbldr3dsxTitleId = HBLDR_DEFAULT_3DSX_TID;
         configData.rosalinaMenuCombo = 1u << 9 | 1u << 7 | 1u << 2; // L+Start+Select
+        configData.showClockInRosalina = (u8) true;
         configData.topScreenFilter.cct = 6500; // default temp, no-op
         configData.topScreenFilter.gammaEnc = 1 * FLOAT_CONV_MULT; // 1.0f
         configData.topScreenFilter.contrastEnc = 1 * FLOAT_CONV_MULT; // 1.0f

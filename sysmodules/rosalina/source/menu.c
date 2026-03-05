@@ -53,6 +53,8 @@ const char *topScreenType = NULL;
 const char *bottomScreenType = NULL;
 bool areScreenTypesInitialized = false;
 
+bool showClockInRosalina = false;
+
 // libctru redefinition:
 
 bool hidShouldUseIrrst(void)
@@ -475,12 +477,14 @@ static void menuDraw(Menu *menu, u32 selected)
         sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 23, 10, COLOR_WHITE, "%23s", ipBuffer);
     }
-    else
-    {
+    else if(showClockInRosalina) {
         char buf[32];
         u64 timeNow = osGetTime();
         dateTimeToString(buf, timeNow, DATE_TIME_HUMAN);
         Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 23, 10, COLOR_WHITE, "%23s", buf);
+    }
+    else {
+        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 23, 10, COLOR_WHITE, "%23s", "");
     }
 
     if(mcuInfoRes == 0)
@@ -572,6 +576,9 @@ void menuShow(Menu *root)
             Draw_FlushFramebuffer();
             Draw_Unlock();
         }
+        else if (pressed & KEY_X) {
+            showClockInRosalina = !showClockInRosalina;
+        }
         else if(pressed & KEY_B)
         {
             while (nbPreviousMenus == 0 && (scanHeldKeys() & KEY_B)); // wait a bit before exiting rosalina
@@ -602,4 +609,11 @@ void menuShow(Menu *root)
         Draw_Unlock();
     }
     while(!menuShouldExit);
+}
+
+void menuLoadConfig(void)
+{
+    s64 out;
+    svcGetSystemInfo(&out, 0x10000, 8);
+    showClockInRosalina = (bool) out;
 }

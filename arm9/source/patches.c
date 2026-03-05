@@ -148,6 +148,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u32 rosalinaMenuCombo;
             u32 pluginLoaderFlags;
             s16 ntpTzOffetMinutes;
+            u8 showClockInRosalina;
 
             ScreenFiltersCfgData topScreenFilter;
             ScreenFiltersCfgData bottomScreenFilter;
@@ -232,6 +233,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->pluginLoaderFlags = configData.pluginLoaderFlags;
     info->ntpTzOffetMinutes = configData.ntpTzOffetMinutes;
+    info->showClockInRosalina = configData.showClockInRosalina;
     info->topScreenFilter = configData.topScreenFilter;
     info->bottomScreenFilter = configData.bottomScreenFilter;
     info->autobootTwlTitleId = configData.autobootTwlTitleId;

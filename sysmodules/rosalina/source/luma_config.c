@@ -46,6 +46,7 @@ typedef struct CfgData {
     u32 rosalinaMenuCombo;
     u32 pluginLoaderFlags;
     s16 ntpTzOffetMinutes;
+    u8 showClockInRosalina;
 
     ScreenFilter topScreenFilter;
     ScreenFilter bottomScreenFilter;
@@ -178,6 +179,7 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
         (int)cfg->ntpTzOffetMinutes,
+        (int)cfg->showClockInRosalina,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
         (int)cfg->topScreenFilter.colorCurveCorrection, (int)cfg->bottomScreenFilter.colorCurveCorrection,
@@ -253,6 +255,7 @@ Result LumaConfig_SaveSettings(void)
     configData.rosalinaMenuCombo = menuCombo;
     configData.pluginLoaderFlags = PluginLoader__IsEnabled();
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
+    configData.showClockInRosalina = (u8) showClockInRosalina;
     configData.topScreenFilter = topScreenFilter;
     configData.bottomScreenFilter = bottomScreenFilter;
     configData.autobootTwlTitleId = autobootTwlTitleId;

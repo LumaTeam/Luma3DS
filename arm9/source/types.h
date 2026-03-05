@@ -81,6 +81,7 @@ typedef struct CfgData {
     u32 rosalinaMenuCombo;
     u32 pluginLoaderFlags;
     s16 ntpTzOffetMinutes;
+    u8 showClockInRosalina;
 
     ScreenFiltersCfgData topScreenFilter;
     ScreenFiltersCfgData bottomScreenFilter;
