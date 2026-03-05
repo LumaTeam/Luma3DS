@@ -576,9 +576,6 @@ void menuShow(Menu *root)
             Draw_FlushFramebuffer();
             Draw_Unlock();
         }
-        else if (pressed & KEY_X) {
-            showClockInRosalina = !showClockInRosalina;
-        }
         else if(pressed & KEY_B)
         {
             while (nbPreviousMenus == 0 && (scanHeldKeys() & KEY_B)); // wait a bit before exiting rosalina
