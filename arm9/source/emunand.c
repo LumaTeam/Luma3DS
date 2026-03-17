@@ -121,6 +121,9 @@ static inline u32 getProtoSdmmc(u32 *sdmmc, u32 firmVersion)
         case 238: // SDK 0.10
             *sdmmc = (0x080BEA70 + 0x690);
             break;
+        case 1200: // SDK 0.12
+            *sdmmc = (0x080C6A00 + 0x8DC);
+             break;
         default:
             return 1;
     }
@@ -288,6 +291,58 @@ static inline u32 patchProtoNandRw238(u8 *pos, u32 size, u32 hookAddr, u32 hookC
     return 0;
 }
 
+static inline u32 patchProtoNandRw1200(u8 *pos, u32 size, u32 hookAddr, u32 hookCidAddr)
+{
+    //Look for read/write code
+    static const u8 pattern[] = {
+        0x03, 0x00, 0x50, 0xE3, // CMP R0, #3
+        0x14, 0xD0, 0x4D, 0xE2, // SUB SP, SP, #0x14
+        0x00, 0x70, 0xA0, 0xE3, // MOV R7, #0
+    };
+
+    u32 *writeOffset = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(writeOffset == NULL) return 1;
+
+    u32 *readOffset = (u32 *)memsearch((u8 *)(writeOffset + 3), pattern, 0x400, sizeof(pattern));
+
+    if(readOffset == NULL) return 1;
+
+    // static ctor for NAND sdmmc driver
+    static const u8 mount_pattern[] = {
+        0xE8, // byte of some ptr
+        0x01, 0x01, 0x00, 0x00, // sdmmc controller port (0x101, NAND)
+        0x5C // byte of some other ptr
+    };
+    u8 *mountOffset = (u8 *)memsearch(pos, mount_pattern, size, sizeof(mount_pattern));
+    if (mountOffset == NULL) return 1;
+    ++mountOffset;
+    
+    static const u8 readcid_pattern[] = {
+        0x31, 0xFF, 0x2F, 0xE1, /* BLX R1 */
+        0x00, 0x00, 0x50, 0xE3, /* CMP R0, #0 */
+        0x34, 0x00, 0x9F, 0x05, /* LDREQ R0, #0xE0A0F400 */
+    };
+    u32 *readCidOffset = (u32 *)memsearch(pos, readcid_pattern, size, sizeof(readcid_pattern));
+    if (readCidOffset == NULL) return 1;
+    readCidOffset -= 5; // now points to the instruction following PUSH {R4-R6, LR}
+    
+    *(u32 *)mountOffset = 0x100; /* change the SDMMC device used as NAND to SD. note: SD = 0x100, NAND = 0x101 */
+    
+    readOffset[0] = writeOffset[0] = 0xe59fc000; // ldr r12, [pc, #0]
+    readOffset[1] = writeOffset[1] = 0xe12fff3c; // blx r12
+    readOffset[2] = writeOffset[2] = hookAddr;
+
+    readCidOffset[0] = 0xe59fc000; // ldr r12, [pc, #0]
+    readCidOffset[1] = 0xe12fff3c; // blx r12
+    readCidOffset[2] = hookCidAddr;
+    
+    // Read the emmc cid into the place hook will copy it from
+    sdmmc_get_cid(1, emunandPatchNandCid);
+    
+    return 0;
+}
+
 u32 patchEmuNand(u8 *process9Offset, u32 process9Size, u32 firmVersion)
 {
     u32 ret = 0;
@@ -329,10 +384,25 @@ u32 patchProtoEmuNand(u8 *process9Offset, u32 process9Size)
         case 238: // SDK 0.10.x
             ret += patchProtoNandRw238(process9Offset, process9Size, (u32)emunandProtoPatch238, (u32)emunandProtoCidPatch);
             break;
+        case 1200: // SDK 0.12
+            ret += patchProtoNandRw1200(process9Offset, process9Size, (u32)emunandProtoPatch1200, (u32)emunandProtoCidPatch1200);
+            break;
         default:
             ret++;
             break;
     }
+
+    // Destroy the copy of the SysNAND NCSD header created by boot9 in ITCM.
+    // Technically not required on O3DS, but absolutely required on N3DS.
+    // On O3DS, the NAND header on EmuNAND is simply a copy of that of SysNAND,
+    // which is fine, since prototype Process9 expects an O3DS NAND header.
+    // On N3DS, it reading the actual SysNAND header would mean providing NCSD partition
+    // info which Process9 doesn't understand, since N3DS CTRNAND uses crypto type 3.
+
+    // Process9 checks the validity of this ITCM copy, and re-reads it from "NAND"
+    // when it is invalid. Because we re-routed NAND to SD, this will effectively
+    // cause Process9 to re-read the header straight from EmuNAND, as it should.
+    memset((void *)0x01FFB900, 0x0, 0x200);
 
     return ret;
 }
