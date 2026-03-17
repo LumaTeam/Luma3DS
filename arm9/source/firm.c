@@ -208,11 +208,13 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
         if(isO3dsFirm && (*firmType == NATIVE_FIRM || *firmType == NATIVE_FIRM1X2X))
         {
-            __attribute__((aligned(4))) static const u8 hashes[5][0x20] = {
+            __attribute__((aligned(4))) static const u8 hashes[6][0x20] = {
                 {0xD7, 0x43, 0x0F, 0x27, 0x8D, 0xC9, 0x3F, 0x4C, 0x96, 0xB5, 0xA8, 0x91, 0x48, 0xDB, 0x08, 0x8A,
                  0x7E, 0x46, 0xB3, 0x95, 0x65, 0xA2, 0x05, 0xF1, 0xF2, 0x41, 0x21, 0xF1, 0x0C, 0x59, 0x6A, 0x9D},
                 {0x93, 0xDF, 0x49, 0xA1, 0x24, 0x86, 0xBB, 0x6F, 0xAF, 0x49, 0x99, 0x2D, 0xD0, 0x8D, 0xB1, 0x88,
                  0x8A, 0x00, 0xB6, 0xDD, 0x36, 0x89, 0xC0, 0xE2, 0xC9, 0xA9, 0x99, 0x62, 0x57, 0x5E, 0x6C, 0x23},
+                {0xD4, 0x91, 0xBC, 0x28, 0xFA, 0xBE, 0xC8, 0xF6, 0x80, 0xD2, 0x62, 0x51, 0xAF, 0x4B, 0x37, 0xBA,
+                 0x69, 0x1B, 0x33, 0x8B, 0x51, 0xA0, 0x35, 0x35, 0xF0, 0x2C, 0x66, 0xA6, 0x3A, 0xFB, 0xD5, 0xE7},
                 {0x39, 0x75, 0xB5, 0x28, 0x24, 0x5E, 0x8B, 0x56, 0xBC, 0x83, 0x79, 0x41, 0x09, 0x2C, 0x42, 0xE6,
                  0x26, 0xB6, 0x80, 0x59, 0xA5, 0x56, 0xF9, 0xF9, 0x6E, 0xF3, 0x63, 0x05, 0x58, 0xDF, 0x35, 0xEF},
                 {0x81, 0x9E, 0x71, 0x58, 0xE5, 0x44, 0x73, 0xF7, 0x48, 0x78, 0x7C, 0xEF, 0x5E, 0x30, 0xE2, 0x28,
@@ -240,14 +242,19 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
                     firmProtoVersion = 238;
                     *firmType = NATIVE_PROTOTYPE;
                     break;
-                // Release
                 case 2:
+                    firmVersion = 0x0;
+                    firmProtoVersion = 1200;
+                    *firmType = NATIVE_PROTOTYPE;
+                    break;
+                // Release
+                case 3:
                     firmVersion = 0x18;
                     break;
-                case 3:
+                case 4:
                     firmVersion = 0x1D;
                     break;
-                case 4:
+                case 5:
                     firmVersion = 0x1F;
                     break;
                 default:
@@ -773,18 +780,97 @@ u32 patch1x2xNativeAndSafeFirm(void)
     return ret;
 }
 
-u32 patchPrototypeNative(FirmwareSource nandType)
+struct b9_key {
+    u8 keyslot;
+    u16 b9_offs;
+};
+
+static const struct b9_key key_X[23] = {
+    { .keyslot = 0x2C, .b9_offs = 0xDDD0 }, { .keyslot = 0x2D, .b9_offs = 0xDDD0 },
+    { .keyslot = 0x2E, .b9_offs = 0xDDD0 }, { .keyslot = 0x2F, .b9_offs = 0xDDD0 },
+    { .keyslot = 0x30, .b9_offs = 0xDDE0 }, { .keyslot = 0x31, .b9_offs = 0xDDE0 },
+    { .keyslot = 0x32, .b9_offs = 0xDDE0 }, { .keyslot = 0x33, .b9_offs = 0xDDE0 },
+    { .keyslot = 0x34, .b9_offs = 0xDDF0 }, { .keyslot = 0x35, .b9_offs = 0xDDF0 },
+    { .keyslot = 0x36, .b9_offs = 0xDDF0 }, { .keyslot = 0x37, .b9_offs = 0xDDF0 },
+    { .keyslot = 0x38, .b9_offs = 0xDE00 }, { .keyslot = 0x39, .b9_offs = 0xDE00 },
+    { .keyslot = 0x3A, .b9_offs = 0xDE00 }, { .keyslot = 0x3B, .b9_offs = 0xDE00 },
+    { .keyslot = 0x3C, .b9_offs = 0xDE10 }, { .keyslot = 0x3D, .b9_offs = 0xDE20 },
+    { .keyslot = 0x3E, .b9_offs = 0xDE30 }, { .keyslot = 0x3F, .b9_offs = 0xDE40 },
+};
+static const struct b9_key key_Y[9] = {
+    { .keyslot = 0x8, .b9_offs = 0xDE90 }, { .keyslot = 0x9, .b9_offs = 0xDEA0 },
+    { .keyslot = 0xA, .b9_offs = 0xDEB0 }, { .keyslot = 0xB, .b9_offs = 0xDEC0 },
+};
+
+static const u8 boot9Sha256[32] = {
+    0x2F, 0x88, 0x74, 0x4F, 0xEE, 0xD7, 0x17, 0x85, 0x63, 0x86, 0x40, 0x0A, 0x44, 0xBB, 0xA4, 0xB9,
+    0xCA, 0x62, 0xE7, 0x6A, 0x32, 0xC7, 0x15, 0xD4, 0xF3, 0x09, 0xC3, 0x99, 0xBF, 0x28, 0x16, 0x6F,
+};
+
+static void load_key(u8 keyslot, const u8 *key, u8 keytype) {
+    const u32 *key32 = (u32 *)key;
+    *REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | AES_INPUT_BE | AES_INPUT_NORMAL;
+    *REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
+    
+    REG_AESKEYFIFO[keytype] = key32[0];
+    REG_AESKEYFIFO[keytype] = key32[1];
+    REG_AESKEYFIFO[keytype] = key32[2];
+    REG_AESKEYFIFO[keytype] = key32[3];
+}
+
+u32 patchPrototypeNative(FirmwareSource nandType, bool doUnitinfoPatch)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
 
     //Find the Process9 .code location, size and memory address
-    u32 process9Size,
-        process9MemAddr;
+    u32 process9Size = 0;
+    u32 process9MemAddr = 0;
     u8 *process9Offset = getProcess9Info(arm9Section, firm->section[2].size, &process9Size, &process9MemAddr);
 
-    u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
-        ret = 0;
-
+    u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200;
+    u32 ret = 0;
+        
+    if(doUnitinfoPatch && !ISDEVUNIT)
+    {
+        if (firmProtoVersion == 1200)
+        {
+            u8 b9[0x10000] = { 0 };
+            u32 hash[4] = { 0 };
+            sha(hash, (const void *)0x08080000, 0x10000, SHA_256_MODE);
+            
+            if (memcmp(hash, boot9Sha256, 32) != 0)
+            {
+                u32 size = getFileSize("sdmc:/luma/backups/boot9.bin");
+                int readres = fileRead(b9, "sdmc:/luma/backups/boot9.bin", 0x10000);
+                sha(hash, b9, 0x10000, SHA_256_MODE);
+                
+                if (size != 0x10000 || !readres || memcmp(hash, boot9Sha256, 32) != 0)
+                    error("No valid boot9 backup was found in memory or in\nsdmc:/luma/backups/boot9.bin. Please make sure\nyou have a valid backup to use this FIRM.");
+            }
+            else
+            {
+                memcpy(b9, (const void *)0x08080000, 0x10000);
+            }
+            
+            for (u32 i = 0; i < sizeof(key_X) / sizeof(key_X[0]); i++)
+            {
+                load_key(key_X[i].keyslot, &b9[key_X[i].b9_offs], AES_KEYX);
+            }
+            
+            for (u32 i = 0; i < sizeof(key_Y) / sizeof(key_Y[0]); i++)
+            {
+                load_key(key_Y[i].keyslot, &b9[key_Y[i].b9_offs], AES_KEYY);
+            }
+                        
+            static const u8 dev_keyX_0x25[16] = { 0x81,0x90,0x7A,0x4B,0x6F,0x1B,0x47,0x32,
+                                                  0x3A,0x67,0x79,0x74,0xCE,0x4A,0xD7,0x1B };
+            
+            load_key(0x25, dev_keyX_0x25, AES_KEYX);
+                        
+            ret += patchProtoUnitinfo1200(process9Offset, process9Size, arm9Section, firm->section[2].size);
+        }
+    }
+    
     ret += patchProtoNandSignatureCheck(process9Offset, process9Size);
 
     //Arm9 exception handlers
