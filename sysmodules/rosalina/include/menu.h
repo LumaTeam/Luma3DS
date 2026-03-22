@@ -75,8 +75,6 @@ extern const char *topScreenType;
 extern const char *bottomScreenType;
 extern bool areScreenTypesInitialized;
 
-extern bool showClockInRosalina;
-
 // From main.c
 extern bool isN3DS;
 extern bool menuShouldExit;
@@ -101,5 +99,3 @@ void    menuShow(Menu *root);
 void    DispMessage(const char *title, const char *message);
 u32     DispErrMessage(const char *title, const char *message, const Result error);
 void    DisplayPluginMenu(u32   *cmdbuf);
-
-void menuLoadConfig(void);

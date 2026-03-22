@@ -72,9 +72,6 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                 case 7:
                     *out = (s64)cfwInfo.volumeSliderOverride;
                     break;
-                case 8:
-                    *out = (s64)cfwInfo.showClockInRosalina;
-                    break;
                 case 0x10:
                     *out = (s64)cfwInfo.autobootTwlTitleId;
                     break;
