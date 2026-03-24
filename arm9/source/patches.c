@@ -878,7 +878,7 @@ u32 patchProtoNandSignatureCheck(u8 *pos, u32 size) {
         off[0x20] = 2;
     }
 
-    else if (firmProtoVersion == 238) { // SDK 0.10
+    else if (firmProtoVersion == 238 || firmProtoVersion == 236) { // SDK 0.10.0 (early 0.10.0) and SDK 0.10.2
         // Same patch as for v243 ported to the different ncsd_read() function
         static const u8 pattern[] = {
             0x00, 0x11, 0x9f, 0xe5,
