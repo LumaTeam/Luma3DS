@@ -111,11 +111,34 @@ u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle)
     return posInBuffer;
 }
 
+
+
+
+// Returns year/month/day triple in civil calendar
+// daysSince1970 is number of days since 1970-01-01
+// Output year is e.g. 2024, month is 1-12, day is 1-31
+// Adapted from: https://howardhinnant.github.io/date_algorithms.html#civil_from_days
+// (original author Howard Hinnant)
+void civil_from_days(u32 daysSince1970, u32 *y, u32 *m, u32 *d)
+{
+    daysSince1970 += 719468;
+    int era = daysSince1970 / 146097;
+    unsigned doe = daysSince1970 - era * 146097;
+    unsigned yoe = (doe - doe/1460 + doe/36524 - doe/146096) / 365;
+    *y = yoe + era * 400;
+    unsigned doy = doe - (365*yoe + yoe/4 - yoe/100);
+    unsigned mp = (5*doy + 2) / 153;
+    *d = doy - (153*mp + 2) / 5 + 1;
+    *m = mp < 10 ? mp + 3 : mp - 9;
+    *y += (*m <= 2);
+}
+ 
+
 int dateTimeToString(char *out, u64 msSince1900, DateTimeFormat dateTimeFormat)
 {
-    // Conversion code adapted from https://stackoverflow.com/questions/21593692/convert-unix-timestamp-to-date-without-system-libs
+    // Time unit conversion adapted from https://stackoverflow.com/questions/21593692/convert-unix-timestamp-to-date-without-system-libs
     // (original author @gnif under CC-BY-SA 4.0)
-    u32 seconds, minutes, hours, days, year, month, weekDay;
+    u32 seconds, minutes, hours, daysSince1900, year, month, weekDay;
     u64 milliseconds = msSince1900;
     seconds = milliseconds/1000;
     milliseconds %= 1000;
@@ -123,55 +146,24 @@ int dateTimeToString(char *out, u64 msSince1900, DateTimeFormat dateTimeFormat)
     seconds %= 60;
     hours = minutes / 60;
     minutes %= 60;
-    days = hours / 24;
+    daysSince1900 = hours / 24;
     hours %= 24;
 
-    year = 1900; // osGetTime starts in 1900
-    weekDay = 1; // 1/1900 was a Monday (Sunday = 0)
+    
+    weekDay = (daysSince1900 + 1) % 7; // 1900-01-01 was a Monday (1)
 
-    while(true)
-    {
-        bool leapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
-        u16 daysInYear = leapYear ? 366 : 365;
-        if(days >= daysInYear)
-        {
-            weekDay += leapYear ? 2 : 1;
-            weekDay %= 7;
-            days -= daysInYear;
-            ++year;
-        }
-        else
-        {
-            weekDay += days;
-            weekDay %= 7;
-
-            static const u8 daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-            for(month = 0; month < 12; ++month)
-            {
-                u8 dim = daysInMonth[month];
-
-                if (month == 1 && leapYear)
-                    ++dim;
-
-                if (days >= dim)
-                    days -= dim;
-                else
-                    break;
-            }
-            break;
-        }
-    }
-    days++;
-    month++;
+    // Convert to year/month/day
+    u32 daysSince1970 = daysSince1900 - 25567; // 25567 days between 1900-01-01 and 1970-01-01
+    civil_from_days(daysSince1970, &year, &month, &daysSince1900);
 
     if (dateTimeFormat == DATE_TIME_FILENAME)
-        return sprintf(out, "%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu", year, month, days, hours, minutes, seconds, milliseconds);
+        return sprintf(out, "%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu", year, month, daysSince1900, hours, minutes, seconds, milliseconds);
     else if (dateTimeFormat == DATE_TIME_ISO)
-        return sprintf(out, "%04lu-%02lu-%02lu %02lu:%02lu:%02lu", year, month, days, hours, minutes, seconds);
+        return sprintf(out, "%04lu-%02lu-%02lu %02lu:%02lu:%02lu", year, month, daysSince1900, hours, minutes, seconds);
     else {
         char *daysHuman[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
         char *monthsHuman[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-        return sprintf(out, "%s, %lu %s %lu %02lu:%02lu", daysHuman[weekDay], days, monthsHuman[month - 1], year, hours, minutes);
+        return sprintf(out, "%s, %lu %s %lu %02lu:%02lu", daysHuman[weekDay], daysSince1900, monthsHuman[month - 1], year, hours, minutes);
     }
 }
 
