@@ -321,8 +321,8 @@ void RosalinaMenu_ReturnToHomeMenu(void)
 
         if(pressed & KEY_A)
         {
-            menuLeave();
             srvPublishToSubscriber(0x204, 0);
+            menuRequestClose();
             return;
         }
         else if(pressed & KEY_B)
