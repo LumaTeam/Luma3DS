@@ -76,6 +76,13 @@ static inline void error(u32* cmdbuf, Result rc)
 
 extern bool  isN3DS;
 
+typedef enum DateTimeFormat
+{
+    DATE_TIME_ISO, // e.g. "2025-12-31 12:34:56"
+    DATE_TIME_FILENAME, // e.g. "2025-12-31_12-34-56.789"
+    DATE_TIME_HUMAN,    // // e.g. "Wed, 31 Dec 2025 12:34"
+} DateTimeFormat;
+
 Result OpenProcessByName(const char *name, Handle *h);
 Result SaveSettings(void);
 extern bool saveSettingsRequest;
@@ -89,5 +96,5 @@ static inline bool isServiceUsable(const char *name)
 void formatMemoryPermission(char *outbuf, MemPerm perm);
 void formatUserMemoryState(char *outbuf, MemState state);
 u32 formatMemoryMapOfProcess(char *outbuf, u32 bufLen, Handle handle);
-int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat);
+int dateTimeToString(char *out, u64 msSince1900, DateTimeFormat dateTimeFormat);
 int floatToString(char *out, float f, u32 precision, bool pad);
