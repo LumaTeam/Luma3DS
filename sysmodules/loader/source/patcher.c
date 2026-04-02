@@ -651,12 +651,12 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress)
 {
-    bool isHomeMenu = progId == 0x0004003000008F02LL || //USA Home Menu
-                      progId == 0x0004003000008202LL || //JPN Home Menu
-                      progId == 0x0004003000009802LL || //EUR Home Menu
-                      progId == 0x000400300000A902LL || //KOR Home Menu
-                      progId == 0x000400300000A102LL || //CHN Home Menu
-                      progId == 0x000400300000B102LL;   //TWN Home Menu
+    bool isHomeMenu = progId == 0x0004003000008F02LL || //USA HOME Menu
+                      progId == 0x0004003000008202LL || //JPN HOME Menu
+                      progId == 0x0004003000009802LL || //EUR HOME Menu
+                      progId == 0x000400300000A902LL || //KOR HOME Menu
+                      progId == 0x000400300000A102LL || //CHN HOME Menu
+                      progId == 0x000400300000B102LL;   //TWN HOME Menu
 
     bool isApp = ((progId >> 32) & ~0x12) == 0x00040000;
     bool isApplet = (progId >> 32) == 0x00040030;
@@ -668,12 +668,12 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
         switch(progId)
         {
-            case 0x0004003000008F02LL: //USA Home Menu
-            case 0x0004003000008202LL: //JPN Home Menu
-            case 0x0004003000009802LL: //EUR Home Menu
+            case 0x0004003000008F02LL: //USA HOME Menu
+            case 0x0004003000008202LL: //JPN HOME Menu
+            case 0x0004003000009802LL: //EUR HOME Menu
                 if(progVer <= 4) applyRegionFreePatch = false;
                 break;
-            case 0x000400300000A902LL: //KOR Home Menu
+            case 0x000400300000A902LL: //KOR HOME Menu
                 if(!progVer) applyRegionFreePatch = false;
                 break;
         }

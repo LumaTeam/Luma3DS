@@ -87,7 +87,7 @@ bool isExceptionFatal(u32 spsr, u32 *regs, u32 index)
         if(thread != NULL && thread->threadLocalStorage != NULL && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
            return checkExceptionHandlerValidity(currentProcess, thread->threadLocalStorage);
 
-        if(index == 3 && strcmp(codeSetOfProcess(currentProcess)->processName, "menu") == 0 && // workaround a Home Menu bug leading to a dabort
+        if(index == 3 && strcmp(codeSetOfProcess(currentProcess)->processName, "menu") == 0 && // workaround a HOME Menu bug leading to a dabort
            regs[0] == 0x3FFF && regs[2] == 0 && regs[5] == 2 && regs[7] == 1)
             return false;
     }

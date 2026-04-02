@@ -123,7 +123,7 @@ bool isTwlToCtrLaunch(void)
 
     switch (twlTid & ~0xFFull)
     {
-        case 0x0000000000000000ull: // TWL Launcher -> Home menu (note: NS checks full TID)
+        case 0x0000000000000000ull: // TWL Launcher -> HOME menu (note: NS checks full TID)
         case 0x00030015484E4200ull: // TWL System Settings -> CTR System Settings (mset)
             return true;
         default:

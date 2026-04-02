@@ -230,7 +230,7 @@ void main(int argc, char **argv, u32 magicWord)
             nandType = FIRMWARE_SYSNAND;
 
             // Prevent multiple boot options-forcing
-            // This bit is a bit weird. Basically, as you return to Home Menu by pressing either
+            // This bit is a bit weird. Basically, as you return to HOME Menu by pressing either
             // the HOME or POWER button, nandType will be overridden to "SysNAND" (needed). But,
             // if you reboot again (e.g. via Rosalina menu), it'll use your default settings.
             if(nandType != BOOTCFG_NAND) isNoForceFlagSet = true;

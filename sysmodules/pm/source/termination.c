@@ -411,7 +411,7 @@ static void ChainloadHomebrewDirtyAsync(void *argdata)
     if (app != NULL) {
         // Clear the "notify on termination, don't cleanup" flag, so that for ex. APT isn't notified & no need for
         // UnregisterProcess, and the "dependencies loaded" flag, so that the dependencies aren't killed (for ex. when
-        // booting hbmenu instead of Home Menu, in which case the same title is going to be launched...)
+        // booting hbmenu instead of HOME Menu, in which case the same title is going to be launched...)
         launchFlags = app->launchFlags;
         programInfo.programId = app->titleId;
         programInfo.mediaType = app->mediaType;

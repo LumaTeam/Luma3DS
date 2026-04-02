@@ -55,7 +55,7 @@ Menu rosalinaMenu = {
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Save settings", METHOD, .method = &RosalinaMenu_SaveSettings },
-        { "Return To Home Menu", METHOD, .method = &RosalinaMenu_ReturnToHomeMenu },
+        { "Return To HOME Menu", METHOD, .method = &RosalinaMenu_ReturnToHomeMenu },
         { "Power off / reboot", METHOD, .method = &RosalinaMenu_PowerOffOrReboot },
         { "System info", METHOD, .method = &RosalinaMenu_ShowSystemInfo },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
@@ -312,7 +312,7 @@ void RosalinaMenu_ReturnToHomeMenu(void)
     do
     {
         Draw_Lock();
-        Draw_DrawString(10, 10, COLOR_TITLE, "Return to Home Menu");
+        Draw_DrawString(10, 10, COLOR_TITLE, "Return to HOME Menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to confirm.\nPress B to go back.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
