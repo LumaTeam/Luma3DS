@@ -29,11 +29,11 @@
 #include "types.h"
 #include "3dsheaders.h"
 
-u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode);
+u32 loadNintendoFirm(FirmwareType *firmType, bool loadFromStorage, bool isSafeMode);
 void loadHomebrewFirm(u32 pressed);
 u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isFirmProtEnabled, bool needToInitSd, bool doUnitinfoPatch);
 u32 patchTwlFirm(u32 firmVersion, bool loadFromStorage, bool doUnitinfoPatch);
 u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch);
-u32 patch1x2xNativeAndSafeFirm(void);
+u32 patch1x2xNativeAndSafeFirm(u32 firmVersion, FirmwareSource nandType);
 u32 patchPrototypeNative(FirmwareSource nandType, bool doUnitinfoPatch);
 void launchFirm(int argc, char **argv);
