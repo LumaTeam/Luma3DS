@@ -196,7 +196,7 @@ static inline bool findLayeredFsSymbols(u8 *code, u32 size, u32 *fsMountArchive,
         }
     }
 
-    return found == 5;
+    return (found == 5 || (found == 4 && *fsUnMountArchive == 0xFFFFFFFF));
 }
 
 static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u32 dataSize, u32 roAddress, u32 dataAddress, u32 *payloadOffset, u32 *pathOffset, u32 *pathAddress)
@@ -632,7 +632,9 @@ static inline bool patchLayeredFs(u64 progId, u8 *code, u32 size, u32 textSize, 
     romfsRedirPatchHook2 = MAKE_BRANCH(payloadOffset + (u32)&romfsRedirPatchHook2 - (u32)romfsRedirPatch, fsTryOpenFile + 4);
     romfsRedirPatchCustomPath = pathAddress;
     romfsRedirPatchFsMountArchive = MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsMountArchive - (u32)romfsRedirPatch, fsMountArchive);
-    romfsRedirPatchFsUnMountArchive = MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsUnMountArchive - (u32)romfsRedirPatch, fsUnMountArchive);
+    romfsRedirPatchFsUnMountArchive = (fsUnMountArchive != 0xFFFFFFFF) ?
+        MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsUnMountArchive - (u32)romfsRedirPatch, fsUnMountArchive) :
+        0xE320F000; // NOP if fsUnMountArchive doesn't exist
     romfsRedirPatchFsRegisterArchive = MAKE_BRANCH_LINK(payloadOffset + (u32)&romfsRedirPatchFsRegisterArchive - (u32)romfsRedirPatch, fsRegisterArchive);
     romfsRedirPatchArchiveId = archiveId;
     memcpy(&romfsRedirPatchUpdateRomFsMount, updateRomFsMount, 4);
