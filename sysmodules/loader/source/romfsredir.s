@@ -31,8 +31,8 @@ romfsRedirPatch:
         bne     romfsRedirPatchSubstituted1
         stmfd   sp!, {r0-r4, lr}
         adr     r0, romfsRedirPatchArchiveName
-        .global romfsRedirPatchFsUnMountArchive
-        romfsRedirPatchFsUnMountArchive:
+        .global romfsRedirPatchFsUnmountArchive
+        romfsRedirPatchFsUnmountArchive:
             .word 0xdead0004
         sub     sp, sp, #4
         ldr     r1, romfsRedirPatchArchiveId
