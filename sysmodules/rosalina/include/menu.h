@@ -97,6 +97,7 @@ void    menuLeave(void);
 void    menuRequestClose(void);
 void    menuThreadMain(void);
 void    menuShow(Menu *root);
+void    menuResetSelectedItem(void);
 void    DispMessage(const char *title, const char *message);
 u32     DispErrMessage(const char *title, const char *message, const Result error);
 void    DisplayPluginMenu(u32   *cmdbuf);

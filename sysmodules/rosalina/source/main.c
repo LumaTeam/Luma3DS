@@ -27,6 +27,7 @@
 #include <3ds.h>
 #include "memory.h"
 #include "menu.h"
+#include "timelock.h"
 #include "service_manager.h"
 #include "errdisp.h"
 #include "utils.h"
@@ -37,6 +38,7 @@
 #include "menus/screen_filters.h"
 #include "menus/cheats.h"
 #include "menus/sysconfig.h"
+#include "menus/timelock_config.h"
 #include "input_redirection.h"
 #include "minisoc.h"
 #include "draw.h"
@@ -186,6 +188,10 @@ static void handlePreTermNotification(u32 notificationId)
     (void)notificationId;
     // Might be subject to a race condition, but heh.
 
+    // Persist timelock elapsed before shutdown so power-off doesn't grant
+    // free time. The runtime instance holds the live counter.
+    timelockFinalSaveOnShutdown();
+
     miniSocUnlockState(true);
 
     // Disable input redirection
@@ -265,11 +271,13 @@ int main(void)
     Cheat_SeedRng(svcGetSystemTick());
     ScreenFiltersMenu_LoadConfig();
     SysConfigMenu_LoadConfig();
+    TimelockMenu_LoadData();
 
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
     bootdiagCreateThread();
+    MyThread *timelockThread = timelockCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);
@@ -280,6 +288,7 @@ int main(void)
 
     MyThread_Join(taskRunnerThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
+    MyThread_Join(timelockThread, -1LL);
 
     return 0;
 }
