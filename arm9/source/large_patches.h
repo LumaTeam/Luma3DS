@@ -29,6 +29,13 @@
 #include "types.h"
 
 extern const u8 emunandPatch[];
+extern const u8 emunand1xPatch[];
+extern const u8 emunand10CidPatch[];
+extern const u8 emunand11CidPatch[];
+extern const u8 emunand1412CidPatch[];
+extern const u8 emunand2xPatch[];
+extern const u8 emunand20CidPatch[];
+extern const u8 emunand21CidPatch[];
 extern const u8 emunandProtoPatch[];
 extern const u8 emunandProtoCidPatch[];
 extern const u8 emunandProtoPatch238[];
