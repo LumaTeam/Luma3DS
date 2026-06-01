@@ -377,7 +377,7 @@ void RosalinaMenu_TakeScreenshot(void)
         goto end;
     }
 
-    dateTimeToString(dateTimeStr, osGetTime(), true);
+    dateTimeToString(dateTimeStr, osGetTime(), DATE_TIME_FILENAME);
 
     sprintf(filename, "/luma/screenshots/%s_top.bmp", dateTimeStr);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
@@ -503,7 +503,7 @@ void menuTakeSelfScreenshot(void)
         goto end;
     }
 
-    dateTimeToString(dateTimeStr, osGetTime(), true);
+    dateTimeToString(dateTimeStr, osGetTime(), DATE_TIME_FILENAME);
 
     sprintf(filename, "/luma/screenshots/rosalina_menu_%s.bmp", dateTimeStr);
 

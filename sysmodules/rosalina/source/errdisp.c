@@ -192,9 +192,9 @@ static int ERRF_FormatError(char *out, const ERRF_FatalErrInfo *info, bool isLog
         char dateTimeStr[32];
         u64 timeNow = osGetTime();
         u64 timeAtBoot = timeNow - (1000 * svcGetSystemTick() / SYSCLOCK_ARM11);
-        dateTimeToString(dateTimeStr, timeNow, false);
+        dateTimeToString(dateTimeStr, timeNow, DATE_TIME_ISO);
         out += sprintf(out, "Reported on:      %s\n", dateTimeStr);
-        dateTimeToString(dateTimeStr, timeAtBoot, false);
+        dateTimeToString(dateTimeStr, timeAtBoot, DATE_TIME_ISO);
         out += sprintf(out, "System booted on: %s\n\n", dateTimeStr);
 
     }
