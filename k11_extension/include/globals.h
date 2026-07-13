@@ -172,7 +172,7 @@ extern u32 stolenSystemMemRegionSize;
 extern bool disableThreadRedirection;
 
 extern vu32 rosalinaState;
-extern bool hasStartedRosalinaNetworkFuncsOnce;
+extern bool hasStartedRosalinaNetworkFuncs;
 extern KEvent* signalPluginEvent;
 
 typedef enum
