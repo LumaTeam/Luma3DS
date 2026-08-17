@@ -559,31 +559,66 @@ void SysConfigMenu_ChangeScreenBrightness(void)
     Draw_Unlock();
 
     // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
-    // Assume top and bottom screen luminances are the same (should be; if not, we'll set them to the same values).
-    u32 luminance = getCurrentLuminance(false);
+    u32 topLuminance = getCurrentLuminance(true);
+    u32 bottomLuminance = getCurrentLuminance(false);
     u32 minLum = getMinLuminancePreset();
     u32 maxLum = getMaxLuminancePreset();
+
+    // Old 2DS has one physical backlight shared by both LCDs. If model detection
+    // fails, preserve the historical coupled behavior rather than guessing.
+    bool independentBacklights = false;
+    u8 model = CFG_MODEL_2DS;
+    Result cfgRes = cfguInit();
+    if (R_SUCCEEDED(cfgRes))
+    {
+        cfgRes = CFGU_GetSystemModel(&model);
+        cfguExit();
+        independentBacklights = R_SUCCEEDED(cfgRes) && model != CFG_MODEL_2DS;
+    }
+
+    if (!independentBacklights)
+        topLuminance = bottomLuminance;
 
     do
     {
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "Screen brightness");
         u32 posY = 30;
-        posY = Draw_DrawFormattedString(
-            10,
-            posY,
-            COLOR_WHITE,
-            "Current luminance: %lu (min. %lu, max. %lu)\n\n",
-            luminance,
-            minLum,
-            maxLum
-        );
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
+        if (independentBacklights)
+        {
+            posY = Draw_DrawFormattedString(
+                10,
+                posY,
+                COLOR_WHITE,
+                "Top luminance:    %lu\\nBottom luminance: %lu\\n(min. %lu, max. %lu)\\n\\n",
+                topLuminance,
+                bottomLuminance,
+                minLum,
+                maxLum
+            );
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "D-Pad adjusts both screens.\\n");
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold X + D-Pad for top only.\\n");
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold Y + D-Pad for bottom only.\\n");
+        }
+        else
+        {
+            posY = Draw_DrawFormattedString(
+                10,
+                posY,
+                COLOR_WHITE,
+                "Current luminance: %lu (min. %lu, max. %lu)\\n\\n",
+                bottomLuminance,
+                minLum,
+                maxLum
+            );
+            posY = Draw_DrawString(10, posY, COLOR_WHITE, "This model uses a shared backlight.\\n");
+        }
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Up/Down: +-1, Right/Left: +-10.\\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\\n\\n");
 
-        posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by calibration.\n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
+        posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * values will be limited by calibration.\\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\\nyou exit.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
 
@@ -605,30 +640,56 @@ void SysConfigMenu_ChangeScreenBrightness(void)
     svcKernelSetState(0x10000, 2); // unblock gsp
     gspLcdInit(); // assume it doesn't fail. If it does, brightness won't change, anyway.
 
-    // gsp:LCD will normalize the brightness between top/bottom screen, handle PWM, etc.
-
-    s32 lum = (s32)luminance;
+    // gsp:LCD will normalize the brightness, handle PWM, etc.
+    s32 topLum = (s32)topLuminance;
+    s32 bottomLum = (s32)bottomLuminance;
 
     do
     {
-        u32 pressed = waitInputWithTimeout(1000);
+        u32 held = 0;
+        u32 pressed = waitInputWithTimeoutEx(&held, 1000);
         if (pressed & DIRECTIONAL_KEYS)
         {
+            s32 delta = 0;
             if (pressed & KEY_UP)
-                lum += 1;
+                delta = 1;
             else if (pressed & KEY_DOWN)
-                lum -= 1;
+                delta = -1;
             else if (pressed & KEY_RIGHT)
-                lum += 10;
+                delta = 10;
             else if (pressed & KEY_LEFT)
-                lum -= 10;
+                delta = -10;
 
-            lum = lum < (s32)minLum ? (s32)minLum : lum;
-            lum = lum > (s32)maxLum ? (s32)maxLum : lum;
+            if (!independentBacklights)
+            {
+                bottomLum += delta;
+                bottomLum = bottomLum < (s32)minLum ? (s32)minLum : bottomLum;
+                bottomLum = bottomLum > (s32)maxLum ? (s32)maxLum : bottomLum;
+                topLum = bottomLum;
 
-            // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
-            // This is actually SetLuminance:
-            GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP) | BIT(GSP_SCREEN_BOTTOM), lum);
+                GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP) | BIT(GSP_SCREEN_BOTTOM), bottomLum);
+            }
+            else
+            {
+                bool topOnly = (held & KEY_X) != 0 && (held & KEY_Y) == 0;
+                bool bottomOnly = (held & KEY_Y) != 0 && (held & KEY_X) == 0;
+
+                if (!bottomOnly)
+                {
+                    topLum += delta;
+                    topLum = topLum < (s32)minLum ? (s32)minLum : topLum;
+                    topLum = topLum > (s32)maxLum ? (s32)maxLum : topLum;
+                    GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP), topLum);
+                }
+
+                if (!topOnly)
+                {
+                    bottomLum += delta;
+                    bottomLum = bottomLum < (s32)minLum ? (s32)minLum : bottomLum;
+                    bottomLum = bottomLum > (s32)maxLum ? (s32)maxLum : bottomLum;
+                    GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_BOTTOM), bottomLum);
+                }
+            }
         }
 
         if (pressed & KEY_B)
