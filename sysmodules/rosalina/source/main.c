@@ -138,6 +138,7 @@ static void handleTermNotification(u32 notificationId)
 
 static void handleSleepNotification(u32 notificationId)
 {
+    static bool ledRestorePending = false;
     ptmSysmInit();
     s32 ackValue = ptmSysmGetNotificationAckValue(notificationId);
     switch (notificationId)
@@ -147,14 +148,24 @@ static void handleSleepNotification(u32 notificationId)
             PTMSYSM_ReplyToSleepQuery(miniSocEnabled); // deny sleep request if we have network stuff running
             break;
         case PTMNOTIFID_GOING_TO_SLEEP:
+            ledRestorePending = ledsDisabled;
+            PTMSYSM_NotifySleepPreparationComplete(ackValue);
+            break;
         case PTMNOTIFID_SLEEP_ALLOWED:
         case PTMNOTIFID_FULLY_WAKING_UP:
         case PTMNOTIFID_HALF_AWAKE:
             PTMSYSM_NotifySleepPreparationComplete(ackValue);
             break;
         case PTMNOTIFID_SLEEP_DENIED:
+            menuShouldExit = false;
+            break;
         case PTMNOTIFID_FULLY_AWAKE:
             menuShouldExit = false;
+            if (ledRestorePending)
+            {
+                SysConfigMenu_RestoreLEDs();
+                ledRestorePending = false;
+            }
             break;
         default:
             break;

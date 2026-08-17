@@ -32,10 +32,12 @@
 extern Menu sysconfigMenu;
 extern bool isConnectionForced;
 extern s8 currVolumeSliderOverride;
+extern bool ledsDisabled;
 
 void SysConfigMenu_UpdateStatus(bool control);
 
 void SysConfigMenu_ToggleLEDs(void);
+Result SysConfigMenu_RestoreLEDs(void);
 void SysConfigMenu_ToggleWireless(void);
 void SysConfigMenu_TogglePowerButton(void);
 void SysConfigMenu_ControlWifi(void);

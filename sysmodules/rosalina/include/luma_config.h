@@ -42,6 +42,7 @@ enum singleOptions
     ENABLEDSIEXTFILTER,
     DISABLEARM11EXCHANDLERS,
     ENABLESAFEFIRMROSALINA,
+    DISABLELEDS,
 };
 
 enum multiOptions

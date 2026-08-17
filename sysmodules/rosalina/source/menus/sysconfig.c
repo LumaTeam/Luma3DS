@@ -50,6 +50,30 @@ Menu sysconfigMenu = {
 
 bool isConnectionForced = false;
 s8 currVolumeSliderOverride = -1;
+bool ledsDisabled = false;
+
+static Result SysConfigMenu_ToggleLEDHardware(void)
+{
+    Result res = mcuHwcInit();
+    if (R_FAILED(res))
+        return res;
+
+    u8 value;
+    res = MCUHWC_ReadRegister(0x28, &value, 1);
+    if (R_SUCCEEDED(res))
+    {
+        value = ~value;
+        res = MCUHWC_WriteRegister(0x28, &value, 1);
+    }
+
+    mcuHwcExit();
+    return res;
+}
+
+Result SysConfigMenu_RestoreLEDs(void)
+{
+    return ledsDisabled ? SysConfigMenu_ToggleLEDHardware() : 0;
+}
 
 void SysConfigMenu_ToggleLEDs(void)
 {
@@ -63,9 +87,10 @@ void SysConfigMenu_ToggleLEDs(void)
         Draw_Lock();
         Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
         Draw_DrawString(10, 30, COLOR_WHITE, "Press A to toggle, press B to go back.");
-        Draw_DrawString(10, 50, COLOR_RED, "WARNING:");
-        Draw_DrawString(10, 60, COLOR_WHITE, "  * Entering sleep mode will reset the LED state!");
-        Draw_DrawString(10, 70, COLOR_WHITE, "  * LEDs cannot be toggled when the battery is low!");
+        Draw_DrawString(10, 50, COLOR_WHITE, "Current persistent state:");
+        Draw_DrawString(180, 50, ledsDisabled ? COLOR_RED : COLOR_GREEN, ledsDisabled ? " OFF" : " ON ");
+        Draw_DrawString(10, 70, COLOR_WHITE, "The state is restored after sleep and reboot.");
+        Draw_DrawString(10, 80, COLOR_WHITE, "LEDs cannot be toggled when the battery is low.");
 
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -74,12 +99,29 @@ void SysConfigMenu_ToggleLEDs(void)
 
         if(pressed & KEY_A)
         {
-            mcuHwcInit();
-            u8 result;
-            MCUHWC_ReadRegister(0x28, &result, 1);
-            result = ~result;
-            MCUHWC_WriteRegister(0x28, &result, 1);
-            mcuHwcExit();
+            Result res = SysConfigMenu_ToggleLEDHardware();
+            if (R_SUCCEEDED(res))
+            {
+                bool previousState = ledsDisabled;
+                ledsDisabled = !ledsDisabled;
+                res = LumaConfig_SaveSettings();
+                if (R_FAILED(res))
+                {
+                    ledsDisabled = previousState;
+                    Result rollbackRes = SysConfigMenu_ToggleLEDHardware();
+                    if (R_FAILED(rollbackRes))
+                        res = rollbackRes;
+                }
+            }
+
+            if (R_FAILED(res))
+            {
+                Draw_Lock();
+                Draw_DrawFormattedString(10, 100, COLOR_RED, "Operation failed (0x%08lx).", (u32)res);
+                Draw_FlushFramebuffer();
+                Draw_Unlock();
+                svcSleepThread(500 * 1000 * 1000LL);
+            }
         }
         else if(pressed & KEY_B)
             return;
@@ -472,6 +514,10 @@ void SysConfigMenu_LoadConfig(void)
     currVolumeSliderOverride = (s8)out;
     if (currVolumeSliderOverride >= 0)
         SysConfigMenu_ApplyVolumeOverride();
+
+    svcGetSystemInfo(&out, 0x10000, 3);
+    ledsDisabled = (((u32)out >> DISABLELEDS) & 1u) != 0;
+    SysConfigMenu_RestoreLEDs();
 }
 
 void SysConfigMenu_AdjustVolume(void)
