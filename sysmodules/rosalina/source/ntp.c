@@ -117,6 +117,11 @@ Result ntpGetTimeStamp(u64 *msSince1900, u64 *samplingTick)
     if(socSend(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
 
+    struct pollfd pfd = { .fd = sock, .events = POLLIN, .revents = 0 };
+    int pollres = socPoll(&pfd, 1, 5000);
+    if(pollres <= 0 || !(pfd.revents & POLLIN))
+        goto cleanup;
+
     if(socRecv(sock, &packet, sizeof(NtpPacket), 0) < 0)
         goto cleanup;
     roundTripTicks = svcGetSystemTick() - roundTripTicks;
