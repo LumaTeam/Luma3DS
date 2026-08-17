@@ -130,7 +130,8 @@ Result IFile_Write(IFile *file, u64 *total, const void *buffer, u32 len, u32 fla
   left = len;
   while (1)
   {
-    res = FSFILE_Write(file->handle, &written, file->pos, buf, left, flags);
+    u32 writeSize = left > 0x100000 ? 0x100000 : left;
+    res = FSFILE_Write(file->handle, &written, file->pos, buf, writeSize, flags);
     if (R_FAILED(res))
     {
       break;
