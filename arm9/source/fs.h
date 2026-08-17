@@ -45,4 +45,5 @@ bool payloadMenu(char *path, bool *hasDisplayedMenu);
 u32 firmRead(void *dest, u32 firmType);
 void findDumpFile(const char *folderPath, char *fileName);
 
+bool backupEssentialFiles(void);
 bool doLumaUpgradeProcess(void);
