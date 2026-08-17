@@ -582,7 +582,7 @@ void menuShow(Menu *root)
         }
         else if(pressed & KEY_B)
         {
-            while (nbPreviousMenus == 0 && (scanHeldKeys() & KEY_B)); // wait a bit before exiting rosalina
+            while (nbPreviousMenus == 0 && (HID_PAD & KEY_B)); // wait for the physical B button before exiting rosalina
 
             Draw_Lock();
             Draw_ClearFramebuffer();
