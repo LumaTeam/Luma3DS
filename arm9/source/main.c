@@ -215,6 +215,18 @@ void main(int argc, char **argv, u32 magicWord)
     //Get pressed buttons
     u32 pressed = HID_PAD;
 
+    // Force regeneration of the essential-file backup without replaying the
+    // rest of the version-upgrade process. Keep this an exact combination so
+    // it cannot intercept SAFE_MODE or payload hotkeys.
+    if(pressed == FORCE_BACKUP_BUTTONS)
+    {
+        if(!remountCtrNandPartition(false) || !backupEssentialFiles())
+            error("Failed to back up essential files.");
+
+        while(HID_PAD & FORCE_BACKUP_BUTTONS);
+        pressed = HID_PAD;
+    }
+
     //If it's a MCU reboot, try to force boot options
     if(CFG_BOOTENV && needConfig != CREATE_CONFIGURATION)
     {
