@@ -72,6 +72,7 @@ static const char *singleOptionIniNamesMisc[] = {
     "enable_dsi_external_filter",
     "disable_arm11_exception_handlers",
     "enable_safe_firm_rosalina",
+    "disable_leds",
 };
 
 static const char *keyNames[] = {
@@ -688,7 +689,8 @@ static size_t saveLumaIniConfigToStr(char *out)
         cfg->volumeSliderOverride,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(ENABLEDSIEXTFILTER),
-        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA)
+        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA),
+        (int)CONFIG(DISABLELEDS)
     );
 
     return n < 0 ? 0 : (size_t)n;

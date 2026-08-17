@@ -192,7 +192,8 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         cfg->volumeSliderOverride,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(ENABLEDSIEXTFILTER),
-        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA)
+        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA),
+        (int)CONFIG(DISABLELEDS)
     );
 
     return n < 0 ? 0 : (size_t)n;
@@ -245,6 +246,10 @@ Result LumaConfig_SaveSettings(void)
     configData.formatVersionMajor = (u16)(formatVersion >> 16);
     configData.formatVersionMinor = (u16)formatVersion;
     configData.config = config;
+    if (ledsDisabled)
+        configData.config |= 1u << DISABLELEDS;
+    else
+        configData.config &= ~(1u << DISABLELEDS);
     configData.multiConfig = multiConfig;
     configData.bootConfig = bootConfig;
     configData.splashDurationMsec = splashDurationMsec;
