@@ -103,7 +103,9 @@ void __attribute__((noreturn)) arm9ExceptionHandlerMain(u32 *registerDump, u32 t
     //Copy header (actually optimized by the compiler)
     *(ExceptionDumpHeader *)FINAL_BUFFER = dumpHeader;
 
-    if(ARESCREENSINITIALIZED) I2C_writeReg(I2C_DEV_MCU, 0x22, 1 << 0); //Shutdown LCD
+    // Do not invoke ARM11 from an ARM9 fatal handler, but still preserve the
+    // required backlight-off -> LCD-off MCU sequence before rebooting.
+    if(ARESCREENSINITIALIZED) powerOffScreensMcu();
 
     ((void (*)())0xFFFF0830)(); //Ensure that all memory transfers have completed and that the data cache has been flushed
 

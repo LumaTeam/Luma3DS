@@ -69,6 +69,7 @@ extern struct fb fbs[2];
 extern bool needToSetupScreens;
 
 void prepareArm11ForFirmlaunch(void);
+void powerOffScreensMcu(void);
 void deinitScreens(void);
 void swapFramebuffers(bool isAlternate);
 void updateBrightness(u32 brightnessIndex);
