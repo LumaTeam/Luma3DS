@@ -559,8 +559,8 @@ void SysConfigMenu_ChangeScreenBrightness(void)
     Draw_Unlock();
 
     // gsp:LCD GetLuminance is stubbed on O3DS so we have to implement it ourselves... damn it.
-    // Assume top and bottom screen luminances are the same (should be; if not, we'll set them to the same values).
-    u32 luminance = getCurrentLuminance(false);
+    u32 topLuminance = getCurrentLuminance(true);
+    u32 bottomLuminance = getCurrentLuminance(false);
     u32 minLum = getMinLuminancePreset();
     u32 maxLum = getMaxLuminancePreset();
 
@@ -573,16 +573,19 @@ void SysConfigMenu_ChangeScreenBrightness(void)
             10,
             posY,
             COLOR_WHITE,
-            "Current luminance: %lu (min. %lu, max. %lu)\n\n",
-            luminance,
+            "Top: %lu, bottom: %lu (min. %lu, max. %lu)\n\n",
+            topLuminance,
+            bottomLuminance,
             minLum,
             maxLum
         );
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Controls: Up/Down for +-1, Right/Left for +-10.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "Hold X for top only, Y for bottom only.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "No modifier adjusts both screens.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "Press A to start, B to exit.\n\n");
 
         posY = Draw_DrawString(10, posY, COLOR_RED, "WARNING: \n");
-        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * value will be limited by calibration.\n");
+        posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * values will be limited by calibration.\n");
         posY = Draw_DrawString(10, posY, COLOR_WHITE, "  * bottom framebuffer will be restored until\nyou exit.");
         Draw_FlushFramebuffer();
         Draw_Unlock();
@@ -605,30 +608,42 @@ void SysConfigMenu_ChangeScreenBrightness(void)
     svcKernelSetState(0x10000, 2); // unblock gsp
     gspLcdInit(); // assume it doesn't fail. If it does, brightness won't change, anyway.
 
-    // gsp:LCD will normalize the brightness between top/bottom screen, handle PWM, etc.
-
-    s32 lum = (s32)luminance;
+    s32 topLum = (s32)topLuminance;
+    s32 bottomLum = (s32)bottomLuminance;
 
     do
     {
-        u32 pressed = waitInputWithTimeout(1000);
+        u32 held = 0;
+        u32 pressed = waitInputWithTimeoutEx(&held, 1000);
         if (pressed & DIRECTIONAL_KEYS)
         {
+            s32 delta = 0;
             if (pressed & KEY_UP)
-                lum += 1;
+                delta = 1;
             else if (pressed & KEY_DOWN)
-                lum -= 1;
+                delta = -1;
             else if (pressed & KEY_RIGHT)
-                lum += 10;
+                delta = 10;
             else if (pressed & KEY_LEFT)
-                lum -= 10;
+                delta = -10;
 
-            lum = lum < (s32)minLum ? (s32)minLum : lum;
-            lum = lum > (s32)maxLum ? (s32)maxLum : lum;
+            bool topOnly = (held & KEY_X) != 0 && (held & KEY_Y) == 0;
+            bool bottomOnly = (held & KEY_Y) != 0 && (held & KEY_X) == 0;
 
-            // We need to call gsp here because updating the active duty LUT is a bit tedious (plus, GSP has internal state).
-            // This is actually SetLuminance:
-            GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP) | BIT(GSP_SCREEN_BOTTOM), lum);
+            if (!bottomOnly)
+                topLum += delta;
+            if (!topOnly)
+                bottomLum += delta;
+
+            topLum = topLum < (s32)minLum ? (s32)minLum : topLum;
+            topLum = topLum > (s32)maxLum ? (s32)maxLum : topLum;
+            bottomLum = bottomLum < (s32)minLum ? (s32)minLum : bottomLum;
+            bottomLum = bottomLum > (s32)maxLum ? (s32)maxLum : bottomLum;
+
+            if (!bottomOnly)
+                GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_TOP), topLum);
+            if (!topOnly)
+                GSPLCD_SetBrightnessRaw(BIT(GSP_SCREEN_BOTTOM), bottomLum);
         }
 
         if (pressed & KEY_B)
