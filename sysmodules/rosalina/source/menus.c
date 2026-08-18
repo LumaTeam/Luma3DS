@@ -46,6 +46,7 @@ Menu rosalinaMenu = {
     "Rosalina menu",
     {
         { "Take screenshot", METHOD, .method = &RosalinaMenu_TakeScreenshot },
+        { "Show application screen", METHOD, .method = &RosalinaMenu_ShowApplicationScreen },
         { "Screen filters...", MENU, .menu = &screenFiltersMenu },
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},
@@ -71,6 +72,24 @@ bool rosalinaMenuShouldShowDebugInfo(void)
     s64 out;
     svcGetSystemInfo(&out, 0x10000, 0x200);
     return out == 0;
+}
+
+void RosalinaMenu_ShowApplicationScreen(void)
+{
+    Draw_Lock();
+    Draw_RestoreFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        if(waitInputWithTimeout(1000) & KEY_B)
+            break;
+    }
+    while(!menuShouldExit);
+
+    Draw_Lock();
+    Draw_SetupFramebuffer();
+    Draw_Unlock();
 }
 
 void RosalinaMenu_SaveSettings(void)
