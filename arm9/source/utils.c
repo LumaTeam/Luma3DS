@@ -120,8 +120,8 @@ __attribute__((noreturn)) void mcuPowerOff(void)
 
     if(!needToSetupScreens) clearScreens(false);
 
-    //Shutdown LCD
-    if(ARESCREENSINITIALIZED) I2C_writeReg(I2C_DEV_MCU, 0x22, 1 << 0);
+    // Shut down display output/backlights/LCDs in the required order.
+    if(ARESCREENSINITIALIZED) deinitScreens();
 
     //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireDCache();

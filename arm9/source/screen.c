@@ -67,17 +67,22 @@ void prepareArm11ForFirmlaunch(void)
     invokeArm11Function(PREPARE_ARM11_FOR_FIRMLAUNCH);
 }
 
-void deinitScreens(void)
+void powerOffScreensMcu(void)
 {
-    if(ARESCREENSINITIALIZED) invokeArm11Function(DEINIT_SCREENS);
-
-    // Backlight voltage off
+    // Backlight voltage off before powering down the LCD panels. Keeping this
+    // sequence centralized avoids bypassing the safe v13.3.3 deinit ordering.
     I2C_writeReg(I2C_DEV_MCU, 0x22, 0x14);
     wait(50);
 
     // LCD panel voltage off
     I2C_writeReg(I2C_DEV_MCU, 0x22, 0x01);
     wait(50);
+}
+
+void deinitScreens(void)
+{
+    if(ARESCREENSINITIALIZED) invokeArm11Function(DEINIT_SCREENS);
+    powerOffScreensMcu();
 }
 
 void updateBrightness(u32 brightnessIndex)
