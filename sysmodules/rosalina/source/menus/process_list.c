@@ -388,7 +388,11 @@ static void ProcessListMenu_MemoryViewer(const ProcessInfo *info)
                 u8 * startpos = (u8*)((u32)menus[MENU_MODE_NORMAL].buf + menus[MENU_MODE_NORMAL].selected);
                 u32 size = menus[MENU_MODE_NORMAL].max - menus[MENU_MODE_NORMAL].selected;
                 if (size >= searchPatternSize)
-                    menus[MENU_MODE_NORMAL].selected = (u32)memsearch(startpos, searchPattern, size, searchPatternSize) - (u32)menus[MENU_MODE_NORMAL].buf;
+                {
+                    u8 *match = memsearch(startpos, searchPattern, size, searchPatternSize);
+                    if (match != NULL)
+                        menus[MENU_MODE_NORMAL].selected = (u32)match - (u32)menus[MENU_MODE_NORMAL].buf;
+                }
             }
 
             menus[MENU_MODE_SEARCH].buf = searchPattern;
