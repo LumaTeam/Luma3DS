@@ -602,7 +602,6 @@ void SysConfigMenu_ChangeScreenBrightness(void)
     Draw_RestoreFramebuffer();
     Draw_FreeFramebufferCache();
 
-    svcKernelSetState(0x10000, 2); // unblock gsp
     gspLcdInit(); // assume it doesn't fail. If it does, brightness won't change, anyway.
 
     // gsp:LCD will normalize the brightness between top/bottom screen, handle PWM, etc.
@@ -637,7 +636,6 @@ void SysConfigMenu_ChangeScreenBrightness(void)
     while (!menuShouldExit);
 
     gspLcdExit();
-    svcKernelSetState(0x10000, 2); // block gsp again
 
     if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
     {
