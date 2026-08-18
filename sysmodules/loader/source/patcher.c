@@ -409,7 +409,13 @@ bool loadTitleCodeSection(u64 progId, u8 *code, u32 size)
 
     IFile file;
 
-    if(!openLumaFile(&file, path)) return false;
+    if(!openLumaFile(&file, path))
+    {
+        char altPath[] = "/luma/titles/0000000000000000/exefs/code.bin";
+        progIdToStr(altPath + 28, progId);
+
+        if(!openLumaFile(&file, altPath)) return false;
+    }
 
     u64 fileSize;
 
