@@ -33,6 +33,7 @@
 #include "ifile.h"
 #include "menus/miscellaneous.h"
 #include "menus/sysconfig.h"
+#include "ntp.h"
 #include "plugin/plgloader.h"
 
 typedef struct CfgData {
@@ -45,6 +46,7 @@ typedef struct CfgData {
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;
     u32 pluginLoaderFlags;
+    u32 ntpServerIp;
     s16 ntpTzOffetMinutes;
 
     ScreenFilter topScreenFilter;
@@ -94,6 +96,7 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
     const char *splashPosStr;
     const char *n3dsCpuStr;
     const char *autobootModeStr;
+    char ntpServerIpStr[16];
     const char *forceAudioOutputStr;
 
     s64 outInfo;
@@ -130,6 +133,13 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         case 1: forceAudioOutputStr = "headphones"; break;
         case 2: forceAudioOutputStr = "speakers"; break;
     }
+
+    sprintf(ntpServerIpStr, "%lu.%lu.%lu.%lu",
+        (u32)(cfg->ntpServerIp >> 24),
+        (u32)((cfg->ntpServerIp >> 16) & 0xFF),
+        (u32)((cfg->ntpServerIp >> 8) & 0xFF),
+        (u32)(cfg->ntpServerIp & 0xFF)
+    );
 
     if (GET_VERSION_REVISION(version) != 0) {
         sprintf(lumaVerStr, "Luma3DS v%d.%d.%d", (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version), (int)GET_VERSION_REVISION(version));
@@ -177,6 +187,7 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         autobootModeStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
+        ntpServerIpStr,
         (int)cfg->ntpTzOffetMinutes,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
@@ -252,6 +263,7 @@ Result LumaConfig_SaveSettings(void)
     configData.hbldr3dsxTitleId = Luma_SharedConfig->selected_hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
     configData.pluginLoaderFlags = PluginLoader__IsEnabled();
+    configData.ntpServerIp = ntpServerIp;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
     configData.topScreenFilter = topScreenFilter;
     configData.bottomScreenFilter = bottomScreenFilter;

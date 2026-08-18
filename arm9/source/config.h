@@ -37,6 +37,7 @@
 #define CONFIG_FILE         "config.ini"
 #define CONFIG_VERSIONMAJOR 3
 #define CONFIG_VERSIONMINOR 13
+#define DEFAULT_NTP_IP       0x3389896Fu
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 1)
 #define BOOTCFG_EMUINDEX     BOOTCONFIG(1, 3)

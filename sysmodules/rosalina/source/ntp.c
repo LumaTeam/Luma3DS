@@ -43,6 +43,8 @@
 #define NTP_IP              MAKE_IPV4(51, 137, 137, 111) // time.windows.com
 #endif
 
+u32 ntpServerIp = NTP_IP;
+
 // From https://github.com/lettier/ntpclient/blob/master/source/c/main.c
 
 typedef struct NtpPacket
@@ -103,7 +105,7 @@ Result ntpGetTimeStamp(u64 *msSince1900, u64 *samplingTick)
 
     // Copy the server's IP address to the server address structure.
 
-    servAddr.sin_addr.s_addr = htonl(NTP_IP);
+    servAddr.sin_addr.s_addr = htonl(ntpServerIp);
     // Convert the port number integer to network big-endian style and save it to the server address structure.
 
     servAddr.sin_port = htons(123);
@@ -115,6 +117,11 @@ Result ntpGetTimeStamp(u64 *msSince1900, u64 *samplingTick)
 
     u64 roundTripTicks = svcGetSystemTick();
     if(socSend(sock, &packet, sizeof(NtpPacket), 0) < 0)
+        goto cleanup;
+
+    struct pollfd pfd = { .fd = sock, .events = POLLIN, .revents = 0 };
+    int pollres = socPoll(&pfd, 1, 5000);
+    if(pollres <= 0 || !(pfd.revents & POLLIN))
         goto cleanup;
 
     if(socRecv(sock, &packet, sizeof(NtpPacket), 0) < 0)

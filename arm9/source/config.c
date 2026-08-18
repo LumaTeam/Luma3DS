@@ -141,6 +141,40 @@ static int parseDecIntOption(s64 *out, const char *val, s64 minval, s64 maxval)
     return parseDecIntOptionImpl(out, val, strlen(val), minval, maxval);
 }
 
+static int parseIpv4Option(u32 *out, const char *val)
+{
+    u32 ip = 0;
+
+    for (u32 octet = 0; octet < 4; octet++)
+    {
+        u32 value = 0;
+        u32 digits = 0;
+
+        while (*val >= '0' && *val <= '9')
+        {
+            value = 10 * value + (u32)(*val++ - '0');
+            digits++;
+            if (digits > 3 || value > 255)
+                return -1;
+        }
+
+        if (digits == 0)
+            return -1;
+
+        ip = (ip << 8) | value;
+        if (octet < 3)
+        {
+            if (*val != '.')
+                return -1;
+            val++;
+        }
+        else if (*val != '\0')
+            return -1;
+    }
+
+    *out = ip;
+    return 0;
+}
 static int parseDecFloatOption(s64 *out, const char *val, s64 minval, s64 maxval)
 {
     s64 sign = 1;// intPart < 0 ? -1 : 1;
@@ -467,6 +501,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
             cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | 1 : cfg->pluginLoaderFlags & ~1;
             return 1;
+        } else if (strcmp(name, "ntp_server_ip") == 0) {
+            u32 opt;
+            CHECK_PARSE_OPTION(parseIpv4Option(&opt, value));
+            cfg->ntpServerIp = opt;
+            return 1;
         } else if (strcmp(name, "ntp_tz_offset_min") == 0) {
             s64 opt;
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -779, 899));
@@ -600,6 +639,7 @@ static size_t saveLumaIniConfigToStr(char *out)
     const char *splashPosStr;
     const char *n3dsCpuStr;
     const char *autobootModeStr;
+    char ntpServerIpStr[16];
     const char *forceAudioOutputStr;
 
     switch (MULTICONFIG(SPLASH)) {
@@ -626,6 +666,13 @@ static size_t saveLumaIniConfigToStr(char *out)
         case 1: forceAudioOutputStr = "headphones"; break;
         case 2: forceAudioOutputStr = "speakers"; break;
     }
+
+    sprintf(ntpServerIpStr, "%lu.%lu.%lu.%lu",
+        (u32)(cfg->ntpServerIp >> 24),
+        (u32)((cfg->ntpServerIp >> 16) & 0xFF),
+        (u32)((cfg->ntpServerIp >> 8) & 0xFF),
+        (u32)(cfg->ntpServerIp & 0xFF)
+    );
 
     if (VERSION_BUILD != 0) {
         sprintf(lumaVerStr, "Luma3DS v%d.%d.%d", (int)VERSION_MAJOR, (int)VERSION_MINOR, (int)VERSION_BUILD);
@@ -673,6 +720,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         autobootModeStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
+        ntpServerIpStr,
         (int)cfg->ntpTzOffetMinutes,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
@@ -809,6 +857,9 @@ bool readConfig(void)
     }
     else
         ret = true;
+
+    if (configData.ntpServerIp == 0)
+        configData.ntpServerIp = DEFAULT_NTP_IP;
 
     configData.bootConfig = configDataMcu.bootCfg;
     oldConfig = configData;
