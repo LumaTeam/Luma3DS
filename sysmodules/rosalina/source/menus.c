@@ -41,6 +41,7 @@
 #include "fmt.h"
 #include "process_patches.h"
 #include "luma_config.h"
+#include "pmdbgext.h"
 
 Menu rosalinaMenu = {
     "Rosalina menu",
@@ -331,12 +332,39 @@ void RosalinaMenu_ReturnToHomeMenu(void)
     while(!menuShouldExit);
 }
 
+static Result RosalinaMenu_CreateScreenshotDirectory(FS_Archive archive, const char *dateTimeStr, char *directory)
+{
+    Result res;
+
+    sprintf(directory, "/luma/screenshots");
+    res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, directory), 0);
+    if(R_FAILED(res) && (u32)res != 0xC82044BE)
+        return res;
+
+    sprintf(directory, "/luma/screenshots/%.4s", dateTimeStr);
+    res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, directory), 0);
+    if(R_FAILED(res) && (u32)res != 0xC82044BE)
+        return res;
+
+    sprintf(directory, "/luma/screenshots/%.4s/%.2s", dateTimeStr, dateTimeStr + 5);
+    res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, directory), 0);
+    if(R_FAILED(res) && (u32)res != 0xC82044BE)
+        return res;
+
+    sprintf(directory, "/luma/screenshots/%.4s/%.2s/%.2s", dateTimeStr, dateTimeStr + 5, dateTimeStr + 8);
+    res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, directory), 0);
+    if(R_FAILED(res) && (u32)res != 0xC82044BE)
+        return res;
+
+    return 0;
+}
 void RosalinaMenu_TakeScreenshot(void)
 {
     IFile file = {0};
     Result res = 0;
 
-    char filename[64];
+    char directory[32];
+    char filename[100];
     char dateTimeStr[32];
 
     FS_Archive archive;
@@ -363,13 +391,16 @@ void RosalinaMenu_TakeScreenshot(void)
     Draw_GetCurrentScreenInfo(&bottomWidth, &is3d, false);
     Draw_GetCurrentScreenInfo(&topWidth, &is3d, true);
 
+    dateTimeToString(dateTimeStr, osGetTime(), true);
+
     res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
     if(R_SUCCEEDED(res))
     {
-        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/screenshots"), 0);
-        if((u32)res == 0xC82044BE) // directory already exists
-            res = 0;
+        res = RosalinaMenu_CreateScreenshotDirectory(archive, dateTimeStr, directory);
         FSUSER_CloseArchive(archive);
+        archive = 0;
+        if(R_FAILED(res))
+            goto end;
     }
     else
     {
@@ -377,21 +408,25 @@ void RosalinaMenu_TakeScreenshot(void)
         goto end;
     }
 
-    dateTimeToString(dateTimeStr, osGetTime(), true);
+    FS_ProgramInfo programInfo = {0};
+    u32 pid, launchFlags;
+    u64 titleId = 0;
+    if(R_SUCCEEDED(PMDBG_GetCurrentAppInfo(&programInfo, &pid, &launchFlags)))
+        titleId = programInfo.programId;
 
-    sprintf(filename, "/luma/screenshots/%s_top.bmp", dateTimeStr);
+    sprintf(filename, "%s/%s_%016llx_top.bmp", directory, dateTimeStr, titleId);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, true));
     TRY(IFile_Close(&file));
 
-    sprintf(filename, "/luma/screenshots/%s_bot.bmp", dateTimeStr);
+    sprintf(filename, "%s/%s_%016llx_bot.bmp", directory, dateTimeStr, titleId);
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     TRY(RosalinaMenu_WriteScreenshot(&file, bottomWidth, false, true));
     TRY(IFile_Close(&file));
 
     if(is3d && (Draw_GetCurrentFramebufferAddress(true, true) != Draw_GetCurrentFramebufferAddress(true, false)))
     {
-        sprintf(filename, "/luma/screenshots/%s_top_right.bmp", dateTimeStr);
+        sprintf(filename, "%s/%s_%016llx_top_right.bmp", directory, dateTimeStr, titleId);
         TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
         TRY(RosalinaMenu_WriteScreenshot(&file, topWidth, true, false));
         TRY(IFile_Close(&file));
@@ -471,8 +506,9 @@ void menuTakeSelfScreenshot(void)
     IFile file = {0};
     Result res = 0;
 
+    char directory[32];
     char filename[100];
-    char dateTimeStr[64];
+    char dateTimeStr[32];
 
     FS_Archive archive;
     FS_ArchiveID archiveId;
@@ -489,13 +525,16 @@ void menuTakeSelfScreenshot(void)
     Draw_Lock();
     svcFlushEntireDataCache();
 
+    dateTimeToString(dateTimeStr, osGetTime(), true);
+
     res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
     if(R_SUCCEEDED(res))
     {
-        res = FSUSER_CreateDirectory(archive, fsMakePath(PATH_ASCII, "/luma/screenshots"), 0);
-        if((u32)res == 0xC82044BE) // directory already exists
-            res = 0;
+        res = RosalinaMenu_CreateScreenshotDirectory(archive, dateTimeStr, directory);
         FSUSER_CloseArchive(archive);
+        archive = 0;
+        if(R_FAILED(res))
+            goto end;
     }
     else
     {
@@ -503,9 +542,7 @@ void menuTakeSelfScreenshot(void)
         goto end;
     }
 
-    dateTimeToString(dateTimeStr, osGetTime(), true);
-
-    sprintf(filename, "/luma/screenshots/rosalina_menu_%s.bmp", dateTimeStr);
+    sprintf(filename, "%s/rosalina_menu_%s.bmp", directory, dateTimeStr);
 
     TRY(IFile_Open(&file, archiveId, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, filename), FS_OPEN_CREATE | FS_OPEN_WRITE));
     TRY(menuWriteSelfScreenshot(&file));
