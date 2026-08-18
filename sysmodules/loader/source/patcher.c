@@ -766,7 +766,8 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 )) goto error;
         }
 
-        // Allow date picker to select year up to 2099, not just 2050.
+        // Allow date picker to select year up to 2098, not just 2050.
+        // 2099-12-31 crashes MSET/HOME Menu, so do not expose that year in the picker.
         // NNID user's year-of-birth seems to have a similar restriction,
         // I'm not removing that as long as any NNID stuff is still active.
 
@@ -782,8 +783,8 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 continue;
         }
         if ((u8 *)off >= code + textSize) goto error;
-        off[0] = (off[0] & ~0xFF) | 99;
-        off[2] = (off[2] & ~0xFF) | 99;
+        off[0] = (off[0] & ~0xFF) | 98;
+        off[2] = (off[2] & ~0xFF) | 98;
 
         // Patch date picker actions:
         // Look for:
@@ -793,8 +794,8 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
         for (; (u8 *)off < code + textSize && (off[0] != 0xE2800001 || off[1] != 0xE3500032); off++);
         if ((u8 *)off >= code + textSize) goto error;
 
-        off[1] = (off[1] & ~0xFF) | 99; // patch increment wrap-around compare instruction
-        off[9] = (off[9] & ~0xFF) | 99; // patch decrement wrap-around conditional move instruction
+        off[1] = (off[1] & ~0xFF) | 98; // patch increment wrap-around compare instruction
+        off[9] = (off[9] & ~0xFF) | 98; // patch decrement wrap-around conditional move instruction
     }
 
     else if(progId == 0x0004013000008002LL) //NS
