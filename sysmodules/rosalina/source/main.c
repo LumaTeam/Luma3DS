@@ -42,6 +42,7 @@
 #include "draw.h"
 #include "bootdiag.h"
 #include "shell.h"
+#include "ntp.h"
 
 #include "task_runner.h"
 #include "plugin.h"
@@ -89,6 +90,10 @@ void initSystem(void)
 
     svcGetSystemInfo(&out, 0x10000, 0x103);
     lastNtpTzOffset = (s16)out;
+
+    svcGetSystemInfo(&out, 0x10000, 0x10F);
+    if ((u32)out != 0)
+        ntpServerIp = (u32)out;
 
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
