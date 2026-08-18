@@ -32,6 +32,7 @@
 extern Menu sysconfigMenu;
 extern bool isConnectionForced;
 extern s8 currVolumeSliderOverride;
+extern bool currCardIfPowerDisabled;
 
 void SysConfigMenu_UpdateStatus(bool control);
 
