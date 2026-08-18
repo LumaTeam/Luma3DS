@@ -115,7 +115,8 @@ int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat)
 {
     // Conversion code adapted from https://stackoverflow.com/questions/21593692/convert-unix-timestamp-to-date-without-system-libs
     // (original author @gnif under CC-BY-SA 4.0)
-    u32 seconds, minutes, hours, days, year, month;
+    u64 seconds, minutes, hours, days;
+    u32 year, month;
     u64 milliseconds = msSince1900;
     seconds = milliseconds/1000;
     milliseconds %= 1000;
@@ -159,9 +160,9 @@ int dateTimeToString(char *out, u64 msSince1900, bool filenameFormat)
     month++;
 
     if (filenameFormat)
-        return sprintf(out, "%04lu-%02lu-%02lu_%02lu-%02lu-%02lu.%03llu", year, month, days, hours, minutes, seconds, milliseconds);
+        return sprintf(out, "%04lu-%02lu-%02llu_%02llu-%02llu-%02llu.%03llu", year, month, days, hours, minutes, seconds, milliseconds);
     else
-        return sprintf(out, "%04lu-%02lu-%02lu %02lu:%02lu:%02lu", year, month, days, hours, minutes, seconds);
+        return sprintf(out, "%04lu-%02lu-%02llu %02llu:%02llu:%02llu", year, month, days, hours, minutes, seconds);
 }
 
 int floatToString(char *out, float f, u32 precision, bool pad)
