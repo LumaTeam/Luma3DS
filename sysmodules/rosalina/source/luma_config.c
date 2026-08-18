@@ -192,7 +192,8 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         cfg->volumeSliderOverride,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(ENABLEDSIEXTFILTER),
-        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA)
+        (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA),
+        (int)CONFIG(DISABLECARDSLOTPOWER)
     );
 
     return n < 0 ? 0 : (size_t)n;
@@ -227,6 +228,10 @@ Result LumaConfig_SaveSettings(void)
     formatVersion = (u32)out;
     svcGetSystemInfo(&out, 0x10000, 3);
     config = (u32)out;
+    if (currCardIfPowerDisabled)
+        config |= 1u << DISABLECARDSLOTPOWER;
+    else
+        config &= ~(1u << DISABLECARDSLOTPOWER);
     svcGetSystemInfo(&out, 0x10000, 4);
     multiConfig = (u32)out;
     svcGetSystemInfo(&out, 0x10000, 5);

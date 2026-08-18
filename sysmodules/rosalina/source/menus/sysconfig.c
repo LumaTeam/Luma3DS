@@ -50,6 +50,7 @@ Menu sysconfigMenu = {
 
 bool isConnectionForced = false;
 s8 currVolumeSliderOverride = -1;
+bool currCardIfPowerDisabled = false;
 
 void SysConfigMenu_ToggleLEDs(void)
 {
@@ -379,7 +380,11 @@ void SysConfigMenu_ToggleCardIfPower(void)
                 res = FSUSER_CardSlotPowerOff(&updatedCardIfStatus);
 
             if (R_SUCCEEDED(res))
-                cardIfStatus = !updatedCardIfStatus;
+            {
+                cardIfStatus = updatedCardIfStatus;
+                currCardIfPowerDisabled = !cardIfStatus;
+                LumaConfig_SaveSettings();
+            }
         }
         else if(pressed & KEY_B)
             return;
@@ -467,7 +472,15 @@ static Result SysConfigMenu_ApplyVolumeOverride(void)
 
 void SysConfigMenu_LoadConfig(void)
 {
-    s64 out = -1;
+    s64 out = 0;
+    svcGetSystemInfo(&out, 0x10000, 3);
+    currCardIfPowerDisabled = (((u32)out >> DISABLECARDSLOTPOWER) & 1) != 0;
+    if (currCardIfPowerDisabled)
+    {
+        bool cardIfStatus;
+        FSUSER_CardSlotPowerOff(&cardIfStatus);
+    }
+
     svcGetSystemInfo(&out, 0x10000, 7);
     currVolumeSliderOverride = (s8)out;
     if (currVolumeSliderOverride >= 0)
