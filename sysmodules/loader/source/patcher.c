@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include <stdio.h>
 #include "patcher.h"
 #include "bps_patcher.h"
 #include "memory.h"
@@ -266,35 +267,15 @@ static inline bool findLayeredFsPayloadOffset(u8 *code, u32 size, u32 roSize, u3
     return *payloadOffset != 0 && *pathOffset != 0;
 }
 
-static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
+static bool applyIpsPatchFile(IFile *file, u8 *code, u32 size)
 {
-    /* Here we look for "/luma/titles/[u64 titleID in hex, uppercase]/code.ips"
-       If it exists it should be an IPS format patch */
-
-    bool isSysmodule = (progId >> 32) == 0x00040130;
-    IFile file;
-
-    if (isSysmodule)
-    {
-        char path[] = "/luma/sysmodules/0000000000000000.ips";
-        progId &= ~0xF0000000ull; // clear N3DS bit
-        progIdToStr(path + 32, progId);
-        if(!openLumaFile(&file, path)) return true;
-    }
-    else
-    {
-        char path[] = "/luma/titles/0000000000000000/code.ips";
-        progIdToStr(path + 28, progId);
-        if(!openLumaFile(&file, path)) return true;
-    }
-
     bool ret = false;
     u8 buffer[5];
     u64 total;
 
-    if(R_FAILED(IFile_Read(&file, &total, buffer, 5)) || total != 5 || memcmp(buffer, "PATCH", 5) != 0) goto exit;
+    if(R_FAILED(IFile_Read(file, &total, buffer, 5)) || total != 5 || memcmp(buffer, "PATCH", 5) != 0) return false;
 
-    while(R_SUCCEEDED(IFile_Read(&file, &total, buffer, 3)) && total == 3)
+    while(R_SUCCEEDED(IFile_Read(file, &total, buffer, 3)) && total == 3)
     {
         if(memcmp(buffer, "EOF", 3) == 0)
         {
@@ -303,38 +284,114 @@ static inline bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
         }
 
         u32 offset = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
-
-        if(R_FAILED(IFile_Read(&file, &total, buffer, 2)) || total != 2) break;
+        if(R_FAILED(IFile_Read(file, &total, buffer, 2)) || total != 2) break;
 
         u32 patchSize = (buffer[0] << 8) | buffer[1];
-
         if(!patchSize)
         {
-            if(R_FAILED(IFile_Read(&file, &total, buffer, 2)) || total != 2) break;
-
+            if(R_FAILED(IFile_Read(file, &total, buffer, 2)) || total != 2) break;
             u32 rleSize = (buffer[0] << 8) | buffer[1];
-
             if(offset + rleSize > size) break;
-
-            if(R_FAILED(IFile_Read(&file, &total, buffer, 1)) || total != 1) break;
-
-            for(u32 i = 0; i < rleSize; i++)
-                code[offset + i] = buffer[0];
-
+            if(R_FAILED(IFile_Read(file, &total, buffer, 1)) || total != 1) break;
+            for(u32 i = 0; i < rleSize; i++) code[offset + i] = buffer[0];
             continue;
         }
 
         if(offset + patchSize > size) break;
-
-        if(R_FAILED(IFile_Read(&file, &total, code + offset, patchSize)) || total != patchSize) break;
+        if(R_FAILED(IFile_Read(file, &total, code + offset, patchSize)) || total != patchSize) break;
     }
-
-exit:
-    IFile_Close(&file);
 
     return ret;
 }
 
+static bool applyCodeIpsPatch(u64 progId, u8 *code, u32 size)
+{
+    /* Keep code.ips fully compatible. For applications, additionally apply
+       every .ips file from the ips subdirectory in lexicographic filename
+       order. Later filenames therefore deterministically win overlaps. */
+    bool isSysmodule = (progId >> 32) == 0x00040130;
+    IFile file;
+
+    if(isSysmodule)
+    {
+        char path[] = "/luma/sysmodules/0000000000000000.ips";
+        progId &= ~0xF0000000ull;
+        progIdToStr(path + 32, progId);
+        if(!openLumaFile(&file, path)) return true;
+        bool ret = applyIpsPatchFile(&file, code, size);
+        IFile_Close(&file);
+        return ret;
+    }
+
+    char legacyPath[] = "/luma/titles/0000000000000000/code.ips";
+    progIdToStr(legacyPath + 28, progId);
+    if(openLumaFile(&file, legacyPath))
+    {
+        bool ret = applyIpsPatchFile(&file, code, size);
+        IFile_Close(&file);
+        if(!ret) return false;
+    }
+
+    char dirPath[] = "/luma/titles/0000000000000000/ips";
+    progIdToStr(dirPath + 28, progId);
+    FS_ArchiveID archiveId = isSdMode ? ARCHIVE_SDMC : ARCHIVE_NAND_RW;
+    if(!dirCheck(archiveId, dirPath)) return true;
+
+    char previousName[256] = {0};
+    while(true)
+    {
+        FS_Archive archive;
+        Handle dir;
+        Result res = FSUSER_OpenArchive(&archive, archiveId, fsMakePath(PATH_EMPTY, ""));
+        if(R_FAILED(res)) return false;
+        res = FSUSER_OpenDirectory(&dir, archive, fsMakePath(PATH_ASCII, dirPath));
+        if(R_FAILED(res))
+        {
+            FSUSER_CloseArchive(archive);
+            return false;
+        }
+
+        char nextName[256] = {0};
+        FS_DirectoryEntry entry;
+        u32 entriesRead;
+        while(true)
+        {
+            res = FSDIR_Read(dir, &entriesRead, 1, &entry);
+            if(R_FAILED(res))
+            {
+                FSDIR_Close(dir);
+                FSUSER_CloseArchive(archive);
+                return false;
+            }
+            if(entriesRead == 0) break;
+            if(entry.attributes & FS_ATTRIBUTE_DIRECTORY) continue;
+            char name[256];
+            int units = utf16_to_utf8((u8 *)name, entry.name, sizeof(name) - 1);
+            if(units < 0 || units >= (int)sizeof(name)) continue;
+            name[units] = 0;
+            u32 len = strlen(name);
+            if(len <= 4 || strcmp(name + len - 4, ".ips") != 0) continue;
+            if(previousName[0] != 0 && strcmp(name, previousName) <= 0) continue;
+            if(nextName[0] == 0 || strcmp(name, nextName) < 0)
+                memcpy(nextName, name, len + 1);
+        }
+
+        FSDIR_Close(dir);
+        FSUSER_CloseArchive(archive);
+        if(nextName[0] == 0) break;
+
+        char patchPath[320];
+        int written = snprintf(patchPath, sizeof(patchPath), "%s/%s", dirPath, nextName);
+        if(written < 0 || written >= (int)sizeof(patchPath)) return false;
+        if(!openLumaFile(&file, patchPath)) return false;
+        bool ret = applyIpsPatchFile(&file, code, size);
+        IFile_Close(&file);
+        if(!ret) return false;
+        memcpy(previousName, nextName, strlen(nextName) + 1);
+    }
+
+    return true;
+}
 Result openSysmoduleCxi(IFile *outFile, u64 progId)
 {
     progId &= ~0xF0000000ull; // clear N3DS bit
