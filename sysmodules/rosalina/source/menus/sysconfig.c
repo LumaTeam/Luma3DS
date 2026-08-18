@@ -379,7 +379,7 @@ void SysConfigMenu_ToggleCardIfPower(void)
                 res = FSUSER_CardSlotPowerOff(&updatedCardIfStatus);
 
             if (R_SUCCEEDED(res))
-                cardIfStatus = !updatedCardIfStatus;
+                cardIfStatus = updatedCardIfStatus;
         }
         else if(pressed & KEY_B)
             return;
