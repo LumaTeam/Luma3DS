@@ -224,7 +224,7 @@ public:
     ScopedAppHeap()
     {
         u32 tmp;
-        m_size = osGetMemRegionFree(MEMREGION_APPLICATION);
+        m_size = std::min<u32>(osGetMemRegionFree(MEMREGION_APPLICATION), 30 * 1024 * 1024);
         if(!R_SUCCEEDED(svcControlMemory(&tmp, BaseAddress, 0, m_size,
                                          MemOp(MEMOP_ALLOC | MEMOP_REGION_APP),
                                          MemPerm(MEMPERM_READ | MEMPERM_WRITE))))
@@ -240,8 +240,6 @@ public:
     }
 
     static constexpr u32 BaseAddress = 0x08000000;
-
-private:
     u32 m_size;
 };
 
@@ -270,6 +268,9 @@ static inline bool ApplyCodeBpsPatch(u64 prog_id, u8 *code, u32 size)
 
     // Temporarily use APPLICATION memory to store the source and patch data.
     ScopedAppHeap memory;
+    if (memory.m_size < size + patch_size) {
+        return false;
+    }
 
     u8 *source_data = reinterpret_cast<u8 *>(memory.BaseAddress);
     u8 *patch_data = source_data + size;
