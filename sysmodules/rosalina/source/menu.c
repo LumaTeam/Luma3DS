@@ -39,6 +39,7 @@
 #include "plugin.h"
 #include "menus/screen_filters.h"
 #include "shell.h"
+#include "menus/sysconfig.h"
 
 //#define ROSALINA_MENU_SELF_SCREENSHOT 1 // uncomment this to enable the feature
 
@@ -376,6 +377,20 @@ void menuThreadMain(void)
             continue;
 
         Cheat_ApplyCheats();
+
+        if (currAudioBalance != 0 && currVolumeSliderOverride < 0)
+        {
+            static u8 lastSliderPos = 0xFF;
+            mcuHwcInit();
+            u8 sliderPos = 0;
+            MCUHWC_ReadRegister(0x09, &sliderPos, 1);
+            mcuHwcExit();
+            if (sliderPos != lastSliderPos)
+            {
+                lastSliderPos = sliderPos;
+                SysConfigMenu_ApplyAudioBalance();
+            }
+        }
 
         u32 kHeld = scanHeldKeys();
 

@@ -76,6 +76,7 @@ typedef struct CfgData {
     u32 config, multiConfig, bootConfig;
     u32 splashDurationMsec;
     s8 volumeSliderOverride;
+    s8 audioBalance;
 
     u64 hbldr3dsxTitleId;
     u32 rosalinaMenuCombo;

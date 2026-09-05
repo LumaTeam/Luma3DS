@@ -144,6 +144,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
             u32 config, multiConfig, bootConfig;
             u32 splashDurationMsec;
             s8 volumeSliderOverride;
+            s8 audioBalance;
             u64 hbldr3dsxTitleId;
             u32 rosalinaMenuCombo;
             u32 pluginLoaderFlags;
@@ -228,6 +229,7 @@ u32 installK11Extension(u8 *pos, u32 size, bool needToInitSd, u32 baseK11VA, u32
     info->bootConfig = configData.bootConfig;
     info->splashDurationMsec = configData.splashDurationMsec;
     info->volumeSliderOverride = configData.volumeSliderOverride;
+    info->audioBalance = configData.audioBalance;
     info->hbldr3dsxTitleId = configData.hbldr3dsxTitleId;
     info->rosalinaMenuCombo = configData.rosalinaMenuCombo;
     info->pluginLoaderFlags = configData.pluginLoaderFlags;
