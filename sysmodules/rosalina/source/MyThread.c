@@ -37,6 +37,7 @@ static void _thread_begin(void* arg)
     u32 *tls = (u32 *)getThreadLocalStorage();
     memset(tls, 0, 0x80);
     tls[0] = 0x21545624;
+    tls[2] = (u32)_impure_ptr;
     // ROSALINA HACKJOB END
 
     // Rosalina specific:
