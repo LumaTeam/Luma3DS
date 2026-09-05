@@ -36,6 +36,7 @@
 #include "menus/sysconfig.h"
 #include "menus/screen_filters.h"
 #include "plugin.h"
+#include "menus/timelock_config.h"
 #include "ifile.h"
 #include "memory.h"
 #include "fmt.h"
@@ -54,6 +55,7 @@ Menu rosalinaMenu = {
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
+        { "Timelock options...", MENU, .menu = &timelockMenu },
         { "Save settings", METHOD, .method = &RosalinaMenu_SaveSettings },
         { "Return To HOME Menu", METHOD, .method = &RosalinaMenu_ReturnToHomeMenu },
         { "Power off / reboot", METHOD, .method = &RosalinaMenu_PowerOffOrReboot },
