@@ -47,6 +47,311 @@ emunandPatch:
 
 _emunandPatchEnd:
 
+.global emunand1xPatch
+emunand1xPatch:
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq out1x
+    
+    ldr r5, [r4, #4]
+    cmp r5, #0
+    moveq r4, r0
+    beq after_replace
+    ldr r4, emunandPatchSdmmcStructPtr
+after_replace:
+	mov r0, r4 @ replace this with SDMC
+	mov r4, r3 @ get sector to read
+	
+    cmp r4, #0 @ For GW compatibility, see if we're trying to read the ncsd header (sector 0)
+
+    ldr r5, emunandPatchNandOffset
+    add r4, r5 @ Add the offset to the NAND in the SD
+
+    ldreq r5, emunandPatchNcsdHeaderOffset
+    addeq r4, r5 @ If we're reading the ncsd header, add the offset of that sector
+
+    mov r3, r4 @ Store sector to read
+
+    out1x:
+        @ execute code that we skipped before
+        mov r5, r1
+        mov r1, r0
+        sub sp, sp, #0xBC
+        mov r4, r0
+        ldr r7, [sp, #0xE0]
+
+        @ Return 6 bytes after where we got called,
+        @ due to the offset of this function being stored there
+        mov r0, lr
+        add r0, #6
+        bx r0
+
+.pool
+
+.global emunand2xPatch
+emunand2xPatch:
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq out2x
+    
+    ldr r5, [r4, #4]
+    cmp r5, #0
+    moveq r4, r0
+    beq _2x_after_replace
+    ldr r4, emunandPatchSdmmcStructPtr
+_2x_after_replace:
+	mov r0, r4 @ replace this with SDMC
+	mov r4, r3 @ get sector to read
+	
+    cmp r4, #0 @ For GW compatibility, see if we're trying to read the ncsd header (sector 0)
+
+    ldr r5, emunandPatchNandOffset
+    add r4, r5 @ Add the offset to the NAND in the SD
+
+    ldreq r5, emunandPatchNcsdHeaderOffset
+    addeq r4, r5 @ If we're reading the ncsd header, add the offset of that sector
+
+    mov r3, r4 @ Store sector to read
+
+    out2x:
+        @ execute code that we skipped before
+        
+        sub sp, sp, #0xB4
+        mov r5, r0
+        ldr r7, [sp, #0xD8]
+        mov r4, r1
+        mov r6, r3
+
+        @ Return 6 bytes after where we got called,
+        @ due to the offset of this function being stored there
+        mov r0, lr
+        add r0, #6
+        bx r0
+
+.pool
+
+.thumb
+.align 2
+.global emunand10CidPatch
+emunand10CidPatch:
+    push {r4-r7}
+    mov r7, lr
+    @ If we're already trying to access the SD, return
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq _10_cid_return
+    
+    @ Trying to access nand, so copy the NAND cid into r1
+    adr r4, emunandPatchNandCid
+    ldr r2, [r4, #0]
+    ldr r3, [r4, #4]
+    ldr r5, [r4, #8]
+    ldr r6, [r4, #0xc]
+    str r2, [r1, #0]
+    str r3, [r1, #4]
+    str r5, [r1, #8]
+    str r6, [r1, #0xc]
+    @ And return from whence we came
+    mov r0, #0
+    pop {r4-r7}
+    pop {r4, pc}
+    
+    _10_cid_return:
+        @ Execute original code that got patched.
+        mov r4, r0
+        ldr r0, [r0, #0x20]
+        ldr r6, =#0x806C9CF
+        blx r6
+        cmp r0, #0
+        
+        add r7, #4
+        mov lr, r7
+        pop {r4-r7}
+        bx lr
+        
+    .pool
+
+.global emunand11CidPatch
+emunand11CidPatch:
+    push {r4-r7}
+    mov r7, lr
+    @ If we're already trying to access the SD, return
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq _11_cid_return
+    
+    @ Trying to access nand, so copy the NAND cid into r1
+    adr r4, emunandPatchNandCid
+    ldr r2, [r4, #0]
+    ldr r3, [r4, #4]
+    ldr r5, [r4, #8]
+    ldr r6, [r4, #0xc]
+    str r2, [r1, #0]
+    str r3, [r1, #4]
+    str r5, [r1, #8]
+    str r6, [r1, #0xc]
+    @ And return from whence we came
+    mov r0, #0
+    pop {r4-r7}
+    pop {r4, pc}
+    
+    _11_cid_return:
+        @ Execute original code that got patched.
+        mov r4, r0
+        ldr r0, [r0, #0x20]
+        ldr r6, =#0x806C9D3
+        blx r6
+        cmp r0, #0
+        
+        add r7, #4
+        mov lr, r7
+        pop {r4-r7}
+        bx lr
+        
+    .pool
+    
+.global emunand1412CidPatch
+emunand1412CidPatch:
+    push {r4-r7}
+    mov r7, lr
+    @ If we're already trying to access the SD, return
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq _1412_cid_return
+    
+    @ Trying to access nand, so copy the NAND cid into r1
+    adr r4, emunandPatchNandCid
+    ldr r2, [r4, #0]
+    ldr r3, [r4, #4]
+    ldr r5, [r4, #8]
+    ldr r6, [r4, #0xc]
+    str r2, [r1, #0]
+    str r3, [r1, #4]
+    str r5, [r1, #8]
+    str r6, [r1, #0xc]
+    @ And return from whence we came
+    mov r0, #0
+    pop {r4-r7}
+    pop {r4, pc}
+    
+    _1412_cid_return:
+        @ Execute original code that got patched.
+        mov r4, r0
+        ldr r0, [r0, #0x20]
+        ldr r6, =#0x806C7AB
+        blx r6
+        cmp r0, #0
+        beq _1412_jumpback2
+        
+        add r7, #6
+        b _1412_jumpback
+        
+        _1412_jumpback2:
+        ldr r7, =#0x8061B29
+        
+        _1412_jumpback:
+        
+        mov lr, r7
+        pop {r4-r7}
+        bx lr
+        
+    .pool
+    
+.global emunand20CidPatch
+emunand20CidPatch:
+    push {r4-r7}
+    mov r7, lr
+    @ If we're already trying to access the SD, return
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq _20_cid_return
+    
+    @ Trying to access nand, so copy the NAND cid into r1
+    adr r4, emunandPatchNandCid
+    ldr r2, [r4, #0]
+    ldr r3, [r4, #4]
+    ldr r5, [r4, #8]
+    ldr r6, [r4, #0xc]
+    str r2, [r1, #0]
+    str r3, [r1, #4]
+    str r5, [r1, #8]
+    str r6, [r1, #0xc]
+    @ And return from whence we came
+    mov r0, #0
+    pop {r4-r7}
+    pop {r4, pc}
+    
+    _20_cid_return:
+        @ Execute original code that got patched.
+        mov r4, r0
+        ldr r0, [r0, #0x20]
+        ldr r6, =#0x8074813
+        blx r6
+        cmp r0, #0
+        beq _20_jumpback2
+        
+        add r7, #6
+        b _20_jumpback
+        
+        _20_jumpback2:
+        ldr r7, =#0x8066A19
+        
+        _20_jumpback:
+        
+        mov lr, r7
+        pop {r4-r7}
+        bx lr
+        
+    .pool
+
+.global emunand21CidPatch
+emunand21CidPatch:
+    push {r4-r7}
+    mov r7, lr
+    @ If we're already trying to access the SD, return
+    ldr r4, emunandPatchSdmmcStructPtr
+    cmp r0, r4
+    beq _21_cid_return
+    
+    @ Trying to access nand, so copy the NAND cid into r1
+    adr r4, emunandPatchNandCid
+    ldr r2, [r4, #0]
+    ldr r3, [r4, #4]
+    ldr r5, [r4, #8]
+    ldr r6, [r4, #0xc]
+    str r2, [r1, #0]
+    str r3, [r1, #4]
+    str r5, [r1, #8]
+    str r6, [r1, #0xc]
+    @ And return from whence we came
+    mov r0, #0
+    pop {r4-r7}
+    pop {r4, pc}
+    
+    _21_cid_return:
+        @ Execute original code that got patched.
+        mov r4, r0
+        ldr r0, [r0, #0x20]
+        ldr r6, =#0x80748BF
+        blx r6
+        cmp r0, #0
+        beq _21_jumpback2
+
+        add r7, #6
+        b _21_jumpback
+        
+    _21_jumpback2:
+        ldr r7, =#0x8066991
+        
+    _21_jumpback:
+        mov lr, r7
+        pop {r4-r7}
+        bx lr
+        
+    .pool
+
+.arm
+.align 4
 .global emunandProtoPatch
 emunandProtoPatch:
     @ Save registers

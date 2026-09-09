@@ -150,7 +150,7 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
     return firmSize;
 }
 
-u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
+u32 loadNintendoFirm(FirmwareType *firmType, bool loadFromStorage, bool isSafeMode)
 {
     u32 firmVersion = 0xFFFFFFFF,
         firmSize;
@@ -208,7 +208,7 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
         if(isO3dsFirm && (*firmType == NATIVE_FIRM || *firmType == NATIVE_FIRM1X2X))
         {
-            __attribute__((aligned(4))) static const u8 hashes[7][0x20] = {
+            __attribute__((aligned(4))) static const u8 hashes[8][0x20] = {
                 {0xD7, 0x43, 0x0F, 0x27, 0x8D, 0xC9, 0x3F, 0x4C, 0x96, 0xB5, 0xA8, 0x91, 0x48, 0xDB, 0x08, 0x8A,
                  0x7E, 0x46, 0xB3, 0x95, 0x65, 0xA2, 0x05, 0xF1, 0xF2, 0x41, 0x21, 0xF1, 0x0C, 0x59, 0x6A, 0x9D},
                 {0x82, 0xCD, 0x41, 0x1E, 0x80, 0xF6, 0xEA, 0x8C, 0xA8, 0xDE, 0x4A, 0x27, 0x5D, 0xDF, 0xFD, 0xAE,
@@ -217,6 +217,8 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
                  0x8A, 0x00, 0xB6, 0xDD, 0x36, 0x89, 0xC0, 0xE2, 0xC9, 0xA9, 0x99, 0x62, 0x57, 0x5E, 0x6C, 0x23},
                 {0xD4, 0x91, 0xBC, 0x28, 0xFA, 0xBE, 0xC8, 0xF6, 0x80, 0xD2, 0x62, 0x51, 0xAF, 0x4B, 0x37, 0xBA,
                  0x69, 0x1B, 0x33, 0x8B, 0x51, 0xA0, 0x35, 0x35, 0xF0, 0x2C, 0x66, 0xA6, 0x3A, 0xFB, 0xD5, 0xE7},
+                {0x82, 0x01, 0x0B, 0x59, 0x86, 0xC5, 0x9E, 0x97, 0x26, 0x0D, 0x51, 0x86, 0xAE, 0x97, 0x3E, 0x54,
+                 0x69, 0x7A, 0x90, 0x1A, 0x9B, 0x5D, 0x58, 0x16, 0xDE, 0xB8, 0x9F, 0x86, 0xB2, 0xE0, 0xD3, 0xB1},
                 {0x39, 0x75, 0xB5, 0x28, 0x24, 0x5E, 0x8B, 0x56, 0xBC, 0x83, 0x79, 0x41, 0x09, 0x2C, 0x42, 0xE6,
                  0x26, 0xB6, 0x80, 0x59, 0xA5, 0x56, 0xF9, 0xF9, 0x6E, 0xF3, 0x63, 0x05, 0x58, 0xDF, 0x35, 0xEF},
                 {0x81, 0x9E, 0x71, 0x58, 0xE5, 0x44, 0x73, 0xF7, 0x48, 0x78, 0x7C, 0xEF, 0x5E, 0x30, 0xE2, 0x28,
@@ -256,12 +258,15 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
                     break;
                 // Release
                 case 4:
-                    firmVersion = 0x18;
+                    firmVersion = 0x10;
                     break;
                 case 5:
-                    firmVersion = 0x1D;
+                    firmVersion = 0x18;
                     break;
                 case 6:
+                    firmVersion = 0x1D;
+                    break;
+                case 7:
                     firmVersion = 0x1F;
                     break;
                 default:
@@ -275,9 +280,6 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
     if(!ISN3DS && *firmType == NATIVE_FIRM && firm->section[0].address == (u8 *)0x1FF80000)
     {
-        //We can't boot < 3.x EmuNANDs
-        if(nandType != FIRMWARE_SYSNAND) error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
-
         //If you want to use SAFE_FIRM on 1.0, use Luma from NAND & comment this line:
         if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
@@ -731,7 +733,7 @@ u32 patchAgbFirm(bool loadFromStorage, bool doUnitinfoPatch)
     return ret;
 }
 
-u32 patch1x2xNativeAndSafeFirm(void)
+u32 patch1x2xNativeAndSafeFirm(u32 firmVersion, FirmwareSource nandType)
 {
     u8 *arm9Section = (u8 *)firm + firm->section[2].offset;
 
@@ -757,6 +759,9 @@ u32 patch1x2xNativeAndSafeFirm(void)
     //Arm9 exception handlers
     ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);
     ret += patchSvcBreak9(arm9Section, kernel9Size, (u32)firm->section[2].address);
+    
+    //Apply EmuNAND patches
+    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(process9Offset, process9Size, firmVersion);
 
     //Apply firmlaunch patches
     //Doesn't work here if Luma is on SD. If you want to use SAFE_FIRM on 1.0, use Luma from NAND & uncomment this line:
