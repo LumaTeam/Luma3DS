@@ -50,6 +50,7 @@ Menu rosalinaMenu = {
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},
         { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
+        { "FTP Transfert", METHOD, .method = &RosalinaMenu_FTPTransfer },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
@@ -64,6 +65,10 @@ Menu rosalinaMenu = {
     }
 };
 
+void RosalinaMenu_FTPTransfer(void)
+{
+    Draw_DrawString(10, 10, COLOR_TITLE, "Test");
+}
 bool rosalinaMenuShouldShowDebugInfo(void)
 {
     // Don't show on release builds
