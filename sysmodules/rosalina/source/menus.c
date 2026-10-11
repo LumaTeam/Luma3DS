@@ -38,6 +38,7 @@
 #include "plugin.h"
 #include "ifile.h"
 #include "memory.h"
+#include "minisoc.h"
 #include "fmt.h"
 #include "process_patches.h"
 #include "luma_config.h"
@@ -65,10 +66,6 @@ Menu rosalinaMenu = {
     }
 };
 
-void RosalinaMenu_FTPTransfer(void)
-{
-    Draw_DrawString(10, 10, COLOR_TITLE, "Test");
-}
 bool rosalinaMenuShouldShowDebugInfo(void)
 {
     // Don't show on release builds
@@ -98,6 +95,44 @@ void RosalinaMenu_SaveSettings(void)
         Draw_Unlock();
     }
     while(!(waitInput() & KEY_B) && !menuShouldExit);
+}
+
+void RosalinaMenu_FTPTransfer(void)
+{
+    Result res = miniSocInit();
+    u32 ip = 0;
+
+    if(R_SUCCEEDED(res))
+        ip = (u32)socGethostid();
+
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "FTP Transfer");
+
+        if(R_FAILED(res))
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Socket init failed (0x%08lx).", res);
+        else if(ip == 0)
+            Draw_DrawString(10, 30, COLOR_WHITE, "No Wi-Fi connection !");
+        else
+        {
+            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "IP: %hhu.%hhu.%hhu.%hhu", (u8)ip, (u8)(ip >> 8), (u8)(ip >> 16), (u8)(ip >> 24));
+            Draw_DrawString(10, 50, COLOR_WHITE, "Port: 5000");
+        }
+
+        Draw_DrawString(10, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "Press B to exit");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while(!(waitInput() & KEY_B) && !menuShouldExit);
+
+    if(R_SUCCEEDED(res))
+        miniSocExit();
 }
 
 void RosalinaMenu_PowerOffOrReboot(void)
