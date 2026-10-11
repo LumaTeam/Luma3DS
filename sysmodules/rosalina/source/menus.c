@@ -51,7 +51,7 @@ Menu rosalinaMenu = {
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},
         { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
-        { "FTP Transfert", METHOD, .method = &RosalinaMenu_FTPTransfer },
+        { "FTP Transfer", METHOD, .method = &RosalinaMenu_FTPTransfer },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
