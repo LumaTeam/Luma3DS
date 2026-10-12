@@ -23,7 +23,6 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 *
-* Written by Saiitanaa
 */
 
 #pragma once
@@ -47,5 +46,5 @@ void     ftpStart(void);
 void     ftpStop(void);
 FtpState ftpGetState(void);
 u32      ftpGetIp(void);
-u32 ftpGetAcceptCount(void);
 Result   ftpGetError(void);
+u32      ftpGetAcceptCount(void);

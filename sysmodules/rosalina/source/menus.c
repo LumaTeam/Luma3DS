@@ -182,7 +182,7 @@ void RosalinaMenu_PowerOffOrReboot(void)
         }
         else if(pressed & KEY_A)
         {
-            // Soft shutdown
+            // shutdown (sof
             menuLeave();
             srvPublishToSubscriber(0x203, 0);
             return;

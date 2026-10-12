@@ -23,7 +23,6 @@
 *         or requiring that modified versions of such material be marked in
 *         reasonable ways as different from the original version.
 *
-* Written by Saiitanaa
 */
 
 #include <3ds.h>
@@ -36,19 +35,19 @@
 #include "sleep.h"
 #include "sock_util.h"
 
-#define FTP_THREAD_STACK_SIZE   0x4000
+#define FTP_THREAD_STACK_SIZE   0x5000
 #define FTP_THREAD_PRIORITY     0x30
 #define FTP_THREAD_AFFINITY     1       // CORE_SYSTEM
 #define FTP_POLL_TIMEOUT_MS     100
 #define FTP_DATA_TIMEOUT_MS     15000
 #define FTP_CMD_BUF_SIZE        512
 #define FTP_MAX_SESSIONS        2
-#define FTP_MAX_LOGIN_FAILS     3
-#define FTP_PASSWORD_LEN        6
 #define FTP_PASV_PORT_MIN       5001
 #define FTP_PASV_PORT_COUNT     64
 #define FTP_PASV_TRIES          8
 #define FTP_LIST_LINE_MAX       320
+#define FTP_XFER_BUF_SIZE       0x2000
+#define FTP_RECV_CHUNK          0x1000
 
 #define FTP_HTONS(x) ((u16)((((x) & 0xFF) << 8) | (((x) >> 8) & 0xFF)))
 
@@ -60,11 +59,12 @@ typedef struct FtpSession
     int  ctrlFd;
     int  pasvFd;
     bool closing;
-    bool userGiven;
     bool authed;
-    u32  loginFails;
+    bool rnfrSet;
     u32  cmdLen;
+    u64  restOffset;
     char cwd[FTP_PATH_MAX];
+    char rnfrPath[FTP_PATH_MAX];
     char cmdBuf[FTP_CMD_BUF_SIZE];
 } FtpSession;
 
@@ -80,17 +80,15 @@ typedef struct FtpListCtx
 static MyThread ftpThread;
 static u8 CTR_ALIGN(8) ftpThreadStack[FTP_THREAD_STACK_SIZE];
 static FtpSession sessions[FTP_MAX_SESSIONS];
+static u8 ftpXferBuf[FTP_XFER_BUF_SIZE]; // 1 transfer
 
 static bool ftpThreadCreated = false;
 static volatile bool     ftpStopRequested = false;
-static volatile u32 ftpAcceptCount = 0;
 static volatile FtpState ftpState = FTP_STATE_STOPPED;
 static volatile u32      ftpIp = 0;
 static volatile Result   ftpError = 0;
-//static char ftpPassword[FTP_PASSWORD_LEN + 1];
-static u32  ftpNextPasvPort = 0;
-
-// ---------------------------------------------------------------- utilitaires
+static volatile u32      ftpAcceptCount = 0;
+static u32 ftpNextPasvPort = 0;
 
 static char *ftpPutStr(char *p, const char *s)
 {
@@ -116,7 +114,23 @@ static char *ftpPutUint(char *p, u32 v)
     return p;
 }
 
-// 1 = prêt, 0 = timeout, -1 = erreur
+static bool ftpParseU64(const char *s, u64 *out)
+{
+    if(*s < '0' || *s > '9')
+        return false;
+
+    u64 v = 0;
+    while(*s >= '0' && *s <= '9')
+    {
+        v = v * 10 + (u64)(*s - '0');
+        s++;
+    }
+
+    *out = v;
+    return true;
+}
+
+// 1 = OK, 0 = timeout, -1 = error
 static int ftpPoll(int fd, int events, int timeoutMs)
 {
     struct pollfd pfd;
@@ -171,7 +185,6 @@ static void ftpSendStr(FtpSession *s, const char *str)
         s->closing = true;
 }
 
-// Les sockets peuvent être épuisés (jeu, GDB...) : on réessaie un peu, comme sock_util.c
 static int ftpCreateSocket(void)
 {
     for(u32 tries = 0; tries < 10 && !FTP_SHOULD_STOP(); tries++)
@@ -184,7 +197,6 @@ static int ftpCreateSocket(void)
     return -1;
 }
 
-// Compare insensible à la casse du 1er mot de "line" avec "cmd" (en majuscules)
 static bool ftpCmdIs(const char *line, const char *cmd)
 {
     while(*cmd != 0)
@@ -207,17 +219,17 @@ static const char *ftpGetArg(const char *line)
     return line;
 }
 
-// ------------------------------------------------------------------- sessions
+// sessions
 
 static void ftpSessionInit(FtpSession *s)
 {
     s->ctrlFd = -1;
     s->pasvFd = -1;
     s->closing = false;
-    s->userGiven = false;
     s->authed = false;
-    s->loginFails = 0;
+    s->rnfrSet = false;
     s->cmdLen = 0;
+    s->restOffset = 0;
     s->cwd[0] = '/';
     s->cwd[1] = 0;
 }
@@ -237,7 +249,7 @@ static void ftpSessionClose(FtpSession *s)
     ftpSessionInit(s);
 }
 
-// --------------------------------------------------------- connexion de données
+// connection
 
 static bool ftpOpenPasv(FtpSession *s, u32 *portOut)
 {
@@ -313,7 +325,6 @@ static void ftpCmdPasv(FtpSession *s, bool extended)
     ftpSendStr(s, reply);
 }
 
-// Attend la connexion du client sur le socket passif ; renvoie le fd de données ou -1
 static int ftpOpenData(FtpSession *s)
 {
     if(s->pasvFd < 0)
@@ -343,7 +354,7 @@ static int ftpOpenData(FtpSession *s)
     return fd;
 }
 
-// -------------------------------------------------------------------- listing
+// listing
 
 static bool ftpListCb(const FtpDirEntry *e, void *user)
 {
@@ -371,7 +382,7 @@ static bool ftpListCb(const FtpDirEntry *e, void *user)
     {
         p = ftpPutStr(p, e->isDir ? "drwxr-xr-x 1 3ds 3ds " : "-rw-r--r-- 1 3ds 3ds ");
         p = ftpPutUint(p, (u32)e->size);
-        p = ftpPutStr(p, " Jan  1  2000 "); // le FS ne fournit pas de date ici
+        p = ftpPutStr(p, " Jan  1  2000 ");
     }
 
     p = ftpPutStr(p, e->name);
@@ -386,7 +397,7 @@ static void ftpCmdList(FtpSession *s, const char *arg, bool namesOnly)
 {
     char path[FTP_PATH_MAX];
 
-    while(arg[0] == '-') // options de type "-a" : ignorées
+    while(arg[0] == '-') //"-a" : ignored
     {
         while(*arg != 0 && *arg != ' ')
             arg++;
@@ -439,7 +450,310 @@ static void ftpChangeDir(FtpSession *s, const char *arg)
     ftpSendStr(s, "250 Directory changed\r\n");
 }
 
-// ------------------------------------------------------------------- commandes
+// transfers
+
+static void ftpCmdRetr(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+    IFile file;
+    u64 size = 0;
+
+    u64 offset = s->restOffset;
+    s->restOffset = 0;
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path))
+    {
+        ftpSendStr(s, "501 Invalid file name\r\n");
+        return;
+    }
+
+    if(R_FAILED(ftpFsOpenFile(path, FS_OPEN_READ, &file)))
+    {
+        ftpSendStr(s, "550 File not found\r\n");
+        return;
+    }
+
+    if(R_FAILED(IFile_GetSize(&file, &size)) || offset > size)
+    {
+        IFile_Close(&file);
+        ftpSendStr(s, "554 Cannot read file at this offset\r\n");
+        return;
+    }
+    file.pos = offset;
+
+    int dataFd = ftpOpenData(s);
+    if(dataFd < 0)
+    {
+        IFile_Close(&file);
+        return;
+    }
+
+    ftpSendStr(s, "150 Opening data connection\r\n");
+
+    bool failed = false;
+
+    while(!failed)
+    {
+        u64 got = 0;
+        Result res = IFile_Read(&file, &got, ftpXferBuf, FTP_XFER_BUF_SIZE);
+        if(R_FAILED(res))
+        {
+            failed = true;
+            break;
+        }
+        if(got == 0)
+            break;
+        if(!ftpSendAll(dataFd, (const char *)ftpXferBuf, (u32)got))
+            failed = true;
+    }
+
+    IFile_Close(&file);
+    socClose(dataFd);
+
+    ftpSendStr(s, failed ? "426 Transfer aborted\r\n" : "226 Transfer complete\r\n");
+}
+
+static bool ftpWriteBlock(IFile *file, u32 len)
+{
+    u64 written = 0;
+    Result res = IFile_Write(file, &written, ftpXferBuf, len, 0);
+    return R_SUCCEEDED(res) && written == (u64)len;
+}
+
+static void ftpCmdStore(FtpSession *s, const char *arg, bool append)
+{
+    char path[FTP_PATH_MAX];
+    IFile file;
+    u64 size = 0;
+
+    u64 offset = s->restOffset;
+    s->restOffset = 0;
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || path[1] == 0)
+    {
+        ftpSendStr(s, "501 Invalid file name\r\n");
+        return;
+    }
+
+    if(ftpFsIsDir(path))
+    {
+        ftpSendStr(s, "550 Target is a directory\r\n");
+        return;
+    }
+
+    if(R_FAILED(ftpFsOpenFile(path, FS_OPEN_WRITE | FS_OPEN_CREATE, &file)))
+    {
+        ftpSendStr(s, "550 Cannot create file\r\n");
+        return;
+    }
+
+    if(R_FAILED(IFile_GetSize(&file, &size)))
+    {
+        IFile_Close(&file);
+        ftpSendStr(s, "550 Cannot access file\r\n");
+        return;
+    }
+
+    if(append)
+        file.pos = size;
+    else if(offset > 0)
+    {
+        if(offset > size)
+        {
+            IFile_Close(&file);
+            ftpSendStr(s, "554 Invalid restart offset\r\n");
+            return;
+        }
+        file.pos = offset;
+    }
+    else if(R_FAILED(IFile_SetSize(&file, 0)))
+    {
+        IFile_Close(&file);
+        ftpSendStr(s, "550 Cannot truncate file\r\n");
+        return;
+    }
+
+    int dataFd = ftpOpenData(s);
+    if(dataFd < 0)
+    {
+        IFile_Close(&file);
+        return;
+    }
+
+    ftpSendStr(s, "150 Opening data connection\r\n");
+
+    bool failed = false;
+    bool eof = false;
+    u32 fill = 0;
+    u32 idle = 0;
+
+    while(!eof && !failed)
+    {
+        if(FTP_SHOULD_STOP())
+        {
+            failed = true;
+            break;
+        }
+
+        int pr = ftpPoll(dataFd, POLLIN, FTP_POLL_TIMEOUT_MS);
+        if(pr < 0)
+        {
+            failed = true;
+            break;
+        }
+        if(pr == 0)
+        {
+            idle += FTP_POLL_TIMEOUT_MS;
+            if(idle >= FTP_DATA_TIMEOUT_MS)
+                failed = true;
+            continue;
+        }
+        idle = 0;
+
+        u32 want = FTP_XFER_BUF_SIZE - fill;
+        if(want > FTP_RECV_CHUNK)
+            want = FTP_RECV_CHUNK;
+
+        int r = (int)socRecv(dataFd, ftpXferBuf + fill, want, 0);
+        if(r < 0)
+        {
+            failed = true;
+            break;
+        }
+
+        if(r == 0)
+            eof = true;
+        else
+            fill += (u32)r;
+
+        if(fill > 0 && (fill == FTP_XFER_BUF_SIZE || eof))
+        {
+            if(!ftpWriteBlock(&file, fill))
+                failed = true;
+            fill = 0;
+        }
+    }
+
+    if(!failed && R_FAILED(IFile_Flush(&file)))
+        failed = true;
+
+    IFile_Close(&file);
+    socClose(dataFd);
+
+    ftpSendStr(s, failed ? "426 Transfer aborted\r\n" : "226 Transfer complete\r\n");
+}
+
+// files manager
+
+static void ftpCmdSize(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+    u64 size = 0;
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || R_FAILED(ftpFsFileSize(path, &size)))
+    {
+        ftpSendStr(s, "550 File not found\r\n");
+        return;
+    }
+
+    char reply[40];
+    char *p = ftpPutStr(reply, "213 ");
+    p = ftpPutUint(p, (u32)size);
+    p = ftpPutStr(p, "\r\n");
+    *p = 0;
+    ftpSendStr(s, reply);
+}
+
+static void ftpCmdDele(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || path[1] == 0)
+    {
+        ftpSendStr(s, "550 Invalid path\r\n");
+        return;
+    }
+
+    ftpSendStr(s, R_SUCCEEDED(ftpFsDeleteFile(path)) ? "250 File deleted\r\n" : "550 Cannot delete file\r\n");
+}
+
+static void ftpCmdRmd(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || path[1] == 0)
+    {
+        ftpSendStr(s, "550 Invalid path\r\n");
+        return;
+    }
+
+    ftpSendStr(s, R_SUCCEEDED(ftpFsDeleteDir(path)) ? "250 Directory removed\r\n" : "550 Cannot remove directory (not empty?)\r\n");
+}
+
+static void ftpCmdMkd(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || path[1] == 0)
+    {
+        ftpSendStr(s, "550 Invalid path\r\n");
+        return;
+    }
+
+    if(R_FAILED(ftpFsMakeDir(path)))
+    {
+        ftpSendStr(s, "550 Cannot create directory\r\n");
+        return;
+    }
+
+    char reply[FTP_PATH_MAX + 40];
+    char *p = ftpPutStr(reply, "257 \"");
+    p = ftpPutStr(p, path);
+    p = ftpPutStr(p, "\" created\r\n");
+    *p = 0;
+    ftpSendStr(s, reply);
+}
+
+static void ftpCmdRnfr(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+    u64 size = 0;
+
+    s->rnfrSet = false;
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || path[1] == 0 ||
+       (!ftpFsIsDir(path) && R_FAILED(ftpFsFileSize(path, &size))))
+    {
+        ftpSendStr(s, "550 File or directory not found\r\n");
+        return;
+    }
+
+    memcpy(s->rnfrPath, path, strlen(path) + 1);
+    s->rnfrSet = true;
+    ftpSendStr(s, "350 Ready for RNTO\r\n");
+}
+
+static void ftpCmdRnto(FtpSession *s, const char *arg)
+{
+    char path[FTP_PATH_MAX];
+
+    if(!s->rnfrSet)
+    {
+        ftpSendStr(s, "503 Send RNFR first\r\n");
+        return;
+    }
+    s->rnfrSet = false;
+
+    if(arg[0] == 0 || !ftpFsResolve(s->cwd, arg, path) || path[1] == 0)
+    {
+        ftpSendStr(s, "553 Invalid target name\r\n");
+        return;
+    }
+
+    ftpSendStr(s, R_SUCCEEDED(ftpFsRename(s->rnfrPath, path)) ? "250 Renamed\r\n" : "550 Cannot rename\r\n");
+}
+
+// FTP commands
 
 static void ftpHandleCommand(FtpSession *s, const char *line)
 {
@@ -462,9 +776,11 @@ static void ftpHandleCommand(FtpSession *s, const char *line)
     else if(ftpCmdIs(line, "SYST"))
         ftpSendStr(s, "215 UNIX Type: L8\r\n");
     else if(ftpCmdIs(line, "FEAT"))
-        ftpSendStr(s, "211-Features:\r\n UTF8\r\n211 End\r\n");
+        ftpSendStr(s, "211-Features:\r\n UTF8\r\n SIZE\r\n REST STREAM\r\n211 End\r\n");
     else if(ftpCmdIs(line, "OPTS"))
         ftpSendStr(s, ftpCmdIs(arg, "UTF8") ? "200 UTF8 enabled\r\n" : "501 Option not supported\r\n");
+    else if(ftpCmdIs(line, "AUTH") || ftpCmdIs(line, "PBSZ") || ftpCmdIs(line, "PROT"))
+        ftpSendStr(s, "502 TLS not supported\r\n");
     else if(!s->authed)
         ftpSendStr(s, "530 Please login with USER and PASS\r\n");
     else if(ftpCmdIs(line, "TYPE"))
@@ -490,6 +806,41 @@ static void ftpHandleCommand(FtpSession *s, const char *line)
         ftpCmdList(s, arg, false);
     else if(ftpCmdIs(line, "NLST"))
         ftpCmdList(s, arg, true);
+    else if(ftpCmdIs(line, "REST"))
+    {
+        u64 off = 0;
+        if(ftpParseU64(arg, &off))
+        {
+            s->restOffset = off;
+
+            char reply[64];
+            char *p = ftpPutStr(reply, "350 Restarting at ");
+            p = ftpPutUint(p, (u32)off);
+            p = ftpPutStr(p, "\r\n");
+            *p = 0;
+            ftpSendStr(s, reply);
+        }
+        else
+            ftpSendStr(s, "501 Invalid offset\r\n");
+    }
+    else if(ftpCmdIs(line, "RETR"))
+        ftpCmdRetr(s, arg);
+    else if(ftpCmdIs(line, "STOR"))
+        ftpCmdStore(s, arg, false);
+    else if(ftpCmdIs(line, "APPE"))
+        ftpCmdStore(s, arg, true);
+    else if(ftpCmdIs(line, "SIZE"))
+        ftpCmdSize(s, arg);
+    else if(ftpCmdIs(line, "DELE"))
+        ftpCmdDele(s, arg);
+    else if(ftpCmdIs(line, "RMD") || ftpCmdIs(line, "XRMD"))
+        ftpCmdRmd(s, arg);
+    else if(ftpCmdIs(line, "MKD") || ftpCmdIs(line, "XMKD"))
+        ftpCmdMkd(s, arg);
+    else if(ftpCmdIs(line, "RNFR"))
+        ftpCmdRnfr(s, arg);
+    else if(ftpCmdIs(line, "RNTO"))
+        ftpCmdRnto(s, arg);
     else if(ftpCmdIs(line, "PORT") || ftpCmdIs(line, "EPRT"))
         ftpSendStr(s, "502 Active mode not supported, use PASV or EPSV\r\n");
     else
@@ -527,7 +878,7 @@ static void ftpHandleInput(FtpSession *s)
             return;
     }
 
-    if(s->cmdLen >= FTP_CMD_BUF_SIZE - 1) // ligne trop longue
+    if(s->cmdLen >= FTP_CMD_BUF_SIZE - 1)
     {
         s->cmdLen = 0;
         ftpSendStr(s, "500 Line too long\r\n");
@@ -539,6 +890,7 @@ static void ftpAccept(int listenFd)
     int fd = socAccept(listenFd, NULL, NULL);
     if(fd < 0)
         return;
+
     ftpAcceptCount++;
 
     for(int i = 0; i < FTP_MAX_SESSIONS; i++)
@@ -558,13 +910,14 @@ static void ftpAccept(int listenFd)
     socClose(fd);
 }
 
-// ---------------------------------------------------------------------- thread
+// thread
 
 static void ftpThreadMain(void)
 {
     int listenFd = -1;
     bool failed = false;
     u32 ip;
+    int bindRes, listenRes;
     struct sockaddr_in addr;
     int one = 1;
 
@@ -601,11 +954,13 @@ static void ftpThreadMain(void)
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = FTP_HTONS(FTP_CONTROL_PORT);
-    addr.sin_addr.s_addr = ip; // comme le serveur GDB
+    addr.sin_addr.s_addr = ip;
 
-    if(socBind(listenFd, (struct sockaddr *)&addr, sizeof(addr)) != 0 || socListen(listenFd, 2) != 0)
+    bindRes = socBind(listenFd, (struct sockaddr *)&addr, sizeof(addr));
+    listenRes = (bindRes == 0) ? socListen(listenFd, 2) : -1;
+    if(bindRes != 0 || listenRes != 0)
     {
-        ftpError = FTP_ERR_SOCKET;
+        ftpError = (Result)(bindRes != 0 ? bindRes : listenRes);
         failed = true;
         goto cleanup;
     }
@@ -618,7 +973,7 @@ static void ftpThreadMain(void)
         int sessIdx[1 + FTP_MAX_SESSIONS];
         nfds_t n = 0;
 
-        if(Sleep__Status()) // bloque pendant la veille
+        if(Sleep__Status()) // freezes during standby mode
         {
             while(!Wifi__IsConnected() && !FTP_SHOULD_STOP())
                 svcSleepThread(1000 * 1000 * 1000LL);
@@ -645,7 +1000,7 @@ static void ftpThreadMain(void)
         }
 
         int r = socPoll(fds, n, FTP_POLL_TIMEOUT_MS);
-        if(r < -10000) // service soc cassé
+        if(r < -10000) // soc service broken
         {
             ftpError = (Result)r;
             failed = true;
@@ -692,25 +1047,7 @@ cleanup:
     ftpState = failed ? FTP_STATE_ERROR : FTP_STATE_STOPPED;
 }
 
-// ------------------------------------------------------------------ API publique
-
-/*static void ftpGeneratePassword(void)
-{
-    u64 t = svcGetSystemTick();
-    u32 v = (u32)(t ^ (t >> 32));
-
-    v = v * 1664525u + 1013904223u;
-    v = (v ^ (v >> 15)) * 2246822519u;
-    v ^= v >> 13;
-    v %= 1000000u;
-
-    for(int i = FTP_PASSWORD_LEN - 1; i >= 0; i--)
-    {
-        ftpPassword[i] = (char)('0' + v % 10);
-        v /= 10;
-    }
-    ftpPassword[FTP_PASSWORD_LEN] = 0;
-}*/
+// public API
 
 void ftpStop(void)
 {
@@ -732,16 +1069,15 @@ void ftpStart(void)
     {
         if(ftpState == FTP_STATE_STARTING || ftpState == FTP_STATE_RUNNING)
             return;
-        ftpStop(); // le thread s'est arrêté seul (erreur) : on le récupère
+        ftpStop(); // thread stopped on its own: we retrieve it
         if(ftpThreadCreated)
             return;
     }
 
-    //ftpGeneratePassword();
     ftpStopRequested = false;
     ftpError = 0;
-    ftpAcceptCount = 0;
     ftpIp = 0;
+    ftpAcceptCount = 0;
     ftpState = FTP_STATE_STARTING;
 
     Result res = MyThread_Create(&ftpThread, ftpThreadMain, ftpThreadStack, FTP_THREAD_STACK_SIZE,
@@ -755,8 +1091,7 @@ void ftpStart(void)
     ftpThreadCreated = true;
 }
 
-FtpState    ftpGetState(void)    { return ftpState; }
-u32         ftpGetIp(void)       { return ftpIp; }
-u32 ftpGetAcceptCount(void) { return ftpAcceptCount; }
-Result      ftpGetError(void)    { return ftpError; }
-//const char *ftpGetPassword(void) { return ftpPassword; }
+FtpState ftpGetState(void)       { return ftpState; }
+u32      ftpGetIp(void)          { return ftpIp; }
+Result   ftpGetError(void)       { return ftpError; }
+u32      ftpGetAcceptCount(void) { return ftpAcceptCount; }
