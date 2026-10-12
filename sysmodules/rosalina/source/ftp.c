@@ -900,7 +900,7 @@ static void ftpAccept(int listenFd)
         {
             ftpSessionInit(s);
             s->ctrlFd = fd;
-            ftpSendStr(s, "220 Luma3DS FTP server ready\r\n");
+            ftpSendStr(s, "220 FTP server ready\r\n");
             return;
         }
     }

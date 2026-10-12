@@ -129,7 +129,7 @@ void RosalinaMenu_FTPTransfer(void)
                 Draw_DrawString(10, 30, COLOR_WHITE, "Server running.");
                 Draw_DrawFormattedString(10, 50, COLOR_WHITE, "IP: %hhu.%hhu.%hhu.%hhu", (u8)ip, (u8)(ip >> 8), (u8)(ip >> 16), (u8)(ip >> 24));
                 Draw_DrawFormattedString(10, 70, COLOR_WHITE, "Port: %d", FTP_CONTROL_PORT);
-                Draw_DrawFormattedString(10, 110, COLOR_WHITE, "Connections: %lu", (u32)ftpGetAcceptCount());
+                //Draw_DrawFormattedString(10, 110, COLOR_WHITE, "Connections: %lu", (u32)ftpGetAcceptCount());
                 break;
             case FTP_STATE_ERROR:
                 if(err == FTP_ERR_NO_WIFI)
