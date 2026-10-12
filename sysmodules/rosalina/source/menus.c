@@ -40,6 +40,7 @@
 #include "memory.h"
 #include "minisoc.h"
 #include "fmt.h"
+#include "ftp.h"
 #include "process_patches.h"
 #include "luma_config.h"
 
@@ -99,40 +100,61 @@ void RosalinaMenu_SaveSettings(void)
 
 void RosalinaMenu_FTPTransfer(void)
 {
-    Result res = miniSocInit();
-    u32 ip = 0;
-
-    if(R_SUCCEEDED(res))
-        ip = (u32)socGethostid();
-
     Draw_Lock();
     Draw_ClearFramebuffer();
     Draw_FlushFramebuffer();
     Draw_Unlock();
 
+    u32 input = 0;
+
     do
     {
+        FtpState state = ftpGetState();
+        u32 ip = ftpGetIp();
+        Result err = ftpGetError();
+        bool active = (state == FTP_STATE_RUNNING || state == FTP_STATE_STARTING);
         Draw_Lock();
+        Draw_ClearFramebuffer();
         Draw_DrawString(10, 10, COLOR_TITLE, "FTP Transfer");
 
-        if(R_FAILED(res))
-            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Socket init failed (0x%08lx).", res);
-        else if(ip == 0)
-            Draw_DrawString(10, 30, COLOR_WHITE, "No Wi-Fi connection !");
-        else
+        switch(state)
         {
-            Draw_DrawFormattedString(10, 30, COLOR_WHITE, "IP: %hhu.%hhu.%hhu.%hhu", (u8)ip, (u8)(ip >> 8), (u8)(ip >> 16), (u8)(ip >> 24));
-            Draw_DrawString(10, 50, COLOR_WHITE, "Port: 5000");
+            case FTP_STATE_STOPPED:
+                Draw_DrawString(10, 30, COLOR_WHITE, "Server stopped.");
+                break;
+            case FTP_STATE_STARTING:
+                Draw_DrawString(10, 30, COLOR_WHITE, "Starting...");
+                break;
+            case FTP_STATE_RUNNING:
+                Draw_DrawString(10, 30, COLOR_WHITE, "Server running.");
+                Draw_DrawFormattedString(10, 50, COLOR_WHITE, "IP: %hhu.%hhu.%hhu.%hhu", (u8)ip, (u8)(ip >> 8), (u8)(ip >> 16), (u8)(ip >> 24));
+                Draw_DrawFormattedString(10, 70, COLOR_WHITE, "Port: %d", FTP_CONTROL_PORT);
+                Draw_DrawFormattedString(10, 110, COLOR_WHITE, "Connections: %lu", (u32)ftpGetAcceptCount());
+                break;
+            case FTP_STATE_ERROR:
+                if(err == FTP_ERR_NO_WIFI)
+                    Draw_DrawString(10, 30, COLOR_WHITE, "No Wi-Fi connection!");
+                else
+                    Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Server error (0x%08lx).", (u32)err);
+                break;
         }
 
-        Draw_DrawString(10, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "Press B to exit");
+        Draw_DrawString(10, SCREEN_BOT_HEIGHT - 30, COLOR_WHITE, active ? "Press A to stop the server" : "Press A to start the server");
+        Draw_DrawString(10, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "Press B to exit (the server keeps running)");
         Draw_FlushFramebuffer();
         Draw_Unlock();
-    }
-    while(!(waitInput() & KEY_B) && !menuShouldExit);
 
-    if(R_SUCCEEDED(res))
-        miniSocExit();
+        input = waitInputWithTimeout(500);
+
+        if(input & KEY_A)
+        {
+            if(active)
+                ftpStop();
+            else
+                ftpStart();
+        }
+    }
+    while(!(input & KEY_B) && !menuShouldExit);
 }
 
 void RosalinaMenu_PowerOffOrReboot(void)
