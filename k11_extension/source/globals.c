@@ -141,12 +141,17 @@ KLinkedList*    KLinkedList__Initialize(KLinkedList *list)
     return list;
 }
 
-void     PLG_SignalEvent(u32 event)
+static vu32 *PLG_GetStatusWord(void)
+{
+    return (vu32 *)PA_FROM_VA_PTR((u32 *)(configPage + 0xF0));
+}
+
+void     PLG_SignalEventWithTimeout(u32 event, s64 timeout)
 {
     KThread     *currentThread = currentCoreContext->objectContext.currentThread;
 
     // Set configuration memory field with event
-    *(vu32 *)PA_FROM_VA_PTR((u32 *)0x1FF800F0) |= event;
+    *PLG_GetStatusWord() |= event;
 
     // Send notification 0x1001
     {
@@ -170,7 +175,12 @@ void     PLG_SignalEvent(u32 event)
         cmdbuf[0] = backup[0]; cmdbuf[1] = backup[1]; cmdbuf[2] = backup[2];
     }
     // Wait for notification 0x1002
-    WaitSynchronization1(NULL, currentThread, (KSynchronizationObject *)signalPluginEvent, U64_MAX);
+    WaitSynchronization1(NULL, currentThread, (KSynchronizationObject *)signalPluginEvent, timeout);
+}
+
+void     PLG_SignalEvent(u32 event)
+{
+    PLG_SignalEventWithTimeout(event, U64_MAX);
 }
 
 void    PLG__WakeAppThread(void)
@@ -180,6 +190,6 @@ void    PLG__WakeAppThread(void)
 
 u32      PLG_GetStatus(void)
 {
-    return (*(vu32 *)PA_FROM_VA_PTR((u32 *)0x1FF800F0)) & 0xFFFF;
+    return *PLG_GetStatusWord() & 0xFFFF;
 }
 
