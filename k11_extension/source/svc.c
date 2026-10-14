@@ -46,6 +46,7 @@
 #include "svc/ControlService.h"
 #include "svc/ControlProcess.h"
 #include "svc/ExitProcess.h"
+#include "svc/TerminateProcess.h"
 #include "svc/CopyHandle.h"
 #include "svc/TranslateHandle.h"
 #include "svc/ControlMemoryUnsafe.h"
@@ -81,6 +82,8 @@ void buildAlteredSvcTable(void)
 
     alteredSvcTable[0x59] = SetGpuProt;
     alteredSvcTable[0x5A] = SetWifiEnabled;
+
+    alteredSvcTable[0x76] = TerminateProcessHook;
 
     alteredSvcTable[0x7B] = Backdoor;
     alteredSvcTable[0x7C] = KernelSetStateHook;
