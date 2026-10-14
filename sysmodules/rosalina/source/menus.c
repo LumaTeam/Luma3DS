@@ -38,7 +38,9 @@
 #include "plugin.h"
 #include "ifile.h"
 #include "memory.h"
+#include "minisoc.h"
 #include "fmt.h"
+#include "ftp.h"
 #include "process_patches.h"
 #include "luma_config.h"
 
@@ -50,6 +52,7 @@ Menu rosalinaMenu = {
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},
         { "New 3DS menu...", MENU, .menu = &N3DSMenu, .visibility = &menuCheckN3ds },
+        { "FTP Transfer", METHOD, .method = &RosalinaMenu_FTPTransfer },
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
@@ -95,6 +98,65 @@ void RosalinaMenu_SaveSettings(void)
     while(!(waitInput() & KEY_B) && !menuShouldExit);
 }
 
+void RosalinaMenu_FTPTransfer(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    u32 input = 0;
+
+    do
+    {
+        FtpState state = ftpGetState();
+        u32 ip = ftpGetIp();
+        Result err = ftpGetError();
+        bool active = (state == FTP_STATE_RUNNING || state == FTP_STATE_STARTING);
+        Draw_Lock();
+        Draw_ClearFramebuffer();
+        Draw_DrawString(10, 10, COLOR_TITLE, "FTP Transfer");
+
+        switch(state)
+        {
+            case FTP_STATE_STOPPED:
+                Draw_DrawString(10, 30, COLOR_WHITE, "Server stopped.");
+                break;
+            case FTP_STATE_STARTING:
+                Draw_DrawString(10, 30, COLOR_WHITE, "Starting...");
+                break;
+            case FTP_STATE_RUNNING:
+                Draw_DrawString(10, 30, COLOR_WHITE, "Server running.");
+                Draw_DrawFormattedString(10, 50, COLOR_WHITE, "IP: %hhu.%hhu.%hhu.%hhu", (u8)ip, (u8)(ip >> 8), (u8)(ip >> 16), (u8)(ip >> 24));
+                Draw_DrawFormattedString(10, 70, COLOR_WHITE, "Port: %d", FTP_CONTROL_PORT);
+                //Draw_DrawFormattedString(10, 110, COLOR_WHITE, "Connections: %lu", (u32)ftpGetAcceptCount());
+                break;
+            case FTP_STATE_ERROR:
+                if(err == FTP_ERR_NO_WIFI)
+                    Draw_DrawString(10, 30, COLOR_WHITE, "No Wi-Fi connection!");
+                else
+                    Draw_DrawFormattedString(10, 30, COLOR_WHITE, "Server error (0x%08lx).", (u32)err);
+                break;
+        }
+
+        Draw_DrawString(10, SCREEN_BOT_HEIGHT - 30, COLOR_WHITE, active ? "Press A to stop the server" : "Press A to start the server");
+        Draw_DrawString(10, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE, "Press B to exit (the server keeps running)");
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        input = waitInputWithTimeout(500);
+
+        if(input & KEY_A)
+        {
+            if(active)
+                ftpStop();
+            else
+                ftpStart();
+        }
+    }
+    while(!(input & KEY_B) && !menuShouldExit);
+}
+
 void RosalinaMenu_PowerOffOrReboot(void)
 {
     Draw_Lock();
@@ -120,7 +182,7 @@ void RosalinaMenu_PowerOffOrReboot(void)
         }
         else if(pressed & KEY_A)
         {
-            // Soft shutdown
+            // shutdown (sof
             menuLeave();
             srvPublishToSubscriber(0x203, 0);
             return;

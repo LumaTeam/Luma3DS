@@ -39,6 +39,7 @@
 #include "menus/sysconfig.h"
 #include "input_redirection.h"
 #include "minisoc.h"
+#include "ftp.h"
 #include "draw.h"
 #include "bootdiag.h"
 #include "shell.h"
@@ -275,7 +276,7 @@ int main(void)
         svcBreak(USERBREAK_PANIC);
 
     TaskRunner_Terminate();
-
+    ftpStop();
     MyThread_Join(menuThread, -1LL);
 
     MyThread_Join(taskRunnerThread, -1LL);
