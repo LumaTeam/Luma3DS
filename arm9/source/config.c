@@ -472,6 +472,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -779, 899));
             cfg->ntpTzOffetMinutes = (s16)opt;
             return 1;
+        } else if (strcmp(name, "inverted_stereo") == 0) {
+            bool b;
+            CHECK_PARSE_OPTION(parseBoolOption(&b, value));
+            cfg->invertedStereo = b;
+            return 1;
         } else {
             CHECK_PARSE_OPTION(-1);
         }
@@ -673,7 +678,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         autobootModeStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
-        (int)cfg->ntpTzOffetMinutes,
+        (int)cfg->ntpTzOffetMinutes, (int)cfg->invertedStereo,
 
         (int)cfg->topScreenFilter.cct, (int)cfg->bottomScreenFilter.cct,
         (int)cfg->topScreenFilter.colorCurveCorrection, (int)cfg->bottomScreenFilter.colorCurveCorrection,

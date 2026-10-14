@@ -176,6 +176,9 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                     case 2: // L2C enabled status
                         *out = L2C_CTRL & 1;
                         break;
+                    case 3: // parallax inverted
+                        *out = (s64)cfwInfo.invertedStereo;
+                        break;
                     default:
                         *out = 0;
                         res = 0xF8C007F4;

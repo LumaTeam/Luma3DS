@@ -46,6 +46,8 @@
 #include "task_runner.h"
 #include "plugin.h"
 
+#include "menus/n3ds.h"
+
 bool isN3DS;
 
 Result __sync_init(void);
@@ -75,6 +77,7 @@ void __wrap_exit(int rc)
 }
 
 // this is called before main
+
 void initSystem(void)
 {
     s64 out;
@@ -89,6 +92,9 @@ void initSystem(void)
 
     svcGetSystemInfo(&out, 0x10000, 0x103);
     lastNtpTzOffset = (s16)out;
+
+    svcGetSystemInfo(&out, 0x10001, 3);
+    isStereoInverted = (bool)out;
 
     for(res = 0xD88007FA; res == (Result)0xD88007FA; svcSleepThread(500 * 1000LL))
     {
@@ -270,6 +276,9 @@ int main(void)
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
     bootdiagCreateThread();
+
+    if (isStereoInverted)
+        TaskRunner_RunTask(N3DSMenu_StartupApplyInvertedStereo, NULL, 0);
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
         svcBreak(USERBREAK_PANIC);

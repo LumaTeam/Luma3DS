@@ -87,6 +87,8 @@ typedef struct CfgData {
 
     u64 autobootTwlTitleId;
     u8 autobootCtrAppmemtype;
+
+    bool invertedStereo;
 } CfgData;
 
 typedef struct

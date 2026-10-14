@@ -32,11 +32,16 @@
 #include "menu.h"
 #include "n3ds.h"
 #include "draw.h"
+#include "utils.h"
+#include "csvc.h"
 
 static char clkRateBuf[128 + 1];
 
 static QtmCalibrationData lastQtmCal = {0};
 static bool qtmCalRead = false;
+bool isStereoInverted = false;
+
+static char stereoInvertedStatus[128 + 1];
 
 Menu N3DSMenu = {
     "New 3DS menu",
@@ -46,6 +51,7 @@ Menu N3DSMenu = {
         { "Temporarily disable Super-Stable 3D", METHOD, .method = &N3DSMenu_ToggleSs3d, .visibility = &N3DSMenu_CheckNotN2dsXl },
         { "Test parallax barrier positions", METHOD, .method = &N3DSMenu_TestBarrierPositions, .visibility = &N3DSMenu_CheckNotN2dsXl },
         { "Super-Stable 3D calibration", METHOD, .method = &N3DSMenu_Ss3dCalibration, .visibility = &N3DSMenu_CheckNotN2dsXl },
+        { stereoInvertedStatus, METHOD, .method = &N3DSMenu_ToggleInvertStereo, .visibility = &N3DSMenu_IsinvertedStereoAvailable },
         {},
     }
 };
@@ -68,6 +74,7 @@ void N3DSMenu_UpdateStatus(void)
 
     N3DSMenu.items[0].title = L2CacheEnabled ? "Disable L2 cache" : "Enable L2 cache";
     sprintf(clkRateBuf, "Set clock rate to %luMHz", clkRate != 268 ? 268 : (u32)higherClkRate);
+    sprintf(stereoInvertedStatus, "Invert stereoscopic 3D %s", isStereoInverted ? "[Enabled]" : "[Disabled]");
 
     if (N3DSMenu_CheckNotN2dsXl())
     {
@@ -289,4 +296,100 @@ void N3DSMenu_Ss3dCalibration(void)
 
         Draw_Unlock();
     } while(!menuShouldExit && !(pressed & KEY_B));
+}
+
+/* This is a patch to correct pseudoscopic vision.
+In general this problem is caused by a bad alignement in the parallax barrier of some cheap top screen, that swaps the images that 
+goes to both the eyes, the right eye receives the "left eye image" and vice versa. This causes a really bad 3d effect with the depth
+inverted and in general a lot of discomfort.
+
+To fix this the patch swaps the left-right framebuffer addresses in the code that store them inside the appropriate LCD registry:
+    0010c6bc 00 50 82 e5     str r5,[r2]
+    0010c6c0 00 00 81 e5     str r0,[r1]
+
+like this
+    0010c6bc 00 00 82 e5     str r0,[r2]
+    0010c6c0 00 50 81 e5     str r5,[r1]
+
+at that point r5 should contain the address for the next left eye framebuffer and r0 the address for the right one,
+so you just need to swap them the moment the module is going to copy them into the lcd registry
+(r2 for the left eye registry and r1 for the right eye registry).
+Only problem is that this memory address it tied to the last version of gsp, so we implemented many checks to prevent patching
+incompatible versions. 
+*/
+void N3DSMenu_InvertStereo(bool state){
+
+    if (osGetFirmVersion() != SYSTEM_VERSION(2, 58, 0)) return;
+
+    //memory editing taken from process_list.c
+    Handle processHandle;
+    Result res = OpenProcessByName("gsp", &processHandle);
+
+    if (R_SUCCEEDED(res)){
+        u32 codeStartAddress;
+        u32 codeDestAddress;
+        u32 codeTotalSize;
+        s64 textStartAddress, textTotalRoundedSize, rodataTotalRoundedSize, dataTotalRoundedSize;
+        svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002);
+        svcGetProcessInfo(&rodataTotalRoundedSize, processHandle, 0x10003);
+        svcGetProcessInfo(&dataTotalRoundedSize, processHandle, 0x10004);
+        svcGetProcessInfo(&textStartAddress, processHandle, 0x10005);
+        codeTotalSize = (u32)(textTotalRoundedSize + rodataTotalRoundedSize + dataTotalRoundedSize);
+        codeStartAddress = (u32)textStartAddress; //should be 0x00100000, rarely 0x14000000
+        codeDestAddress = 0x00100000;
+
+        res = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, codeDestAddress, processHandle, codeStartAddress, codeTotalSize, 0);
+
+        if (R_SUCCEEDED(res)){
+            u32 *instr_l = (u32 *)(codeDestAddress + (0x0010C6BC - codeStartAddress));
+            u32 *instr_r = (u32 *)(codeDestAddress + (0x0010C6C0 - codeStartAddress));
+
+            // First check if the store instruction are really the one we want to patch
+            bool isOriginal = (*instr_l == 0xE5825000 && *instr_r == 0xE5810000);
+            bool isPatched  = (*instr_l == 0xE5820000 && *instr_r == 0xE5815000);
+            if (isOriginal || isPatched){
+
+                *instr_l = state ? 0xE5820000 : 0xE5825000;
+                *instr_r = state ? 0xE5815000 : 0xE5810000;
+
+                isStereoInverted = state;
+
+            }
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, codeDestAddress, codeTotalSize);
+        }
+        svcCloseHandle(processHandle);
+    }
+
+    N3DSMenu_UpdateStatus();
+}
+
+void N3DSMenu_ToggleInvertStereo(){
+
+    if (N3DSMenu_IsinvertedStereoAvailable()) N3DSMenu_InvertStereo(!isStereoInverted);
+
+}
+
+void N3DSMenu_StartupApplyInvertedStereo(void* arg){
+
+    (void)arg;
+
+    /* We're not using N3DSMenu_IsinvertedStereoAvailable cause N3DSMenu_CheckNotN2dsXl is not available at startup, still
+    it should be enough given all the other checks inside N3DSMenu_InvertStereo
+    */
+    if (osGetFirmVersion() != SYSTEM_VERSION(2, 58, 0)) return;
+
+    // wait for gsp to be loaded in memory
+    Handle h;
+    while (R_FAILED(OpenProcessByName("gsp", &h)))
+        svcSleepThread(100 * 1000 * 1000LL);
+    svcCloseHandle(h);
+    
+    N3DSMenu_InvertStereo(isStereoInverted);
+}
+
+bool N3DSMenu_IsinvertedStereoAvailable(void)
+{
+    //TODO: find in which version the gsp module was updated for the last time to lower FIRM version requirements. 
+    return N3DSMenu_CheckNotN2dsXl() && (osGetFirmVersion() == SYSTEM_VERSION(2, 58, 0)); 
+    
 }
