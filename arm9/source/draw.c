@@ -38,7 +38,7 @@
 #include "font.h"
 #include "config.h"
 
-bool loadSplash(void)
+bool loadSplash(bool keepOnScreen)
 {
     static const char *topSplashFile = "splash.bin",
                       *bottomSplashFile = "splashbottom.bin";
@@ -58,7 +58,8 @@ bool loadSplash(void)
 
     swapFramebuffers(true);
 
-    wait(configData.splashDurationMsec);
+    //If the splash is meant to stay up until the system firmware takes over the screens, don't stall the boot
+    if(!keepOnScreen) wait(configData.splashDurationMsec);
 
     return true;
 }
