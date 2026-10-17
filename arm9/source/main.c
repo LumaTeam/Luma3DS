@@ -364,7 +364,7 @@ boot:
     }
 
     bool loadFromStorage = CONFIG(LOADEXTFIRMSANDMODULES);
-    u32 firmVersion = loadNintendoFirm(&firmType, nandType, loadFromStorage, isSafeMode);
+    u32 firmVersion = loadNintendoFirm(&firmType, loadFromStorage, isSafeMode);
 
     bool doUnitinfoPatch = CONFIG(PATCHUNITINFO);
     u32 res = 0;
@@ -384,7 +384,7 @@ boot:
         case SAFE_FIRM:
         case SYSUPDATER_FIRM:
         case NATIVE_FIRM1X2X:
-            res = patch1x2xNativeAndSafeFirm();
+            res = patch1x2xNativeAndSafeFirm(firmVersion, nandType);
             break;
         case NATIVE_PROTOTYPE:
             res = patchPrototypeNative(nandType, doUnitinfoPatch);
