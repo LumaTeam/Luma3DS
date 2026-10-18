@@ -479,12 +479,16 @@ static void menuDraw(Menu *menu, u32 selected)
         char ipBuffer[17];
         u32 ip = socGethostid();
         u8 *addr = (u8 *)&ip;
-        int n = sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
-        Draw_DrawString(SCREEN_BOT_WIDTH - 10 - SPACING_X * n, 10, COLOR_WHITE, ipBuffer);
+        sprintf(ipBuffer, "%hhu.%hhu.%hhu.%hhu", addr[0], addr[1], addr[2], addr[3]);
+        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 23, 10, COLOR_WHITE, "%23s", ipBuffer);
     }
-
     else
-        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 15, 10, COLOR_WHITE, "%15s", "");
+    {
+        char buf[32];
+        u64 timeNow = osGetTime();
+        dateTimeToString(buf, timeNow, DATE_TIME_HUMAN);
+        Draw_DrawFormattedString(SCREEN_BOT_WIDTH - 10 - SPACING_X * 23, 10, COLOR_WHITE, "%23s", buf);
+    }
 
     if(mcuInfoRes == 0)
     {
