@@ -32,6 +32,7 @@
 extern Menu sysconfigMenu;
 extern bool isConnectionForced;
 extern s8 currVolumeSliderOverride;
+extern s8 currAudioBalance;
 
 void SysConfigMenu_UpdateStatus(bool control);
 
@@ -42,5 +43,7 @@ void SysConfigMenu_ControlWifi(void);
 void SysConfigMenu_DisableForcedWifiConnection(void);
 void SysConfigMenu_ToggleCardIfPower(void);
 void SysConfigMenu_LoadConfig(void);
+Result SysConfigMenu_ApplyAudioBalance(void);
 void SysConfigMenu_AdjustVolume(void);
+void SysConfigMenu_AdjustAudioBalance(void);
 void SysConfigMenu_ChangeScreenBrightness(void);

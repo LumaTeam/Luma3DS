@@ -581,6 +581,11 @@ static int configIniHandler(void* user, const char* section, const char* name, c
             CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -1, 100));
             cfg->volumeSliderOverride = (s8)opt;
             return 1;
+        } else if (strcmp(name, "audio_balance") == 0) {
+            s64 opt;
+            CHECK_PARSE_OPTION(parseDecIntOption(&opt, value, -100, 100));
+            cfg->audioBalance = (s8)opt;
+            return 1;
         } else {
             CHECK_PARSE_OPTION(-1);
         }
@@ -686,6 +691,7 @@ static size_t saveLumaIniConfigToStr(char *out)
 
         forceAudioOutputStr,
         cfg->volumeSliderOverride,
+        cfg->audioBalance,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(ENABLEDSIEXTFILTER),
         (int)CONFIG(DISABLEARM11EXCHANDLERS), (int)CONFIG(ENABLESAFEFIRMROSALINA)

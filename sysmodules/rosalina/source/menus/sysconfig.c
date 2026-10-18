@@ -38,6 +38,7 @@ Menu sysconfigMenu = {
     "System configuration menu",
     {
         { "Control volume", METHOD, .method=&SysConfigMenu_AdjustVolume},
+        { "Control audio balance", METHOD, .method = &SysConfigMenu_AdjustAudioBalance},
         { "Control Wireless connection", METHOD, .method = &SysConfigMenu_ControlWifi },
         { "Toggle LEDs", METHOD, .method = &SysConfigMenu_ToggleLEDs },
         { "Toggle Wireless", METHOD, .method = &SysConfigMenu_ToggleWireless },
@@ -50,6 +51,7 @@ Menu sysconfigMenu = {
 
 bool isConnectionForced = false;
 s8 currVolumeSliderOverride = -1;
+s8 currAudioBalance = 0;
 
 void SysConfigMenu_ToggleLEDs(void)
 {
@@ -453,13 +455,83 @@ static Result SysConfigMenu_ApplyVolumeOverride(void)
         i2s2Volume = -20; // -10 dB  (100%)
     }
 
+    // apply stereo balance
+    s8 leftVol = i2s1Volume, rightVol = i2s1Volume;
+    if (currAudioBalance > 0) {
+        s16 lv = (s16)i2s1Volume - ((s16)currAudioBalance * 164) / 100;
+        if (lv < -128)
+            lv = -128;
+
+        leftVol = (s8)lv;
+    } else if (currAudioBalance < 0) {
+        s16 rv = (s16)i2s1Volume - ((s16)(-currAudioBalance) * 164) / 100;
+        if (rv < -128)
+            rv = -128;
+        rightVol = (s8)rv;
+    }
+
     // Write volume overrides values before writing to the pinmux registers
-    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 65, &i2s1Volume, 1); // CDC_REG_DAC_L_VOLUME_CTRL
-    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 66, &i2s1Volume, 1); // CDC_REG_DAC_R_VOLUME_CTRL
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 65, &leftVol, 1); // CDC_REG_DAC_L_VOLUME_CTRL
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 66, &rightVol, 1); // CDC_REG_DAC_R_VOLUME_CTRL
     if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(100, 123, &i2s2Volume, 1);
 
     if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 116, &i2s1Mux, 1);
     if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(100, 49, &i2s2Mux, 1);
+
+    cdcChkExit();
+    return res;
+}
+
+Result SysConfigMenu_ApplyAudioBalance(void)
+{
+    if (currVolumeSliderOverride >= 0 || currAudioBalance == 0)
+        return SysConfigMenu_ApplyVolumeOverride();
+
+    //grab hw slider, use that for current volume
+    mcuHwcInit();
+    u8 sliderPos = 0;
+    MCUHWC_ReadRegister(0x09, &sliderPos, 1);
+    mcuHwcExit();
+
+    if (sliderPos > 63) sliderPos = 63;
+    u8 rawPinGain = 127 - (71 * (u32)sliderPos + 31) / 63;
+
+    s8 volume;
+    if (rawPinGain <= 90)
+        volume = 36 - rawPinGain;
+    else if (rawPinGain <= 126)
+        volume = 126 - 2 * rawPinGain;
+    else
+        volume = -128;
+
+    s8 leftVol = volume, rightVol = volume;
+    if (currAudioBalance > 0) {
+        s16 lv = (s16)volume - ((s16)currAudioBalance * 164) / 100;
+        if (lv < -128)
+            lv = -128;
+
+        leftVol = (s8)lv;
+    } else if (currAudioBalance < 0) {
+        s16 rv = (s16)volume - ((s16)(-currAudioBalance) * 164) / 100;
+        if (rv < -128)
+            rv = -128;
+
+        rightVol = (s8)rv;
+    }
+
+    u8 i2s1Mux, i2s2Mux;
+    Result res = cdcChkInit();
+    if (R_SUCCEEDED(res)) res = CDCCHK_ReadRegisters2(0, 116, &i2s1Mux, 1);
+    if (R_SUCCEEDED(res)) res = CDCCHK_ReadRegisters2(100, 49, &i2s2Mux, 1);
+
+    i2s1Mux &= ~0x80;
+    i2s2Mux |=  0x20;
+
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 65, &leftVol, 1); // CDC_REG_DAC_L_VOLUME_CTRL
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 66, &rightVol,1); // CDC_REG_DAC_R_VOLUME_CTRL
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(100, 123, &volume, 1);
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(0, 116, &i2s1Mux, 1);
+    if (R_SUCCEEDED(res)) res = CDCCHK_WriteRegisters2(100, 49,  &i2s2Mux, 1);
 
     cdcChkExit();
     return res;
@@ -470,8 +542,13 @@ void SysConfigMenu_LoadConfig(void)
     s64 out = -1;
     svcGetSystemInfo(&out, 0x10000, 7);
     currVolumeSliderOverride = (s8)out;
+    out = 0;
+    svcGetSystemInfo(&out, 0x10000, 8);
+    currAudioBalance = (s8)out;
     if (currVolumeSliderOverride >= 0)
-        SysConfigMenu_ApplyVolumeOverride();
+        SysConfigMenu_ApplyVolumeOverride(); // also applies balance if needed
+    else if (currAudioBalance != 0)
+        SysConfigMenu_ApplyAudioBalance();
 }
 
 void SysConfigMenu_AdjustVolume(void)
@@ -549,6 +626,64 @@ void SysConfigMenu_AdjustVolume(void)
         Draw_FlushFramebuffer();
         Draw_Unlock();
     } while(!menuShouldExit);
+}
+
+void SysConfigMenu_AdjustAudioBalance(void)
+{
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    s8 tempBalance = currAudioBalance;
+
+    do
+    {
+        Draw_Lock();
+        Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+        u32 posY = Draw_DrawString(10, 30, COLOR_WHITE, "DPAD Left/Right: Adjust by 1.\nDPAD Up/Down: Adjust by 10.\nA: Apply.\nB: Go back.\n\n");
+        posY = Draw_DrawFormattedString(10, posY, COLOR_WHITE, "Balance: [%d]   ", tempBalance);
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+
+        u32 pressed = waitInputWithTimeout(1000);
+
+        Draw_Lock();
+
+        if (pressed & KEY_A)
+        {
+            currAudioBalance = tempBalance;
+            Result res = SysConfigMenu_ApplyAudioBalance();
+            LumaConfig_SaveSettings();
+            if (R_SUCCEEDED(res))
+                Draw_DrawString(10, posY, COLOR_GREEN, "\nSuccess!");
+            else
+                Draw_DrawFormattedString(10, posY, COLOR_RED, "\nFailed: 0x%08lX", res);
+        }
+        else if (pressed & KEY_B)
+            return;
+        else if (pressed & DIRECTIONAL_KEYS)
+        {
+            if (pressed & KEY_LEFT)
+                tempBalance--;
+            else if (pressed & KEY_RIGHT)
+                tempBalance++;
+            else if (pressed & KEY_DOWN)
+                tempBalance -= 10;
+            else if (pressed & KEY_UP)
+                tempBalance += 10;
+
+            if (tempBalance < -100)
+                tempBalance = -100;
+            if (tempBalance > 100)
+                tempBalance = 100;
+        }
+
+        Draw_FlushFramebuffer();
+        Draw_Unlock();
+    }
+    while (!menuShouldExit);
 }
 
 void SysConfigMenu_ChangeScreenBrightness(void)
