@@ -39,6 +39,7 @@
 #include "plugin.h"
 #include "menus/screen_filters.h"
 #include "shell.h"
+#include "timelock_shared_config.h"
 
 //#define ROSALINA_MENU_SELF_SCREENSHOT 1 // uncomment this to enable the feature
 
@@ -52,6 +53,9 @@ bool mcuInfoTableRead = false;
 const char *topScreenType = NULL;
 const char *bottomScreenType = NULL;
 bool areScreenTypesInitialized = false;
+
+bool needsResetSelectedItem = false;
+bool isRosalinaMenuOpened = false;
 
 // libctru redefinition:
 
@@ -339,6 +343,24 @@ u32 menuCountItems(const Menu *menu)
     return n;
 }
 
+static inline u32 menuAdvanceCursorWithVisibilityHandling(const Menu* menu, u32 pos, u32 numItems, s32 displ)
+{
+    u32 menuIter = 0;
+    u32 selectedItem = pos;
+
+    do
+    {
+        // If everything is hidden in the menu, we return index 0 to avoid an infinite loop
+        if (menuIter >= numItems)
+            return 0;
+
+        selectedItem = menuAdvanceCursor(selectedItem, numItems, displ);
+        menuIter++;
+    } while (menuItemIsHidden(&menu->items[selectedItem]));
+
+    return selectedItem;
+}
+
 MyThread *menuCreateThread(void)
 {
     if(R_FAILED(MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0x3000, 52, CORE_SYSTEM)))
@@ -379,8 +401,10 @@ void menuThreadMain(void)
 
         u32 kHeld = scanHeldKeys();
 
-        if(((kHeld & menuCombo) == menuCombo) && !g_blockMenuOpen)
+        if(((kHeld & menuCombo) == menuCombo) && !g_blockMenuOpen && !isTimeLocked)
         {
+            isRosalinaMenuOpened = true;
+
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
             PluginLoader__UpdateMenu();
@@ -410,6 +434,7 @@ void menuEnter(void)
             // Oops
             menuRefCount = 0;
             svcKernelSetState(0x10000, 2 | 1);
+            isRosalinaMenuOpened = false;
             svcSleepThread(5 * 1000 * 100LL);
         }
         else
@@ -428,6 +453,8 @@ void menuLeave(void)
         Draw_RestoreFramebuffer();
         Draw_FreeFramebufferCache();
         svcKernelSetState(0x10000, 2 | 1);
+
+        isRosalinaMenuOpened = false;
     }
     Draw_Unlock();
 }
@@ -522,7 +549,7 @@ void menuShow(Menu *root)
 
     u32 numItems = menuCountItems(currentMenu);
     if (menuItemIsHidden(&currentMenu->items[selectedItem]))
-        selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
+        selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, 1);
 
     menuCloseRequested = false;
 
@@ -565,7 +592,10 @@ void menuShow(Menu *root)
                     previousSelectedItems[nbPreviousMenus] = selectedItem;
                     previousMenus[nbPreviousMenus++] = currentMenu;
                     currentMenu = currentMenu->items[selectedItem].menu;
+
                     selectedItem = 0;
+                    if (menuItemIsHidden(&currentMenu->items[selectedItem]))
+                        selectedItem = menuAdvanceCursorWithVisibilityHandling(currentMenu, selectedItem, numItems, 1);
                     break;
                 default:
                     __builtin_trap(); // oops
@@ -605,9 +635,26 @@ void menuShow(Menu *root)
             } while (menuItemIsHidden(&currentMenu->items[selectedItem])); // assume at least one item is visible
         }
 
+        if (needsResetSelectedItem)
+        {
+            selectedItem = 0;
+            if (menuItemIsHidden(&currentMenu->items[selectedItem]))
+            {
+                do {
+                    selectedItem = menuAdvanceCursor(selectedItem, numItems, 1);
+                } while (menuItemIsHidden(&currentMenu->items[selectedItem]));
+            }
+            needsResetSelectedItem = false;
+        }
+
         Draw_Lock();
         menuDraw(currentMenu, selectedItem);
         Draw_Unlock();
     }
     while(!menuShouldExit && !menuCloseRequested);
+}
+
+void menuResetSelectedItem(void)
+{
+    needsResetSelectedItem = true;
 }
