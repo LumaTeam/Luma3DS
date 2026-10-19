@@ -30,6 +30,7 @@
 #include "menu.h"
 
 extern Menu N3DSMenu;
+extern bool isStereoInverted;
 
 bool N3DSMenu_CheckNotN2dsXl(void);
 
@@ -40,3 +41,8 @@ void N3DSMenu_EnableDisableL2Cache(void);
 void N3DSMenu_ToggleSs3d(void);
 void N3DSMenu_TestBarrierPositions(void);
 void N3DSMenu_Ss3dCalibration(void);
+
+void N3DSMenu_InvertStereo(bool state);
+void N3DSMenu_StartupApplyInvertedStereo(void* arg);
+bool N3DSMenu_IsinvertedStereoAvailable();
+void N3DSMenu_ToggleInvertStereo();
