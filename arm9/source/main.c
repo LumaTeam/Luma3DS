@@ -47,6 +47,7 @@ extern CfgData configData;
 extern ConfigurationStatus needConfig;
 
 bool isSdMode;
+static bool keepSplashOnScreen = false;
 char launchedPathForFatfs[256];
 u16 launchedPath[80+1];
 BootType bootType;
@@ -289,7 +290,7 @@ void main(int argc, char **argv, u32 magicWord)
 
     u32 splashMode = MULTICONFIG(SPLASH);
 
-    if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
+    if(splashMode == 1 && loadSplash(false)) pressed = HID_PAD;
 
     bool autoBootEmu = CONFIG(AUTOBOOTEMU);
 
@@ -301,7 +302,11 @@ void main(int argc, char **argv, u32 magicWord)
     else if((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
             (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
-    if(splashMode == 2 && loadSplash()) pressed = HID_PAD;
+    if(splashMode == 2 && loadSplash(CONFIG(SPLASHPERSIST)))
+    {
+        pressed = HID_PAD;
+        keepSplashOnScreen = CONFIG(SPLASHPERSIST);
+    }
 
     //Check SAFE_MODE combo again
     if(!CFG_BOOTENV && pressed == SAFE_MODE)
@@ -394,6 +399,6 @@ boot:
     if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
     unmountPartitions();
-    if(bootType != FIRMLAUNCH) deinitScreens();
+    if(bootType != FIRMLAUNCH && !keepSplashOnScreen) deinitScreens();
     launchFirm(0, NULL);
 }
