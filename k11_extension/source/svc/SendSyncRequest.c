@@ -30,7 +30,7 @@
 
 static inline bool isNdmuWorkaround(const SessionInfo *info, u32 pid)
 {
-    return info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncsOnce && pid >= nbSection0Modules;
+    return info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncs && pid >= nbSection0Modules;
 }
 
 Result SendSyncRequestHook(Handle handle)
@@ -139,7 +139,7 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x80040:
             {
-                if(!hasStartedRosalinaNetworkFuncsOnce)
+                if(!hasStartedRosalinaNetworkFuncs)
                     break;
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 skip = isNdmuWorkaround(info, pid); // SuspendScheduler
@@ -150,7 +150,7 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x90000:
             {
-                if(!hasStartedRosalinaNetworkFuncsOnce)
+                if(!hasStartedRosalinaNetworkFuncs)
                     break;
                 SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(isNdmuWorkaround(info, pid)) // ResumeScheduler
