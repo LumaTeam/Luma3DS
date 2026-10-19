@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "romfsredir.h"
+#include "exefsredir.h"
 #include "util.h"
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, s32 offset, const void *replace, u32 repSize, u32 count)
@@ -1011,6 +1012,11 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
             if(isLumaWithKext && loadTitleLocaleConfig(progId, &mask, &regionId, &languageId, &countryId, &stateId))
                 svcKernelSetState(0x10001, ((u32)stateId << 24) | ((u32)countryId << 16) | ((u32)languageId << 8) | ((u32)regionId << 4) | (u32)mask , progId);
             if(!patchLayeredFs(progId, code, size, textSize, roSize, dataSize, roAddress, dataAddress)) goto error;
+            // HOME Menu opens other titles' ExeFS before those titles run.
+            // Leave room for the existing RomFS payload and do not make an
+            // unrecognized HOME Menu SDK or occupied padding a boot failure.
+            if(isHomeMenu && isSdMode)
+                patchHomeMenuExefs(code, size, textSize, romfsRedirPatchSize);
         }
     }
 
