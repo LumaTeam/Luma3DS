@@ -138,6 +138,22 @@ static inline u32 getOldSdmmc(u32 *sdmmc, u32 firmVersion)
 {
     switch(firmVersion)
     {
+       	case 0: // 1.0.0
+            *sdmmc = 0x080CF61C;
+            break;
+        case 2: // 1.1.0
+            *sdmmc = 0x080CF67C;
+            break;
+        case 9: // 2.0.0
+            *sdmmc = 0x080D5394;
+            break;
+        case 0xB: // 2.1.0
+            *sdmmc = 0x080D5494;
+            break;
+            
+        case 0x10: // 0.14.12
+            *sdmmc = 0x080CF85C;
+            break;
         case 0x18:
             *sdmmc = 0x080D91D8;
             break;
@@ -186,6 +202,123 @@ static inline u32 patchNandRw(u8 *pos, u32 size, u32 hookAddr)
     readOffset[1] = writeOffset[1] = 0x47A0;
     ((u32 *)writeOffset)[1] = ((u32 *)readOffset)[1] = hookAddr;
 
+    return 0;
+}
+
+static inline u32 patch2xNandRw(u8 *pos, u32 size, u32 hookAddr, u32 cidHookAddr, u32 firmVersion) {
+    static const u8 rwPattern[] = { 0xAD, 0xB0, 0x05, 0x00, 0x36, 0x9F, 0x0C, 0x00 };
+    static const u8 nandStructPattern[] = { 0xF8, 0xB5, 0xFF, 0x21, 0x02, 0x31 };
+    static const u8 nandStructPattern20[] = { 0x38, 0xB5, 0xFF, 0x21, 0x02, 0x31 };
+    static const u8 cidPattern[] = { 0x04, 0x00, 0x00, 0x6A, 0x0D, 0xF0, 0x9E, 0xFF };
+    static const u8 cidPattern20[] = { 0x04, 0x00, 0x00, 0x6A, 0x0D, 0xF0, 0x04, 0xFF };
+    
+    u16 *readOffset = (u16 *)memsearch(pos, rwPattern, size, sizeof(rwPattern));
+    
+    if (!readOffset) return 1;
+    
+    u16 *writeOffset = (u16 *)memsearch(((u8*)readOffset) + sizeof(rwPattern), rwPattern, size, sizeof(rwPattern));
+    
+    if (!writeOffset) return 1;
+    
+    // rewire NAND struct to be SD instead
+    u8 *nandSdmmcSelectOffset = (u8 *)memsearch(pos, firmVersion == 9 ? nandStructPattern20 : nandStructPattern, size, sizeof(nandStructPattern));
+    if (!nandSdmmcSelectOffset) return 1;
+    nandSdmmcSelectOffset[4] = 1; // sdmc
+    
+    // make cid forcefully return the correct cid
+    u16 *cidOffset = (u16 *)memsearch(pos, firmVersion == 9 ? cidPattern20 : cidPattern, size, sizeof(cidPattern));
+    if (!cidOffset) return 1;
+    cidOffset[0] = 0x4C01; // ldr r4, [pc, #0] -> pc = insn + 8
+    cidOffset[1] = 0x47A0; // blx r4
+    cidOffset[2] = 0xBF00; // nop
+    *(u32 *)(&cidOffset[3]) = cidHookAddr + 1; /* because it's a thumb function */
+    
+    // r/w rewire
+    readOffset[0] = writeOffset[0] = 0x4C01; // ldr r4, [pc, #4]
+    readOffset[1] = writeOffset[1] = 0x47A0; // blx r4
+    readOffset[2] = writeOffset[2] = 0xBF00; // nop
+    *(u32 *)(&readOffset[3]) = *(u32 *)(&writeOffset[3]) = hookAddr;
+    
+    // Read the emmc cid into the place hook will copy it from
+    sdmmc_get_cid(1, emunandPatchNandCid);
+    
+    return 0;
+}
+
+static inline u32 patch1412NandRw(u8 *pos, u32 size, u32 hookAddr, u32 cidHookAddr) {
+    static const u8 rwPattern[] = { 0x0D, 0x00, 0x01, 0x00, 0xAF, 0xB0 };
+    static const u8 nandStructPattern[] = { 0xF8, 0xB5, 0xFF, 0x21, 0x02, 0x31 };
+    static const u8 cidPattern[] = { 0x04, 0x00, 0x00, 0x6A, 0x0A, 0xF0, 0x48, 0xFE };
+    
+    u16 *readOffset = (u16 *)memsearch(pos, rwPattern, size, sizeof(rwPattern));
+    
+    if (!readOffset) return 1;
+    
+    u16 *writeOffset = (u16 *)memsearch(((u8*)readOffset) + sizeof(rwPattern), rwPattern, size, sizeof(rwPattern));
+    
+    if (!writeOffset) return 1;
+    
+    // rewire NAND struct to be SD instead
+    u8 *nandSdmmcSelectOffset = (u8 *)memsearch(pos, nandStructPattern, size, sizeof(nandStructPattern));
+    if (!nandSdmmcSelectOffset) return 1;
+    nandSdmmcSelectOffset[4] = 1; // sdmc
+    
+    // make cid forcefully return the correct cid
+    u16 *cidOffset = (u16 *)memsearch(pos, cidPattern, size, sizeof(cidPattern));
+    if (!cidOffset) return 1;
+    cidOffset[0] = 0x4C01; // ldr r4, [pc, #0] -> pc = insn + 8
+    cidOffset[1] = 0x47A0; // blx r4
+    cidOffset[2] = 0xBF00; // nop
+    *(u32 *)(&cidOffset[3]) = cidHookAddr + 1; /* because it's a thumb function */
+    
+    // r/w rewire
+    readOffset[0] = writeOffset[0] = 0x4C01; // ldr r4, [pc, #4]
+    readOffset[1] = writeOffset[1] = 0x47A0; // blx r4
+    readOffset[2] = writeOffset[2] = 0xBF00; // nop
+    *(u32 *)(&readOffset[3]) = *(u32 *)(&writeOffset[3]) = hookAddr;
+    
+    // Read the emmc cid into the place hook will copy it from
+    sdmmc_get_cid(1, emunandPatchNandCid);
+    
+    return 0;
+}
+
+static inline u32 patch1xNandRw(u8 *pos, u32 size, u32 hookAddr, u32 cidHookAddr, u32 firmVersion)
+{
+    static const u8 rwPattern[] = { 0x0D, 0x00, 0x01, 0x00, 0xAF, 0xB0 };
+    static const u8 nandStructPattern[] = { 0xF8, 0xB5, 0xFF, 0x21, 0x02, 0x31 };
+    static const u8 cidPattern[] = { 0x04, 0x00, 0x00, 0x6A, 0x0A, 0xF0, 0x3D, 0xFE };
+    static const u8 cidPattern1_1_0_0[] = { 0x04, 0x00, 0x00, 0x6A, 0x0A, 0xF0, 0xA9, 0xFA };
+    
+    u16 *readOffset = (u16 *)memsearch(pos, rwPattern, size, sizeof(rwPattern));
+    
+    if (!readOffset) return 1;
+    
+    u16 *writeOffset = (u16 *)memsearch(((u8*)readOffset) + sizeof(rwPattern), rwPattern, size, sizeof(rwPattern));
+    
+    if (!writeOffset) return 1;
+    
+    // rewire NAND struct to be SD instead
+    u8 *nandSdmmcSelectOffset = (u8 *)memsearch(pos, nandStructPattern, size, sizeof(nandStructPattern));
+    if (!nandSdmmcSelectOffset) return 1;
+    nandSdmmcSelectOffset[4] = 1; // sdmc
+    
+    // make cid forcefully return the correct cid
+    u16 *cidOffset = (u16 *)memsearch(pos, firmVersion == 2 ? cidPattern1_1_0_0 : cidPattern, size, sizeof(cidPattern));
+    if (!cidOffset) return 1;
+    cidOffset[0] = 0x4C00;
+    cidOffset[1] = 0x47A0;
+    *(u32 *)(&cidOffset[2]) = cidHookAddr + 1; /* because it's a thumb function */
+    
+    // r/w rewire
+    readOffset[0] = writeOffset[0] = 0x4C01; // ldr r4, [pc, #4]
+    readOffset[1] = writeOffset[1] = 0x47A0; // blx r4
+    readOffset[2] = writeOffset[2] = 0xBF00; // nop
+    *(u32 *)(&readOffset[3]) = *(u32 *)(&writeOffset[3]) = hookAddr;
+    
+    // Read the emmc cid into the place hook will copy it from
+    sdmmc_get_cid(1, emunandPatchNandCid);
+    
     return 0;
 }
 
@@ -412,7 +545,24 @@ u32 patchEmuNand(u8 *process9Offset, u32 process9Size, u32 firmVersion)
     if(!ret) emunandPatchSdmmcStructPtr = sdmmc;
 
     //Add EmuNAND hooks
-    ret += patchNandRw(process9Offset, process9Size, (u32)emunandPatch);
+    if (firmVersion < 0xC) { /* 1.0-2.X */
+        switch (firmVersion) {
+        case 0: // 1.0.0
+        case 2: // 1.1.0-0
+            ret += patch1xNandRw(process9Offset, process9Size, (u32)emunand1xPatch, (u32)(firmVersion == 2 ? emunand11CidPatch : emunand10CidPatch), firmVersion);
+            break;
+        case 9: // 2.0.0
+        case 11: // 2.1.0
+            ret += patch2xNandRw(process9Offset, process9Size, (u32)emunand2xPatch, (u32)(firmVersion == 9 ? emunand20CidPatch : emunand21CidPatch), firmVersion);
+            break;
+        default:
+            error("EmuNANDs for NATIVE_FIRM version %d are currently not supported.\n", firmVersion);
+        }
+    } else if (firmVersion == 0x10) {
+        ret += patch1412NandRw(process9Offset, process9Size, (u32)emunand1xPatch, (u32)emunand1412CidPatch);
+    } else { /* >= 3.X */
+	    ret += patchNandRw(process9Offset, process9Size, (u32)emunandPatch);
+    }
 
     return ret;
 }
