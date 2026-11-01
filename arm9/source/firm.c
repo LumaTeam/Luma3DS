@@ -818,7 +818,7 @@ static void load_key(u8 keyslot, const u8 *key, u8 keytype) {
     const u32 *key32 = (u32 *)key;
     *REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | AES_INPUT_BE | AES_INPUT_NORMAL;
     *REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
-    
+
     REG_AESKEYFIFO[keytype] = key32[0];
     REG_AESKEYFIFO[keytype] = key32[1];
     REG_AESKEYFIFO[keytype] = key32[2];
@@ -836,48 +836,54 @@ u32 patchPrototypeNative(FirmwareSource nandType, bool doUnitinfoPatch)
 
     u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200;
     u32 ret = 0;
-        
+
     if(doUnitinfoPatch && !ISDEVUNIT)
     {
         if (firmProtoVersion == 1200)
         {
             u8 b9[0x10000] = { 0 };
-            u32 hash[4] = { 0 };
+            u32 hash[32/4] = { 0 };
             sha(hash, (const void *)0x08080000, 0x10000, SHA_256_MODE);
-            
+
             if (memcmp(hash, boot9Sha256, 32) != 0)
             {
-                u32 size = getFileSize("sdmc:/luma/backups/boot9.bin");
-                int readres = fileRead(b9, "sdmc:/luma/backups/boot9.bin", 0x10000);
-                sha(hash, b9, 0x10000, SHA_256_MODE);
-                
-                if (size != 0x10000 || !readres || memcmp(hash, boot9Sha256, 32) != 0)
-                    error("No valid boot9 backup was found in memory or in\nsdmc:/luma/backups/boot9.bin. Please make sure\nyou have a valid backup to use this FIRM.");
+                char backupPath[0x40];
+                sprintf(backupPath, "backups/%08lX/boot9.bin", *(vu32 *)0x01FFB804);
+
+                bool found = fileRead(b9, backupPath, 0x10000) == 0x10000;
+                if (found)
+                {
+                    sha(hash, b9, 0x10000, SHA_256_MODE);
+                    found = memcmp(hash, boot9Sha256, 32) == 0;
+                }
+
+                if (!found)
+                    error("No valid boot9 backup was found in memory or in\nluma/%s. Please make\nsure you have a valid backup to use this FIRM.", backupPath);
             }
             else
             {
                 memcpy(b9, (const void *)0x08080000, 0x10000);
             }
-            
+
             for (u32 i = 0; i < sizeof(key_X) / sizeof(key_X[0]); i++)
             {
                 load_key(key_X[i].keyslot, &b9[key_X[i].b9_offs], AES_KEYX);
             }
-            
+
             for (u32 i = 0; i < sizeof(key_Y) / sizeof(key_Y[0]); i++)
             {
                 load_key(key_Y[i].keyslot, &b9[key_Y[i].b9_offs], AES_KEYY);
             }
-                        
+
             static const u8 dev_keyX_0x25[16] = { 0x81,0x90,0x7A,0x4B,0x6F,0x1B,0x47,0x32,
                                                   0x3A,0x67,0x79,0x74,0xCE,0x4A,0xD7,0x1B };
-            
+
             load_key(0x25, dev_keyX_0x25, AES_KEYX);
-                        
+
             ret += patchProtoUnitinfo1200(process9Offset, process9Size, arm9Section, firm->section[2].size);
         }
     }
-    
+
     ret += patchProtoNandSignatureCheck(process9Offset, process9Size);
 
     //Arm9 exception handlers
