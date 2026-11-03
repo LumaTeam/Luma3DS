@@ -11,6 +11,8 @@ u32  g_loadSaveSwapArgs[4];
 char g_swapFileName[256];
 u32  g_memBlockSize = 5 * 1024 * 1024;
 
+#define PLUGIN_BLOCK_ALIGN 0x10000
+
 Result     MemoryBlock__SetSize(u32 size) {
     PluginLoaderContext *ctx = &PluginLoaderCtx;
     MemoryBlock *memblock = &ctx->memblock;
@@ -40,7 +42,7 @@ Result      MemoryBlock__IsReady(void)
         u32     gameReserveSize;
         vu32*   appMemAllocPtr = (vu32 *)PA_FROM_VA_PTR(0x1FF80040);
         u32     appMemAlloc = *appMemAllocPtr;
-        u32     temp;
+        u32     temp, dummy;
 
         memblock->isAppRegion = true;
 
@@ -64,6 +66,41 @@ Result      MemoryBlock__IsReady(void)
             res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
                                         g_memBlockSize, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
 
+        // The kernel maps with 64 KiB pages only where VA and PA are congruent, and the plugin is mapped at
+        // 0x07000000, so align the block's PA to 64 KiB by shrinking the reserve below it (linear memory is allocated
+        // bottom-up, so the block moves down by that much, the few KiB left above it stay free for the game).
+        u32 misalign = R_SUCCEEDED(res) ? ((u32)PA_FROM_VA_PTR(memblock->memblock) & (PLUGIN_BLOCK_ALIGN - 1)) : 0;
+        if (misalign && gameReserveSize > misalign)
+        {
+            // Undo the allocations
+            svcControlMemoryUnsafe(&dummy, (u32)memblock->memblock, g_memBlockSize, MEMOP_FREE, 0);
+            svcControlMemoryUnsafe(&dummy, temp, gameReserveSize, MEMOP_FREE, 0);
+
+            // Map the game block again, but shrinked by the misalign
+            res = svcControlMemoryUnsafe((u32 *)&temp, 0x30000000,
+                                        gameReserveSize - misalign, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+            if (R_SUCCEEDED(res))
+            {
+                // Map the block again, this time it will be aligned to 64 KiB
+                res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
+                                            g_memBlockSize, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+                if (R_SUCCEEDED(res))
+                    gameReserveSize -= misalign;
+                else
+                    svcControlMemoryUnsafe(&dummy, temp, gameReserveSize - misalign, MEMOP_FREE, 0);
+            }
+
+            // On failure fallback to the initial behaviour
+            if (R_FAILED(res))
+            {
+                res = svcControlMemoryUnsafe((u32 *)&temp, 0x30000000,
+                                            gameReserveSize, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+                if (R_SUCCEEDED(res))
+                    res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
+                                                g_memBlockSize, MEMOP_REGION_APP | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+            }
+        }
+
         // Finally release game reserve block
         if (R_SUCCEEDED(res))
             res = svcControlMemoryUnsafe((u32 *)&temp, temp, gameReserveSize, MEMOP_FREE, 0);
@@ -73,6 +110,32 @@ Result      MemoryBlock__IsReady(void)
         memblock->isAppRegion = false;
         res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
                                     g_memBlockSize, MEMOP_REGION_SYSTEM | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+
+        // There is no game reserve here, so put a small padding block before the plugin
+        // and free the padding afterwards (leaves a < 64 KiB hole the system can reuse).
+        u32 misalign = R_SUCCEEDED(res) ? (u32)PA_FROM_VA_PTR(memblock->memblock) & (PLUGIN_BLOCK_ALIGN - 1) : 0;
+        if (misalign)
+        {
+            u32 pad = PLUGIN_BLOCK_ALIGN - misalign, padAddr, dummy;
+
+            // Undo the allocations
+            svcControlMemoryUnsafe(&dummy, (u32)memblock->memblock, g_memBlockSize, MEMOP_FREE, 0);
+
+            // Map the padding block followed by the plugin block
+            Result padRes = svcControlMemoryUnsafe(&padAddr, 0x30000000,
+                                                   pad, MEMOP_REGION_SYSTEM | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+            res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
+                                        g_memBlockSize, MEMOP_REGION_SYSTEM | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+
+            // Unmap the padding
+            if (R_SUCCEEDED(padRes))
+                svcControlMemoryUnsafe(&dummy, padAddr, pad, MEMOP_FREE, 0);
+
+            // On failure fallback to the initial behaviour
+            if (R_FAILED(res))
+                res = svcControlMemoryUnsafe((u32 *)&memblock->memblock, 0x07000000,
+                                            g_memBlockSize, MEMOP_REGION_SYSTEM | MEMOP_ALLOC | MEMOP_LINEAR_FLAG, MEMPERM_RW);
+        }
     }
 
     if (R_FAILED(res)) {

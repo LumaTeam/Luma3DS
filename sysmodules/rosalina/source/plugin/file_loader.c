@@ -274,7 +274,8 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
     // Code size must be page aligned
     exeHdr = &header->executable;
     pluginHeader->exeSize = (sizeof(PluginHeader) + exeHdr->codeSize + exeHdr->rodataSize + exeHdr->dataSize + exeHdr->bssSize + 0x1000) & ~0xFFF;
-    pluginHeader->heapVA = 0x06000000;
+    // Make heap VA congruent with its PA modulo 1 MiB, so the kernel can map it with sections and large pages.
+    pluginHeader->heapVA = 0x06000000 | ((u32)PA_FROM_VA_PTR(ctx->memblock.memblock + pluginHeader->exeSize) & 0xFFFFF);
     pluginHeader->heapSize = g_memBlockSize - pluginHeader->exeSize;
     pluginHeader->plgldrEvent = ctx->plgEventPA;
     pluginHeader->plgldrReply = ctx->plgReplyPA;
@@ -293,7 +294,9 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
     svcControlProcess(process, PROCESSOP_SIGNAL_ON_EXIT, 0, 0);
 
     // Mount the plugin memory in the process
-    if (R_SUCCEEDED(MemoryBlock__MountInProcess()))
+    if (R_SUCCEEDED(MemoryBlock__MountInProcess()) &&
+        // ForceRWXPages does not reach the 64 KiB aligned pages, force RWX again.
+        R_SUCCEEDED(svcControlProcess(process, PROCESSOP_SET_MMU_TO_RWX, 0, 0)))
     // Install hook
     {
         u32  procStart = 0x00100000;
