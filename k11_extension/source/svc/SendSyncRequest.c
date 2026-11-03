@@ -33,14 +33,47 @@ static inline bool isNdmuWorkaround(const SessionInfo *info, u32 pid)
     return info != NULL && strcmp(info->name, "ndm:u") == 0 && hasStartedRosalinaNetworkFuncsOnce && pid >= nbSection0Modules;
 }
 
+static inline bool isInterceptedCommand(u32 header)
+{
+    switch (header)
+    {
+        case 0x10042:
+        case 0x10082:
+        case 0x10800:
+        case 0x20000:
+        case 0x20002:
+        case 0x50100:
+        case 0x80040:
+        case 0x90000:
+        case 0x00C0080:
+        case 0x00D0080:
+        case 0x2E0040:
+        case 0x300040:
+        case 0x4010082:
+        case 0x4020082:
+        case 0x8010082:
+        case 0x8020082:
+        case 0x4060000:
+        case 0x8160000:
+            return true;
+        default:
+            return false;
+    }
+}
+
 Result SendSyncRequestHook(Handle handle)
 {
+    u32 *cmdbuf = (u32 *)((u8 *)currentCoreContext->objectContext.currentThread->threadLocalStorage + 0x80);
+
+    // Fast path, return early if the command does not need to be intercepted.
+    if (!isInterceptedCommand(cmdbuf[0]))
+        return SendSyncRequest(handle);
+
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
     KProcessHandleTable *handleTable = handleTableOfProcess(currentProcess);
     u32 pid = idOfProcess(currentProcess);
     KClientSession *clientSession = (KClientSession *)KProcessHandleTable__ToKAutoObject(handleTable, handle);
 
-    u32 *cmdbuf = (u32 *)((u8 *)currentCoreContext->objectContext.currentThread->threadLocalStorage + 0x80);
     bool skip = false;
     Result res = 0;
 
