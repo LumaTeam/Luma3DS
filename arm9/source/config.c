@@ -886,9 +886,10 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                                  "(intended for splashes that display\n"
                                                  "button hints).\n\n"
                                                  "\t* 'After payloads' displays it\n"
-                                                 "afterwards.\n\n"
-                                                 "Edit the duration in config.ini (3s\n"
-                                                 "default).",
+                                                 "afterwards and keeps it on screen\n"
+                                                 "until the system takes over.\n\n"
+                                                 "Edit the 'before payloads' duration\n"
+                                                 "in config.ini (3s default).",
 
                                                  "Activate a PIN lock.\n\n"
                                                  "The PIN will be asked each time\n"

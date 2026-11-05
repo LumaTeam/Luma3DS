@@ -61,7 +61,8 @@ void main(int argc, char **argv, u32 magicWord)
          needToInitSd = false,
          isNoForceFlagSet = false,
          isInvalidLoader = false,
-         isNtrBoot = false;
+         isNtrBoot = false,
+         keepSplashOnScreen = false;
     FirmwareType firmType = NATIVE_FIRM;
     FirmwareSource nandType = FIRMWARE_SYSNAND;
     u32 emunandIndex = 0;
@@ -289,7 +290,11 @@ void main(int argc, char **argv, u32 magicWord)
 
     u32 splashMode = MULTICONFIG(SPLASH);
 
-    if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
+    if(splashMode == 1 && loadSplash())
+    {
+        wait(configData.splashDurationMsec);
+        pressed = HID_PAD;
+    }
 
     bool autoBootEmu = CONFIG(AUTOBOOTEMU);
 
@@ -301,7 +306,12 @@ void main(int argc, char **argv, u32 magicWord)
     else if((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
             (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
-    if(splashMode == 2 && loadSplash()) pressed = HID_PAD;
+    //Leave the splash on screen until the system firmware takes the screens over
+    if(splashMode == 2 && loadSplash())
+    {
+        pressed = HID_PAD;
+        keepSplashOnScreen = true;
+    }
 
     //Check SAFE_MODE combo again
     if(!CFG_BOOTENV && pressed == SAFE_MODE)
@@ -394,6 +404,6 @@ boot:
     if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
     unmountPartitions();
-    if(bootType != FIRMLAUNCH) deinitScreens();
+    if(bootType != FIRMLAUNCH && !keepSplashOnScreen) deinitScreens();
     launchFirm(0, NULL);
 }

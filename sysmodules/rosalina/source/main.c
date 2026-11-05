@@ -41,6 +41,7 @@
 #include "minisoc.h"
 #include "draw.h"
 #include "bootdiag.h"
+#include "splash_fade.h"
 #include "shell.h"
 #include "luma_config.h"
 
@@ -256,6 +257,7 @@ static const ServiceManagerNotificationEntry notifications[] = {
 // Some changes to commit
 int main(void)
 {
+    splashFadeCreateThread();
     Sleep__Init();
     PluginLoader__Init();
 
