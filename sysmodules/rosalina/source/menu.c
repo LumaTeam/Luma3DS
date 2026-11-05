@@ -403,13 +403,39 @@ void menuEnter(void)
     {
         menuCloseRequested = false;
         menuRefCount++;
-        svcKernelSetState(0x10000, 2 | 1);
+
+        // Phase 1: Freeze game/app threads to stop new GPU command submissions
+        svcKernelSetState(0x10000, 1);
         svcSleepThread(5 * 1000 * 100LL);
+
+        // Phase 2: Wait for GPU + GSP to fully drain. After the game
+        // is frozen, GSP may still have multiple queued commands in
+        // its FIFO to submit one-by-one to the GPU hardware. A single
+        // busy-wait can pass while GSP is between commands (GPU idle
+        // but next command not yet submitted). Loop until GPU stays
+        // idle after giving GSP time to process, confirming the FIFO
+        // is fully drained and all completion interrupts delivered.
+        for (int i = 0; i < 8; i++)
+        {
+            while((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1);
+            svcSleepThread(2 * 1000 * 1000LL);
+            if (!((GPU_PSC0_CNT | GPU_PSC1_CNT | GPU_TRANSFER_CNT | GPU_CMDLIST_CNT) & 1))
+                break;
+        }
+        // Final margin for GSP to process the last completion interrupt
+        svcSleepThread(1 * 1000 * 1000LL);
+
+        // Phase 3: Now freeze GSP (no pending completions to lose)
+        svcKernelSetState(0x10000, 2);
+        svcSleepThread(5 * 1000 * 100LL);
+
         if (R_FAILED(Draw_AllocateFramebufferCache(FB_BOTTOM_SIZE)))
         {
             // Oops
             menuRefCount = 0;
-            svcKernelSetState(0x10000, 2 | 1);
+            svcKernelSetState(0x10000, 2);
+            svcSleepThread(5 * 1000 * 100LL);
+            svcKernelSetState(0x10000, 1);
             svcSleepThread(5 * 1000 * 100LL);
         }
         else
@@ -427,7 +453,12 @@ void menuLeave(void)
     {
         Draw_RestoreFramebuffer();
         Draw_FreeFramebufferCache();
-        svcKernelSetState(0x10000, 2 | 1);
+
+        // Unfreeze GSP first so it can process any pending hardware
+        // interrupts before game threads resume and read the queue
+        svcKernelSetState(0x10000, 2);
+        svcSleepThread(2 * 1000 * 1000LL);
+        svcKernelSetState(0x10000, 1);
     }
     Draw_Unlock();
 }
