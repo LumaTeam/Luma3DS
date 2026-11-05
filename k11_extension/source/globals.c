@@ -130,7 +130,7 @@ u32 stolenSystemMemRegionSize;
 bool disableThreadRedirection = false;
 
 vu32 rosalinaState;
-bool hasStartedRosalinaNetworkFuncsOnce;
+bool hasStartedRosalinaNetworkFuncs;
 KEvent* signalPluginEvent = NULL;
 u32 pidOffsetKProcess, hwInfoOffsetKProcess, codeSetOffsetKProcess, handleTableOffsetKProcess, debugOffsetKProcess, flagsKProcess;
 
