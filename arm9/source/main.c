@@ -184,6 +184,8 @@ void main(int argc, char **argv, u32 magicWord)
     //Attempt to read the configuration file
     needConfig = readConfig() ? MODIFY_CONFIGURATION : CREATE_CONFIGURATION;
 
+    bool keepSplash = false;
+
     //Determine if this is a firmlaunch boot
     if(bootType == FIRMLAUNCH)
     {
@@ -289,7 +291,7 @@ void main(int argc, char **argv, u32 magicWord)
 
     u32 splashMode = MULTICONFIG(SPLASH);
 
-    if(splashMode == 1 && loadSplash()) pressed = HID_PAD;
+    if(splashMode == 1 && loadSplash(false)) pressed = HID_PAD;
 
     bool autoBootEmu = CONFIG(AUTOBOOTEMU);
 
@@ -301,7 +303,10 @@ void main(int argc, char **argv, u32 magicWord)
     else if((((pressed & SINGLE_PAYLOAD_BUTTONS) || (!autoBootEmu && (pressed & DPAD_BUTTONS))) && !(pressed & (BUTTON_L1 | BUTTON_R1))) ||
             (((pressed & L_PAYLOAD_BUTTONS) || (autoBootEmu && (pressed & DPAD_BUTTONS))) && (pressed & BUTTON_L1))) loadHomebrewFirm(pressed);
 
-    if(splashMode == 2 && loadSplash()) pressed = HID_PAD;
+    if(splashMode == 2 && loadSplash(true)) {
+        pressed = HID_PAD;
+        keepSplash = true;
+    }
 
     //Check SAFE_MODE combo again
     if(!CFG_BOOTENV && pressed == SAFE_MODE)
@@ -394,6 +399,6 @@ boot:
     if(res != 0) error("Failed to apply %u FIRM patch(es).", res);
 
     unmountPartitions();
-    if(bootType != FIRMLAUNCH) deinitScreens();
+    if(bootType != FIRMLAUNCH && !keepSplash) deinitScreens();
     launchFirm(0, NULL);
 }
