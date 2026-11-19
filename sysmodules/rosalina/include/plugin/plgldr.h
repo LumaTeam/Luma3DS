@@ -58,7 +58,8 @@ typedef struct
     u8              notifyHomeEvent;
     u8              padding[7];
     u64             waitForReplyTimeout;
-    u32             reserved[20];
+    u32             builtinDataFileHandle;
+    u32             reserved[19];
     u32             config[32];
 } PluginHeader;
 _Static_assert(sizeof(PluginHeader) == 0x100, "Invalid PluginHeader size");
