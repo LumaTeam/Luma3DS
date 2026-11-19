@@ -28,7 +28,7 @@ Result  Check_3gx_Magic(IFile *file, u16* headerSizeOut)
         return res;
 
     if (magic == _3GX_MAGIC_OLD_V2) {
-        // Version 2 is backwards compatible with version 3
+        // Loader version 3 is backwards compatible with version 2
         magic = _3GX_MAGIC;
         hasHeaderSize = false;
         *headerSizeOut = _3GX_VERSION_V2_HEADER_SIZE;
@@ -44,6 +44,8 @@ Result  Check_3gx_Magic(IFile *file, u16* headerSizeOut)
         file->pos = offsetof(_3gx_Header, headerSize);
         if (R_FAILED((res = IFile_Read(file, &total, headerSizeOut, sizeof(u16)))))
             return res;
+        if (total != sizeof(u16) || *headerSizeOut < _3GX_VERSION_V2_HEADER_SIZE)
+            return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, 4);
     }
 
     return res;
@@ -58,54 +60,58 @@ Result  Read_3gx_Header(IFile *file, _3gx_Header *header, u16 headerSize)
         headerSize = sizeof(_3gx_Header);
     }
 
+    memset(header, 0, sizeof(_3gx_Header));
+
     file->pos = 0;
     res = IFile_Read(file, &total, header, headerSize);
+    if (R_SUCCEEDED(res) && total != headerSize)
+        res = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_SIZE);
 
     return res;
 }
 
-Result Read_3gx_ParseHeader(IFile *file, _3gx_Header *header)
+Result  Read_3gx_String(IFile *file, u32 offset, u32 len, char *out, u32 outSize)
 {
-    u64     total;
-    char *  dst;
+    u64     total = 0;
     Result  res = 0;
 
-    // Read author
-    file->pos = (u32)header->infos.authorMsg;
-    dst = (char *)header + sizeof(_3gx_Header);
-    res = IFile_Read(file, &total, dst, header->infos.authorLen);
-    if (R_FAILED(res))
-        return res;
+    if (len >= outSize)
+        len = outSize - 1;
 
-    // Relocate ptr
-    header->infos.authorMsg = dst;
+    file->pos = offset;
+    res = IFile_Read(file, &total, out, len);
+    out[R_SUCCEEDED(res) ? (u32)total : 0] = '\0';
 
-    // Read title
-    file->pos = (u32)header->infos.titleMsg;
-    dst += header->infos.authorLen;
-    res = IFile_Read(file, &total, dst, header->infos.titleLen);
-    if (R_FAILED(res))
-        return res;
+    return res;
+}
 
-    // Relocate ptr
-    header->infos.titleMsg = dst;
+Result  Read_3gx_IsTargetCompatible(IFile *file, _3gx_Header *header, u32 titleId, bool *compatible)
+{
+    u32     titles[32];
+    u32     left = header->targets.count;
+    u64     total;
+    Result  res = 0;
 
-    // Declare other members as null (unused in our case)
-    header->infos.summaryLen = 0;
-    header->infos.summaryMsg = NULL;
-    header->infos.descriptionLen = 0;
-    header->infos.descriptionMsg = NULL;
+    *compatible = left == 0;
 
-    // Read targets compatibility
     file->pos = (u32)header->targets.titles;
-    dst += header->infos.titleLen;
-    dst += 4 - ((u32)dst & 3); // 4 bytes aligned
-    res = IFile_Read(file, &total, dst, header->targets.count * sizeof(u32));
-    if (R_FAILED(res))
-        return res;
+    while (left != 0 && !*compatible)
+    {
+        u32 count = left < 32 ? left : 32;
 
-    // Relocate ptr
-    header->targets.titles = (u32 *)dst;
+        res = IFile_Read(file, &total, titles, count * sizeof(u32));
+        if (R_SUCCEEDED(res) && total != count * sizeof(u32))
+            res = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_SIZE);
+        if (R_FAILED(res))
+            return res;
+
+        for (u32 i = 0; i < count; ++i)
+        {
+            if (titles[i] == titleId)
+                *compatible = true;
+        }
+        left -= count;
+    }
 
     return res;
 }

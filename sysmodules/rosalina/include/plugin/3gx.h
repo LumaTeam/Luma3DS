@@ -88,7 +88,8 @@ enum _3gx_Compatibility {
 
 Result  Check_3gx_Magic(IFile *file, u16* headerSizeOut);
 Result  Read_3gx_Header(IFile *file, _3gx_Header *header, u16 headerSize);
-Result  Read_3gx_ParseHeader(IFile *file, _3gx_Header *header);
+Result  Read_3gx_String(IFile *file, u32 offset, u32 len, char *out, u32 outSize);
+Result  Read_3gx_IsTargetCompatible(IFile *file, _3gx_Header *header, u32 titleId, bool *compatible);
 Result  Read_3gx_LoadSegments(IFile *file, _3gx_Header *header, void *dst);
 Result  Read_3gx_EmbeddedPayloads(IFile *file, _3gx_Header *header);
 Result  Set_3gx_LoadParams(u32* loadFunc, u32* params);

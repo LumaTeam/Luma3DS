@@ -121,22 +121,29 @@ static Result   OpenPluginFile(u64 tid, IFile *plugin)
     return 0;
 }
 
-static Result   CheckPluginCompatibility(_3gx_Header *header, u32 processTitle)
+static Result   CheckPluginCompatibility(IFile *plugin, _3gx_Header *header, u32 processTitle)
 {
     static char   errorBuf[0x100];
+    char          title[0x40];
+    char          author[0x40];
+    bool          compatible = false;
+    Result        res;
 
-    if (header->targets.count == 0)
-        return 0;
-
-    for (u32 i = 0; i < header->targets.count; ++i)
+    if (R_FAILED((res = Read_3gx_IsTargetCompatible(plugin, header, processTitle, &compatible))))
     {
-        if (header->targets.titles[i] == processTitle)
-            return 0;
+        PluginLoaderCtx.error.message = "Couldn't read file";
+        return res;
     }
 
-    sprintf(errorBuf, "The plugin - %s -\nis not compatible with this game.\n" \
-                      "Contact \"%s\" for more infos.", header->infos.titleMsg, header->infos.authorMsg);
-    
+    if (compatible)
+        return 0;
+
+    Read_3gx_String(plugin, (u32)header->infos.titleMsg, header->infos.titleLen, title, sizeof(title));
+    Read_3gx_String(plugin, (u32)header->infos.authorMsg, header->infos.authorLen, author, sizeof(author));
+
+    snprintf(errorBuf, sizeof(errorBuf), "The plugin - %s -\nis not compatible with this game.\n" \
+                      "Contact \"%s\" for more infos.", title, author);
+
     PluginLoaderCtx.error.message = errorBuf;
 
     return -1;
@@ -150,7 +157,7 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
     IFile           plugin;
     Result          res;
     _3gx_Header     fileHeader;
-    _3gx_Header     *header = NULL;
+    _3gx_Header     *header = &fileHeader;
     _3gx_Executable *exeHdr = NULL;
     PluginLoaderContext *ctx = &PluginLoaderCtx;
     PluginHeader        *pluginHeader = &ctx->header;
@@ -236,15 +243,15 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
     if (!res && R_FAILED((res = MemoryBlock__IsReady())))
         ctx->error.message = "Failed to allocate memory.";
 
-    // Plugins will not exceed 5MB so this is fine
+    // The executable must fit in the memory block
     if (!res) {
-        header = (_3gx_Header *)(ctx->memblock.memblock + g_memBlockSize - (u32)fileSize);
-        memcpy(header, &fileHeader, sizeof(_3gx_Header));
+        exeHdr = &header->executable;
+        u64 exeSize = (sizeof(PluginHeader) + (u64)exeHdr->codeSize + exeHdr->rodataSize + exeHdr->dataSize + exeHdr->bssSize + 0x1000) & ~0xFFFULL;
+        if (exeSize > g_memBlockSize) {
+            ctx->error.message = "Plugin is too big for its memory region.";
+            res = MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_TOO_LARGE);
+        }
     }
-
-    // Parse rest of header
-    if (!res && R_FAILED((res = Read_3gx_ParseHeader(&plugin, header))))
-        ctx->error.message = "Couldn't read file";
 
     // Read embedded save/load functions
     if (!res && R_FAILED((res = Read_3gx_EmbeddedPayloads(&plugin, header))))
@@ -255,7 +262,7 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
         ctx->exeLoadChecksum = header->infos.exeLoadChecksum;
     
     // Check titles compatibility
-    if (!res) res = CheckPluginCompatibility(header, (u32)tid);
+    if (!res) res = CheckPluginCompatibility(&plugin, header, (u32)tid);
 
     // Read code
     if (!res && R_FAILED(res = Read_3gx_LoadSegments(&plugin, header, ctx->memblock.memblock + sizeof(PluginHeader)))) {
