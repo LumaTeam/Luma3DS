@@ -7,21 +7,32 @@
 
 u32  g_loadExeArgs[0x4];
 
+#define _3GX_MAGIC_OLD_V2 (0x3230303024584733) /* "3GX$0002" */
+#define _3GX_VERSION_V2_HEADER_SIZE (0x94)
+
 static inline u32 invertEndianness(u32 val)
 {
     return ((val & 0xFF) << 24) | ((val & 0xFF00) << 8) | ((val & 0xFF0000) >> 8) | ((val & 0xFF000000) >> 24);
 }
 
-Result  Check_3gx_Magic(IFile *file)
+Result  Check_3gx_Magic(IFile *file, u16* headerSizeOut)
 {
     u64     magic;
     u64     total;
-    Result  res;
+    Result  res = 0;
     int     verDif;
+    bool    hasHeaderSize = true;
 
     file->pos = 0;
     if (R_FAILED((res = IFile_Read(file, &total, &magic, sizeof(u64)))))
         return res;
+
+    if (magic == _3GX_MAGIC_OLD_V2) {
+        // Version 2 is backwards compatible with version 3
+        magic = _3GX_MAGIC;
+        hasHeaderSize = false;
+        *headerSizeOut = _3GX_VERSION_V2_HEADER_SIZE;
+    }
 
     if ((u32)magic != (u32)_3GX_MAGIC) //Invalid file type
         return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, 1);
@@ -29,16 +40,26 @@ Result  Check_3gx_Magic(IFile *file)
     else if ((verDif = invertEndianness((u32)(magic >> 32)) - invertEndianness((u32)(_3GX_MAGIC >> 32))) != 0) //Invalid plugin version (2 -> outdated plugin; 3 -> outdated loader)
         return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, (verDif < 0) ? 2 : 3);
 
-    else return 0;
+    if (hasHeaderSize) {
+        file->pos = offsetof(_3gx_Header, headerSize);
+        if (R_FAILED((res = IFile_Read(file, &total, headerSizeOut, sizeof(u16)))))
+            return res;
+    }
+
+    return res;
 }
 
-Result  Read_3gx_Header(IFile *file, _3gx_Header *header)
+Result  Read_3gx_Header(IFile *file, _3gx_Header *header, u16 headerSize)
 {
     u64     total;
     Result  res = 0;
 
+    if (headerSize > sizeof(_3gx_Header)) {
+        headerSize = sizeof(_3gx_Header);
+    }
+
     file->pos = 0;
-    res = IFile_Read(file, &total, header, sizeof(_3gx_Header));
+    res = IFile_Read(file, &total, header, headerSize);
 
     return res;
 }

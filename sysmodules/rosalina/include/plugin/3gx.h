@@ -2,7 +2,7 @@
 #include <3ds/types.h>
 #include "ifile.h"
 
-#define _3GX_MAGIC (0x3230303024584733) /* "3GX$0002" */
+#define _3GX_MAGIC (0x3330303024584733) /* "3GX$0003" */
 
 typedef struct CTR_PACKED
 {
@@ -48,6 +48,12 @@ typedef struct CTR_PACKED
 
 typedef struct CTR_PACKED
 {
+    u32             builtInDataOffset;
+    u32             builtInDataSize;
+}   _3gx_BuiltInData;
+
+typedef struct CTR_PACKED
+{
     u32             codeOffset;
     u32             rodataOffset;
     u32             dataOffset;
@@ -62,13 +68,15 @@ typedef struct CTR_PACKED
 
 typedef struct CTR_PACKED
 {
-    u64             magic;
-    u32             version;
-    u32             reserved;
-    _3gx_Infos      infos;
-    _3gx_Executable executable;
-    _3gx_Targets    targets;
-    _3gx_Symtable   symtable;
+    u64                 magic;
+    u32                 version;
+    u16                 headerSize;
+    u16                 reserved;
+    _3gx_Infos          infos;
+    _3gx_Executable     executable;
+    _3gx_Targets        targets;
+    _3gx_Symtable       symtable;
+    _3gx_BuiltInData    builtinData;
 } _3gx_Header;
 
 
@@ -78,8 +86,8 @@ enum _3gx_Compatibility {
     PLG_COMPAT_CONSOLE_EMULATOR = 2,
 };
 
-Result  Check_3gx_Magic(IFile *file);
-Result  Read_3gx_Header(IFile *file, _3gx_Header *header);
+Result  Check_3gx_Magic(IFile *file, u16* headerSizeOut);
+Result  Read_3gx_Header(IFile *file, _3gx_Header *header, u16 headerSize);
 Result  Read_3gx_ParseHeader(IFile *file, _3gx_Header *header);
 Result  Read_3gx_LoadSegments(IFile *file, _3gx_Header *header, void *dst);
 Result  Read_3gx_EmbeddedPayloads(IFile *file, _3gx_Header *header);

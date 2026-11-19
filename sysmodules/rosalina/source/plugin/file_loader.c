@@ -146,6 +146,7 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
 {
     u64             tid;
     u64             fileSize;
+    u16             headerSize = 0;
     IFile           plugin;
     Result          res;
     _3gx_Header     fileHeader;
@@ -188,7 +189,7 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
     if (R_FAILED((res = IFile_GetSize(&plugin, &fileSize))))
         ctx->error.message = "Couldn't get file size";
 
-    if (!res && R_FAILED(res = Check_3gx_Magic(&plugin)))
+    if (!res && R_FAILED(res = Check_3gx_Magic(&plugin, &headerSize)))
     {
         const char * errors[] = 
         {
@@ -202,7 +203,7 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
     }
 
     // Read header
-    if (!res && R_FAILED((res = Read_3gx_Header(&plugin, &fileHeader))))
+    if (!res && R_FAILED((res = Read_3gx_Header(&plugin, &fileHeader, headerSize))))
         ctx->error.message = "Couldn't read file";
 
     // Check compatibility
@@ -261,6 +262,23 @@ bool     TryToLoadPlugin(Handle process, bool isHomebrew)
         if (res == MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_NO_DATA)) ctx->error.message = "This plugin requires a loading function.";
         else if (res == MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_LDR, RD_INVALID_ADDRESS)) ctx->error.message = "This plugin file is corrupted.";
         else ctx->error.message = "Couldn't read plugin's code";
+    }
+
+    if (!res && header->builtinData.builtInDataOffset != 0) {
+        Handle subHandle = 0;
+        res = FSFILE_OpenSubFile(plugin.handle, &subHandle, header->builtinData.builtInDataOffset, header->builtinData.builtInDataSize);
+        if (R_FAILED(res)) {
+            ctx->error.message = "Failed to open builtin data subfile";
+        } else {
+            Handle otherProcessSubHandle = 0;
+            res = svcCopyHandle(&otherProcessSubHandle, process, subHandle, CUR_PROCESS_HANDLE);
+            if (R_FAILED(res)) {
+                ctx->error.message = "Failed to copy builtin data handle";
+            } else {
+                pluginHeader->builtinDataFileHandle = otherProcessSubHandle;
+            }
+            svcCloseHandle(subHandle);
+        }
     }
 
     if (R_FAILED(res))
