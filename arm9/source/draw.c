@@ -58,8 +58,6 @@ bool loadSplash(void)
 
     swapFramebuffers(true);
 
-    wait(configData.splashDurationMsec);
-
     return true;
 }
 
