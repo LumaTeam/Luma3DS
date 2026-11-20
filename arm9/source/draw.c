@@ -38,7 +38,7 @@
 #include "font.h"
 #include "config.h"
 
-bool loadSplash(void)
+bool loadSplash(bool afterPayloads)
 {
     static const char *topSplashFile = "splash.bin",
                       *bottomSplashFile = "splashbottom.bin";
@@ -58,7 +58,7 @@ bool loadSplash(void)
 
     swapFramebuffers(true);
 
-    wait(configData.splashDurationMsec);
+    if(!afterPayloads) wait(configData.splashDurationMsec);
 
     return true;
 }
