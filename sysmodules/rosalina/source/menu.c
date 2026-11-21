@@ -597,7 +597,8 @@ void menuShow(Menu *root)
         }
         else if(pressed & KEY_B)
         {
-            while (nbPreviousMenus == 0 && (scanHeldKeys() & KEY_B)); // wait a bit before exiting rosalina
+            while (nbPreviousMenus == 0 && (scanHeldKeys() & KEY_B)) // wait a bit before exiting rosalina
+                svcSleepThread(1 * 1000 * 1000LL);
 
             Draw_Lock();
             Draw_ClearFramebuffer();
