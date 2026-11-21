@@ -136,7 +136,7 @@ void LumaConfig_ConvertComboToString(char *out, u32 combo)
         out[-1] = 0;
 }
 
-static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
+static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, size_t outSize, const CfgData *cfg)
 {
     char lumaVerStr[64];
     char lumaRevSuffixStr[16];
@@ -176,15 +176,15 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
     }
 
     if (GET_VERSION_REVISION(version) != 0) {
-        sprintf(lumaVerStr, "Luma3DS v%d.%d.%d", (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version), (int)GET_VERSION_REVISION(version));
+        snprintf(lumaVerStr, sizeof(lumaVerStr), "Luma3DS v%d.%d.%d", (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version), (int)GET_VERSION_REVISION(version));
     } else {
-        sprintf(lumaVerStr, "Luma3DS v%d.%d",  (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version));
+        snprintf(lumaVerStr, sizeof(lumaVerStr), "Luma3DS v%d.%d", (int)GET_VERSION_MAJOR(version), (int)GET_VERSION_MINOR(version));
     }
 
     if (isRelease) {
         strcpy(lumaRevSuffixStr, "");
     } else {
-        sprintf(lumaRevSuffixStr, "-%08lx", (u32)commitHash);
+        snprintf(lumaRevSuffixStr, sizeof(lumaRevSuffixStr), "-%08lx", (u32)commitHash);
     }
 
     LumaConfig_ConvertComboToString(rosalinaMenuComboStr, cfg->rosalinaMenuCombo);
@@ -204,8 +204,8 @@ static size_t LumaConfig_SaveLumaIniConfigToStr(char *out, const CfgData *cfg)
         floatToString(bottomScreenFilterContrastStrs[ch], cfg->bottomScreenFilter.contrast[ch], 6, false);
     }
 
-    int n = sprintf(
-        out, (const char *)config_template_ini,
+    int n = snprintf(
+        out, outSize, (const char *)config_template_ini,
         lumaVerStr, lumaRevSuffixStr,
 
         (int)cfg->formatVersionMajor, (int)cfg->formatVersionMinor,
@@ -300,10 +300,10 @@ Result LumaConfig_SaveSettings(void)
     configData.autobootCtrAppmemtype = autobootCtrAppmemtype;
     configData.autobootCtrUseNs = autobootCtrUseNs;
 
-    size_t n = LumaConfig_SaveLumaIniConfigToStr(inibuf, &configData);
+    size_t n = LumaConfig_SaveLumaIniConfigToStr(inibuf, sizeof(inibuf), &configData);
 
-    // FIXME: this is UB we should port snprintf sometime (as well as fix other tech debt in Rosalina)
-    if (n + 1 >= sizeof(inibuf)) {
+    // Output was truncated
+    if (n >= sizeof(inibuf)) {
         __builtin_trap();
     }
 

@@ -58,6 +58,7 @@ This code is based on a file that contains the following:
 */
 
 //TuxSH's changes: add support for 64-bit numbers, remove floating-point code
+//and modify to support snprintf
 
 #include "memory.h"
 #include "fmt.h"
@@ -81,7 +82,21 @@ static s32 skipAtoi(const char **s)
     return i;
 }
 
-static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precision, u32 type)
+typedef struct FmtOutput
+{
+    char *buf;
+    size_t size;
+    size_t pos;
+} FmtOutput;
+
+// Writes c if there is room for it plus the null terminator; always counts it.
+static inline void fmtPutc(FmtOutput *out, char c)
+{
+    if(out->pos + 1 < out->size) out->buf[out->pos] = c;
+    out->pos++;
+}
+
+static void processNumber(FmtOutput *out, s64 num, bool isHex, s32 size, s32 precision, u32 type)
 {
     char sign = 0;
 
@@ -131,32 +146,31 @@ static char *processNumber(char *str, s64 num, bool isHex, s32 size, s32 precisi
     if(type & HEX_PREP && isHex) size -= 2;
     if(i > precision) precision = i;
     size -= precision;
-    if(!(type & (ZEROPAD | LEFT))) while(size-- > 0) *str++ = ' ';
-    if(sign) *str++ = sign;
+    if(!(type & (ZEROPAD | LEFT))) while(size-- > 0) fmtPutc(out, ' ');
+    if(sign) fmtPutc(out, sign);
 
     if(type & HEX_PREP && isHex)
     {
-        *str++ = '0';
-        *str++ = 'x';
+        fmtPutc(out, '0');
+        fmtPutc(out, 'x');
     }
 
-    if(type & ZEROPAD) while(size-- > 0) *str++ = '0';
-    while(i < precision--) *str++ = '0';
-    while(i-- > 0) *str++ = tmp[i];
-    while(size-- > 0) *str++ = ' ';
-
-    return str;
+    if(type & ZEROPAD) while(size-- > 0) fmtPutc(out, '0');
+    while(i < precision--) fmtPutc(out, '0');
+    while(i-- > 0) fmtPutc(out, tmp[i]);
+    while(size-- > 0) fmtPutc(out, ' ');
 }
 
-int vsprintf(char *buf, const char *fmt, va_list args)
+static int fmtFormat(char *buf, size_t bufSize, const char *fmt, va_list args)
 {
-    char *str;
+    FmtOutput outCtx = { .buf = buf, .size = bufSize, .pos = 0 };
+    FmtOutput *out = &outCtx;
 
-    for(str = buf; *fmt; fmt++)
+    for(; *fmt; fmt++)
     {
         if(*fmt != '%')
         {
-            *str++ = *fmt;
+            fmtPutc(out, *fmt);
             continue;
         }
 
@@ -235,9 +249,9 @@ int vsprintf(char *buf, const char *fmt, va_list args)
         switch(*fmt)
         {
             case 'c':
-                if(!(flags & LEFT)) while(--fieldWidth > 0) *str++ = ' ';
-                *str++ = (u8)va_arg(args, s32);
-                while(--fieldWidth > 0) *str++ = ' ';
+                if(!(flags & LEFT)) while(--fieldWidth > 0) fmtPutc(out, ' ');
+                fmtPutc(out, (char)va_arg(args, s32));
+                while(--fieldWidth > 0) fmtPutc(out, ' ');
                 continue;
 
             case 's':
@@ -245,9 +259,9 @@ int vsprintf(char *buf, const char *fmt, va_list args)
                 char *s = va_arg(args, char *);
                 if(!s) s = "<NULL>";
                 u32 len = (precision != -1) ? strnlen(s, precision) : strlen(s);
-                if(!(flags & LEFT)) while((s32)len < fieldWidth--) *str++ = ' ';
-                for(u32 i = 0; i < len; i++) *str++ = *s++;
-                while((s32)len < fieldWidth--) *str++ = ' ';
+                if(!(flags & LEFT)) while((s32)len < fieldWidth--) fmtPutc(out, ' ');
+                for(u32 i = 0; i < len; i++) fmtPutc(out, *s++);
+                while((s32)len < fieldWidth--) fmtPutc(out, ' ');
                 continue;
             }
 
@@ -257,7 +271,7 @@ int vsprintf(char *buf, const char *fmt, va_list args)
                     fieldWidth = 8;
                     flags |= ZEROPAD;
                 }
-                str = processNumber(str, va_arg(args, u32), true, fieldWidth, precision, flags);
+                processNumber(out, va_arg(args, u32), true, fieldWidth, precision, flags);
                 continue;
 
             //Integer number formats - set up the flags and "break"
@@ -277,8 +291,8 @@ int vsprintf(char *buf, const char *fmt, va_list args)
                 break;
 
             default:
-                if(*fmt != '%') *str++ = '%';
-                if(*fmt) *str++ = *fmt;
+                if(*fmt != '%') fmtPutc(out, '%');
+                if(*fmt) fmtPutc(out, *fmt);
                 else fmt--;
                 continue;
         }
@@ -302,11 +316,22 @@ int vsprintf(char *buf, const char *fmt, va_list args)
             else if(integerType == 3) num = (u8)num;
         }
 
-        str = processNumber(str, num, isHex, fieldWidth, precision, flags);
+        processNumber(out, num, isHex, fieldWidth, precision, flags);
     }
 
-    *str = 0;
-    return (int)(str - buf);
+    if(out->size != 0) out->buf[out->pos < out->size ? out->pos : out->size - 1] = '\0';
+    return (int)out->pos;
+}
+
+int vsnprintf(char *buf, size_t bufSize, const char *fmt, va_list args)
+{
+    return fmtFormat(buf, bufSize, fmt, args);
+}
+
+int vsprintf(char *buf, const char *fmt, va_list args)
+{
+    // Unbounded, kept for existing callers
+    return fmtFormat(buf, SIZE_MAX, fmt, args);
 }
 
 int sprintf(char *buf, const char *fmt, ...)
@@ -314,6 +339,15 @@ int sprintf(char *buf, const char *fmt, ...)
     va_list args;
     va_start(args, fmt);
     int res = vsprintf(buf, fmt, args);
+    va_end(args);
+    return res;
+}
+
+int snprintf(char *buf, size_t bufSize, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int res = vsnprintf(buf, bufSize, fmt, args);
     va_end(args);
     return res;
 }

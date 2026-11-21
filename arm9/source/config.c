@@ -573,7 +573,7 @@ static int configIniHandler(void* user, const char* section, const char* name, c
     }
 }
 
-static size_t saveLumaIniConfigToStr(char *out)
+static size_t saveLumaIniConfigToStr(char *out, size_t outSize)
 {
     const CfgData *cfg = &configData;
 
@@ -605,15 +605,15 @@ static size_t saveLumaIniConfigToStr(char *out)
     }
 
     if (VERSION_BUILD != 0) {
-        sprintf(lumaVerStr, "Luma3DS v%d.%d.%d", (int)VERSION_MAJOR, (int)VERSION_MINOR, (int)VERSION_BUILD);
+        snprintf(lumaVerStr, sizeof(lumaVerStr), "Luma3DS v%d.%d.%d", (int)VERSION_MAJOR, (int)VERSION_MINOR, (int)VERSION_BUILD);
     } else {
-        sprintf(lumaVerStr, "Luma3DS v%d.%d", (int)VERSION_MAJOR, (int)VERSION_MINOR);
+        snprintf(lumaVerStr, sizeof(lumaVerStr), "Luma3DS v%d.%d", (int)VERSION_MAJOR, (int)VERSION_MINOR);
     }
 
     if (ISRELEASE) {
         strcpy(lumaRevSuffixStr, "");
     } else {
-        sprintf(lumaRevSuffixStr, "-%08lx", (u32)COMMIT_HASH);
+        snprintf(lumaRevSuffixStr, sizeof(lumaRevSuffixStr), "-%08lx", (u32)COMMIT_HASH);
     }
 
     menuComboToString(rosalinaMenuComboStr, cfg->rosalinaMenuCombo);
@@ -632,8 +632,8 @@ static size_t saveLumaIniConfigToStr(char *out)
         encodedFloatToString(bottomScreenFilterContrastStrs[ch], cfg->bottomScreenFilter.contrastEnc[ch]);
     }
 
-    int n = sprintf(
-        out, (const char *)config_template_ini,
+    int n = snprintf(
+        out, outSize, (const char *)config_template_ini,
         lumaVerStr, lumaRevSuffixStr,
 
         (int)CONFIG_VERSIONMAJOR, (int)CONFIG_VERSIONMINOR,
@@ -679,10 +679,10 @@ static bool readLumaIniConfig(void)
 
 static bool writeLumaIniConfig(void)
 {
-    size_t n = saveLumaIniConfigToStr(tmpIniBuffer);
+    size_t n = saveLumaIniConfigToStr(tmpIniBuffer, sizeof(tmpIniBuffer));
 
-    // FIXME: this is UB we should port snprintf sometime (as well as fix other tech debt)
-    if (n + 1 >= sizeof(tmpIniBuffer)) {
+    // Output was truncated
+    if (n >= sizeof(tmpIniBuffer)) {
         error("Configuration data buffer overflow, please report this issue");
         __builtin_unreachable();
     }
